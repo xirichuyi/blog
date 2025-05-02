@@ -49,18 +49,16 @@ export default function AboutClient() {
           >
             <h2 className="text-2xl font-bold mb-6 text-primary">Professional Background</h2>
             <p className="text-lg mb-6">
-              Hello, I&apos;m Cyrus, a business professional with over 10 years of experience in technology,
-              strategy, and leadership. Throughout my career, I&apos;ve worked with Fortune 500 companies
-              and innovative startups to drive digital transformation and business growth.
+              Hello, I&apos;m Cyrus, a passionate coder and technology enthusiast with an insatiable curiosity for learning new skills.
+              I pride myself on my exceptional learning ability, having mastered numerous technologies and programming paradigms in a relatively short time.
             </p>
             <p className="text-lg mb-6">
-              My expertise spans across business strategy, digital innovation, and organizational leadership.
-              I&apos;m passionate about helping businesses navigate the complexities of the modern business
-              landscape and achieve sustainable success.
+              My technical journey spans across machine learning algorithms (ML, CNN, DL), game development, web3 technologies, and cybersecurity.
+              I&apos;m constantly exploring new technological frontiers and applying my knowledge to create innovative solutions.
             </p>
             <p className="text-lg">
-              I believe in a holistic approach to business that combines data-driven decision making with
-              human-centered design and ethical leadership principles.
+              I believe in a hands-on approach to technology that combines theoretical understanding with practical implementation,
+              always seeking to expand my skillset and tackle challenging problems.
             </p>
           </motion.section>
 
@@ -74,20 +72,20 @@ export default function AboutClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
                 {
-                  title: "Business Strategy",
-                  description: "Developing comprehensive business strategies that align with organizational goals and market dynamics."
+                  title: "Machine Learning",
+                  description: "Experience with ML, CNN, DL algorithms and frameworks, applying theoretical concepts to practical applications."
                 },
                 {
-                  title: "Digital Transformation",
-                  description: "Guiding organizations through digital transformation initiatives to enhance efficiency and competitiveness."
+                  title: "Golang Programming",
+                  description: "Proficient in Golang for developing automation scripts, backend services, and integrating with AI APIs for intelligent solutions."
                 },
                 {
-                  title: "Leadership Development",
-                  description: "Mentoring and developing leaders to build high-performing teams and foster innovation."
+                  title: "Web3 & Blockchain",
+                  description: "Building web scrapers for Web3 platforms to gather data for personal projects and networking with project teams."
                 },
                 {
-                  title: "Data Analytics",
-                  description: "Leveraging data-driven insights to inform strategic decision-making and optimize business operations."
+                  title: "Cybersecurity",
+                  description: "Knowledge of security concepts including SQL injection, XSS attacks, lateral movement, file upload vulnerabilities, and password cracking."
                 }
               ].map((item, index) => (
                 <motion.div
@@ -115,16 +113,16 @@ export default function AboutClient() {
             <div className="space-y-6">
               {[
                 {
-                  title: "MBA, Business Administration",
-                  institution: "Harvard Business School"
+                  title: "Undergraduate Student",
+                  institution: "Southwest University of Science and Technology"
                 },
                 {
-                  title: "BS, Computer Science",
-                  institution: "Massachusetts Institute of Technology"
+                  title: "Self-taught Developer",
+                  institution: "Various Online Platforms & Personal Projects"
                 },
                 {
-                  title: "Certified Project Management Professional (PMP)",
-                  institution: "Project Management Institute"
+                  title: "Game Development Enthusiast",
+                  institution: "Independent Learning & Experimentation"
                 }
               ].map((item, index) => (
                 <motion.div
@@ -150,7 +148,7 @@ export default function AboutClient() {
           >
             <h2 className="text-2xl font-bold mb-6 text-primary">Contact</h2>
             <p className="text-lg mb-8">
-              I&apos;m always open to discussing new opportunities, collaborations, or just connecting with like-minded professionals.
+              I&apos;m always eager to collaborate on interesting technical projects, discuss new technologies, or connect with fellow developers and tech enthusiasts.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.a

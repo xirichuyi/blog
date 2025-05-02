@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+
 interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,57 +26,25 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // 博客文章数据
-  const blogPosts: BlogPost[] = [
-    {
-      id: 1,
-      title: "Business Strategy in the Digital Age",
-      excerpt: "Exploring how digital transformation is reshaping business strategies across industries.",
-      date: "May 2, 2024",
-      slug: "business-strategy-digital-age",
-      categories: ["Strategy", "Digital Transformation"],
-    },
-    {
-      id: 2,
-      title: "Leadership Principles for Modern Teams",
-      excerpt: "Key leadership principles that drive success in today's fast-paced business environment.",
-      date: "April 28, 2024",
-      slug: "leadership-principles-modern-teams",
-      categories: ["Leadership", "Team Management"],
-    },
-    {
-      id: 3,
-      title: "The Future of Work: Trends and Predictions",
-      excerpt: "Analyzing emerging workplace trends and what they mean for businesses and professionals.",
-      date: "April 15, 2024",
-      slug: "future-work-trends-predictions",
-      categories: ["Future of Work", "Workplace Trends"],
-    },
-    {
-      id: 4,
-      title: "Effective Communication in Remote Teams",
-      excerpt: "Strategies for maintaining clear and effective communication in distributed teams.",
-      date: "April 5, 2024",
-      slug: "effective-communication-remote-teams",
-      categories: ["Communication", "Remote Work"],
-    },
-    {
-      id: 5,
-      title: "Data-Driven Decision Making",
-      excerpt: "How to leverage data analytics to make more informed business decisions.",
-      date: "March 22, 2024",
-      slug: "data-driven-decision-making",
-      categories: ["Data Analytics", "Decision Making"],
-    },
-    {
-      id: 6,
-      title: "Building a Strong Company Culture",
-      excerpt: "The importance of company culture and how to cultivate it effectively.",
-      date: "March 10, 2024",
-      slug: "building-strong-company-culture",
-      categories: ["Company Culture", "Leadership"],
-    },
-  ];
+  // 获取所有博客文章
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+
+  // 在组件挂载时获取博客文章数据
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch('/api/posts');
+        if (response.ok) {
+          const data = await response.json();
+          setBlogPosts(data);
+        }
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   // 当模态框打开时，聚焦到搜索输入框
   useEffect(() => {

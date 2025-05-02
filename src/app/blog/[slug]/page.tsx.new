@@ -1,0 +1,33 @@
+import { notFound } from "next/navigation";
+import { getPostBySlug, getRelatedPosts } from "@/lib/blog";
+import BlogPostClient from "./BlogPostClient";
+
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const post = await getPostBySlug(params.slug);
+
+  if (!post) {
+    return {
+      title: "Post Not Found | Cyrus",
+      description: "The requested blog post could not be found.",
+    };
+  }
+
+  return {
+    title: `${post.title} | Cyrus`,
+    description: post.excerpt,
+  };
+}
+
+export default async function BlogPost({ params }: { params: { slug: string } }) {
+  const post = await getPostBySlug(params.slug);
+
+  if (!post) {
+    notFound();
+  }
+
+  // 获取相关文章
+  const relatedPosts = getRelatedPosts(post, 3);
+
+  // 使用客户端组件渲染UI
+  return <BlogPostClient post={post} relatedPosts={relatedPosts} />;
+}
