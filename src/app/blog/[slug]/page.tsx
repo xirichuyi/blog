@@ -1,9 +1,5 @@
-"use client";
-
-import Link from "next/link";
-import { motion } from "framer-motion";
-import PageTransition from "../../../components/PageTransition";
 import { notFound } from "next/navigation";
+import BlogPostClient from "./BlogPostClient";
 
 // This would typically come from a CMS or markdown files
 const blogPosts = [
@@ -283,115 +279,14 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
     notFound();
   }
 
-  return (
-    <PageTransition>
-      <article className="container-apple py-16 md:py-24">
-        <div className="max-w-3xl mx-auto">
-          <Link
-            href="/blog"
-            className="inline-flex items-center text-apple-gray-600 dark:text-apple-gray-300 hover:text-primary mb-8"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Blog
-          </Link>
+  // 获取相关文章
+  const relatedPosts = blogPosts
+    .filter(relatedPost =>
+      relatedPost.id !== post.id &&
+      relatedPost.categories.some(category => post.categories.includes(category))
+    )
+    .slice(0, 3);
 
-          <motion.header
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="mb-12"
-          >
-            <p className="text-primary font-medium mb-4">{post.date}</p>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">{post.title}</h1>
-            <p className="text-xl text-apple-gray-600 dark:text-apple-gray-300 mb-6">{post.excerpt}</p>
-            <div className="flex flex-wrap gap-2">
-              {post.categories.map((category, index) => (
-                <Link
-                  key={index}
-                  href={`/categories/${category.toLowerCase().replace(/\s+/g, '-')}`}
-                  className="px-4 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                >
-                  {category}
-                </Link>
-              ))}
-            </div>
-          </motion.header>
-
-          <motion.div
-            className="prose prose-lg dark:prose-invert max-w-none"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            dangerouslySetInnerHTML={{ __html: post.content }}
-          />
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className="mt-16 pt-8 border-t border-apple-gray-200 dark:border-apple-gray-700"
-          >
-            <h2 className="text-2xl font-bold mb-6">Share this article</h2>
-            <div className="flex gap-4">
-              <a href="#" className="btn-apple btn-apple-secondary px-6">
-                Twitter
-              </a>
-              <a href="#" className="btn-apple btn-apple-secondary px-6">
-                LinkedIn
-              </a>
-              <a href="#" className="btn-apple btn-apple-secondary px-6">
-                Facebook
-              </a>
-            </div>
-          </motion.div>
-
-          {/* 相关文章推荐 */}
-          <motion.div
-            className="mt-16 pt-8 border-t border-apple-gray-200 dark:border-apple-gray-700"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.5 }}
-          >
-            <h2 className="text-2xl font-bold mb-8">Related Articles</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {blogPosts
-                .filter(relatedPost =>
-                  relatedPost.id !== post.id &&
-                  relatedPost.categories.some(category => post.categories.includes(category))
-                )
-                .slice(0, 3)
-                .map((relatedPost, index) => (
-                  <Link
-                    key={relatedPost.id}
-                    href={`/blog/${relatedPost.slug}`}
-                    className="card-apple group p-6 block hover:no-underline"
-                  >
-                    <p className="text-sm text-apple-gray-500 dark:text-apple-gray-400 mb-2 font-medium">{relatedPost.date}</p>
-                    <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors duration-300">
-                      {relatedPost.title}
-                    </h3>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {relatedPost.categories
-                        .filter(category => post.categories.includes(category))
-                        .map((category, catIndex) => (
-                          <span
-                            key={catIndex}
-                            className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full"
-                          >
-                            {category}
-                          </span>
-                        ))
-                      }
-                    </div>
-                  </Link>
-                ))}
-            </div>
-          </motion.div>
-        </div>
-      </article>
-    </PageTransition>
-  );
+  // 使用客户端组件渲染UI
+  return <BlogPostClient post={post} relatedPosts={relatedPosts} />;
 }
