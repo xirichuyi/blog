@@ -26,7 +26,7 @@ export default function Footer() {
               { href: "#", label: "GitHub", delay: 0.3 },
             ].map((link) => (
               <motion.a
-                key={link.href}
+                key={link.label}
                 href={link.href}
                 className="text-apple-gray-600 dark:text-apple-gray-300 hover:text-primary"
                 initial={{ opacity: 0, y: 20 }}
