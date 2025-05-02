@@ -13,6 +13,7 @@ const blogPosts = [
     excerpt: "Exploring how digital transformation is reshaping business strategies across industries.",
     date: "May 2, 2024",
     slug: "business-strategy-digital-age",
+    categories: ["Strategy", "Digital Transformation"],
     content: `
       <p>In today's rapidly evolving business landscape, digital transformation has become a critical driver of strategic change. Organizations across industries are reimagining their business models, operational processes, and customer experiences through the lens of digital technologies.</p>
 
@@ -75,6 +76,7 @@ const blogPosts = [
     excerpt: "Key leadership principles that drive success in today's fast-paced business environment.",
     date: "April 28, 2024",
     slug: "leadership-principles-modern-teams",
+    categories: ["Leadership", "Team Management"],
     content: `
       <p>Effective leadership has never been more critical or more challenging than in today's rapidly evolving business landscape. Modern teams require a different approach to leadership—one that emphasizes adaptability, emotional intelligence, and collaborative decision-making.</p>
 
@@ -165,6 +167,7 @@ const blogPosts = [
     excerpt: "Analyzing emerging workplace trends and what they mean for businesses and professionals.",
     date: "April 15, 2024",
     slug: "future-work-trends-predictions",
+    categories: ["Future of Work", "Workplace Trends"],
     content: `
       <p>The world of work is undergoing a profound transformation, accelerated by technological advances, changing demographics, and evolving employee expectations. Understanding these shifts is crucial for organizations and professionals seeking to thrive in the future workplace.</p>
 
@@ -302,7 +305,18 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
           >
             <p className="text-primary font-medium mb-4">{post.date}</p>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">{post.title}</h1>
-            <p className="text-xl text-apple-gray-600 dark:text-apple-gray-300">{post.excerpt}</p>
+            <p className="text-xl text-apple-gray-600 dark:text-apple-gray-300 mb-6">{post.excerpt}</p>
+            <div className="flex flex-wrap gap-2">
+              {post.categories.map((category, index) => (
+                <Link
+                  key={index}
+                  href={`/categories/${category.toLowerCase().replace(/\s+/g, '-')}`}
+                  className="px-4 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                >
+                  {category}
+                </Link>
+              ))}
+            </div>
           </motion.header>
 
           <motion.div
@@ -330,6 +344,50 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
               <a href="#" className="btn-apple btn-apple-secondary px-6">
                 Facebook
               </a>
+            </div>
+          </motion.div>
+
+          {/* 相关文章推荐 */}
+          <motion.div
+            className="mt-16 pt-8 border-t border-apple-gray-200 dark:border-apple-gray-700"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.5 }}
+          >
+            <h2 className="text-2xl font-bold mb-8">Related Articles</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {blogPosts
+                .filter(relatedPost =>
+                  relatedPost.id !== post.id &&
+                  relatedPost.categories.some(category => post.categories.includes(category))
+                )
+                .slice(0, 3)
+                .map((relatedPost, index) => (
+                  <Link
+                    key={relatedPost.id}
+                    href={`/blog/${relatedPost.slug}`}
+                    className="card-apple group p-6 block hover:no-underline"
+                  >
+                    <p className="text-sm text-apple-gray-500 dark:text-apple-gray-400 mb-2 font-medium">{relatedPost.date}</p>
+                    <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors duration-300">
+                      {relatedPost.title}
+                    </h3>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {relatedPost.categories
+                        .filter(category => post.categories.includes(category))
+                        .map((category, catIndex) => (
+                          <span
+                            key={catIndex}
+                            className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full"
+                          >
+                            {category}
+                          </span>
+                        ))
+                      }
+                    </div>
+                  </Link>
+                ))}
             </div>
           </motion.div>
         </div>

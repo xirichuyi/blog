@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import PageTransition from "../../components/PageTransition";
+import PageTransition from "../../../components/PageTransition";
+import { notFound } from "next/navigation";
 
-export const metadata = {
-  title: "Blog | Cyrus",
-  description: "Read the latest articles and insights from Cyrus",
-};
-
-export default function Blog() {
-  // This would typically come from a CMS or markdown files
+export default function CategoryPage({ params }: { params: { category: string } }) {
+  // 解码URL参数
+  const categorySlug = params.category;
+  
+  // 博客文章数据
   const blogPosts = [
     {
       id: 1,
@@ -23,7 +22,7 @@ export default function Blog() {
     {
       id: 2,
       title: "Leadership Principles for Modern Teams",
-      excerpt: "Key leadership principles that drive success in today&apos;s fast-paced business environment.",
+      excerpt: "Key leadership principles that drive success in today's fast-paced business environment.",
       date: "April 28, 2024",
       slug: "leadership-principles-modern-teams",
       categories: ["Leadership", "Team Management"],
@@ -62,6 +61,23 @@ export default function Blog() {
     },
   ];
 
+  // 查找匹配的分类
+  const matchingCategory = Array.from(
+    new Set(blogPosts.flatMap(post => post.categories))
+  ).find(category => 
+    category.toLowerCase().replace(/\s+/g, '-') === categorySlug
+  );
+
+  // 如果找不到匹配的分类，返回404
+  if (!matchingCategory) {
+    notFound();
+  }
+
+  // 筛选该分类下的文章
+  const filteredPosts = blogPosts.filter(post => 
+    post.categories.includes(matchingCategory)
+  );
+
   return (
     <PageTransition>
       <div className="container-apple py-16 md:py-24">
@@ -71,15 +87,25 @@ export default function Blog() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
         >
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Blog</h1>
+          <Link
+            href="/categories"
+            className="inline-flex items-center text-apple-gray-600 dark:text-apple-gray-300 hover:text-primary mb-8"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            All Categories
+          </Link>
+          
+          <h1 className="text-4xl md:text-5xl font-bold mb-6">{matchingCategory}</h1>
           <p className="text-xl text-apple-gray-600 dark:text-apple-gray-300 max-w-2xl mx-auto">
-            Insights and articles on business, technology, and professional growth.
+            {filteredPosts.length} {filteredPosts.length === 1 ? 'article' : 'articles'} in this category
           </p>
         </motion.header>
 
         {/* Blog Post Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
-          {blogPosts.map((post, index) => (
+          {filteredPosts.map((post, index) => (
             <motion.article
               key={post.id}
               className="card-apple group"
@@ -110,10 +136,14 @@ export default function Blog() {
                 </p>
                 <div className="flex flex-wrap gap-2 mb-5">
                   {post.categories.map((category, catIndex) => (
-                    <Link
-                      key={catIndex}
+                    <Link 
+                      key={catIndex} 
                       href={`/categories/${category.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      className={`text-xs px-3 py-1 rounded-full transition-colors ${
+                        category === matchingCategory 
+                          ? "bg-primary text-white" 
+                          : "bg-primary/10 text-primary hover:bg-primary/20"
+                      }`}
                     >
                       {category}
                     </Link>
@@ -129,29 +159,6 @@ export default function Blog() {
             </motion.article>
           ))}
         </div>
-
-        {/* Pagination */}
-        <motion.div
-          className="mt-16 flex justify-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.6 }}
-        >
-          <div className="flex items-center gap-2">
-            <button className="px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors">
-              Previous
-            </button>
-            <button className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary-dark transition-colors">
-              1
-            </button>
-            <button className="px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors">
-              2
-            </button>
-            <button className="px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors">
-              Next
-            </button>
-          </div>
-        </motion.div>
       </div>
     </PageTransition>
   );
