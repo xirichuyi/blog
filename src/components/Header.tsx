@@ -4,7 +4,6 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import SearchModal from "./SearchModal";
-import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -87,15 +86,7 @@ export default function Header() {
               ))}
             </div>
 
-            {/* 主题切换按钮 */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.35 }}
-              className="mr-2"
-            >
-              <ThemeToggle />
-            </motion.div>
+            {/* 移除主题切换按钮 */}
 
             {/* 搜索按钮 */}
             <motion.button

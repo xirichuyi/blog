@@ -92,12 +92,12 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     }
 
     const term = searchTerm.toLowerCase();
-    const results = blogPosts.filter(post => 
-      post.title.toLowerCase().includes(term) || 
+    const results = blogPosts.filter(post =>
+      post.title.toLowerCase().includes(term) ||
       post.excerpt.toLowerCase().includes(term) ||
       (post.categories && post.categories.some(category => category.toLowerCase().includes(term)))
     );
-    
+
     setSearchResults(results);
   }, [searchTerm]);
 
@@ -146,7 +146,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           onClick={handleBackdropClick}
         >
           <motion.div
-            className="bg-white dark:bg-apple-gray-900 rounded-lg w-full max-w-2xl overflow-hidden"
+            className="bg-apple-gray-900 rounded-lg w-full max-w-2xl overflow-hidden border border-apple-gray-700"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -154,28 +154,28 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           >
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">搜索文章</h2>
-                <button 
+                <h2 className="text-xl font-bold text-white">搜索文章</h2>
+                <button
                   onClick={onClose}
-                  className="text-apple-gray-600 dark:text-apple-gray-300 hover:text-primary"
+                  className="text-apple-gray-300 hover:text-primary"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              
+
               <form onSubmit={handleSubmit} className="mb-6">
                 <div className="relative">
                   <input
                     ref={inputRef}
                     type="text"
                     placeholder="输入关键词搜索..."
-                    className="input-apple w-full pr-12"
+                    className="input-apple w-full pr-12 bg-apple-gray-800 border-apple-gray-700 text-white placeholder-apple-gray-400"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  <button 
+                  <button
                     type="submit"
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary"
                   >
@@ -191,14 +191,14 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 {searchResults.length > 0 ? (
                   <div className="space-y-4">
                     {searchResults.map(post => (
-                      <div key={post.id} className="border-b border-apple-gray-200 dark:border-apple-gray-700 pb-4 last:border-0">
-                        <Link 
+                      <div key={post.id} className="border-b border-apple-gray-700 pb-4 last:border-0">
+                        <Link
                           href={`/blog/${post.slug}`}
-                          className="block hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 p-2 rounded transition-colors"
+                          className="block hover:bg-apple-gray-800 p-2 rounded transition-colors"
                           onClick={onClose}
                         >
-                          <h3 className="font-bold text-lg mb-1 hover:text-primary transition-colors">{post.title}</h3>
-                          <p className="text-apple-gray-600 dark:text-apple-gray-300 text-sm mb-2">{post.excerpt}</p>
+                          <h3 className="font-bold text-lg mb-1 text-white hover:text-primary transition-colors">{post.title}</h3>
+                          <p className="text-apple-gray-300 text-sm mb-2">{post.excerpt}</p>
                           {post.categories && (
                             <div className="flex flex-wrap gap-2">
                               {post.categories.map((category, index) => (
@@ -214,7 +214,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                   </div>
                 ) : searchTerm.trim() !== '' ? (
                   <div className="text-center py-8">
-                    <p className="text-apple-gray-500 dark:text-apple-gray-400">没有找到匹配的文章</p>
+                    <p className="text-apple-gray-400">没有找到匹配的文章</p>
                   </div>
                 ) : null}
               </div>

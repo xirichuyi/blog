@@ -1,51 +1,37 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, ReactNode } from 'react';
 
-type Theme = 'light' | 'dark';
+// 固定使用暗黑模式
+type Theme = 'dark';
 
 interface ThemeContextType {
   theme: Theme;
+  // 保留toggleTheme接口以避免破坏依赖它的组件，但实际上不会改变主题
   toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light');
+  // 固定使用暗黑模式
+  const theme: Theme = 'dark';
 
-  // 初始化主题，优先使用localStorage中保存的主题，其次使用系统偏好
+  // 当组件挂载时，确保使用暗黑模式
   useEffect(() => {
     // 确保代码只在客户端执行
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as Theme | null;
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      
-      if (savedTheme) {
-        setTheme(savedTheme);
-      } else if (prefersDark) {
-        setTheme('dark');
-      }
+      // 添加dark类到html元素
+      document.documentElement.classList.add('dark');
+      // 保存到localStorage以保持一致性
+      localStorage.setItem('theme', theme);
     }
   }, []);
 
-  // 当主题变化时，更新document的class和localStorage
-  useEffect(() => {
-    // 确保代码只在客户端执行
-    if (typeof window !== 'undefined') {
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      
-      localStorage.setItem('theme', theme);
-    }
-  }, [theme]);
-
-  // 切换主题
+  // 保留toggleTheme函数以避免破坏依赖它的组件，但实际上不做任何事情
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    // 不执行任何操作，保持暗黑模式
+    console.log('Theme toggle attempted, but site is fixed in dark mode');
   };
 
   return (

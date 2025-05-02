@@ -24,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="light" suppressHydrationWarning>
-      <body className={`${inter.variable} antialiased`} suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className={`${inter.variable} antialiased dark:bg-apple-gray-900 dark:text-white`} suppressHydrationWarning>
         <ThemeProvider>
           <div className="flex flex-col min-h-screen">
             <Header />
