@@ -71,6 +71,8 @@ body {
   top: 0;
   z-index: 100;
   transition: all 0.3s ease;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .dark .navbar-apple {
@@ -78,29 +80,68 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Mobile menu styles */
+@media (max-width: 767px) {
+  .navbar-apple .container-apple {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .mobile-menu-container {
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .mobile-menu-container {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  }
+}
+
 /* Apple-style card */
 .card-apple {
   background-color: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .card-apple {
+    border-radius: 20px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  }
 }
 
 .card-apple:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  transform: translateY(-6px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 640px) {
+  .card-apple:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  }
 }
 
 .dark .card-apple {
   background-color: rgba(30, 30, 32, 0.8);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .dark .card-apple:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 640px) {
+  .dark .card-apple:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  }
 }
 
 /* Apple-style buttons */
