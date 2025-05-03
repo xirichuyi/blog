@@ -1,16 +1,53 @@
-import { notFound } from 'next/navigation';
+"use client";
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getPostBySlug } from '@/lib/blog';
 import PostEditor from '@/components/admin/PostEditor';
 
-export default async function EditPost({ params }: { params: { slug: string } }) {
-  const post = await getPostBySlug(params.slug);
+// 定义博客文章的类型
+interface BlogPost {
+  id: number;
+  title: string;
+  excerpt: string;
+  date: string;
+  slug: string;
+  categories: string[];
+  content?: string;
+}
 
-  if (!post) {
-    notFound();
+export default function EditPost({ params }: { params: { slug: string } }) {
+  const router = useRouter();
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadPost() {
+      try {
+        const postData = await getPostBySlug(params.slug);
+        if (!postData) {
+          router.push('/404');
+          return;
+        }
+        setPost(postData);
+      } catch (error) {
+        console.error('Error loading post:', error);
+        router.push('/404');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPost();
+  }, [params.slug, router]);
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
-  // 在服务器组件中，我们不直接获取Markdown内容
-  // 而是将这个任务交给客户端组件PostEditor
+  if (!post) {
+    return null;
+  }
 
   return (
     <div>
