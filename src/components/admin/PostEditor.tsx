@@ -4,23 +4,29 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
+interface Post {
+  id: number;
+  title: string;
+  excerpt: string;
+  date: string;
+  slug: string;
+  categories: string[];
+  content?: string;
+  timestamp?: string; // 添加可选的timestamp属性
+}
+
 interface PostEditorProps {
-  post: {
-    id: number;
-    title: string;
-    excerpt: string;
-    date: string;
-    slug: string;
-    categories: string[];
-    content: string;
-  };
+  post: Post;
   mode: 'new' | 'edit';
 }
 
 export default function PostEditor({ post, mode }: PostEditorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [formData, setFormData] = useState(post);
+  const [formData, setFormData] = useState<Post & { content: string }>({
+    ...post,
+    content: post.content || '' // 确保content有默认值
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -29,27 +35,68 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
   const [previewMode, setPreviewMode] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(mode === 'edit' && !post.content);
+
+  // 在编辑模式下获取原始Markdown内容
+  useEffect(() => {
+    async function fetchMarkdownContent() {
+      if (mode === 'edit' && (!post.content || post.content === '')) {
+        setIsLoadingContent(true);
+        try {
+          const response = await fetch(`/api/admin/posts/${post.slug}/markdown`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('blogAdminToken') || ''}`
+            },
+            cache: 'no-store' // 禁用缓存，确保获取最新内容
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setFormData(prev => ({ ...prev, content: data.content }));
+          } else {
+            console.error('Error fetching markdown content:', await response.text());
+            setError('Failed to load post content. Please try again.');
+          }
+        } catch (error) {
+          console.error('Error fetching markdown content:', error);
+          setError('Failed to load post content. Please try again.');
+        } finally {
+          setIsLoadingContent(false);
+        }
+      }
+    }
+
+    fetchMarkdownContent();
+  }, [mode, post.slug, post.content]);
 
   // 从URL参数中获取数据
   useEffect(() => {
-    const titleParam = searchParams.get('title');
-    const excerptParam = searchParams.get('excerpt');
-    const contentParam = searchParams.get('content');
-    const slugParam = searchParams.get('slug');
-    const dateParam = searchParams.get('date');
-
     // 只在新建模式下从URL参数获取数据
     if (mode === 'new') {
-      const updatedData = { ...formData };
+      const titleParam = searchParams.get('title');
+      const excerptParam = searchParams.get('excerpt');
+      const contentParam = searchParams.get('content');
+      const slugParam = searchParams.get('slug');
+      const dateParam = searchParams.get('date');
 
-      if (titleParam) updatedData.title = titleParam;
-      if (excerptParam) updatedData.excerpt = excerptParam;
-      if (contentParam) updatedData.content = contentParam;
-      if (slugParam) updatedData.slug = slugParam;
-      if (dateParam) updatedData.date = dateParam;
+      // 检查是否有任何参数存在
+      const hasParams = titleParam || excerptParam || contentParam || slugParam || dateParam;
 
-      setFormData(updatedData);
+      if (hasParams) {
+        setFormData(prevData => {
+          const updatedData = { ...prevData };
+
+          if (titleParam) updatedData.title = titleParam;
+          if (excerptParam) updatedData.excerpt = excerptParam;
+          if (contentParam) updatedData.content = contentParam;
+          if (slugParam) updatedData.slug = slugParam;
+          if (dateParam) updatedData.date = dateParam;
+
+          return updatedData;
+        });
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, mode]);
 
   // 获取所有可用分类
@@ -102,8 +149,9 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
           const draftTime = new Date(parsedDraft.timestamp);
           const formattedTime = draftTime.toLocaleTimeString();
 
-          // 如果草稿比当前表单数据更新，则提示用户
-          if (parsedDraft.timestamp > (formData as any).timestamp) {
+          // 如果草稿比当前表单数据更新，或者当前表单数据没有时间戳，则提示用户
+          const currentTimestamp = formData.timestamp;
+          if (!currentTimestamp || parsedDraft.timestamp > currentTimestamp) {
             if (confirm(`Found a draft saved at ${formattedTime}. Load it?`)) {
               setFormData(parsedDraft.data);
               setLastSavedTime(formattedTime);
@@ -229,123 +277,173 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
     const previewWindow = window.open('', '_blank');
 
     if (previewWindow) {
-      // 写入HTML内容
-      previewWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>${formData.title} - Preview</title>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body {
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 800px;
-              margin: 0 auto;
-              padding: 2rem;
-              background-color: #f9f9f9;
-            }
-            @media (prefers-color-scheme: dark) {
-              body {
-                background-color: #1a1a1a;
-                color: #e0e0e0;
-              }
-              a {
-                color: #3b82f6;
-              }
-              h1, h2, h3, h4, h5, h6 {
-                color: #f0f0f0;
-              }
-            }
-            h1 {
-              font-size: 2.5rem;
-              margin-bottom: 1rem;
-            }
-            h2 {
-              font-size: 1.8rem;
-              margin-top: 2rem;
-              margin-bottom: 1rem;
-              padding-bottom: 0.5rem;
-              border-bottom: 1px solid #ddd;
-            }
-            h3 {
-              font-size: 1.5rem;
-              margin-top: 1.5rem;
-              margin-bottom: 0.75rem;
-            }
-            p {
-              margin-bottom: 1.5rem;
-            }
-            a {
-              color: #0066cc;
-              text-decoration: none;
-            }
-            a:hover {
-              text-decoration: underline;
-            }
-            code {
-              background-color: #f0f0f0;
-              padding: 0.2rem 0.4rem;
-              border-radius: 3px;
-              font-family: monospace;
-            }
-            @media (prefers-color-scheme: dark) {
-              code {
-                background-color: #2a2a2a;
-              }
-            }
-            img {
-              max-width: 100%;
-              height: auto;
-              border-radius: 0.5rem;
-            }
-            .meta {
-              font-size: 0.9rem;
-              color: #666;
-              margin-bottom: 2rem;
-            }
-            @media (prefers-color-scheme: dark) {
-              .meta {
-                color: #aaa;
-              }
-            }
-            .categories {
-              display: flex;
-              gap: 0.5rem;
-              margin-top: 0.5rem;
-            }
-            .category {
-              background-color: #e0e0e0;
-              color: #333;
-              padding: 0.25rem 0.75rem;
-              border-radius: 1rem;
-              font-size: 0.8rem;
-            }
-            @media (prefers-color-scheme: dark) {
-              .category {
-                background-color: #3a3a3a;
-                color: #e0e0e0;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <article>
-            <h1>${formData.title}</h1>
-            <div class="meta">
-              <div>${formData.date}</div>
-              <div class="categories">
-                ${formData.categories.map(cat => `<span class="category">${cat}</span>`).join('')}
-              </div>
-            </div>
-            <div>${renderMarkdownPreview().props.dangerouslySetInnerHTML.__html}</div>
-          </article>
-        </body>
-        </html>
-      `);
-      previewWindow.document.close();
+      // 使用DOM操作替代document.write
+      const doc = previewWindow.document;
+
+      // 创建HTML结构
+      doc.open();
+
+      // 创建head元素
+      const head = doc.createElement('head');
+
+      // 设置标题
+      const title = doc.createElement('title');
+      title.textContent = `${formData.title} - Preview`;
+      head.appendChild(title);
+
+      // 设置meta标签
+      const metaCharset = doc.createElement('meta');
+      metaCharset.setAttribute('charset', 'UTF-8');
+      head.appendChild(metaCharset);
+
+      const metaViewport = doc.createElement('meta');
+      metaViewport.setAttribute('name', 'viewport');
+      metaViewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+      head.appendChild(metaViewport);
+
+      // 添加样式
+      const style = doc.createElement('style');
+      style.textContent = `
+        body {
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 2rem;
+          background-color: #f9f9f9;
+        }
+        @media (prefers-color-scheme: dark) {
+          body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+          }
+          a {
+            color: #3b82f6;
+          }
+          h1, h2, h3, h4, h5, h6 {
+            color: #f0f0f0;
+          }
+        }
+        h1 {
+          font-size: 2.5rem;
+          margin-bottom: 1rem;
+        }
+        h2 {
+          font-size: 1.8rem;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid #ddd;
+        }
+        h3 {
+          font-size: 1.5rem;
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+        p {
+          margin-bottom: 1.5rem;
+        }
+        a {
+          color: #0066cc;
+          text-decoration: none;
+        }
+        a:hover {
+          text-decoration: underline;
+        }
+        code {
+          background-color: #f0f0f0;
+          padding: 0.2rem 0.4rem;
+          border-radius: 3px;
+          font-family: monospace;
+        }
+        @media (prefers-color-scheme: dark) {
+          code {
+            background-color: #2a2a2a;
+          }
+        }
+        img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 0.5rem;
+        }
+        .meta {
+          font-size: 0.9rem;
+          color: #666;
+          margin-bottom: 2rem;
+        }
+        @media (prefers-color-scheme: dark) {
+          .meta {
+            color: #aaa;
+          }
+        }
+        .categories {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+        }
+        .category {
+          background-color: #e0e0e0;
+          color: #333;
+          padding: 0.25rem 0.75rem;
+          border-radius: 1rem;
+          font-size: 0.8rem;
+        }
+        @media (prefers-color-scheme: dark) {
+          .category {
+            background-color: #3a3a3a;
+            color: #e0e0e0;
+          }
+        }
+      `;
+      head.appendChild(style);
+
+      // 创建body和内容
+      const body = doc.createElement('body');
+
+      // 创建文章容器
+      const article = doc.createElement('article');
+
+      // 添加标题
+      const h1 = doc.createElement('h1');
+      h1.textContent = formData.title;
+      article.appendChild(h1);
+
+      // 添加元数据
+      const meta = doc.createElement('div');
+      meta.className = 'meta';
+
+      const dateDiv = doc.createElement('div');
+      dateDiv.textContent = formData.date;
+      meta.appendChild(dateDiv);
+
+      const categoriesDiv = doc.createElement('div');
+      categoriesDiv.className = 'categories';
+
+      formData.categories.forEach(category => {
+        const span = doc.createElement('span');
+        span.className = 'category';
+        span.textContent = category;
+        categoriesDiv.appendChild(span);
+      });
+
+      meta.appendChild(categoriesDiv);
+      article.appendChild(meta);
+
+      // 添加内容
+      const contentDiv = doc.createElement('div');
+      contentDiv.innerHTML = renderMarkdownPreview().props.dangerouslySetInnerHTML.__html;
+      article.appendChild(contentDiv);
+
+      body.appendChild(article);
+
+      // 将head和body添加到文档
+      const html = doc.createElement('html');
+      html.appendChild(head);
+      html.appendChild(body);
+
+      doc.appendChild(html);
+      doc.close();
     }
   };
 
@@ -507,7 +605,17 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
             </div>
           </div>
 
-          {previewMode ? (
+          {isLoadingContent ? (
+            <div className="min-h-[400px] border border-apple-gray-700 rounded-lg p-4 bg-apple-gray-800 flex items-center justify-center">
+              <div className="text-apple-gray-400">
+                <svg className="animate-spin h-8 w-8 mr-3 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading content...
+              </div>
+            </div>
+          ) : previewMode ? (
             <div className="min-h-[400px] border border-apple-gray-700 rounded-lg p-4 bg-apple-gray-800">
               {renderMarkdownPreview()}
             </div>
