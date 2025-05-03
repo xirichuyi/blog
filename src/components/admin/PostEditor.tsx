@@ -352,19 +352,19 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
   return (
     <div className="card-apple p-6">
       {error && (
-        <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-4 rounded-lg mb-6">
+        <div className="bg-red-900/30 text-red-300 p-4 rounded-lg mb-6">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 p-4 rounded-lg mb-6">
+        <div className="bg-green-900/30 text-green-300 p-4 rounded-lg mb-6">
           {success}
         </div>
       )}
 
       {lastSavedTime && (
-        <div className="text-xs text-apple-gray-500 dark:text-apple-gray-400 mb-6 flex items-center">
+        <div className="text-xs text-apple-gray-400 mb-6 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
           </svg>
@@ -375,7 +375,7 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-apple-gray-700 dark:text-apple-gray-300 mb-1">
+            <label className="block text-sm font-medium text-apple-gray-300 mb-1">
               Title
             </label>
             <input
@@ -383,13 +383,13 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
               name="title"
               value={formData.title}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-apple-gray-800"
+              className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-apple-gray-700 dark:text-apple-gray-300 mb-1">
+            <label className="block text-sm font-medium text-apple-gray-300 mb-1">
               Date
             </label>
             <input
@@ -397,14 +397,14 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
               name="date"
               value={formData.date}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-apple-gray-800"
+              className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
               required
             />
           </div>
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-apple-gray-700 dark:text-apple-gray-300 mb-1">
+          <label className="block text-sm font-medium text-apple-gray-300 mb-1">
             Excerpt
           </label>
           <textarea
@@ -412,14 +412,14 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
             value={formData.excerpt}
             onChange={handleChange}
             rows={2}
-            className="w-full px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-apple-gray-800"
+            className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
             required
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className="block text-sm font-medium text-apple-gray-700 dark:text-apple-gray-300 mb-1">
+            <label className="block text-sm font-medium text-apple-gray-300 mb-1">
               Slug
             </label>
             <input
@@ -427,13 +427,13 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
               name="slug"
               value={formData.slug}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-apple-gray-800"
+              className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-apple-gray-700 dark:text-apple-gray-300 mb-1">
+            <label className="block text-sm font-medium text-apple-gray-300 mb-1">
               Categories
             </label>
             <div className="flex gap-2">
@@ -442,7 +442,7 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
                 name="categories"
                 value={formData.categories}
                 onChange={handleCategoryChange}
-                className="w-full px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-apple-gray-800"
+                className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
               >
                 {availableCategories.map(category => (
                   <option key={category} value={category}>
@@ -457,7 +457,7 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                   placeholder="New category"
-                  className="w-32 px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-l-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-apple-gray-800"
+                  className="w-32 px-4 py-2 border border-apple-gray-700 rounded-l-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
                 />
                 <button
                   type="button"
@@ -468,7 +468,7 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
                 </button>
               </div>
             </div>
-            <p className="text-xs text-apple-gray-500 dark:text-apple-gray-400 mt-1">
+            <p className="text-xs text-apple-gray-400 mt-1">
               Hold Ctrl (or Cmd) to select multiple categories
             </p>
           </div>
@@ -476,21 +476,21 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
 
         <div className="mb-6">
           <div className="flex justify-between items-center mb-1">
-            <label className="block text-sm font-medium text-apple-gray-700 dark:text-apple-gray-300">
+            <label className="block text-sm font-medium text-apple-gray-300">
               Content (Markdown)
             </label>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setPreviewMode(false)}
-                className={`text-xs px-3 py-1 rounded ${!previewMode ? 'bg-primary text-white' : 'bg-apple-gray-200 dark:bg-apple-gray-700 text-apple-gray-700 dark:text-apple-gray-300'}`}
+                className={`text-xs px-3 py-1 rounded ${!previewMode ? 'bg-primary text-white' : 'bg-apple-gray-700 text-apple-gray-300'}`}
               >
                 Edit
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewMode(true)}
-                className={`text-xs px-3 py-1 rounded ${previewMode ? 'bg-primary text-white' : 'bg-apple-gray-200 dark:bg-apple-gray-700 text-apple-gray-700 dark:text-apple-gray-300'}`}
+                className={`text-xs px-3 py-1 rounded ${previewMode ? 'bg-primary text-white' : 'bg-apple-gray-700 text-apple-gray-300'}`}
               >
                 Preview
               </button>
@@ -508,7 +508,7 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
           </div>
 
           {previewMode ? (
-            <div className="min-h-[400px] border border-apple-gray-300 dark:border-apple-gray-700 rounded-lg p-4 bg-white dark:bg-apple-gray-800">
+            <div className="min-h-[400px] border border-apple-gray-700 rounded-lg p-4 bg-apple-gray-800">
               {renderMarkdownPreview()}
             </div>
           ) : (
@@ -517,7 +517,7 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
               value={formData.content}
               onChange={handleChange}
               rows={15}
-              className="w-full px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-apple-gray-800 font-mono"
+              className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white font-mono"
               required
             />
           )}

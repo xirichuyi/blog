@@ -3,7 +3,7 @@ import { getAllPosts } from '@/lib/blog';
 
 export default function AdminPosts() {
   const posts = getAllPosts();
-  
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -12,40 +12,40 @@ export default function AdminPosts() {
           New Post
         </Link>
       </div>
-      
+
       <div className="card-apple overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="admin-table">
             <thead>
-              <tr className="bg-apple-gray-100 dark:bg-apple-gray-800">
-                <th className="px-6 py-3 text-left text-xs font-medium text-apple-gray-500 dark:text-apple-gray-300 uppercase tracking-wider">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Title
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-apple-gray-500 dark:text-apple-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-apple-gray-500 dark:text-apple-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   Categories
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-apple-gray-500 dark:text-apple-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-apple-gray-900 divide-y divide-apple-gray-200 dark:divide-apple-gray-700">
+            <tbody>
               {posts.length > 0 ? (
                 posts.map((post) => (
-                  <tr key={post.id} className="hover:bg-apple-gray-50 dark:hover:bg-apple-gray-800">
+                  <tr key={post.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium">{post.title}</div>
-                      <div className="text-xs text-apple-gray-500 dark:text-apple-gray-400 truncate max-w-xs">
+                      <div className="text-sm font-medium text-white">{post.title}</div>
+                      <div className="text-xs text-apple-gray-400 truncate max-w-xs">
                         {post.excerpt}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-apple-gray-500 dark:text-apple-gray-400">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-apple-gray-400">
                       {post.date}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-apple-gray-500 dark:text-apple-gray-400">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-apple-gray-400">
                       <div className="flex flex-wrap gap-1">
                         {post.categories.map((category) => (
                           <span
@@ -61,7 +61,7 @@ export default function AdminPosts() {
                       <div className="flex justify-end gap-2">
                         <Link
                           href={`/blog/${post.slug}`}
-                          className="text-apple-gray-600 dark:text-apple-gray-300 hover:text-primary"
+                          className="text-apple-gray-300 hover:text-primary"
                           target="_blank"
                         >
                           <span className="sr-only">View</span>
@@ -72,7 +72,7 @@ export default function AdminPosts() {
                         </Link>
                         <Link
                           href={`/admin/posts/${post.slug}`}
-                          className="text-apple-gray-600 dark:text-apple-gray-300 hover:text-primary"
+                          className="text-apple-gray-300 hover:text-primary"
                         >
                           <span className="sr-only">Edit</span>
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,7 +80,7 @@ export default function AdminPosts() {
                           </svg>
                         </Link>
                         <button
-                          className="text-apple-gray-600 dark:text-apple-gray-300 hover:text-red-500"
+                          className="text-apple-gray-300 hover:text-red-500"
                           onClick={() => {
                             // 这里应该添加删除确认逻辑
                             if (confirm('Are you sure you want to delete this post?')) {
@@ -99,7 +99,7 @@ export default function AdminPosts() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-apple-gray-500 dark:text-apple-gray-400">
+                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-apple-gray-400">
                     No posts found. Create your first post!
                   </td>
                 </tr>

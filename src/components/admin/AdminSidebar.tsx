@@ -15,7 +15,7 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-white dark:bg-apple-gray-800 shadow-md hidden md:block">
+    <aside className="w-64 lg:w-72 bg-apple-gray-800 shadow-md hidden md:block border-r border-apple-gray-700">
       <div className="p-6">
         <h1 className="text-xl font-bold text-primary">Blog Admin</h1>
       </div>
@@ -30,7 +30,7 @@ export default function AdminSidebar() {
                   className={`flex items-center px-6 py-3 text-sm font-medium ${
                     isActive
                       ? 'text-primary bg-primary/10'
-                      : 'text-apple-gray-600 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700'
+                      : 'text-apple-gray-300 hover:bg-apple-gray-700'
                   }`}
                 >
                   <span className="mr-3">
@@ -46,7 +46,7 @@ export default function AdminSidebar() {
       <div className="absolute bottom-0 w-full p-6">
         <Link
           href="/"
-          className="flex items-center text-sm font-medium text-apple-gray-600 dark:text-apple-gray-300 hover:text-primary"
+          className="flex items-center text-sm font-medium text-apple-gray-300 hover:text-primary"
         >
           <span className="mr-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

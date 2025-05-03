@@ -4,33 +4,33 @@ import Link from 'next/link';
 export default function AdminCategories() {
   const categories = getAllCategories();
   const posts = getAllPosts();
-  
+
   // 计算每个分类下的文章数量
   const categoryCounts = categories.reduce((acc, category) => {
     acc[category] = posts.filter(post => post.categories.includes(category)).length;
     return acc;
   }, {} as Record<string, number>);
-  
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Categories</h1>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {categories.map((category) => (
           <div key={category} className="card-apple p-6">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-lg font-semibold mb-1">{category}</h2>
-                <p className="text-sm text-apple-gray-500 dark:text-apple-gray-400">
+                <h2 className="text-lg font-semibold mb-1 text-white">{category}</h2>
+                <p className="text-sm text-apple-gray-400">
                   {categoryCounts[category]} {categoryCounts[category] === 1 ? 'post' : 'posts'}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Link
                   href={`/categories/${category.toLowerCase().replace(/\s+/g, '-')}`}
-                  className="text-apple-gray-600 dark:text-apple-gray-300 hover:text-primary"
+                  className="text-apple-gray-300 hover:text-primary"
                   target="_blank"
                 >
                   <span className="sr-only">View</span>
@@ -41,9 +41,9 @@ export default function AdminCategories() {
                 </Link>
               </div>
             </div>
-            
+
             <div className="mt-4">
-              <h3 className="text-sm font-medium text-apple-gray-700 dark:text-apple-gray-300 mb-2">Recent posts in this category:</h3>
+              <h3 className="text-sm font-medium text-apple-gray-300 mb-2">Recent posts in this category:</h3>
               <ul className="text-sm space-y-1">
                 {posts
                   .filter(post => post.categories.includes(category))
@@ -52,7 +52,7 @@ export default function AdminCategories() {
                     <li key={post.id} className="truncate">
                       <Link
                         href={`/admin/posts/${post.slug}`}
-                        className="text-apple-gray-600 dark:text-apple-gray-400 hover:text-primary"
+                        className="text-apple-gray-400 hover:text-primary"
                       >
                         {post.title}
                       </Link>
@@ -64,7 +64,7 @@ export default function AdminCategories() {
                   </li>
                 )}
                 {categoryCounts[category] === 0 && (
-                  <li className="text-apple-gray-500 dark:text-apple-gray-400 italic">
+                  <li className="text-apple-gray-400 italic">
                     No posts in this category
                   </li>
                 )}

@@ -13,12 +13,14 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-apple-gray-100 dark:bg-apple-gray-900">
+    <div className="flex min-h-screen bg-black text-white">
       <AdminSidebar />
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col max-w-full">
         <AdminHeader />
-        <main className="p-4 md:p-8">
-          {children}
+        <main className="p-4 md:p-6 lg:p-8 overflow-x-auto">
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

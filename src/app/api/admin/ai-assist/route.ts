@@ -1,22 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/blog-admin';
+import { generateWithDeepseek } from '@/lib/deepseek-api';
 
-// 这个函数模拟与AI服务的交互
-// 在实际应用中，你需要集成OpenAI或其他AI服务的API
-async function generateContent(prompt: string, type: string): Promise<string> {
-  // 这里应该是调用AI API的代码
-  // 例如使用OpenAI API:
-  // const response = await openai.createCompletion({
-  //   model: "gpt-3.5-turbo",
-  //   prompt: prompt,
-  //   max_tokens: 1000
-  // });
-  // return response.choices[0].text;
-  
-  // 模拟响应
+// 生成内容的函数
+async function generateContent(prompt: string, type: string, apiKey?: string, model?: string): Promise<string> {
+  // 如果提供了Deepseek API密钥，使用Deepseek API
+  if (apiKey) {
+    try {
+      const content = await generateWithDeepseek({
+        apiKey,
+        model: model || 'deepseek-chat',
+        prompt,
+        temperature: 0.7,
+        maxTokens: 2000
+      });
+
+      return content;
+    } catch (error) {
+      console.error('Error generating content with Deepseek API:', error);
+      // 如果Deepseek API调用失败，回退到模拟响应
+      return generateMockContent(prompt, type);
+    }
+  }
+
+  // 如果没有提供API密钥，使用模拟响应
+  return generateMockContent(prompt, type);
+}
+
+// 生成模拟内容的函数
+function generateMockContent(prompt: string, type: string): string {
   return `这是由AI生成的${type}内容，基于提示: "${prompt}"。
-  
-在实际实现中，这将是由OpenAI或其他AI服务生成的高质量内容。
+
+在实际实现中，这将是由Deepseek或其他AI服务生成的高质量内容。请在设置页面配置您的Deepseek API密钥以启用真实的AI内容生成。
 
 ## 示例标题
 
@@ -33,15 +48,15 @@ async function generateContent(prompt: string, type: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   const authToken = request.headers.get('Authorization')?.replace('Bearer ', '');
-  
+
   // 检查身份验证
   if (!checkAuth(authToken)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const { prompt, type = 'article' } = await request.json();
-    
+    const { prompt, type = 'article', deepseekApiKey, deepseekModel } = await request.json();
+
     if (!prompt) {
       return NextResponse.json(
         { error: 'Prompt is required' },
@@ -49,8 +64,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const content = await generateContent(prompt, type);
-    
+    // 使用Deepseek API生成内容（如果提供了API密钥）
+    const content = await generateContent(prompt, type, deepseekApiKey, deepseekModel);
+
     return NextResponse.json({ content });
   } catch (error) {
     console.error('Error generating content:', error);
