@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from "next/link";
 import { motion } from "framer-motion";
 import PageTransition from "../../components/PageTransition";
-import { BlogPost } from "@/lib/blog";
+import { BlogPost } from "@/lib/blog-types";
 
 interface SearchClientProps {
   searchResults: BlogPost[];

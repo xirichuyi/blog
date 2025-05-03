@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { getPostBySlug, getRelatedPosts } from "@/lib/blog";
+import { getPostBySlug, getRelatedPosts } from "@/lib/blog-server";
 import BlogPostClient from "./BlogPostClient";
-import type { BlogPost } from "@/lib/blog";
+import type { BlogPost } from "@/lib/blog-types";
 
 // 确保 BlogPostClient 接收的 content 属性不为 undefined
 function ensureContent(post: BlogPost): BlogPost & { content: string } {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -20,7 +20,7 @@ interface PostEditorProps {
   mode: 'new' | 'edit';
 }
 
-export default function PostEditor({ post, mode }: PostEditorProps) {
+function PostEditorContent({ post, mode }: PostEditorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState<Post & { content: string }>({
@@ -721,5 +721,14 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
         </div>
       </form>
     </div>
+  );
+}
+
+// 导出包装在Suspense中的组件
+export default function PostEditor(props: PostEditorProps) {
+  return (
+    <Suspense fallback={<div>Loading editor...</div>}>
+      <PostEditorContent {...props} />
+    </Suspense>
   );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkAuth } from '@/lib/blog-admin';
+import { checkAuth } from '@/lib/blog-admin-server';
 import { generateWithDeepseek } from '@/lib/deepseek-api';
 
 // 生成内容的函数

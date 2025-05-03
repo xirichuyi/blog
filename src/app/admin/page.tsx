@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BlogPost } from '@/lib/blog';
+import { BlogPost } from '@/lib/blog-types';
 
 // 定义仪表板数据类型
 interface DashboardData {

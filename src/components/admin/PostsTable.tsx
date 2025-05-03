@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { BlogPost } from '@/lib/blog';
+import { BlogPost } from '@/lib/blog-types';
 
 interface PostsTableProps {
   initialPosts: BlogPost[];

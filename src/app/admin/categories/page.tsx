@@ -1,9 +1,9 @@
-import { getAllCategories, getAllPosts } from '@/lib/blog';
+import { getAllCategories, getAllPosts } from '@/lib/blog-server';
 import Link from 'next/link';
 
 export default function AdminCategories() {
   const categories = getAllCategories();
-  const posts = getAllPosts();
+  const { posts } = getAllPosts(1, 1000); // 获取足够多的文章
 
   // 计算每个分类下的文章数量
   const categoryCounts = categories.reduce((acc, category) => {

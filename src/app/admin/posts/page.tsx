@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PostsTable from '@/components/admin/PostsTable';
-import { BlogPost } from '@/lib/blog';
+import { BlogPost } from '@/lib/blog-types';
 
 export default function AdminPosts() {
   const [posts, setPosts] = useState<BlogPost[]>([]);

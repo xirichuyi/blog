@@ -1,4 +1,4 @@
-import { searchPosts } from "@/lib/blog";
+import { searchPosts } from "@/lib/blog-server";
 import SearchClient from "./SearchClient";
 
 export const metadata = {

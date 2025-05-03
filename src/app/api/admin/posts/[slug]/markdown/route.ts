@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
-import { checkAuth } from '@/lib/blog-admin';
+import { checkAuth } from '@/lib/blog-admin-server';
+import { getPostMarkdown } from '@/lib/markdown-server';
 
 // 获取博客文章的原始Markdown内容
 export async function GET(
@@ -10,7 +8,7 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   const authToken = request.headers.get('Authorization')?.replace('Bearer ', '');
-  
+
   // 检查身份验证
   if (!checkAuth(authToken)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,18 +16,13 @@ export async function GET(
 
   try {
     const slug = params.slug;
-    const postsDirectory = path.join(process.cwd(), 'src/data/blog');
-    const fullPath = path.join(postsDirectory, `${slug}.md`);
-    
-    // 检查文件是否存在
-    if (!fs.existsSync(fullPath)) {
+    const result = await getPostMarkdown(slug);
+
+    if (!result) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
-    
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
-    const { content } = matter(fileContents);
-    
-    return NextResponse.json({ content });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error(`Error fetching markdown content for slug ${params.slug}:`, error);
     return NextResponse.json(

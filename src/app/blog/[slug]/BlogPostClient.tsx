@@ -4,16 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import PageTransition from "../../../components/PageTransition";
 
-// 定义博客文章的类型
-interface BlogPost {
-  id: number;
-  title: string;
-  excerpt: string;
-  date: string;
-  slug: string;
-  categories: string[];
-  content: string;
-}
+import { BlogPost } from '@/lib/blog-types';
 
 interface BlogPostClientProps {
   post: BlogPost;
