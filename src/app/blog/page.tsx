@@ -1,15 +1,34 @@
 import BlogClient from "./BlogClient";
 import { getAllPosts } from "@/lib/blog";
+import { Metadata } from "next";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Blog | Cyrus",
   description: "Read the latest articles and insights from Cyrus",
 };
 
-export default function Blog() {
-  // 从Markdown文件中获取博客文章数据
-  const blogPosts = getAllPosts();
+// 定义接收的搜索参数类型
+type SearchParams = {
+  page?: string;
+};
+
+// 接收搜索参数
+export default function Blog({ searchParams }: { searchParams: SearchParams }) {
+  // 获取当前页码，默认为1
+  const currentPage = searchParams.page ? parseInt(searchParams.page) : 1;
+
+  // 每页显示的文章数量
+  const postsPerPage = 6;
+
+  // 从Markdown文件中获取博客文章数据，带分页
+  const { posts, totalPages } = getAllPosts(currentPage, postsPerPage);
 
   // 使用客户端组件渲染UI
-  return <BlogClient blogPosts={blogPosts} />;
+  return (
+    <BlogClient
+      blogPosts={posts}
+      currentPage={currentPage}
+      totalPages={totalPages}
+    />
+  );
 }

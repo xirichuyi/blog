@@ -19,7 +19,7 @@ export interface BlogPost {
 }
 
 // 获取所有博客文章
-export function getAllPosts(): BlogPost[] {
+export function getAllPosts(page: number = 1, postsPerPage: number = 6): { posts: BlogPost[], totalPosts: number, totalPages: number } {
   // 获取目录中的所有文件名
   const fileNames = fs.readdirSync(postsDirectory);
 
@@ -46,11 +46,29 @@ export function getAllPosts(): BlogPost[] {
     });
 
   // 按日期排序，最新的文章排在前面
-  return allPostsData.sort((a, b) => {
+  const sortedPosts = allPostsData.sort((a, b) => {
     const dateA = new Date(a.date);
     const dateB = new Date(b.date);
     return dateB.getTime() - dateA.getTime();
   });
+
+  // 计算分页信息
+  const totalPosts = sortedPosts.length;
+  const totalPages = Math.ceil(totalPosts / postsPerPage);
+
+  // 确保页码在有效范围内
+  const validPage = Math.max(1, Math.min(page, totalPages || 1));
+
+  // 获取当前页的文章
+  const startIndex = (validPage - 1) * postsPerPage;
+  const endIndex = startIndex + postsPerPage;
+  const paginatedPosts = sortedPosts.slice(startIndex, endIndex);
+
+  return {
+    posts: paginatedPosts,
+    totalPosts,
+    totalPages
+  };
 }
 
 // 获取所有博客文章的slug
@@ -103,12 +121,12 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 
 // 获取所有分类
 export function getAllCategories(): string[] {
-  const posts = getAllPosts();
+  const { posts } = getAllPosts(1, 1000); // 获取足够多的文章以包含所有分类
 
   // 收集所有分类
   const categoriesSet = new Set<string>();
-  posts.forEach(post => {
-    post.categories.forEach(category => {
+  posts.forEach((post: BlogPost) => {
+    post.categories.forEach((category: string) => {
       categoriesSet.add(category);
     });
   });
@@ -119,11 +137,11 @@ export function getAllCategories(): string[] {
 
 // 根据分类获取博客文章
 export function getPostsByCategory(category: string): BlogPost[] {
-  const allPosts = getAllPosts();
+  const { posts } = getAllPosts(1, 1000); // 获取足够多的文章
 
   // 过滤出包含指定分类的文章
-  return allPosts.filter(post =>
-    post.categories.some(cat =>
+  return posts.filter((post: BlogPost) =>
+    post.categories.some((cat: string) =>
       cat.toLowerCase() === category.toLowerCase()
     )
   );
@@ -135,14 +153,14 @@ export function searchPosts(query: string): BlogPost[] {
     return [];
   }
 
-  const allPosts = getAllPosts();
+  const { posts } = getAllPosts(1, 1000); // 获取足够多的文章
   const searchTerm = query.toLowerCase();
 
   // 搜索标题、摘要和分类
-  return allPosts.filter(post =>
+  return posts.filter((post: BlogPost) =>
     post.title.toLowerCase().includes(searchTerm) ||
     post.excerpt.toLowerCase().includes(searchTerm) ||
-    post.categories.some(category =>
+    post.categories.some((category: string) =>
       category.toLowerCase().includes(searchTerm)
     )
   );
@@ -150,13 +168,13 @@ export function searchPosts(query: string): BlogPost[] {
 
 // 获取相关文章
 export function getRelatedPosts(currentPost: BlogPost, limit: number = 3): BlogPost[] {
-  const allPosts = getAllPosts();
+  const { posts } = getAllPosts(1, 1000); // 获取足够多的文章
 
   // 过滤掉当前文章，并找出有共同分类的文章
-  const relatedPosts = allPosts
-    .filter(post => post.id !== currentPost.id)
-    .filter(post =>
-      post.categories.some(category =>
+  const relatedPosts = posts
+    .filter((post: BlogPost) => post.id !== currentPost.id)
+    .filter((post: BlogPost) =>
+      post.categories.some((category: string) =>
         currentPost.categories.includes(category)
       )
     )

@@ -16,9 +16,11 @@ interface BlogPost {
 
 interface BlogClientProps {
   blogPosts: BlogPost[];
+  currentPage: number;
+  totalPages: number;
 }
 
-export default function BlogClient({ blogPosts }: BlogClientProps) {
+export default function BlogClient({ blogPosts, currentPage, totalPages }: BlogClientProps) {
   return (
     <PageTransition>
       <div className="container-apple py-8 sm:py-10 md:py-24">
@@ -92,27 +94,48 @@ export default function BlogClient({ blogPosts }: BlogClientProps) {
         </div>
 
         {/* Pagination */}
-        <motion.div
-          className="mt-10 sm:mt-12 md:mt-16 flex justify-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.6 }}
-        >
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <button className="min-w-[90px] px-3 sm:px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors text-sm sm:text-base">
-              Previous
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-full hover:bg-primary-dark transition-colors">
-              1
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center border border-apple-gray-300 dark:border-apple-gray-700 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors">
-              2
-            </button>
-            <button className="min-w-[90px] px-3 sm:px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors text-sm sm:text-base">
-              Next
-            </button>
-          </div>
-        </motion.div>
+        {totalPages > 1 && (
+          <motion.div
+            className="mt-10 sm:mt-12 md:mt-16 flex justify-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.6 }}
+          >
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Link
+                href={`/blog?page=${Math.max(1, currentPage - 1)}`}
+                className={`min-w-[90px] px-3 sm:px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors text-sm sm:text-base text-center ${currentPage <= 1 ? 'opacity-50 pointer-events-none' : ''}`}
+                aria-disabled={currentPage <= 1}
+              >
+                Previous
+              </Link>
+
+              {/* 生成页码按钮 */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <Link
+                  key={pageNum}
+                  href={`/blog?page=${pageNum}`}
+                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
+                    pageNum === currentPage
+                      ? 'bg-primary text-white hover:bg-primary-dark'
+                      : 'border border-apple-gray-300 dark:border-apple-gray-700 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800'
+                  }`}
+                  aria-current={pageNum === currentPage ? 'page' : undefined}
+                >
+                  {pageNum}
+                </Link>
+              ))}
+
+              <Link
+                href={`/blog?page=${Math.min(totalPages, currentPage + 1)}`}
+                className={`min-w-[90px] px-3 sm:px-4 py-2 border border-apple-gray-300 dark:border-apple-gray-700 rounded-full hover:bg-apple-gray-100 dark:hover:bg-apple-gray-800 transition-colors text-sm sm:text-base text-center ${currentPage >= totalPages ? 'opacity-50 pointer-events-none' : ''}`}
+                aria-disabled={currentPage >= totalPages}
+              >
+                Next
+              </Link>
+            </div>
+          </motion.div>
+        )}
       </div>
     </PageTransition>
   );
