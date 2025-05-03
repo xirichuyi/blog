@@ -432,10 +432,10 @@ export default function AIAssistant() {
             <h3 className="font-medium mb-2 text-white">Example Prompts</h3>
             <div className="text-sm space-y-3 text-apple-gray-300">
               <p className="italic">
-                "Write a comprehensive guide about machine learning for beginners. Include sections on supervised vs. unsupervised learning, common algorithms, and practical applications."
+                &quot;Write a comprehensive guide about machine learning for beginners. Include sections on supervised vs. unsupervised learning, common algorithms, and practical applications.&quot;
               </p>
               <p className="italic">
-                "Create an engaging introduction for a blog post about sustainable living practices that can save money. Target audience is young professionals."
+                &quot;Create an engaging introduction for a blog post about sustainable living practices that can save money. Target audience is young professionals.&quot;
               </p>
             </div>
           </div>
@@ -446,9 +446,9 @@ export default function AIAssistant() {
             <h3 className="font-medium mb-2 text-white">Deepseek AI Tips</h3>
             <ul className="text-sm space-y-2 text-apple-gray-300">
               <li>• Deepseek models perform best with clear, detailed instructions</li>
-              <li>• The templates are optimized for Deepseek's response format</li>
-              <li>• For technical content, try the "Technical Article" template</li>
-              <li>• For step-by-step guides, use the "Tutorial" template</li>
+              <li>• The templates are optimized for Deepseek&apos;s response format</li>
+              <li>• For technical content, try the &quot;Technical Article&quot; template</li>
+              <li>• For step-by-step guides, use the &quot;Tutorial&quot; template</li>
               <li>• You can save your API key in the Settings page for future use</li>
             </ul>
           </div>

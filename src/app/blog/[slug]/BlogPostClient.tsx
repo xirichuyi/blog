@@ -128,9 +128,9 @@ export default function BlogPostClient({ post, relatedPosts }: BlogPostClientPro
                     <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3">
                       {relatedPost.categories
                         .filter(category => post.categories.includes(category))
-                        .map((category, catIndex) => (
+                        .map((category, idx) => (
                           <span
-                            key={catIndex}
+                            key={idx}
                             className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 bg-primary/10 text-primary rounded-full"
                           >
                             {category}

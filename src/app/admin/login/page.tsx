@@ -9,7 +9,6 @@ export default function AdminLogin() {
   const [token, setToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // 检查是否已经登录
   useEffect(() => {
@@ -33,8 +32,6 @@ export default function AdminLogin() {
       });
 
       if (response.ok) {
-        setIsAuthenticated(true);
-
         // 保存令牌到localStorage（用于API请求）
         localStorage.setItem('blogAdminToken', tokenToVerify);
 

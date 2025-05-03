@@ -96,7 +96,6 @@ export default function PostEditor({ post, mode }: PostEditorProps) {
         });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, mode]);
 
   // 获取所有可用分类

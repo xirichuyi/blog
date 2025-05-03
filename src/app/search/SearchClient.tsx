@@ -25,7 +25,7 @@ export default function SearchClient({ searchResults }: SearchClientProps) {
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white">搜索结果</h1>
           <p className="text-xl text-apple-gray-300 max-w-2xl mx-auto">
-            {searchResults.length} 篇文章匹配 "{query}"
+            {searchResults.length} 篇文章匹配 &quot;{query}&quot;
           </p>
         </motion.header>
 
