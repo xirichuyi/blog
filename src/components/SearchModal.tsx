@@ -68,7 +68,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     );
 
     setSearchResults(results);
-  }, [searchTerm]);
+  }, [searchTerm, blogPosts]);
 
   // 处理搜索表单提交
   const handleSubmit = (e: React.FormEvent) => {
