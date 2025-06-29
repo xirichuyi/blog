@@ -21,26 +21,7 @@ export default function AdminHeader() {
           <h1 className="text-lg font-bold text-primary ml-4 md:hidden">Blog Admin</h1>
         </div>
 
-        <div className="flex items-center ml-auto">
-          <Link
-            href="/admin/posts/new"
-            className="btn-apple btn-apple-primary text-sm mr-4"
-          >
-            New Post
-          </Link>
-
-          <div className="relative">
-            <button
-              className="flex items-center text-sm font-medium text-apple-gray-300 hover:text-primary"
-              onClick={() => {/* Toggle user menu */}}
-            >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold mr-2">
-                A
-              </div>
-              <span className="hidden md:inline">Admin</span>
-            </button>
-          </div>
-        </div>
+        {/* 删除多余的按钮，保持简洁的界面 */}
       </div>
 
       {/* Mobile menu */}
