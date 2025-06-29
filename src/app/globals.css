@@ -356,6 +356,23 @@ body {
 
 /* Monaco Editor 相关样式已在上方定义 */
 
+/* 自定义下拉框样式 */
+select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* 确保下拉框选项在暗黑模式下正确显示 */
+select option {
+  background-color: #1a1a1a !important;
+  color: #f5f5f7 !important;
+}
+
+select option:disabled {
+  color: #8e8e93 !important;
+}
+
 /* 所有MDEditor相关样式已移除，现在使用Monaco Editor */
 
 /* 博客文章中的代码块样式 */

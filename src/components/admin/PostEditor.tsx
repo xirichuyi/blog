@@ -238,11 +238,7 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
     };
   }, [formData, draftSaved, mode, post.slug, draftLoaded]);
 
-  // 处理分类变化
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
-    setFormData(prev => ({ ...prev, categories: selectedOptions }));
-  };
+  // 旧的handleCategoryChange函数已移除，现在使用内联处理
 
   // 添加新分类
   const handleAddCategory = () => {
@@ -685,7 +681,8 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
             URL and Categories
           </h3>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* URL Slug */}
             <div>
               <label className="block text-sm font-medium text-apple-gray-300 mb-2">
                 URL Slug <span className="text-red-400">*</span>
@@ -699,82 +696,125 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
                 className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white placeholder-apple-gray-400 transition-all duration-200"
                 required
               />
-              <p className="text-xs text-apple-gray-400 mt-1">Used for article URL, only letters, numbers and hyphens allowed</p>
+              <p className="text-xs text-apple-gray-400 mt-1">Used for article URL</p>
             </div>
 
+            {/* Category Selection */}
             <div>
               <label className="block text-sm font-medium text-apple-gray-300 mb-2">
-                Categories
+                Select Category
               </label>
-              <div className="space-y-3">
+              <div className="relative">
                 <select
-                  multiple
-                  name="categories"
-                  value={formData.categories}
-                  onChange={handleCategoryChange}
-                  className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white transition-all duration-200 min-h-[100px]"
+                  onChange={(e) => {
+                    const category = e.target.value;
+                    if (category && !formData.categories.includes(category)) {
+                      setFormData(prev => ({
+                        ...prev,
+                        categories: [...prev.categories, category]
+                      }));
+                    }
+                    // Reset the select to show placeholder again
+                    (e.target as HTMLSelectElement).selectedIndex = 0;
+                  }}
+                  className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white transition-all duration-200 cursor-pointer"
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none'
+                  }}
+                  defaultValue=""
                 >
-                  {availableCategories.map(category => (
-                    <option key={category} value={category} className="py-1">
-                      {category}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    placeholder="Add new category..."
-                    className="flex-1 px-4 py-2 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white placeholder-apple-gray-400 transition-all duration-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCategory}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add
-                  </button>
-                </div>
-
-                <p className="text-xs text-apple-gray-400">
-                  Hold Ctrl (or Cmd) to select multiple categories
-                </p>
-
-                {/* Selected categories display */}
-                {formData.categories.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.categories.map(category => (
-                      <span
+                  <option value="" disabled style={{ color: '#8e8e93' }}>
+                    Select category...
+                  </option>
+                  {availableCategories
+                    .filter(category => !formData.categories.includes(category))
+                    .map(category => (
+                      <option
                         key={category}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary border border-primary/30"
+                        value={category}
+                        style={{
+                          backgroundColor: '#1a1a1a',
+                          color: '#f5f5f7',
+                          padding: '8px'
+                        }}
                       >
                         {category}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              categories: prev.categories.filter(c => c !== category)
-                            }));
-                          }}
-                          className="ml-2 hover:text-red-400 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </span>
+                      </option>
                     ))}
-                  </div>
-                )}
+                </select>
+                {/* Custom Dropdown arrow */}
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-apple-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Add New Category */}
+            <div>
+              <label className="block text-sm font-medium text-apple-gray-300 mb-2">
+                Add New Category
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="New category name..."
+                  className="flex-1 px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white placeholder-apple-gray-400 transition-all duration-200"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCategory}
+                  className="px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
+
+          {/* Selected categories display */}
+          {formData.categories.length > 0 && (
+            <div className="mt-4">
+              <p className="text-sm font-medium text-apple-gray-300 mb-2">Selected Categories:</p>
+              <div className="flex flex-wrap gap-2">
+                {formData.categories.map(category => (
+                  <span
+                    key={category}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary border border-primary/30"
+                  >
+                    {category}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          categories: prev.categories.filter(c => c !== category)
+                        }));
+                      }}
+                      className="ml-2 hover:text-red-400 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content Editor */}
