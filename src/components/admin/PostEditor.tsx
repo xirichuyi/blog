@@ -6,17 +6,25 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import ImageUploader from './ImageUploader';
 
-// 导入MDEditor的CSS样式
-import '@uiw/react-md-editor/markdown-editor.css';
-import '@uiw/react-markdown-preview/markdown.css';
-
-// 动态导入MDEditor以避免SSR问题
-const MDEditor = dynamic(
-  () => import('@uiw/react-md-editor').then((mod) => mod.default),
+// 动态导入Monaco Editor (避免SSR问题)
+const MonacoEditor = dynamic(
+  () => import('@monaco-editor/react').then((mod) => ({ default: mod.default })),
   {
     ssr: false,
     loading: () => <div className="h-96 bg-apple-gray-800 rounded-lg animate-pulse flex items-center justify-center">
-      <span className="text-apple-gray-400">加载编辑器中...</span>
+      <span className="text-apple-gray-400">Loading editor...</span>
+    </div>
+  }
+);
+
+// 导入Markdown预览组件
+import '@uiw/react-markdown-preview/markdown.css';
+const MarkdownPreview = dynamic(
+  () => import('@uiw/react-markdown-preview').then((mod) => mod.default),
+  {
+    ssr: false,
+    loading: () => <div className="h-96 bg-apple-gray-800 rounded-lg animate-pulse flex items-center justify-center">
+      <span className="text-apple-gray-400">Loading preview...</span>
     </div>
   }
 );
@@ -897,47 +905,131 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
                 </div>
               </div>
 
-              <div className="w-full" data-color-mode="dark">
+              <div className="w-full">
                 {editorError && (
                   <div className="mb-4 p-3 bg-red-900/20 border border-red-500 rounded-lg">
                     <p className="text-red-400 text-sm">Editor Error: {editorError}</p>
                   </div>
                 )}
-                <MDEditor
-                  value={formData.content}
-                  onChange={(value) => {
-                    try {
-                      console.log('MDEditor onChange:', value?.substring(0, 100) + '...');
-                      setFormData(prev => ({ ...prev, content: value || '' }));
-                      setEditorError(null);
-                    } catch (error) {
-                      console.error('MDEditor onChange error:', error);
-                      setEditorError(error instanceof Error ? error.message : '未知错误');
-                    }
-                  }}
-                  height={editorHeight}
-                  preview={editorPreview}
-                  hideToolbar={false}
-                  visibleDragbar={false}
-                  data-color-mode="dark"
-                  previewOptions={{
-                    rehypePlugins: [],
-                    remarkPlugins: [],
-                    skipHtml: false,
-                    allowElement: () => {
-                      // 允许所有标准HTML元素
-                      return true;
-                    }
-                  }}
-                  textareaProps={{
-                    placeholder: 'Enter article content, supports Markdown syntax...',
-                    style: {
-                      fontSize: 14,
-                      lineHeight: 1.6,
-                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-                    }
-                  }}
-                />
+
+                {editorPreview === 'edit' ? (
+                  // 纯编辑模式
+                  <div className="border border-apple-gray-600 rounded-lg overflow-hidden">
+                    <MonacoEditor
+                      height={editorHeight}
+                      defaultLanguage="markdown"
+                      value={formData.content}
+                      onChange={(value: string | undefined) => {
+                        try {
+                          console.log('Monaco Editor onChange:', value?.substring(0, 100) + '...');
+                          setFormData(prev => ({ ...prev, content: value || '' }));
+                          setEditorError(null);
+                        } catch (error) {
+                          console.error('Monaco Editor onChange error:', error);
+                          setEditorError(error instanceof Error ? error.message : 'Editor Error');
+                        }
+                      }}
+                      theme="vs-dark"
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                        lineHeight: 1.5,
+                        wordWrap: 'on',
+                        automaticLayout: true,
+                        scrollBeyondLastLine: false,
+                        renderLineHighlight: 'line',
+                        cursorBlinking: 'smooth',
+                        cursorSmoothCaretAnimation: 'on',
+                        smoothScrolling: true,
+                        padding: { top: 16, bottom: 16 },
+                        bracketPairColorization: { enabled: true },
+                        guides: {
+                          bracketPairs: true,
+                          indentation: true
+                        }
+                      }}
+                    />
+                  </div>
+                ) : editorPreview === 'preview' ? (
+                  // 纯预览模式
+                  <div
+                    className="border border-apple-gray-600 rounded-lg bg-apple-gray-800/50 overflow-auto p-4"
+                    style={{ height: `${editorHeight}px` }}
+                  >
+                    <MarkdownPreview
+                      source={formData.content}
+                      data-color-mode="dark"
+                      style={{
+                        backgroundColor: 'transparent',
+                        minHeight: '100%',
+                      }}
+                    />
+                  </div>
+                ) : (
+                  // 实时预览模式 - 左右分栏
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* 编辑器区域 */}
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-apple-gray-300">Markdown Editor</h4>
+                      <div className="border border-apple-gray-600 rounded-lg overflow-hidden">
+                        <MonacoEditor
+                          height={editorHeight}
+                          defaultLanguage="markdown"
+                          value={formData.content}
+                          onChange={(value: string | undefined) => {
+                            try {
+                              console.log('Monaco Editor onChange:', value?.substring(0, 100) + '...');
+                              setFormData(prev => ({ ...prev, content: value || '' }));
+                              setEditorError(null);
+                            } catch (error) {
+                              console.error('Monaco Editor onChange error:', error);
+                              setEditorError(error instanceof Error ? error.message : 'Editor Error');
+                            }
+                          }}
+                          theme="vs-dark"
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 14,
+                            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                            lineHeight: 1.5,
+                            wordWrap: 'on',
+                            automaticLayout: true,
+                            scrollBeyondLastLine: false,
+                            renderLineHighlight: 'line',
+                            cursorBlinking: 'smooth',
+                            cursorSmoothCaretAnimation: 'on',
+                            smoothScrolling: true,
+                            padding: { top: 16, bottom: 16 },
+                            bracketPairColorization: { enabled: true },
+                            guides: {
+                              bracketPairs: true,
+                              indentation: true
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 预览区域 */}
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-apple-gray-300">Live Preview</h4>
+                      <div
+                        className="border border-apple-gray-600 rounded-lg bg-apple-gray-800/50 overflow-auto p-4"
+                        style={{ height: `${editorHeight}px` }}
+                      >
+                        <MarkdownPreview
+                          source={formData.content}
+                          data-color-mode="dark"
+                          style={{
+                            backgroundColor: 'transparent',
+                            minHeight: '100%',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

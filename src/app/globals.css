@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@uiw/react-md-editor/markdown-editor.css";
 @import "@uiw/react-markdown-preview/markdown.css";
 @import "prismjs/themes/prism-tomorrow.css";
 
@@ -290,21 +289,22 @@ body {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* MDEditor 暗黑主题样式 */
-[data-color-mode="dark"] .w-md-editor {
-  background-color: #1a1a1a;
-  border: 1px solid #2d2d30;
-}
-
-[data-color-mode="dark"] .w-md-editor-text-textarea,
-[data-color-mode="dark"] .w-md-editor-text {
+/* Monaco Editor 暗黑主题样式 */
+.monaco-editor {
   background-color: #1a1a1a !important;
-  color: #f5f5f7 !important;
-  border: none !important;
 }
 
-[data-color-mode="dark"] .w-md-editor-text-textarea::placeholder {
-  color: #8e8e93 !important;
+.monaco-editor .margin {
+  background-color: #1a1a1a !important;
+}
+
+.monaco-editor .monaco-editor-background {
+  background-color: #1a1a1a !important;
+}
+
+/* 确保Monaco Editor的光标颜色 */
+.monaco-editor .cursor {
+  color: #009bc7 !important;
 }
 
 [data-color-mode="dark"] .w-md-editor-bar {
@@ -336,6 +336,27 @@ body {
   background-color: #2d2d30 !important;
   color: #f5f5f7 !important;
 }
+
+/* 额外的光标修复 - 覆盖任何可能隐藏光标的样式 */
+.w-md-editor *:not(svg):not(path) {
+  caret-color: inherit !important;
+}
+
+/* 防止Mantine或其他库隐藏光标 */
+[data-color-mode="dark"] * {
+  caret-color: inherit !important;
+}
+
+/* 特别针对可能的透明光标问题 */
+[data-color-mode="dark"] input,
+[data-color-mode="dark"] textarea,
+[data-color-mode="dark"] [contenteditable] {
+  caret-color: #009bc7 !important;
+}
+
+/* Monaco Editor 相关样式已在上方定义 */
+
+/* 所有MDEditor相关样式已移除，现在使用Monaco Editor */
 
 /* 博客文章中的代码块样式 */
 .prose pre {
