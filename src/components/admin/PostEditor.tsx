@@ -57,6 +57,7 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
   const [editorPreview, setEditorPreview] = useState<'edit' | 'live' | 'preview'>('live');
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
+  const [editorHeight, setEditorHeight] = useState(500);
 
   // 在编辑模式下获取原始Markdown内容
   useEffect(() => {
@@ -570,161 +571,247 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
   };
 
   return (
-    <div className="card-apple p-6">
-      {error && (
-        <div className="bg-red-900/30 text-red-300 p-4 rounded-lg mb-6">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-900/30 text-green-300 p-4 rounded-lg mb-6">
-          {success}
-        </div>
-      )}
-
-      {lastSavedTime && (
-        <div className="text-xs text-apple-gray-400 mb-6 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-          </svg>
-          Draft automatically saved at {lastSavedTime}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-apple-gray-300 mb-1">
-              Title
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-apple-gray-300 mb-1">
-              Date
-            </label>
-            <input
-              type="date"
-              name="date"
-              value={formData.date}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-apple-gray-300 mb-1">
-            Excerpt
-          </label>
-          <textarea
-            name="excerpt"
-            value={formData.excerpt}
-            onChange={handleChange}
-            rows={2}
-            className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
-            required
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-apple-gray-300 mb-1">
-              Slug
-            </label>
-            <input
-              type="text"
-              name="slug"
-              value={formData.slug}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-apple-gray-300 mb-1">
-              Categories
-            </label>
-            <div className="flex gap-2">
-              <select
-                multiple
-                name="categories"
-                value={formData.categories}
-                onChange={handleCategoryChange}
-                className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
-              >
-                {availableCategories.map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex">
-                <input
-                  type="text"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="New category"
-                  className="w-32 px-4 py-2 border border-apple-gray-700 rounded-l-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddCategory}
-                  className="px-3 py-2 bg-primary text-white rounded-r-lg hover:bg-primary/90"
-                >
-                  Add
-                </button>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* 状态提示区域 */}
+      {(error || success || lastSavedTime) && (
+        <div className="space-y-3">
+          {error && (
+            <div className="bg-red-900/20 border border-red-500/30 text-red-300 p-4 rounded-xl flex items-start">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="font-medium">Operation Failed</p>
+                <p className="text-sm text-red-200 mt-1">{error}</p>
               </div>
             </div>
-            <p className="text-xs text-apple-gray-400 mt-1">
-              Hold Ctrl (or Cmd) to select multiple categories
-            </p>
+          )}
+
+          {success && (
+            <div className="bg-green-900/20 border border-green-500/30 text-green-300 p-4 rounded-xl flex items-start">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="font-medium">Operation Successful</p>
+                <p className="text-sm text-green-200 mt-1">{success}</p>
+              </div>
+            </div>
+          )}
+
+          {lastSavedTime && (
+            <div className="bg-blue-900/20 border border-blue-500/30 text-blue-300 p-3 rounded-xl flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 flex-shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              <span className="text-sm">Draft automatically saved at {lastSavedTime}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Basic Information */}
+        <div className="bg-apple-gray-900/50 rounded-xl p-6 border border-apple-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Basic Information
+          </h3>
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-3">
+              <label className="block text-sm font-medium text-apple-gray-300 mb-2">
+                Title <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                placeholder="Enter article title..."
+                className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white placeholder-apple-gray-400 transition-all duration-200"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-apple-gray-300 mb-2">
+                Date <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white transition-all duration-200"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-apple-gray-300 mb-2">
+              Excerpt <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              name="excerpt"
+              value={formData.excerpt}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Enter article excerpt..."
+              className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white placeholder-apple-gray-400 resize-none transition-all duration-200"
+              required
+            />
+            <p className="text-xs text-apple-gray-400 mt-1">Recommended length: 50-150 characters</p>
           </div>
         </div>
 
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-1">
-            <label className="block text-sm font-medium text-apple-gray-300">
-              Content (Rich Text Editor)
-            </label>
-            <div className="flex gap-2">
+        {/* URL and Categories */}
+        <div className="bg-apple-gray-900/50 rounded-xl p-6 border border-apple-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            URL and Categories
+          </h3>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-apple-gray-300 mb-2">
+                URL Slug <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                name="slug"
+                value={formData.slug}
+                onChange={handleChange}
+                placeholder="url-friendly-slug"
+                className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white placeholder-apple-gray-400 transition-all duration-200"
+                required
+              />
+              <p className="text-xs text-apple-gray-400 mt-1">Used for article URL, only letters, numbers and hyphens allowed</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-apple-gray-300 mb-2">
+                Categories
+              </label>
+              <div className="space-y-3">
+                <select
+                  multiple
+                  name="categories"
+                  value={formData.categories}
+                  onChange={handleCategoryChange}
+                  className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white transition-all duration-200 min-h-[100px]"
+                >
+                  {availableCategories.map(category => (
+                    <option key={category} value={category} className="py-1">
+                      {category}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="Add new category..."
+                    className="flex-1 px-4 py-2 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white placeholder-apple-gray-400 transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add
+                  </button>
+                </div>
+
+                <p className="text-xs text-apple-gray-400">
+                  Hold Ctrl (or Cmd) to select multiple categories
+                </p>
+
+                {/* Selected categories display */}
+                {formData.categories.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.categories.map(category => (
+                      <span
+                        key={category}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary border border-primary/30"
+                      >
+                        {category}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              categories: prev.categories.filter(c => c !== category)
+                            }));
+                          }}
+                          className="ml-2 hover:text-red-400 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Editor */}
+        <div className="bg-apple-gray-900/50 rounded-xl p-6 border border-apple-gray-700">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
+            <h3 className="text-lg font-semibold text-white flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Content Editor
+            </h3>
+
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setShowImageUploader(!showImageUploader)}
-                className="text-xs px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center ${
+                  showImageUploader
+                    ? 'bg-green-600 text-white'
+                    : 'bg-apple-gray-700 text-apple-gray-300 hover:bg-green-600 hover:text-white'
+                }`}
                 title="Upload Image"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
+                Upload Image
               </button>
+
               <button
                 type="button"
                 onClick={openPreview}
-                className="text-xs px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600"
+                className="px-3 py-2 rounded-lg text-sm font-medium bg-apple-gray-700 text-apple-gray-300 hover:bg-blue-600 hover:text-white transition-all duration-200 flex items-center"
                 title="Open preview in new window"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
+                Preview
               </button>
             </div>
           </div>
 
           {showImageUploader && (
-            <div className="mb-4">
+            <div className="mb-6 p-4 bg-apple-gray-800/50 rounded-lg border border-apple-gray-600">
               <ImageUploader
                 onImageUploaded={handleImageUploaded}
                 className="w-full"
@@ -733,61 +820,87 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
           )}
 
           {isLoadingContent ? (
-            <div className="min-h-[400px] border border-apple-gray-700 rounded-lg p-4 bg-apple-gray-800 flex items-center justify-center">
-              <div className="text-apple-gray-400">
-                <svg className="animate-spin h-8 w-8 mr-3 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <div className="min-h-[500px] border border-apple-gray-600 rounded-lg p-8 bg-apple-gray-800/50 flex items-center justify-center">
+              <div className="text-center">
+                <svg className="animate-spin h-12 w-12 mx-auto mb-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Loading content...
+                <p className="text-apple-gray-400 text-lg">Loading content...</p>
               </div>
             </div>
           ) : (
-            <div className="w-full">
-              {/* 编辑器模式切换 */}
-              <div className="mb-3 flex items-center gap-2">
-                <span className="text-sm text-apple-gray-400">编辑器模式:</span>
-                <div className="flex rounded-lg bg-apple-gray-800 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setEditorPreview('edit')}
-                    className={`px-3 py-1 text-xs rounded transition-colors ${
-                      editorPreview === 'edit'
-                        ? 'bg-apple-blue text-white'
-                        : 'text-apple-gray-400 hover:text-white'
-                    }`}
+            <div className="w-full space-y-4">
+              {/* Editor mode and height controls */}
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-apple-gray-300">Editor Mode:</span>
+                  <div className="flex rounded-lg bg-apple-gray-800 p-1 border border-apple-gray-600">
+                    <button
+                      type="button"
+                      onClick={() => setEditorPreview('edit')}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                        editorPreview === 'edit'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-apple-gray-400 hover:text-white hover:bg-apple-gray-700'
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditorPreview('live')}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                        editorPreview === 'live'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-apple-gray-400 hover:text-white hover:bg-apple-gray-700'
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Live Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditorPreview('preview')}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                        editorPreview === 'preview'
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-apple-gray-400 hover:text-white hover:bg-apple-gray-700'
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Preview
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-apple-gray-300">Editor Height:</span>
+                  <select
+                    value={editorHeight}
+                    onChange={(e) => setEditorHeight(Number(e.target.value))}
+                    className="px-3 py-2 text-sm bg-apple-gray-800 border border-apple-gray-600 rounded-lg text-white focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
                   >
-                    编辑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditorPreview('live')}
-                    className={`px-3 py-1 text-xs rounded transition-colors ${
-                      editorPreview === 'live'
-                        ? 'bg-apple-blue text-white'
-                        : 'text-apple-gray-400 hover:text-white'
-                    }`}
-                  >
-                    实时预览
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditorPreview('preview')}
-                    className={`px-3 py-1 text-xs rounded transition-colors ${
-                      editorPreview === 'preview'
-                        ? 'bg-apple-blue text-white'
-                        : 'text-apple-gray-400 hover:text-white'
-                    }`}
-                  >
-                    预览
-                  </button>
+                    <option value={400}>Standard (400px)</option>
+                    <option value={500}>Medium (500px)</option>
+                    <option value={600}>Large (600px)</option>
+                    <option value={800}>Extra Large (800px)</option>
+                  </select>
                 </div>
               </div>
 
               <div className="w-full" data-color-mode="dark">
                 {editorError && (
                   <div className="mb-4 p-3 bg-red-900/20 border border-red-500 rounded-lg">
-                    <p className="text-red-400 text-sm">编辑器错误: {editorError}</p>
+                    <p className="text-red-400 text-sm">Editor Error: {editorError}</p>
                   </div>
                 )}
                 <MDEditor
@@ -802,7 +915,7 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
                       setEditorError(error instanceof Error ? error.message : '未知错误');
                     }
                   }}
-                  height={400}
+                  height={editorHeight}
                   preview={editorPreview}
                   hideToolbar={false}
                   visibleDragbar={false}
@@ -817,7 +930,7 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
                     }
                   }}
                   textareaProps={{
-                    placeholder: '请输入文章内容，支持Markdown语法...',
+                    placeholder: 'Enter article content, supports Markdown syntax...',
                     style: {
                       fontSize: 14,
                       lineHeight: 1.6,
@@ -894,35 +1007,35 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/ai-assistant?title=${encodeURIComponent(formData.title)}`)}
-                    className="block w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
+                    className="w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
                   >
                     Generate Full Article
                   </button>
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/ai-assistant?title=${encodeURIComponent(formData.title)}&selectedTemplate=introduction`)}
-                    className="block w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
+                    className="w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
                   >
                     Generate Introduction
                   </button>
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/ai-assistant?title=${encodeURIComponent(formData.title)}&selectedTemplate=conclusion`)}
-                    className="block w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
+                    className="w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
                   >
                     Generate Conclusion
                   </button>
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/ai-assistant?title=${encodeURIComponent(formData.title)}&excerpt=${encodeURIComponent(formData.excerpt)}&selectedTemplate=seo-optimization`)}
-                    className="block w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
+                    className="w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
                   >
                     SEO Optimization
                   </button>
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/ai-assistant?title=${encodeURIComponent(formData.title)}&content=${encodeURIComponent(formData.content)}&selectedTemplate=rewrite`)}
-                    className="block w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
+                    className="w-full text-left px-4 py-2 text-sm text-apple-gray-700 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-apple-gray-700"
                   >
                     Rewrite Content
                   </button>
