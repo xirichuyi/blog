@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import PageTransition from "../components/PageTransition";
+import ChatAssistant from "../components/ChatAssistant";
 import { Post } from "@/lib/blog-server";
 
 interface HomeClientProps {
@@ -313,6 +314,9 @@ export default function HomeClient({ latestPosts }: HomeClientProps) {
           </div>
         </div>
       </section>
+
+      {/* AI助手 */}
+      <ChatAssistant />
     </PageTransition>
   );
 }
