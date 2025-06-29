@@ -48,10 +48,17 @@ interface PostEditorProps {
 function PostEditorContent({ post, mode }: PostEditorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [formData, setFormData] = useState<Post & { content: string }>({
-    ...post,
-    // 在编辑模式下，不使用post.content，因为它可能是HTML而不是Markdown
-    content: mode === 'edit' ? '' : (post.content || '')
+  const [formData, setFormData] = useState<Post & { content: string }>(() => {
+    // 为新建文章设置默认的当前日期
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD格式
+
+    return {
+      ...post,
+      // 在新建模式下，如果没有日期则使用当前日期
+      date: mode === 'new' && !post.date ? currentDate : post.date,
+      // 在编辑模式下，不使用post.content，因为它可能是HTML而不是Markdown
+      content: mode === 'edit' ? '' : (post.content || '')
+    };
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -651,7 +658,12 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-apple-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-apple-gray-800 text-white transition-all duration-200"
                 required
+                readOnly={mode === 'new'}
+                title={mode === 'new' ? 'Date is automatically set to today for new posts' : 'You can edit the publication date'}
               />
+              {mode === 'new' && (
+                <p className="text-xs text-apple-gray-400 mt-1">Automatically set to today's date</p>
+              )}
             </div>
           </div>
 
