@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 
 // 自定义滚动条样式
 const scrollbarStyles = `
@@ -40,6 +41,52 @@ const scrollbarStyles = `
     scrollbar-color: rgba(107, 114, 128, 0.5) transparent;
   }
 `;
+
+// 简单的Markdown链接渲染函数
+function renderMessageContent(content: string) {
+  // 匹配Markdown链接格式 [text](url)
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  let keyIndex = 0;
+
+  while ((match = linkRegex.exec(content)) !== null) {
+    // 添加链接前的文本
+    if (match.index > lastIndex) {
+      const textBefore = content.slice(lastIndex, match.index);
+      parts.push(<span key={`text-${keyIndex++}`}>{textBefore}</span>);
+    }
+
+    // 添加链接
+    const linkText = match[1];
+    const linkUrl = match[2];
+
+    parts.push(
+      <Link
+        key={`link-${keyIndex++}`}
+        href={linkUrl}
+        className="text-primary hover:text-primary-dark underline transition-colors"
+        target={linkUrl.startsWith('http') ? '_blank' : '_self'}
+        rel={linkUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
+      >
+        {linkText}
+      </Link>
+    );
+
+    lastIndex = linkRegex.lastIndex;
+  }
+
+  // 添加剩余的文本
+  if (lastIndex < content.length) {
+    const remainingText = content.slice(lastIndex);
+    parts.push(<span key={`text-${keyIndex++}`}>{remainingText}</span>);
+  }
+
+  // 如果没有找到链接，返回原始内容
+  return parts.length > 0 ? parts : <span>{content}</span>;
+}
 
 interface Message {
   id: string;
@@ -210,7 +257,9 @@ export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
                         : 'bg-apple-gray-100 dark:bg-apple-gray-700 text-apple-gray-800 dark:text-apple-gray-100 border border-apple-gray-200 dark:border-apple-gray-600'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {renderMessageContent(message.content)}
+                    </div>
                   </div>
                 </div>
               ))}

@@ -39,7 +39,8 @@ YOUR ROLE:
 - Provide guidance on navigating the blog
 - Answer technical questions based on Cyrus's expertise
 - Be friendly, professional, and helpful
-- If asked about specific blog posts, you can mention that visitors can browse the blog or use the search function
+- When mentioning blog posts, always provide clickable links using this format: [Article Title](/blog/slug)
+- If you have relevant blog content in your context, reference specific articles with their links
 
 CONVERSATION STYLE:
 - Be conversational and approachable
@@ -63,7 +64,7 @@ async function retrieveBlogContent(userMessage: string) {
       if (posts.length > 0) {
         relevantContent += '\n**Latest Blog Posts:**\n';
         posts.forEach(post => {
-          relevantContent += `- "${post.title}" (${post.date})\n  ${post.excerpt}\n  Categories: ${post.categories.join(', ')}\n\n`;
+          relevantContent += `- [${post.title}](/blog/${post.slug}) (${post.date})\n  ${post.excerpt}\n  Categories: ${post.categories.join(', ')}\n\n`;
         });
       }
     }
@@ -96,7 +97,7 @@ async function retrieveBlogContent(userMessage: string) {
         if (searchResults.length > 0) {
           relevantContent += `\n**Articles about "${term}":**\n`;
           searchResults.slice(0, 3).forEach(post => {
-            relevantContent += `- "${post.title}" (${post.date})\n  ${post.excerpt}\n  Categories: ${post.categories.join(', ')}\n\n`;
+            relevantContent += `- [${post.title}](/blog/${post.slug}) (${post.date})\n  ${post.excerpt}\n  Categories: ${post.categories.join(', ')}\n\n`;
           });
           break; // 只显示第一个匹配主题的结果
         }
@@ -115,7 +116,7 @@ async function retrieveBlogContent(userMessage: string) {
           const firstResult = searchResults[0];
           const fullPost = await getPostBySlug(firstResult.slug);
           if (fullPost && fullPost.content) {
-            relevantContent += `\n**Relevant Article Content from "${fullPost.title}":**\n`;
+            relevantContent += `\n**Relevant Article Content from "[${fullPost.title}](/blog/${fullPost.slug})":**\n`;
             // 获取文章内容的前500个字符
             const contentPreview = fullPost.content.substring(0, 500) + '...';
             relevantContent += contentPreview + '\n\n';
@@ -164,7 +165,11 @@ ${conversationContext ? `Previous conversation:\n${conversationContext}\n` : ''}
 
 User: ${message}
 
-Please respond as Cyrus's AI assistant. Be helpful, friendly, and informative. If you have relevant blog content above, reference it naturally in your response. Keep your response concise but comprehensive.`;
+Please respond as Cyrus's AI assistant. Be helpful, friendly, and informative.
+
+IMPORTANT: If you have relevant blog content above, reference specific articles with clickable links using this format: [Article Title](/blog/slug). Always provide links when mentioning articles so users can easily access them.
+
+Keep your response concise but comprehensive.`;
 
     // 尝试使用Deepseek API
     try {
