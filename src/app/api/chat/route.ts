@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateWithDeepseek } from '@/lib/deepseek-api';
-import { getAllPosts, getPostBySlug, searchPosts } from '@/lib/blog-server';
+import { getAllPosts, getPostBySlug, searchPosts, getPostsByCategory } from '@/lib/blog-server';
 
 interface Message {
   id: string;
@@ -50,86 +50,160 @@ CONVERSATION STYLE:
 - Keep responses concise but informative
 `;
 
-// 博客内容检索服务
-async function retrieveBlogContent(userMessage: string) {
-  const lowerMessage = userMessage.toLowerCase();
+// 搜索指令接口
+interface SearchInstruction {
+  action: 'search_all' | 'search_latest' | 'search_topic' | 'search_category' | 'no_search';
+  query?: string;
+  limit?: number;
+}
+
+// AI意图分析函数
+async function analyzeUserIntent(userMessage: string): Promise<SearchInstruction> {
+  const intentPrompt = `Analyze the user's message and determine if they want to search for blog articles.
+Respond with ONLY a JSON object in this exact format:
+
+{
+  "action": "search_all" | "search_latest" | "search_topic" | "search_category" | "no_search",
+  "query": "search terms if applicable",
+  "limit": number (optional, default 5)
+}
+
+Actions:
+- "search_all": User wants to see all articles/complete list
+- "search_latest": User wants recent/latest articles
+- "search_topic": User wants articles about specific topic/keyword
+- "search_category": User wants articles from specific category
+- "no_search": User is not asking for articles
+
+User message: "${userMessage}"
+
+JSON response:`;
+
+  try {
+    const apiKey = process.env.DEEPSEEK_API_KEY || '';
+    if (!apiKey) {
+      return { action: 'no_search' };
+    }
+
+    const response = await generateWithDeepseek({
+      apiKey,
+      model: 'deepseek-chat',
+      prompt: intentPrompt,
+      temperature: 0.1,
+      maxTokens: 100
+    });
+
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const instruction = JSON.parse(jsonMatch[0]) as SearchInstruction;
+      return instruction;
+    }
+  } catch (error) {
+    console.error('Error analyzing user intent:', error);
+  }
+
+  return { action: 'no_search' };
+}
+
+// 执行搜索指令
+async function executeSearchInstruction(instruction: SearchInstruction): Promise<string> {
   let relevantContent = '';
 
   try {
-    // 检查是否询问最新文章或热门文章
-    if (lowerMessage.includes('latest') || lowerMessage.includes('recent') || lowerMessage.includes('new') ||
-        lowerMessage.includes('热门') || lowerMessage.includes('最新') || lowerMessage.includes('popular')) {
+    switch (instruction.action) {
+      case 'search_all':
+        const { posts: allPosts } = getAllPosts(1, 1000);
+        if (allPosts.length > 0) {
+          relevantContent += '\n**Complete Article Directory:**\n';
+          relevantContent += `Total Articles: ${allPosts.length}\n\n`;
 
-      const { posts } = getAllPosts(1, 5); // 获取最新5篇文章
-      if (posts.length > 0) {
-        relevantContent += '\n**Latest Blog Posts:**\n';
-        posts.forEach(post => {
-          relevantContent += `- [${post.title}](/blog/${post.slug}) (${post.date})\n  ${post.excerpt}\n  Categories: ${post.categories.join(', ')}\n\n`;
-        });
-      }
-    }
+          // 按分类组织文章
+          const articlesByCategory: { [key: string]: typeof allPosts } = {};
+          allPosts.forEach(post => {
+            post.categories.forEach(category => {
+              if (!articlesByCategory[category]) {
+                articlesByCategory[category] = [];
+              }
+              if (!articlesByCategory[category].find(p => p.id === post.id)) {
+                articlesByCategory[category].push(post);
+              }
+            });
+          });
 
-    // 检查是否询问网站统计信息
-    if (lowerMessage.includes('how many') || lowerMessage.includes('total') || lowerMessage.includes('statistics') ||
-        lowerMessage.includes('overview') || lowerMessage.includes('统计') || lowerMessage.includes('总共')) {
+          // 显示按分类组织的文章
+          Object.keys(articlesByCategory).sort().forEach(category => {
+            relevantContent += `**${category}:**\n`;
+            articlesByCategory[category].forEach(post => {
+              relevantContent += `- [${post.title}](/blog/${post.slug}) (${post.date})\n  ${post.excerpt}\n\n`;
+            });
+          });
+        }
+        break;
 
-      const { posts, totalPosts } = getAllPosts(1, 1000); // 获取所有文章
-      const categories = [...new Set(posts.flatMap(post => post.categories))]; // 获取所有分类
-
-      relevantContent += '\n**Blog Statistics:**\n';
-      relevantContent += `- Total Articles: ${totalPosts}\n`;
-      relevantContent += `- Categories: ${categories.length} (${categories.join(', ')})\n`;
-      relevantContent += `- Latest Update: ${posts.length > 0 ? posts[0].date : 'N/A'}\n\n`;
-    }
-
-    // 检查是否询问特定主题
-    const searchTerms = [];
-    if (lowerMessage.includes('react') || lowerMessage.includes('javascript')) searchTerms.push('react', 'javascript');
-    if (lowerMessage.includes('python') || lowerMessage.includes('machine learning') || lowerMessage.includes('ai')) searchTerms.push('python', 'machine learning', 'ai');
-    if (lowerMessage.includes('business') || lowerMessage.includes('strategy')) searchTerms.push('business', 'strategy');
-    if (lowerMessage.includes('leadership') || lowerMessage.includes('team')) searchTerms.push('leadership', 'team');
-    if (lowerMessage.includes('communication') || lowerMessage.includes('remote')) searchTerms.push('communication', 'remote');
-
-    // 如果找到相关主题，搜索相关文章
-    if (searchTerms.length > 0) {
-      for (const term of searchTerms) {
-        const searchResults = searchPosts(term);
-        if (searchResults.length > 0) {
-          relevantContent += `\n**Articles about "${term}":**\n`;
-          searchResults.slice(0, 3).forEach(post => {
+      case 'search_latest':
+        const { posts: latestPosts } = getAllPosts(1, instruction.limit || 5);
+        if (latestPosts.length > 0) {
+          relevantContent += '\n**Latest Blog Posts:**\n';
+          latestPosts.forEach(post => {
             relevantContent += `- [${post.title}](/blog/${post.slug}) (${post.date})\n  ${post.excerpt}\n  Categories: ${post.categories.join(', ')}\n\n`;
           });
-          break; // 只显示第一个匹配主题的结果
         }
-      }
-    }
+        break;
 
-    // 如果用户询问具体文章内容，尝试获取文章详情
-    if (lowerMessage.includes('tell me about') || lowerMessage.includes('explain') ||
-        lowerMessage.includes('what is') || lowerMessage.includes('how to')) {
-
-      // 尝试搜索相关文章并获取内容
-      const searchQuery = userMessage.replace(/tell me about|explain|what is|how to/gi, '').trim();
-      if (searchQuery.length > 3) {
-        const searchResults = searchPosts(searchQuery);
-        if (searchResults.length > 0) {
-          const firstResult = searchResults[0];
-          const fullPost = await getPostBySlug(firstResult.slug);
-          if (fullPost && fullPost.content) {
-            relevantContent += `\n**Relevant Article Content from "[${fullPost.title}](/blog/${fullPost.slug})":**\n`;
-            // 获取文章内容的前500个字符
-            const contentPreview = fullPost.content.substring(0, 500) + '...';
-            relevantContent += contentPreview + '\n\n';
+      case 'search_topic':
+        if (instruction.query) {
+          const searchResults = searchPosts(instruction.query);
+          if (searchResults.length > 0) {
+            relevantContent += `\n**Articles about "${instruction.query}":**\n`;
+            searchResults.slice(0, instruction.limit || 5).forEach(post => {
+              relevantContent += `- [${post.title}](/blog/${post.slug}) (${post.date})\n  ${post.excerpt}\n  Categories: ${post.categories.join(', ')}\n\n`;
+            });
           }
         }
-      }
-    }
+        break;
 
+      case 'search_category':
+        if (instruction.query) {
+          const categoryPosts = getPostsByCategory(instruction.query);
+          if (categoryPosts.length > 0) {
+            relevantContent += `\n**Articles in "${instruction.query}" category:**\n`;
+            categoryPosts.slice(0, instruction.limit || 10).forEach(post => {
+              relevantContent += `- [${post.title}](/blog/${post.slug}) (${post.date})\n  ${post.excerpt}\n\n`;
+            });
+          }
+        }
+        break;
+    }
   } catch (error) {
-    console.error('Error retrieving blog content:', error);
+    console.error('Error executing search instruction:', error);
   }
 
   return relevantContent;
+}
+
+// 博客内容检索服务（重构版）
+async function retrieveBlogContent(userMessage: string) {
+  try {
+    // 使用AI分析用户意图
+    const instruction = await analyzeUserIntent(userMessage);
+
+    // 如果不需要搜索，返回空内容
+    if (instruction.action === 'no_search') {
+      return '';
+    }
+
+    // 执行搜索指令
+    const relevantContent = await executeSearchInstruction(instruction);
+
+    // 调试日志
+    console.log('Search instruction:', instruction);
+    console.log('Retrieved content length:', relevantContent.length);
+
+    return relevantContent;
+  } catch (error) {
+    console.error('Error in retrieveBlogContent:', error);
+    return '';
+  }
 }
 
 export async function POST(request: NextRequest) {

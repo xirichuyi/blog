@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useChat, Message } from '../context/ChatContext';
 
 // 自定义滚动条样式
 const scrollbarStyles = `
@@ -88,27 +90,13 @@ function renderMessageContent(content: string) {
   return parts.length > 0 ? parts : <span>{content}</span>;
 }
 
-interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  timestamp: Date;
-}
-
 interface ChatAssistantProps {
   className?: string;
 }
 
 export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: "Hi! I'm Cyrus's AI assistant. I can help you learn more about Cyrus, navigate the blog, or discuss technology topics. How can I assist you today?",
-      isUser: false,
-      timestamp: new Date()
-    }
-  ]);
+  const pathname = usePathname();
+  const { isOpen, setIsOpen, messages, addMessage } = useChat();
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -149,7 +137,7 @@ export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    addMessage(userMessage);
     setInputMessage('');
     setIsLoading(true);
 
@@ -170,7 +158,7 @@ export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
       }
 
       const data = await response.json();
-      
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: data.response || "I'm sorry, I couldn't process your request right now. Please try again.",
@@ -178,7 +166,7 @@ export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      addMessage(aiMessage);
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
@@ -187,7 +175,7 @@ export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
         isUser: false,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, errorMessage]);
+      addMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -203,6 +191,11 @@ export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
   const handleQuickQuestion = (question: string) => {
     sendMessage(question);
   };
+
+  // 在admin页面不显示聊天助手
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <>

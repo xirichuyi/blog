@@ -4,6 +4,8 @@ import "./globals.css";
 import Header from "../components/Header";
 import ConditionalFooter from "../components/ConditionalFooter";
 import { ThemeProvider } from "../context/ThemeContext";
+import { ChatProvider } from "../context/ChatContext";
+import ChatAssistant from "../components/ChatAssistant";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -27,13 +29,17 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased dark:bg-apple-gray-900 dark:text-white`} suppressHydrationWarning>
         <ThemeProvider>
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex-grow">
-              {children}
-            </main>
-            <ConditionalFooter />
-          </div>
+          <ChatProvider>
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="flex-grow">
+                {children}
+              </main>
+              <ConditionalFooter />
+            </div>
+            {/* 全局AI聊天助手 */}
+            <ChatAssistant />
+          </ChatProvider>
         </ThemeProvider>
       </body>
     </html>
