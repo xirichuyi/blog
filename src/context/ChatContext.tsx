@@ -91,7 +91,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   // 添加单条消息
   const addMessage = (message: Message) => {
-    setMessages(prev => [...prev, message]);
+    setMessagesState(prevMessages => {
+      const newMessages = [...prevMessages, message];
+
+      // 保存到localStorage
+      if (isLoaded) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(newMessages));
+        } catch (error) {
+          console.error('Error saving messages to localStorage:', error);
+        }
+      }
+
+      return newMessages;
+    });
   };
 
   // 清空消息

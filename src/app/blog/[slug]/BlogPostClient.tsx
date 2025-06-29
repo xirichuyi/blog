@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import PageTransition from "../../../components/PageTransition";
 
 import { BlogPost } from '@/lib/blog-types';
@@ -12,6 +13,13 @@ interface BlogPostClientProps {
 }
 
 export default function BlogPostClient({ post, relatedPosts }: BlogPostClientProps) {
+  const [currentUrl, setCurrentUrl] = useState('');
+
+  // 在客户端挂载后设置URL，避免hydration mismatch
+  useEffect(() => {
+    setCurrentUrl(window.location.href);
+  }, []);
+
   return (
     <PageTransition>
       <article className="container-apple py-8 sm:py-12 md:py-24">
@@ -66,7 +74,7 @@ export default function BlogPostClient({ post, relatedPosts }: BlogPostClientPro
             <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Share this article</h2>
             <div className="flex flex-wrap gap-3 sm:gap-4">
               <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(currentUrl)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-apple btn-apple-secondary text-sm sm:text-base px-4 sm:px-6 py-2"
@@ -75,7 +83,7 @@ export default function BlogPostClient({ post, relatedPosts }: BlogPostClientPro
                 Twitter
               </a>
               <a
-                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-apple btn-apple-secondary text-sm sm:text-base px-4 sm:px-6 py-2"
@@ -84,7 +92,7 @@ export default function BlogPostClient({ post, relatedPosts }: BlogPostClientPro
                 LinkedIn
               </a>
               <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-apple btn-apple-secondary text-sm sm:text-base px-4 sm:px-6 py-2"

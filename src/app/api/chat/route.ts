@@ -249,7 +249,7 @@ Keep your response concise but comprehensive.`;
     try {
       // 从localStorage或环境变量获取API密钥
       const apiKey = process.env.DEEPSEEK_API_KEY || '';
-      
+
       if (!apiKey) {
         throw new Error('Deepseek API key not configured');
       }
@@ -265,9 +265,9 @@ Keep your response concise but comprehensive.`;
       return NextResponse.json({ response });
     } catch (deepseekError) {
       console.error('Deepseek API error:', deepseekError);
-      
+
       // 如果Deepseek API失败，使用预设回复
-      const fallbackResponse = generateFallbackResponse(message);
+      const fallbackResponse = await generateFallbackResponse(message);
       return NextResponse.json({ response: fallbackResponse });
     }
   } catch (error) {
@@ -280,8 +280,43 @@ Keep your response concise but comprehensive.`;
 }
 
 // 预设回复函数，当AI API不可用时使用
-function generateFallbackResponse(message: string): string {
+async function generateFallbackResponse(message: string): Promise<string> {
   const lowerMessage = message.toLowerCase();
+
+  // 即使在fallback模式下，也要检测搜索意图并提供真实内容
+  try {
+    // 使用简单的关键词检测来判断是否有搜索意图
+    const hasSearchIntent =
+      lowerMessage.includes('blog') || lowerMessage.includes('posts') ||
+      lowerMessage.includes('articles') || lowerMessage.includes('recent') ||
+      lowerMessage.includes('latest') || lowerMessage.includes('all articles') ||
+      lowerMessage.includes('show me') || lowerMessage.includes('list') ||
+      lowerMessage.includes('what articles') || lowerMessage.includes('文章') ||
+      lowerMessage.includes('所有') || lowerMessage.includes('显示');
+
+    if (hasSearchIntent) {
+      // 在fallback模式下直接调用搜索函数
+      let searchInstruction: SearchInstruction;
+
+      if (lowerMessage.includes('all') || lowerMessage.includes('complete') ||
+          lowerMessage.includes('所有') || lowerMessage.includes('全部')) {
+        searchInstruction = { action: 'search_all' };
+      } else if (lowerMessage.includes('latest') || lowerMessage.includes('recent') ||
+                 lowerMessage.includes('最新') || lowerMessage.includes('最近')) {
+        searchInstruction = { action: 'search_latest', limit: 5 };
+      } else {
+        // 默认显示最新文章
+        searchInstruction = { action: 'search_latest', limit: 3 };
+      }
+
+      const searchResults = await executeSearchInstruction(searchInstruction);
+      if (searchResults) {
+        return `Here's what I found on Cyrus's blog:\n\n${searchResults}\n\nLet me know if you'd like to explore any specific topic!`;
+      }
+    }
+  } catch (error) {
+    console.error('Error in fallback search:', error);
+  }
 
   // 关于Cyrus的问题
   if (lowerMessage.includes('about cyrus') || lowerMessage.includes('who is cyrus') || lowerMessage.includes('tell me about')) {
@@ -293,10 +328,7 @@ function generateFallbackResponse(message: string): string {
     return `Cyrus has expertise in various technologies including React, Next.js, TypeScript, Python, and cloud platforms. He's particularly passionate about modern web development, AI/ML applications, and creating great user experiences. You can find detailed technical articles and tutorials throughout his blog posts!`;
   }
 
-  // 博客相关
-  if (lowerMessage.includes('blog') || lowerMessage.includes('posts') || lowerMessage.includes('articles') || lowerMessage.includes('recent') || lowerMessage.includes('latest')) {
-    return `This blog features Cyrus's thoughts and tutorials on technology, programming, and software development. You can browse recent posts on the Blog page, explore different Categories, or use the Search function to find specific topics. The blog covers everything from beginner tutorials to advanced technical concepts!`;
-  }
+  // 博客相关的搜索意图已在上面处理
 
   // 联系方式
   if (lowerMessage.includes('contact') || lowerMessage.includes('reach') || lowerMessage.includes('email') || lowerMessage.includes('connect')) {
