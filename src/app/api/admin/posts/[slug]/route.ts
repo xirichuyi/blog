@@ -5,7 +5,7 @@ import { getPostBySlug } from '@/lib/blog-server';
 // 获取单个博客文章
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   const authToken = request.headers.get('Authorization')?.replace('Bearer ', '');
 
@@ -15,7 +15,7 @@ export async function GET(
   }
 
   try {
-    const slug = params.slug;
+    const { slug } = await params;
     const post = await getPostBySlug(slug);
 
     if (!post) {
@@ -35,7 +35,7 @@ export async function GET(
 // 更新博客文章
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   const authToken = request.headers.get('Authorization')?.replace('Bearer ', '');
 
@@ -45,7 +45,7 @@ export async function PUT(
   }
 
   try {
-    const slug = params.slug;
+    const { slug } = await params;
     const postData = await request.json();
 
     const result = await updatePost(slug, postData);
@@ -70,7 +70,7 @@ export async function PUT(
 // 删除博客文章
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   const authToken = request.headers.get('Authorization')?.replace('Bearer ', '');
 
@@ -80,7 +80,7 @@ export async function DELETE(
   }
 
   try {
-    const slug = params.slug;
+    const { slug } = await params;
     const result = await deletePost(slug);
 
     if (result.success) {

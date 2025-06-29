@@ -5,7 +5,7 @@ import { getPostMarkdown } from '@/lib/markdown-server';
 // 获取博客文章的原始Markdown内容
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   const authToken = request.headers.get('Authorization')?.replace('Bearer ', '');
 
@@ -15,7 +15,7 @@ export async function GET(
   }
 
   try {
-    const slug = params.slug;
+    const { slug } = await params;
     const result = await getPostMarkdown(slug);
 
     if (!result) {

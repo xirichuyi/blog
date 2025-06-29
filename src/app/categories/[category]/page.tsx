@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import { getAllCategories, getPostsByCategory } from "@/lib/blog-server";
 import CategoryClient from "./CategoryClient";
 
-export async function generateMetadata({ params }: { params: { category: string } }) {
-  // 解码URL参数
-  const categorySlug = params.category;
+export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
+  // 在Next.js 15中需要await params
+  const { category: categorySlug } = await params;
   
   // 获取所有分类
   const allCategories = getAllCategories();
@@ -27,9 +27,9 @@ export async function generateMetadata({ params }: { params: { category: string 
   };
 }
 
-export default function CategoryPage({ params }: { params: { category: string } }) {
-  // 解码URL参数
-  const categorySlug = params.category;
+export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
+  // 在Next.js 15中需要await params
+  const { category: categorySlug } = await params;
   
   // 获取所有分类
   const allCategories = getAllCategories();

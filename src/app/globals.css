@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "@uiw/react-md-editor/markdown-editor.css";
+@import "@uiw/react-markdown-preview/markdown.css";
+@import "prismjs/themes/prism-tomorrow.css";
 
 :root {
   /* 固定使用暗黑模式的颜色 */
@@ -275,4 +278,112 @@ body {
 
 .admin-table tr:hover td {
   background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* MDEditor 暗黑主题样式 */
+[data-color-mode="dark"] .w-md-editor {
+  background-color: #1a1a1a;
+  border: 1px solid #2d2d30;
+}
+
+[data-color-mode="dark"] .w-md-editor-text-textarea,
+[data-color-mode="dark"] .w-md-editor-text {
+  background-color: #1a1a1a !important;
+  color: #f5f5f7 !important;
+  border: none !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-text-textarea::placeholder {
+  color: #8e8e93 !important;
+}
+
+[data-color-mode="dark"] .w-md-editor-bar {
+  background-color: #2d2d30;
+  border-bottom: 1px solid #3a3a3c;
+}
+
+[data-color-mode="dark"] .w-md-editor-bar button {
+  color: #f5f5f7;
+  background-color: transparent;
+}
+
+[data-color-mode="dark"] .w-md-editor-bar button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-color-mode="dark"] .w-md-editor-preview {
+  background-color: #1a1a1a;
+  color: #f5f5f7;
+}
+
+/* 代码块样式 */
+[data-color-mode="dark"] .w-md-editor-preview pre {
+  background-color: #2d2d30 !important;
+  border: 1px solid #3a3a3c;
+}
+
+[data-color-mode="dark"] .w-md-editor-preview code {
+  background-color: #2d2d30 !important;
+  color: #f5f5f7 !important;
+}
+
+/* 博客文章中的代码块样式 */
+.prose pre {
+  background-color: #1e1e1e !important;
+  border: 1px solid #2d2d30;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.prose pre code {
+  background-color: transparent !important;
+  color: inherit !important;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.prose code:not(pre code) {
+  background-color: #2d2d30 !important;
+  color: #f5f5f7 !important;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* 图片样式优化 */
+.prose img {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  margin: 1.5rem auto;
+  max-width: 100%;
+  height: auto;
+}
+
+/* 表格样式 */
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+  border: 1px solid #2d2d30;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid #2d2d30;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.prose th {
+  background-color: #2d2d30;
+  font-weight: 600;
+}
+
+.prose tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.02);
 }

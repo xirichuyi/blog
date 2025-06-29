@@ -4,6 +4,7 @@ export function generateStaticParams() {
   return [];
 }
 
-export default function EditPost({ params }: { params: { slug: string } }) {
-  return <EditPostClient slug={params.slug} />;
+export default async function EditPost({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  return <EditPostClient slug={slug} />;
 }

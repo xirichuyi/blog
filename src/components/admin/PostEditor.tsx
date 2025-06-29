@@ -3,6 +3,23 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import ImageUploader from './ImageUploader';
+
+// 导入MDEditor的CSS样式
+import '@uiw/react-md-editor/markdown-editor.css';
+import '@uiw/react-markdown-preview/markdown.css';
+
+// 动态导入MDEditor以避免SSR问题
+const MDEditor = dynamic(
+  () => import('@uiw/react-md-editor').then((mod) => mod.default),
+  {
+    ssr: false,
+    loading: () => <div className="h-96 bg-apple-gray-800 rounded-lg animate-pulse flex items-center justify-center">
+      <span className="text-apple-gray-400">加载编辑器中...</span>
+    </div>
+  }
+);
 
 interface Post {
   id: number;
@@ -25,24 +42,30 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState<Post & { content: string }>({
     ...post,
-    content: post.content || '' // 确保content有默认值
+    // 在编辑模式下，不使用post.content，因为它可能是HTML而不是Markdown
+    content: mode === 'edit' ? '' : (post.content || '')
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState('');
-  const [previewMode, setPreviewMode] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(mode === 'edit' && !post.content);
+  const [showImageUploader, setShowImageUploader] = useState(false);
+  const [editorPreview, setEditorPreview] = useState<'edit' | 'live' | 'preview'>('live');
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
 
   // 在编辑模式下获取原始Markdown内容
   useEffect(() => {
     async function fetchMarkdownContent() {
-      if (mode === 'edit' && (!post.content || post.content === '')) {
+      // 在编辑模式下，始终从markdown API获取原始内容，因为post.content可能是HTML
+      if (mode === 'edit') {
         setIsLoadingContent(true);
         try {
+          console.log('Fetching markdown content for slug:', post.slug);
           const response = await fetch(`/api/admin/posts/${post.slug}/markdown`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('blogAdminToken') || ''}`
@@ -52,6 +75,8 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
 
           if (response.ok) {
             const data = await response.json();
+            console.log('Received markdown content:', data.content.substring(0, 100) + '...');
+            console.log('Content type check - contains HTML tags:', /<[^>]*>/.test(data.content));
             setFormData(prev => ({ ...prev, content: data.content }));
           } else {
             console.error('Error fetching markdown content:', await response.text());
@@ -67,7 +92,7 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
     }
 
     fetchMarkdownContent();
-  }, [mode, post.slug, post.content]);
+  }, [mode, post.slug]); // 移除post.content依赖
 
   // 从URL参数中获取数据
   useEffect(() => {
@@ -135,37 +160,54 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
     setDraftSaved(false);
   };
 
-  // 自动保存草稿
+  // 初始加载草稿（只在组件初始化时运行一次）
   useEffect(() => {
-    const draftKey = mode === 'new' ? 'blog-draft-new' : `blog-draft-${post.slug}`;
-
-    // 加载草稿
-    const loadDraft = () => {
+    if (mode === 'new' && !draftLoaded) {
+      const draftKey = 'blog-draft-new';
       const savedDraft = localStorage.getItem(draftKey);
+
       if (savedDraft) {
         try {
           const parsedDraft = JSON.parse(savedDraft);
           const draftTime = new Date(parsedDraft.timestamp);
           const formattedTime = draftTime.toLocaleTimeString();
 
-          // 如果草稿比当前表单数据更新，或者当前表单数据没有时间戳，则提示用户
-          const currentTimestamp = formData.timestamp;
-          if (!currentTimestamp || parsedDraft.timestamp > currentTimestamp) {
-            if (confirm(`Found a draft saved at ${formattedTime}. Load it?`)) {
+          // 检查草稿是否有实际内容（不只是空的表单）
+          const hasContent = parsedDraft.data.title ||
+                           parsedDraft.data.content ||
+                           parsedDraft.data.excerpt ||
+                           (parsedDraft.data.categories && parsedDraft.data.categories.length > 0);
+
+          if (hasContent) {
+            const shouldLoad = confirm(
+              `Found a draft saved at ${formattedTime}. Load it?\n\n` +
+              `Click "Cancel" to start fresh and clear the draft.`
+            );
+
+            if (shouldLoad) {
               setFormData(parsedDraft.data);
               setLastSavedTime(formattedTime);
+            } else {
+              // 用户选择不加载，清除草稿
+              localStorage.removeItem(draftKey);
             }
           }
         } catch (error) {
           console.error('Error loading draft:', error);
+          // 如果草稿数据损坏，清除它
+          localStorage.removeItem(draftKey);
         }
       }
-    };
 
-    // 初始加载草稿
-    if (mode === 'new') {
-      loadDraft();
+      setDraftLoaded(true);
     }
+  }, [mode, draftLoaded]);
+
+  // 自动保存草稿
+  useEffect(() => {
+    if (!draftLoaded) return; // 等待草稿加载完成
+
+    const draftKey = mode === 'new' ? 'blog-draft-new' : `blog-draft-${post.slug}`;
 
     // 设置自动保存定时器
     const autoSaveInterval = setInterval(() => {
@@ -185,7 +227,7 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
     return () => {
       clearInterval(autoSaveInterval);
     };
-  }, [formData, draftSaved, mode, post.slug]);
+  }, [formData, draftSaved, mode, post.slug, draftLoaded]);
 
   // 处理分类变化
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -202,6 +244,16 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
     }
   };
 
+  // 处理图片上传
+  const handleImageUploaded = (imageUrl: string) => {
+    const imageMarkdown = `![Image](${imageUrl})`;
+    setFormData(prev => ({
+      ...prev,
+      content: prev.content + '\n\n' + imageMarkdown
+    }));
+    setShowImageUploader(false);
+  };
+
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,19 +267,79 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
         : `/api/admin/posts/${post.slug}`;
 
       const method = mode === 'new' ? 'POST' : 'PUT';
+      const token = localStorage.getItem('blogAdminToken') || '';
+
+      // 调试日志
+      console.log('Submitting post:', {
+        mode,
+        url,
+        method,
+        hasToken: !!token,
+        formData: {
+          title: formData.title,
+          excerpt: formData.excerpt,
+          date: formData.date,
+          categories: formData.categories,
+          slug: formData.slug,
+          contentLength: formData.content?.length || 0
+        }
+      });
+
+      // 检查认证状态
+      if (!token) {
+        setError('Authentication token is missing. Please log in again.');
+        return;
+      }
+
+      // 验证必要字段
+      const requiredFields = ['title', 'excerpt', 'date', 'categories', 'content'];
+      const missingFields = requiredFields.filter(field => {
+        const value = formData[field as keyof typeof formData];
+        return !value || (Array.isArray(value) && value.length === 0);
+      });
+
+      if (missingFields.length > 0) {
+        setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
+        return;
+      }
+
+      // 验证内容格式 - 确保是Markdown而不是HTML
+      const content = formData.content || '';
+      const htmlTagRegex = /<[^>]*>/g;
+      const htmlTags = content.match(htmlTagRegex);
+
+      // 如果检测到大量HTML标签，警告用户
+      if (htmlTags && htmlTags.length > 5) {
+        const confirmSubmit = confirm(
+          'Warning: The content appears to contain HTML tags. ' +
+          'This may cause display issues. Do you want to continue?'
+        );
+        if (!confirmSubmit) {
+          return;
+        }
+      }
 
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('blogAdminToken') || ''}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(formData)
       });
 
+      console.log('Response status:', response.status, response.statusText);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Post saved successfully:', data);
         setSuccess(mode === 'new' ? 'Post created successfully!' : 'Post updated successfully!');
+
+        // 清除草稿
+        if (mode === 'new') {
+          localStorage.removeItem('blog-draft-new');
+          setLastSavedTime(null);
+        }
 
         // 如果是新建文章，重定向到编辑页面
         if (mode === 'new') {
@@ -235,11 +347,22 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'An error occurred');
+        console.error('Server error:', response.status, errorData);
+        setError(errorData.error || `Server error: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      setError('An error occurred while saving the post');
-      console.error('Error saving post:', error);
+      console.error('Fetch error details:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        type: typeof error
+      });
+
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setError('Network error: Unable to connect to the server. Please check if the server is running and try again.');
+      } else {
+        setError(`An error occurred while saving the post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -574,22 +697,18 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-1">
             <label className="block text-sm font-medium text-apple-gray-300">
-              Content (Markdown)
+              Content (Rich Text Editor)
             </label>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setPreviewMode(false)}
-                className={`text-xs px-3 py-1 rounded ${!previewMode ? 'bg-primary text-white' : 'bg-apple-gray-700 text-apple-gray-300'}`}
+                onClick={() => setShowImageUploader(!showImageUploader)}
+                className="text-xs px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+                title="Upload Image"
               >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewMode(true)}
-                className={`text-xs px-3 py-1 rounded ${previewMode ? 'bg-primary text-white' : 'bg-apple-gray-700 text-apple-gray-300'}`}
-              >
-                Preview
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </button>
               <button
                 type="button"
@@ -604,6 +723,15 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
             </div>
           </div>
 
+          {showImageUploader && (
+            <div className="mb-4">
+              <ImageUploader
+                onImageUploaded={handleImageUploaded}
+                className="w-full"
+              />
+            </div>
+          )}
+
           {isLoadingContent ? (
             <div className="min-h-[400px] border border-apple-gray-700 rounded-lg p-4 bg-apple-gray-800 flex items-center justify-center">
               <div className="text-apple-gray-400">
@@ -614,19 +742,91 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
                 Loading content...
               </div>
             </div>
-          ) : previewMode ? (
-            <div className="min-h-[400px] border border-apple-gray-700 rounded-lg p-4 bg-apple-gray-800">
-              {renderMarkdownPreview()}
-            </div>
           ) : (
-            <textarea
-              name="content"
-              value={formData.content}
-              onChange={handleChange}
-              rows={15}
-              className="w-full px-4 py-2 border border-apple-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-apple-gray-800 text-white font-mono"
-              required
-            />
+            <div className="w-full">
+              {/* 编辑器模式切换 */}
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-sm text-apple-gray-400">编辑器模式:</span>
+                <div className="flex rounded-lg bg-apple-gray-800 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setEditorPreview('edit')}
+                    className={`px-3 py-1 text-xs rounded transition-colors ${
+                      editorPreview === 'edit'
+                        ? 'bg-apple-blue text-white'
+                        : 'text-apple-gray-400 hover:text-white'
+                    }`}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorPreview('live')}
+                    className={`px-3 py-1 text-xs rounded transition-colors ${
+                      editorPreview === 'live'
+                        ? 'bg-apple-blue text-white'
+                        : 'text-apple-gray-400 hover:text-white'
+                    }`}
+                  >
+                    实时预览
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorPreview('preview')}
+                    className={`px-3 py-1 text-xs rounded transition-colors ${
+                      editorPreview === 'preview'
+                        ? 'bg-apple-blue text-white'
+                        : 'text-apple-gray-400 hover:text-white'
+                    }`}
+                  >
+                    预览
+                  </button>
+                </div>
+              </div>
+
+              <div className="w-full" data-color-mode="dark">
+                {editorError && (
+                  <div className="mb-4 p-3 bg-red-900/20 border border-red-500 rounded-lg">
+                    <p className="text-red-400 text-sm">编辑器错误: {editorError}</p>
+                  </div>
+                )}
+                <MDEditor
+                  value={formData.content}
+                  onChange={(value) => {
+                    try {
+                      console.log('MDEditor onChange:', value?.substring(0, 100) + '...');
+                      setFormData(prev => ({ ...prev, content: value || '' }));
+                      setEditorError(null);
+                    } catch (error) {
+                      console.error('MDEditor onChange error:', error);
+                      setEditorError(error instanceof Error ? error.message : '未知错误');
+                    }
+                  }}
+                  height={400}
+                  preview={editorPreview}
+                  hideToolbar={false}
+                  visibleDragbar={false}
+                  data-color-mode="dark"
+                  previewOptions={{
+                    rehypePlugins: [],
+                    remarkPlugins: [],
+                    skipHtml: false,
+                    allowElement: () => {
+                      // 允许所有标准HTML元素
+                      return true;
+                    }
+                  }}
+                  textareaProps={{
+                    placeholder: '请输入文章内容，支持Markdown语法...',
+                    style: {
+                      fontSize: 14,
+                      lineHeight: 1.6,
+                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+                    }
+                  }}
+                />
+              </div>
+            </div>
           )}
         </div>
 
@@ -658,6 +858,26 @@ function PostEditorContent({ post, mode }: PostEditorProps) {
             >
               Save Draft
             </button>
+
+            {mode === 'new' && lastSavedTime && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Are you sure you want to clear the saved draft? This action cannot be undone.')) {
+                    const draftKey = 'blog-draft-new';
+                    localStorage.removeItem(draftKey);
+                    setLastSavedTime(null);
+                    setDraftSaved(false);
+                    setSuccess('Draft cleared successfully!');
+                    setTimeout(() => setSuccess(null), 3000);
+                  }
+                }}
+                className="btn-apple bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-1"
+                title="Clear saved draft"
+              >
+                Clear Draft
+              </button>
+            )}
           </div>
 
           <div className="flex gap-2">

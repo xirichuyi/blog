@@ -11,9 +11,9 @@ function ensureContent(post: BlogPost): BlogPost & { content: string } {
   };
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  // 使用 params.slug 而不是 await params.slug
-  const slug = params.slug;
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  // 在Next.js 15中需要await params
+  const { slug } = await params;
   const post = await getPostBySlug(slug);
 
   if (!post) {
@@ -29,9 +29,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function BlogPost({ params }: { params: { slug: string } }) {
-  // 使用 params.slug 而不是 await params.slug
-  const slug = params.slug;
+export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
+  // 在Next.js 15中需要await params
+  const { slug } = await params;
   const post = await getPostBySlug(slug);
 
   if (!post) {

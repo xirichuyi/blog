@@ -34,6 +34,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
+                suppressHydrationWarning={true}
               >
                 Welcome to <span className="text-primary">Cyrus&apos;s</span> Blog
               </motion.h1>
@@ -43,6 +44,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                suppressHydrationWarning={true}
               >
                 Professional insights and expertise on business, technology, and innovation.
               </motion.p>

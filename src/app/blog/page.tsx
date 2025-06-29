@@ -13,9 +13,11 @@ type SearchParams = {
 };
 
 // 接收搜索参数
-export default function Blog({ searchParams }: { searchParams: SearchParams }) {
+export default async function Blog({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  // 在Next.js 15中需要await searchParams
+  const params = await searchParams;
   // 获取当前页码，默认为1
-  const currentPage = searchParams.page ? parseInt(searchParams.page) : 1;
+  const currentPage = params.page ? parseInt(params.page) : 1;
 
   // 每页显示的文章数量
   const postsPerPage = 6;

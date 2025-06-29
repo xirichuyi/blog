@@ -37,7 +37,7 @@ export default function BlogPostClient({ post, relatedPosts }: BlogPostClientPro
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6">{post.title}</h1>
             <p className="text-base sm:text-lg md:text-xl text-apple-gray-600 dark:text-apple-gray-300 mb-4 md:mb-6">{post.excerpt}</p>
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {post.categories.map((category, index) => (
+              {post.categories && Array.isArray(post.categories) && post.categories.map((category, index) => (
                 <Link
                   key={index}
                   href={`/categories/${category.toLowerCase().replace(/\s+/g, '-')}`}
