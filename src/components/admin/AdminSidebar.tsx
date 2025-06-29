@@ -15,7 +15,7 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <aside className="w-64 lg:w-72 bg-apple-gray-800 shadow-md hidden md:block border-r border-apple-gray-700">
+    <aside className="admin-sidebar-fixed w-64 lg:w-72 bg-apple-gray-800 shadow-md hidden md:block border-r border-apple-gray-700">
       <div className="p-6">
         <h1 className="text-xl font-bold text-primary">Blog Admin</h1>
       </div>

@@ -232,6 +232,16 @@ body {
   width: 100%;
 }
 
+/* Fixed admin sidebar */
+.admin-sidebar-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 50;
+}
+
 /* Admin form elements in dark mode */
 .admin-input {
   background-color: #1d1d1f;
