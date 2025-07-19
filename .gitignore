@@ -13,9 +13,12 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# rust
+/target/
+**/target/
+backend/target/
+Cargo.lock
+**/*.rs.bk
 
 # production
 /build
@@ -32,10 +35,28 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-
-# vercel
-.vercel
+!.env.example
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+
+# frontend build
+frontend/dist/
+frontend/node_modules/
+
+# migration tool
+migration-tool/node_modules/
+
+# uploads
+uploads/
+backend/uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
