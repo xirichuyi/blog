@@ -1,0 +1,98 @@
+[package]
+name = "cyrus-blog-backend"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cyrus <cyrus@example.com>"]
+description = "High-performance Rust backend for Cyrus Blog with advanced caching, monitoring, and security"
+license = "MIT"
+repository = "https://github.com/cyrus/blog"
+keywords = ["blog", "api", "rust", "axum", "sqlite"]
+categories = ["web-programming"]
+build = "build.rs"
+
+[profile.release]
+# Optimize for performance and size
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+# Faster compilation in development
+opt-level = 0
+debug = true
+incremental = true
+
+[dependencies]
+# Web framework
+axum = "0.7"
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
+hyper = { version = "1.0", features = ["full"] }
+tokio = { version = "1.0", features = ["full"] }
+
+# Database
+sqlx = { version = "0.7", features = [
+    "runtime-tokio-rustls",
+    "sqlite",
+    "chrono",
+    "uuid",
+] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Authentication & Security
+jsonwebtoken = "9.2"
+bcrypt = "0.15"
+
+# Configuration
+config = "0.14"
+dotenvy = "0.15"
+
+# Logging & Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Markdown processing
+pulldown-cmark = "0.10"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# HTTP client for AI API
+reqwest = { version = "0.11", features = ["json"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Utilities
+slug = "0.1"
+regex = "1.10"
+num_cpus = "1.16"
+
+# Performance monitoring
+metrics = "0.21"
+metrics-exporter-prometheus = "0.12"
+
+# Memory management (optional)
+mimalloc = { version = "0.1", default-features = false, optional = true }
+
+[build-dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+
+[features]
+default = ["mimalloc"]
+# Enable performance optimizations
+performance = ["mimalloc"]
+# Enable development features
+development = []
+# Enable production features
+production = ["performance"]
