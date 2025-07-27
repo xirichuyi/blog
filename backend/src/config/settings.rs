@@ -44,6 +44,7 @@ pub struct CorsSettings {
 pub struct StorageSettings {
     pub upload_dir: String,
     pub blog_data_dir: String,
+    pub max_file_size: usize,
 }
 
 impl Settings {
@@ -69,6 +70,7 @@ impl Settings {
             )?
             .set_default("storage.upload_dir", "./uploads")?
             .set_default("storage.blog_data_dir", "./data/blog")?
+            .set_default("storage.max_file_size", 10485760)? // 10MB
             // Try to load from config file (optional)
             .add_source(File::with_name("config").required(false))
             // Override with environment variables

@@ -19,9 +19,10 @@
     "@tailwindcss/typography": "^0.5.16",
     "@types/prismjs": "^1.26.5",
     "@types/react-router-dom": "^5.3.3",
+    "@uiw/react-markdown-preview": "^5.1.4",
     "autoprefixer": "^10.4.21",
     "axios": "^1.10.0",
-    "framer-motion": "^12.23.6",
+    "framer-motion": "^12.23.9",
     "postcss": "^8.5.6",
     "prismjs": "^1.30.0",
     "react": "^19.1.0",
@@ -30,7 +31,8 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.7.0",
     "remark-gfm": "^4.0.1",
-    "tailwindcss": "^4.1.11"
+    "tailwindcss": "^4.1.11",
+    "vite-plugin-monaco-editor": "^1.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

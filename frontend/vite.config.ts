@@ -9,7 +9,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3002',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       },
@@ -31,5 +31,9 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', 'framer-motion'],
+    exclude: ['monaco-editor'],
+  },
+  define: {
+    global: 'globalThis',
   },
 })

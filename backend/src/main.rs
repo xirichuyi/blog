@@ -12,7 +12,7 @@ use axum::{
 };
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use config::Settings;
@@ -43,9 +43,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create server address
     let port = std::env::var("PORT")
-        .unwrap_or_else(|_| "3002".to_string())
+        .unwrap_or_else(|_| "3001".to_string())
         .parse::<u16>()
-        .unwrap_or(3002);
+        .unwrap_or(3001);
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
 
     tracing::info!("🚀 Starting Cyrus Blog server on {}", addr);
@@ -78,6 +78,9 @@ async fn create_app(database: Database) -> Router {
         .route("/api/admin/posts/:slug", delete(admin::delete_post))
         .route("/api/admin/categories", get(admin::get_categories))
         .route("/api/admin/ai-assist", post(admin::ai_assist))
+        .route("/api/admin/upload/image", post(admin::upload_image))
+        // Static file serving for uploads
+        .nest_service("/uploads", ServeDir::new("uploads"))
         // Health check endpoints
         .route("/api/health", get(health_check))
         // Middleware layers

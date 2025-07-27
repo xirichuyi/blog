@@ -3,6 +3,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ChatProvider } from './context/ChatContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import ChatAssistant from './components/ChatAssistant';
 import Home from './pages/Home';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
@@ -13,6 +14,8 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminPosts from './pages/admin/AdminPosts';
 import AdminLogin from './pages/admin/AdminLogin';
+import AdminAIAssistant from './pages/admin/AdminAIAssistant';
+import AdminPostEditor from './pages/admin/AdminPostEditor';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -27,9 +30,9 @@ function App() {
               <Route path="/admin/*" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="posts" element={<AdminPosts />} />
-                <Route path="posts/:slug" element={<div>Admin Post Editor</div>} />
+                <Route path="posts/:slug" element={<AdminPostEditor />} />
                 <Route path="categories" element={<div>Admin Categories</div>} />
-                <Route path="ai-assistant" element={<div>Admin AI Assistant</div>} />
+                <Route path="ai-assistant" element={<AdminAIAssistant />} />
                 <Route path="settings" element={<div>Admin Settings</div>} />
               </Route>
 
@@ -50,6 +53,7 @@ function App() {
                     </Routes>
                   </main>
                   <Footer />
+                  <ChatAssistant />
                 </>
               } />
             </Routes>

@@ -3,7 +3,7 @@ import type { BlogPost, BlogPostsResponse, Message, AdminDashboardData } from '.
 import { mockApi, shouldUseMockData } from './mockData';
 
 // API基础配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -26,11 +26,30 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // 处理认证错误
     if (error.response?.status === 401) {
       // 清除无效token
       localStorage.removeItem('blogAdminToken');
       // 可以在这里添加重定向到登录页面的逻辑
     }
+
+    // 记录详细错误信息用于调试
+    if (error.response) {
+      console.error('API Error Response:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        url: error.config?.url,
+        method: error.config?.method
+      });
+    } else if (error.request) {
+      console.error('API Network Error:', {
+        message: error.message,
+        code: error.code,
+        url: error.config?.url
+      });
+    }
+
     return Promise.reject(error);
   }
 );
@@ -39,9 +58,9 @@ apiClient.interceptors.response.use(
 export const blogApi = {
   // 获取所有文章（带分页）
   async getPosts(page: number = 1, limit: number = 6): Promise<BlogPostsResponse> {
-    if (shouldUseMockData()) {
-      return mockApi.getPosts(page, limit);
-    }
+    // if (shouldUseMockData()) {
+    //   // return mockApi.getPosts(page, limit);
+    // }
     try {
       const response = await apiClient.get(`/posts?page=${page}&limit=${limit}`);
       return response.data;
@@ -154,6 +173,12 @@ export const adminApi = {
     return response.data;
   },
 
+  // 获取单个文章（管理员视图）
+  async getPost(slug: string): Promise<BlogPost> {
+    const response = await apiClient.get(`/admin/posts/${slug}`);
+    return response.data;
+  },
+
   // 创建新文章
   async createPost(postData: Omit<BlogPost, 'id'> & { content: string }): Promise<{ success: boolean; message?: string; post?: BlogPost }> {
     const response = await apiClient.post('/admin/posts', postData);
@@ -209,6 +234,21 @@ export const adminApi = {
   // 检查是否已登录
   isAuthenticated(): boolean {
     return !!localStorage.getItem('blogAdminToken');
+  },
+
+  // 上传图片
+  async uploadImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await apiClient.post('/admin/upload/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('blogAdminToken') || ''}`
+      }
+    });
+
+    return response.data.url;
   },
 };
 

@@ -3,7 +3,11 @@ use axum::{
     http::HeaderMap,
     response::Json,
 };
+use axum_extra::extract::Multipart;
 use serde::Deserialize;
+use std::path::Path as StdPath;
+use tokio::fs;
+use tokio::io::AsyncWriteExt;
 
 use crate::config::Settings;
 use crate::database::Database;
@@ -208,4 +212,93 @@ pub async fn ai_assist(
 
     let response = ai_service.ai_assist(request).await?;
     Ok(Json(response))
+}
+
+/// Upload image handler
+pub async fn upload_image(
+    headers: HeaderMap,
+    State(database): State<Database>,
+    mut multipart: Multipart,
+) -> AppResult<Json<serde_json::Value>> {
+    check_admin_auth(&headers, &database).await?;
+
+    let settings = Settings::new()?;
+    let upload_dir = StdPath::new(&settings.storage.upload_dir).join("images");
+
+    // 确保上传目录存在
+    fs::create_dir_all(&upload_dir)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to create upload directory: {}", e)))?;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::validation(format!("Failed to read multipart field: {}", e)))?
+    {
+        let name = field.name().unwrap_or("");
+
+        if name == "image" {
+            let filename = field
+                .file_name()
+                .ok_or_else(|| AppError::validation("No filename provided".to_string()))?
+                .to_string();
+
+            // 验证文件扩展名
+            let extension = StdPath::new(&filename)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+
+            if !["jpg", "jpeg", "png", "webp", "gif"].contains(&extension.as_str()) {
+                return Err(AppError::validation(
+                    "Invalid file type. Only JPEG, PNG, WebP and GIF are allowed.".to_string(),
+                ));
+            }
+
+            // 读取文件数据
+            let data = field
+                .bytes()
+                .await
+                .map_err(|e| AppError::validation(format!("Failed to read file data: {}", e)))?;
+
+            // 验证文件大小
+            if data.len() > settings.storage.max_file_size {
+                return Err(AppError::validation(format!(
+                    "File too large. Maximum size is {} bytes.",
+                    settings.storage.max_file_size
+                )));
+            }
+
+            // 生成唯一文件名
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            let random: u32 = rand::random();
+            let new_filename = format!("{}-{}.{}", timestamp, random, extension);
+
+            // 保存文件
+            let file_path = upload_dir.join(&new_filename);
+            let mut file = fs::File::create(&file_path)
+                .await
+                .map_err(|e| AppError::internal(format!("Failed to create file: {}", e)))?;
+
+            file.write_all(&data)
+                .await
+                .map_err(|e| AppError::internal(format!("Failed to write file: {}", e)))?;
+
+            // 返回成功响应
+            return Ok(Json(serde_json::json!({
+                "success": true,
+                "url": format!("/uploads/images/{}", new_filename),
+                "filename": new_filename,
+                "size": data.len()
+            })));
+        }
+    }
+
+    Err(AppError::validation(
+        "No image file found in request".to_string(),
+    ))
 }
