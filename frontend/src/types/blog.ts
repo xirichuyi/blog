@@ -7,6 +7,9 @@ export interface BlogPost {
   slug: string;
   categories: string[];
   content?: string;
+  featuredImage?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // API响应类型

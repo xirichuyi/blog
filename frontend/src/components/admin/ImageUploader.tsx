@@ -3,10 +3,11 @@ import { adminApi } from '../../services/api';
 
 interface ImageUploaderProps {
   onImageUploaded?: (imageUrl: string) => void;
+  currentImage?: string;
   className?: string;
 }
 
-export default function ImageUploader({ onImageUploaded, className = '' }: ImageUploaderProps) {
+export default function ImageUploader({ onImageUploaded, currentImage, className = '' }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -75,112 +76,67 @@ export default function ImageUploader({ onImageUploaded, className = '' }: Image
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg border border-gray-700 p-6 ${className}`}>
-      <label className="block text-sm font-medium mb-3">Image Upload</label>
-      
-      {/* Upload Area */}
-      <div className="space-y-4">
-        <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelect}
-            disabled={isUploading}
-            className="hidden"
-            id="image-upload"
+    <div className={`${className}`}>
+      {/* Current Image Preview */}
+      {currentImage && (
+        <div className="mb-2">
+          <img
+            src={currentImage}
+            alt="Featured"
+            className="w-full h-20 object-cover rounded-lg border border-gray-600"
           />
-          
+        </div>
+      )}
+
+      {/* Upload Button */}
+      <div className="relative">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          disabled={isUploading}
+          className="hidden"
+          id="image-upload"
+        />
+
+        <label
+          htmlFor="image-upload"
+          className={`admin-btn admin-btn-secondary w-full justify-center cursor-pointer ${
+            isUploading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
           {isUploading ? (
-            <div className="space-y-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-sm text-gray-400">
-                Uploading... {uploadProgress}%
-              </p>
-              {uploadProgress > 0 && (
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  ></div>
-                </div>
-              )}
-            </div>
+            <>
+              <div className="animate-spin rounded-full h-3 w-3 border border-white/20 border-t-white mr-2"></div>
+              {uploadProgress}%
+            </>
           ) : (
-            <div className="space-y-3">
-              <svg 
-                className="w-12 h-12 text-gray-400 mx-auto" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                />
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <div>
-                <label 
-                  htmlFor="image-upload"
-                  className="cursor-pointer text-primary hover:text-primary/80 font-medium"
-                >
-                  Click to upload
-                </label>
-                <p className="text-sm text-gray-400 mt-1">
-                  PNG, JPG, WebP up to 5MB
-                </p>
-              </div>
-            </div>
+              {currentImage ? 'Change' : 'Upload'}
+            </>
           )}
-        </div>
+        </label>
 
-        {error && (
-          <div className="bg-red-900/30 border border-red-500/50 rounded p-3 text-red-300 text-sm">
-            {error}
+        {/* Progress Bar */}
+        {isUploading && uploadProgress > 0 && (
+          <div className="mt-2 w-full bg-gray-700 rounded-full h-1">
+            <div
+              className="bg-primary h-1 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            ></div>
           </div>
         )}
-
-        {/* Uploaded Images */}
-        {uploadedImages.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-300">Recent Uploads</h4>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {uploadedImages.map((imageUrl, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between bg-gray-700 rounded p-2"
-                >
-                  <div className="flex items-center space-x-3">
-                    <img 
-                      src={imageUrl} 
-                      alt="Uploaded" 
-                      className="w-10 h-10 object-cover rounded"
-                    />
-                    <span className="text-sm text-gray-300 truncate max-w-32">
-                      {imageUrl.split('/').pop()}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => copyImageMarkdown(imageUrl)}
-                    className="text-primary hover:text-primary/80 text-sm px-2 py-1 rounded"
-                    title="Copy Markdown"
-                  >
-                    Copy
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Usage Instructions */}
-        <div className="text-xs text-gray-400 space-y-1">
-          <p>• Images are automatically copied as Markdown when uploaded</p>
-          <p>• Click "Copy" to copy Markdown syntax again</p>
-          <p>• Paste directly into your content editor</p>
-        </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mt-2 text-xs text-red-400">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

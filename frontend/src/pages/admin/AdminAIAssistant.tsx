@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { adminApi } from '../../services/api';
+
+interface ChatMessage {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
+  isGenerating?: boolean;
+}
 
 const promptTemplates = {
   'full-article': {
@@ -26,16 +34,20 @@ const promptTemplates = {
 };
 
 export default function AdminAIAssistant() {
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [currentInput, setCurrentInput] = useState('');
   const [prompt, setPrompt] = useState('');
+  const [generatedContent, setGeneratedContent] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('full-article');
   const [tone, setTone] = useState('professional');
   const [audience, setAudience] = useState('general readers');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [useDeepseek, setUseDeepseek] = useState(true);
   const [deepseekApiKey, setDeepseekApiKey] = useState('');
   const [deepseekModel, setDeepseekModel] = useState('deepseek-chat');
+  const [viewMode, setViewMode] = useState<'chat' | 'template'>('chat');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // 加载保存的设置
   useEffect(() => {
@@ -97,6 +109,81 @@ export default function AdminAIAssistant() {
     }
   };
 
+  // 发送聊天消息
+  const sendChatMessage = async () => {
+    if (!currentInput.trim()) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: currentInput,
+      isUser: true,
+      timestamp: new Date()
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setCurrentInput('');
+    setIsGenerating(true);
+    setError(null);
+
+    // 添加AI正在生成的消息
+    const aiMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      content: '',
+      isUser: false,
+      timestamp: new Date(),
+      isGenerating: true
+    };
+
+    setChatMessages(prev => [...prev, aiMessage]);
+
+    try {
+      const content = await adminApi.generateContent(
+        currentInput,
+        'chat',
+        useDeepseek ? deepseekApiKey : undefined,
+        useDeepseek ? deepseekModel : undefined
+      );
+
+      // 更新AI消息
+      setChatMessages(prev => prev.map(msg =>
+        msg.id === aiMessage.id
+          ? { ...msg, content, isGenerating: false }
+          : msg
+      ));
+    } catch (error) {
+      console.error('Error generating content:', error);
+      setError('Failed to generate content. Please try again.');
+
+      // 移除失败的AI消息
+      setChatMessages(prev => prev.filter(msg => msg.id !== aiMessage.id));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // 清空聊天记录
+  const clearChat = () => {
+    setChatMessages([]);
+    setError(null);
+  };
+
+  // 自动滚动到底部
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // 处理回车键发送
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (viewMode === 'chat') {
+        sendChatMessage();
+      } else {
+        handleGenerate();
+      }
+    }
+  };
+
   return (
     <div>
       <motion.div
@@ -104,9 +191,46 @@ export default function AdminAIAssistant() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
       >
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">AI Assistant</h1>
-          <p className="text-gray-400">Generate content using AI to help with your blog posts</p>
+        {/* Header */}
+        <div className="admin-card p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-2">AI Assistant</h1>
+              <p className="text-gray-400">
+                Generate content using AI to help with your blog posts
+              </p>
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex bg-white/5 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('chat')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  viewMode === 'chat'
+                    ? 'bg-primary text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Chat Mode
+              </button>
+              <button
+                onClick={() => setViewMode('template')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  viewMode === 'template'
+                    ? 'bg-primary text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Template Mode
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

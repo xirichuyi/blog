@@ -13,6 +13,9 @@ import About from './pages/About';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminPosts from './pages/admin/AdminPosts';
+import AdminCategories from './pages/admin/AdminCategories';
+import AdminMedia from './pages/admin/AdminMedia';
+import AdminSettings from './pages/admin/AdminSettings';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminAIAssistant from './pages/admin/AdminAIAssistant';
 import AdminPostEditor from './pages/admin/AdminPostEditor';
@@ -31,9 +34,10 @@ function App() {
                 <Route index element={<AdminDashboard />} />
                 <Route path="posts" element={<AdminPosts />} />
                 <Route path="posts/:slug" element={<AdminPostEditor />} />
-                <Route path="categories" element={<div>Admin Categories</div>} />
+                <Route path="categories" element={<AdminCategories />} />
+                <Route path="media" element={<AdminMedia />} />
                 <Route path="ai-assistant" element={<AdminAIAssistant />} />
-                <Route path="settings" element={<div>Admin Settings</div>} />
+                <Route path="settings" element={<AdminSettings />} />
               </Route>
 
               {/* Public routes */}
