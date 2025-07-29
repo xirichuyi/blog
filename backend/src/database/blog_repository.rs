@@ -180,4 +180,59 @@ impl BlogRepository {
 
         Ok(result.rows_affected() > 0)
     }
+
+    // 统计相关方法
+    pub async fn get_posts_count_by_date_range(
+        &self,
+        start_date: &str,
+        end_date: &str,
+    ) -> Result<i64, sqlx::Error> {
+        let count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM blog_posts WHERE created_at BETWEEN ? AND ?")
+                .bind(start_date)
+                .bind(end_date)
+                .fetch_one(&self.pool)
+                .await?;
+
+        Ok(count.0)
+    }
+
+    pub async fn get_categories_count_by_date_range(
+        &self,
+        start_date: &str,
+        end_date: &str,
+    ) -> Result<i64, sqlx::Error> {
+        // 获取在指定时间范围内创建的文章的所有分类
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT DISTINCT categories FROM blog_posts WHERE created_at BETWEEN ? AND ?",
+        )
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // 解析JSON分类并计算唯一分类数
+        let mut unique_categories = std::collections::HashSet::new();
+        for (categories_json,) in rows {
+            if let Ok(categories) = serde_json::from_str::<Vec<String>>(&categories_json) {
+                for category in categories {
+                    unique_categories.insert(category);
+                }
+            }
+        }
+
+        Ok(unique_categories.len() as i64)
+    }
+
+    pub async fn get_recent_posts_count(&self, days: i64) -> Result<i64, sqlx::Error> {
+        let cutoff_date = chrono::Utc::now() - chrono::Duration::days(days);
+        let cutoff_str = cutoff_date.to_rfc3339();
+
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM blog_posts WHERE created_at >= ?")
+            .bind(cutoff_str)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(count.0)
+    }
 }

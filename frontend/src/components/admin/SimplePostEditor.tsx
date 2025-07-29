@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
 import type { BlogPost } from '../../types/blog';
-import { adminApi, blogApi } from '../../services/api';
+import { adminApi, blogApi, cacheManager } from '../../services/api';
 import ImageUploader from './ImageUploader';
+import { useNotifications } from '../common/NotificationSystem';
+import { LoadingButton, LoadingOverlay, LoadingSpinner } from '../common/LoadingStates';
 
 interface SimplePostEditorProps {
   mode: 'new' | 'edit';
@@ -29,6 +31,19 @@ export default function SimplePostEditor({ mode }: SimplePostEditorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { addNotification } = useNotifications();
+
+  // 便捷的通知函数
+  const notifications = useMemo(() => ({
+    success: (title: string, message?: string, options?: Partial<any>) =>
+      addNotification({ type: 'success', title, message, ...options }),
+    error: (title: string, message?: string, options?: Partial<any>) =>
+      addNotification({ type: 'error', title, message, duration: 8000, ...options }),
+    warning: (title: string, message?: string, options?: Partial<any>) =>
+      addNotification({ type: 'warning', title, message, ...options }),
+    info: (title: string, message?: string, options?: Partial<any>) =>
+      addNotification({ type: 'info', title, message, ...options }),
+  }), [addNotification]);
 
   // 生成slug
   const generateSlug = (title: string) => {
@@ -137,14 +152,33 @@ export default function SimplePostEditor({ mode }: SimplePostEditorProps) {
         await adminApi.updatePost(slug!, postToSave);
       }
 
+      // 清理缓存以确保数据一致性
+      cacheManager.clearAll();
+
+      // 显示成功通知
+      notifications.success(
+        mode === 'new' ? 'Post Created' : 'Post Updated',
+        mode === 'new' ? 'Your new post has been created successfully.' : 'Your post has been updated successfully.'
+      );
+
       navigate('/admin/posts');
     } catch (error) {
       console.error('Error saving post:', error);
       setError('Failed to save post. Please try again.');
+      notifications.error(
+        'Save Failed',
+        'Failed to save the post. Please check your connection and try again.',
+        {
+          action: {
+            label: 'Retry',
+            onClick: handleSave
+          }
+        }
+      );
     } finally {
       setIsSaving(false);
     }
-  }, [post, mode, slug, navigate]);
+  }, [post, mode, slug, navigate, notifications]);
 
   // 快捷键保存
   useEffect(() => {
@@ -188,21 +222,28 @@ export default function SimplePostEditor({ mode }: SimplePostEditorProps) {
         .catch(error => {
           console.error('Error loading post:', error);
           setError('Failed to load post');
+          notifications.error(
+            'Failed to Load Post',
+            'Could not load the post data. Please try refreshing the page.',
+            {
+              action: {
+                label: 'Retry',
+                onClick: () => window.location.reload()
+              }
+            }
+          );
         })
         .finally(() => {
           setIsLoading(false);
         });
     }
-  }, [mode, slug]);
+  }, [mode, slug, notifications]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full"
-        />
+        <LoadingSpinner size="lg" />
+        <span className="ml-3 text-gray-400">Loading post data...</span>
       </div>
     );
   }
@@ -328,29 +369,17 @@ export default function SimplePostEditor({ mode }: SimplePostEditorProps) {
             </div>
 
             {/* Save Button */}
-            <button
+            <LoadingButton
+              isLoading={isSaving}
               onClick={handleSave}
-              disabled={isSaving || isLoading || !post.title?.trim() || !post.content?.trim()}
+              disabled={isLoading || !post.title?.trim() || !post.content?.trim()}
               className="admin-btn admin-btn-primary text-sm"
             >
-              {isSaving ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full mr-1"
-                  />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                  {mode === 'new' ? 'Publish' : 'Update'}
-                </>
-              )}
-            </button>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              {mode === 'new' ? 'Publish' : 'Update'}
+            </LoadingButton>
           </div>
         </div>
 

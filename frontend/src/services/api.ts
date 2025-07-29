@@ -3,7 +3,7 @@ import type { BlogPost, BlogPostsResponse, Message, AdminDashboardData } from '.
 import { mockApi, shouldUseMockData } from './mockData';
 
 // API基础配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3006/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -12,6 +12,51 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// 缓存管理
+class ApiCache {
+  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
+
+  set(key: string, data: unknown, ttl: number = 300000) { // 默认5分钟TTL
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
+    });
+  }
+
+  get<T>(key: string): T | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
+
+    if (Date.now() - item.timestamp > item.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return item.data as T;
+  }
+
+  invalidate(pattern?: string) {
+    if (pattern) {
+      // 删除匹配模式的缓存
+      for (const key of this.cache.keys()) {
+        if (key.includes(pattern)) {
+          this.cache.delete(key);
+        }
+      }
+    } else {
+      // 清空所有缓存
+      this.cache.clear();
+    }
+  }
+
+  invalidateAll() {
+    this.cache.clear();
+  }
+}
+
+const apiCache = new ApiCache();
 
 // 请求拦截器 - 添加认证token
 apiClient.interceptors.request.use((config) => {
@@ -58,12 +103,21 @@ apiClient.interceptors.response.use(
 export const blogApi = {
   // 获取所有文章（带分页）
   async getPosts(page: number = 1, limit: number = 6): Promise<BlogPostsResponse> {
-    // if (shouldUseMockData()) {
-    //   // return mockApi.getPosts(page, limit);
-    // }
+    const cacheKey = `posts-${page}-${limit}`;
+
+    // 检查缓存
+    const cached = apiCache.get<BlogPostsResponse>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
       const response = await apiClient.get(`/posts?page=${page}&limit=${limit}`);
-      return response.data;
+      const data = response.data;
+
+      // 缓存结果
+      apiCache.set(cacheKey, data);
+      return data;
     } catch (error) {
       console.warn('API call failed, falling back to mock data:', error);
       return mockApi.getPosts(page, limit);
@@ -72,6 +126,14 @@ export const blogApi = {
 
   // 根据slug获取单篇文章
   async getPostBySlug(slug: string): Promise<BlogPost> {
+    const cacheKey = `post-${slug}`;
+
+    // 检查缓存
+    const cached = apiCache.get<BlogPost>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     if (shouldUseMockData()) {
       const post = await mockApi.getPostBySlug(slug);
       if (!post) throw new Error('Post not found');
@@ -79,7 +141,11 @@ export const blogApi = {
     }
     try {
       const response = await apiClient.get(`/posts/${slug}`);
-      return response.data;
+      const data = response.data;
+
+      // 缓存结果
+      apiCache.set(cacheKey, data);
+      return data;
     } catch (error) {
       console.warn('API call failed, falling back to mock data:', error);
       const post = await mockApi.getPostBySlug(slug);
@@ -104,12 +170,24 @@ export const blogApi = {
 
   // 获取所有分类
   async getCategories(): Promise<string[]> {
+    const cacheKey = 'categories';
+
+    // 检查缓存
+    const cached = apiCache.get<string[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     if (shouldUseMockData()) {
       return mockApi.getCategories();
     }
     try {
       const response = await apiClient.get('/categories');
-      return response.data;
+      const data = response.data;
+
+      // 缓存结果
+      apiCache.set(cacheKey, data);
+      return data;
     } catch (error) {
       console.warn('API call failed, falling back to mock data:', error);
       return mockApi.getCategories();
@@ -169,8 +247,14 @@ export const adminApi = {
 
   // 获取所有文章（管理员视图）
   async getAllPosts(): Promise<BlogPostsResponse> {
-    const response = await apiClient.get('/admin/posts');
-    return response.data;
+    try {
+      const response = await apiClient.get('/admin/posts');
+      return response.data;
+    } catch (error) {
+      console.warn('Admin getAllPosts API call failed, falling back to mock data:', error);
+      // 回退到mock数据
+      return mockApi.getPosts(1, 100); // 获取所有mock文章
+    }
   },
 
   // 获取单个文章（管理员视图）
@@ -182,18 +266,35 @@ export const adminApi = {
   // 创建新文章
   async createPost(postData: Omit<BlogPost, 'id'> & { content: string }): Promise<{ success: boolean; message?: string; post?: BlogPost }> {
     const response = await apiClient.post('/admin/posts', postData);
+
+    // 清理相关缓存
+    apiCache.invalidate('posts-'); // 清理文章列表缓存
+    apiCache.invalidate('categories'); // 清理分类缓存
+
     return response.data;
   },
 
   // 更新文章
   async updatePost(slug: string, postData: Partial<BlogPost> & { content?: string }): Promise<{ success: boolean; message?: string; post?: BlogPost }> {
     const response = await apiClient.put(`/admin/posts/${slug}`, postData);
+
+    // 清理相关缓存
+    apiCache.invalidate('posts-'); // 清理文章列表缓存
+    apiCache.invalidate(`post-${slug}`); // 清理特定文章缓存
+    apiCache.invalidate('categories'); // 清理分类缓存
+
     return response.data;
   },
 
   // 删除文章
   async deletePost(slug: string): Promise<{ success: boolean; message?: string }> {
     const response = await apiClient.delete(`/admin/posts/${slug}`);
+
+    // 清理相关缓存
+    apiCache.invalidate('posts-'); // 清理文章列表缓存
+    apiCache.invalidate(`post-${slug}`); // 清理特定文章缓存
+    apiCache.invalidate('categories'); // 清理分类缓存
+
     return response.data;
   },
 
@@ -221,7 +322,7 @@ export const adminApi = {
         return true;
       }
       return false;
-    } catch (error) {
+    } catch {
       return false;
     }
   },
@@ -250,6 +351,63 @@ export const adminApi = {
 
     return response.data.url;
   },
+
+  // 获取系统状态
+  async getSystemStatus(): Promise<{
+    serverStatus: string;
+    databaseStatus: string;
+    storageUsage: number;
+    lastUpdated: string;
+    uptime: number;
+    version: string;
+    metrics?: object;
+  }> {
+    try {
+      const response = await apiClient.get('/admin/system-status');
+      return response.data.data;
+    } catch (error) {
+      console.warn('System status API call failed:', error);
+      throw error;
+    }
+  },
+
+  // 获取统计趋势
+  async getStatsTrends(): Promise<{
+    postsGrowth: number;
+    categoriesGrowth: number;
+    publishedGrowth: number;
+    viewsToday: number;
+    viewsGrowth: number;
+  }> {
+    try {
+      const response = await apiClient.get('/admin/stats-trends');
+      return response.data.data;
+    } catch (error) {
+      console.warn('Stats trends API call failed:', error);
+      throw error;
+    }
+  },
+};
+
+// 导出缓存管理功能
+export const cacheManager = {
+  // 清理所有缓存
+  clearAll: () => apiCache.invalidateAll(),
+
+  // 清理文章相关缓存
+  clearPosts: () => {
+    apiCache.invalidate('posts-');
+    apiCache.invalidate('post-');
+  },
+
+  // 清理分类缓存
+  clearCategories: () => apiCache.invalidate('categories'),
+
+  // 清理特定文章缓存
+  clearPost: (slug: string) => apiCache.invalidate(`post-${slug}`),
+
+  // 清理文章列表缓存
+  clearPostsList: () => apiCache.invalidate('posts-')
 };
 
 export default apiClient;

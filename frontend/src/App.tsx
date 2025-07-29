@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { ChatProvider } from './context/ChatContext';
+import { NotificationProvider } from './components/common/NotificationSystem';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ChatAssistant from './components/ChatAssistant';
@@ -25,7 +26,8 @@ function App() {
   return (
     <ThemeProvider>
       <ChatProvider>
-        <Router>
+        <NotificationProvider>
+          <Router>
           <div className="flex flex-col min-h-screen">
             <Routes>
               {/* Admin routes */}
@@ -62,7 +64,8 @@ function App() {
               } />
             </Routes>
           </div>
-        </Router>
+          </Router>
+        </NotificationProvider>
       </ChatProvider>
     </ThemeProvider>
   );

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BlogPost } from '../../types/blog';
-import { adminApi } from '../../services/api';
+import { adminApi, cacheManager } from '../../services/api';
 
 interface PostsTableProps {
   initialPosts: BlogPost[];
@@ -23,14 +23,17 @@ export default function PostsTable({ initialPosts, onPostDeleted }: PostsTablePr
     setError(null);
 
     try {
-      const success = await adminApi.deletePost(slug);
-      if (success) {
+      const result = await adminApi.deletePost(slug);
+      if (result.success) {
         // 从列表中移除已删除的文章
         setPosts(prevPosts => prevPosts.filter(post => post.slug !== slug));
         onPostDeleted?.(slug);
         setShowDeleteModal(null);
+
+        // 清理缓存以确保数据一致性
+        cacheManager.clearAll();
       } else {
-        setError('Failed to delete post');
+        setError(result.message || 'Failed to delete post');
       }
     } catch (error) {
       console.error('Error deleting post:', error);

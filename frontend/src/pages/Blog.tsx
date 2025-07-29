@@ -7,6 +7,7 @@ import { blogApi } from '../services/api';
 export default function Blog() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchParams] = useSearchParams();
@@ -21,12 +22,14 @@ export default function Blog() {
 
   const fetchPosts = async (page: number) => {
     setLoading(true);
+    setError(null);
     try {
       const data = await blogApi.getPosts(page, postsPerPage);
       setPosts(data.posts);
       setTotalPages(data.totalPages);
     } catch (error) {
       console.error('Error fetching posts:', error);
+      setError('Failed to load blog posts. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -38,6 +41,28 @@ export default function Blog() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
           <p className="mt-4 text-apple-gray-300">Loading posts...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Error Loading Posts</h2>
+          <p className="text-red-400 mb-4">{error}</p>
+          <button
+            onClick={() => fetchPosts(currentPage)}
+            className="btn-apple btn-apple-primary"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

@@ -9,12 +9,14 @@ export default function Categories() {
   const [categories, setCategories] = useState<string[]>([]);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+        setError(null);
+
         // Fetch all categories
         const categoriesData = await blogApi.getCategories();
         setCategories(categoriesData);
@@ -28,6 +30,7 @@ export default function Categories() {
         }
       } catch (error) {
         console.error('Error fetching data:', error);
+        setError('Failed to load categories and posts. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -42,6 +45,28 @@ export default function Categories() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
           <p className="mt-4 text-apple-gray-300">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Error Loading Categories</h2>
+          <p className="text-red-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-apple btn-apple-primary"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

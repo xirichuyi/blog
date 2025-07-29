@@ -11,6 +11,7 @@ use tokio::io::AsyncWriteExt;
 
 use crate::config::Settings;
 use crate::database::Database;
+use crate::handlers::health::HealthStatus;
 use crate::models::{
     AiAssistRequest, AiAssistResponse, BlogPost, BlogPostCreate, BlogPostResponse, BlogPostUpdate,
     BlogPostsResponse,
@@ -301,4 +302,100 @@ pub async fn upload_image(
     Err(AppError::validation(
         "No image file found in request".to_string(),
     ))
+}
+
+/// Get system status for admin dashboard
+pub async fn get_system_status(
+    headers: HeaderMap,
+    State(database): State<Database>,
+) -> AppResult<Json<serde_json::Value>> {
+    check_admin_auth(&headers, &database).await?;
+
+    // Get detailed health information
+    let health_response =
+        crate::handlers::health::health_detailed(axum::extract::State(database.clone())).await?;
+    let health_data = health_response.0;
+
+    // Extract relevant information for admin dashboard
+    let server_status = match health_data.status {
+        HealthStatus::Healthy => "online",
+        HealthStatus::Degraded => "maintenance",
+        HealthStatus::Unhealthy => "offline",
+    };
+
+    let database_status = match health_data.checks.database.status {
+        crate::handlers::health::CheckStatus::Pass => "connected",
+        crate::handlers::health::CheckStatus::Warn => "disconnected",
+        crate::handlers::health::CheckStatus::Fail => "error",
+    };
+
+    let storage_usage = health_data
+        .checks
+        .disk
+        .details
+        .as_ref()
+        .and_then(|details| details.get("usage_percent"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+
+    let response = serde_json::json!({
+        "success": true,
+        "data": {
+            "serverStatus": server_status,
+            "databaseStatus": database_status,
+            "storageUsage": storage_usage.round() as u32,
+            "lastUpdated": chrono::Utc::now().to_rfc3339(),
+            "uptime": health_data.uptime_seconds,
+            "version": health_data.version,
+            "metrics": health_data.metrics
+        }
+    });
+
+    Ok(Json(response))
+}
+
+/// Get post markdown content for editing
+pub async fn get_post_markdown(
+    headers: HeaderMap,
+    Path(slug): Path<String>,
+    State(database): State<Database>,
+) -> AppResult<Json<serde_json::Value>> {
+    check_admin_auth(&headers, &database).await?;
+
+    // Validate slug format
+    Validator::validate_slug(&slug)?;
+
+    let blog_service = BlogService::new(database);
+
+    match blog_service.get_post_by_slug(&slug).await? {
+        Some(post) => {
+            let response = serde_json::json!({
+                "success": true,
+                "content": post.content.unwrap_or_default()
+            });
+            Ok(Json(response))
+        }
+        None => Err(AppError::not_found(format!(
+            "Post with slug '{}' not found",
+            slug
+        ))),
+    }
+}
+
+/// Get statistics trends for admin dashboard
+pub async fn get_stats_trends(
+    headers: HeaderMap,
+    State(database): State<Database>,
+) -> AppResult<Json<serde_json::Value>> {
+    check_admin_auth(&headers, &database).await?;
+
+    let blog_service = BlogService::new(database);
+    let trends = blog_service.get_stats_trends().await?;
+
+    let response = serde_json::json!({
+        "success": true,
+        "data": trends
+    });
+
+    Ok(Json(response))
 }
