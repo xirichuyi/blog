@@ -248,7 +248,12 @@ export const adminApi = {
   // 登录验证
   login: async (token: string): Promise<boolean> => {
     try {
-      const response = await apiClient.post('/admin/verify', { token });
+      // 使用GET方法，将token放在Authorization header中
+      const response = await apiClient.get('/admin/verify', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (response.data.success) {
         // 存储token到localStorage
         localStorage.setItem('admin-token', token);
