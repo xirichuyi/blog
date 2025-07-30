@@ -1,9 +1,8 @@
 import axios from 'axios';
 import type { BlogPost, BlogPostsResponse, Message, AdminDashboardData } from '../types/blog';
-import { mockApi, shouldUseMockData } from './mockData';
 
 // API基础配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3006/api';
+const API_BASE_URL = 'http://localhost:3006/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -50,59 +49,20 @@ class ApiCache {
       this.cache.clear();
     }
   }
-
-  invalidateAll() {
-    this.cache.clear();
-  }
 }
 
 const apiCache = new ApiCache();
 
-// 请求拦截器 - 添加认证token
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('blogAdminToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// 响应拦截器 - 处理错误
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // 处理认证错误
-    if (error.response?.status === 401) {
-      // 清除无效token
-      localStorage.removeItem('blogAdminToken');
-      // 可以在这里添加重定向到登录页面的逻辑
-    }
-
-    // 记录详细错误信息用于调试
-    if (error.response) {
-      console.error('API Error Response:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        url: error.config?.url,
-        method: error.config?.method
-      });
-    } else if (error.request) {
-      console.error('API Network Error:', {
-        message: error.message,
-        code: error.code,
-        url: error.config?.url
-      });
-    }
-
-    return Promise.reject(error);
-  }
-);
+// 缓存管理器导出
+export const cacheManager = {
+  invalidate: (pattern?: string) => apiCache.invalidate(pattern),
+  clear: () => apiCache.invalidate(),
+};
 
 // 博客相关API
 export const blogApi = {
-  // 获取所有文章（带分页）
-  async getPosts(page: number = 1, limit: number = 6): Promise<BlogPostsResponse> {
+  // 获取文章列表
+  async getPosts(page: number = 1, limit: number = 10): Promise<BlogPostsResponse> {
     const cacheKey = `posts-${page}-${limit}`;
 
     // 检查缓存
@@ -119,8 +79,8 @@ export const blogApi = {
       apiCache.set(cacheKey, data);
       return data;
     } catch (error) {
-      console.warn('API call failed, falling back to mock data:', error);
-      return mockApi.getPosts(page, limit);
+      console.error('Failed to fetch posts:', error);
+      throw new Error('无法连接到服务器，请检查网络连接或稍后重试');
     }
   },
 
@@ -134,11 +94,6 @@ export const blogApi = {
       return cached;
     }
 
-    if (shouldUseMockData()) {
-      const post = await mockApi.getPostBySlug(slug);
-      if (!post) throw new Error('Post not found');
-      return post;
-    }
     try {
       const response = await apiClient.get(`/posts/${slug}`);
       const data = response.data;
@@ -147,24 +102,19 @@ export const blogApi = {
       apiCache.set(cacheKey, data);
       return data;
     } catch (error) {
-      console.warn('API call failed, falling back to mock data:', error);
-      const post = await mockApi.getPostBySlug(slug);
-      if (!post) throw error;
-      return post;
+      console.error('Failed to fetch post:', error);
+      throw new Error('无法获取文章内容，请检查网络连接或稍后重试');
     }
   },
 
   // 搜索文章
   async searchPosts(query: string): Promise<BlogPost[]> {
-    if (shouldUseMockData()) {
-      return mockApi.searchPosts(query);
-    }
     try {
       const response = await apiClient.get(`/posts?q=${encodeURIComponent(query)}`);
       return response.data;
     } catch (error) {
-      console.warn('API call failed, falling back to mock data:', error);
-      return mockApi.searchPosts(query);
+      console.error('Failed to search posts:', error);
+      throw new Error('搜索失败，请检查网络连接或稍后重试');
     }
   },
 
@@ -178,9 +128,6 @@ export const blogApi = {
       return cached;
     }
 
-    if (shouldUseMockData()) {
-      return mockApi.getCategories();
-    }
     try {
       const response = await apiClient.get('/categories');
       const data = response.data;
@@ -189,22 +136,19 @@ export const blogApi = {
       apiCache.set(cacheKey, data);
       return data;
     } catch (error) {
-      console.warn('API call failed, falling back to mock data:', error);
-      return mockApi.getCategories();
+      console.error('Failed to fetch categories:', error);
+      throw new Error('无法获取分类信息，请检查网络连接或稍后重试');
     }
   },
 
   // 根据分类获取文章
   async getPostsByCategory(category: string): Promise<BlogPost[]> {
-    if (shouldUseMockData()) {
-      return mockApi.getPostsByCategory(category);
-    }
     try {
       const response = await apiClient.get(`/categories/${category}`);
       return response.data;
     } catch (error) {
-      console.warn('API call failed, falling back to mock data:', error);
-      return mockApi.getPostsByCategory(category);
+      console.error('Failed to fetch posts by category:', error);
+      throw new Error('无法获取分类文章，请检查网络连接或稍后重试');
     }
   },
 };
@@ -213,9 +157,6 @@ export const blogApi = {
 export const chatApi = {
   // 发送聊天消息
   async sendMessage(message: string, conversationHistory?: Message[]): Promise<string> {
-    if (shouldUseMockData()) {
-      return mockApi.sendMessage(message);
-    }
     try {
       const response = await apiClient.post('/chat', {
         message,
@@ -223,8 +164,8 @@ export const chatApi = {
       });
       return response.data.response;
     } catch (error) {
-      console.warn('Chat API call failed, falling back to mock response:', error);
-      return mockApi.sendMessage(message);
+      console.error('Chat API call failed:', error);
+      throw new Error('聊天服务暂时不可用，请稍后重试');
     }
   },
 };
@@ -233,15 +174,12 @@ export const chatApi = {
 export const adminApi = {
   // 获取仪表板数据
   async getDashboardData(): Promise<AdminDashboardData> {
-    if (shouldUseMockData()) {
-      return mockApi.getDashboardData();
-    }
     try {
       const response = await apiClient.get('/admin/dashboard');
       return response.data.data;
     } catch (error) {
-      console.warn('Admin API call failed, falling back to mock data:', error);
-      return mockApi.getDashboardData();
+      console.error('Admin API call failed:', error);
+      throw new Error('无法获取管理员数据，请检查网络连接或稍后重试');
     }
   },
 
@@ -251,163 +189,94 @@ export const adminApi = {
       const response = await apiClient.get('/admin/posts');
       return response.data;
     } catch (error) {
-      console.warn('Admin getAllPosts API call failed, falling back to mock data:', error);
-      // 回退到mock数据
-      return mockApi.getPosts(1, 100); // 获取所有mock文章
+      console.error('Admin getAllPosts API call failed:', error);
+      throw new Error('无法获取文章列表，请检查网络连接或稍后重试');
     }
   },
 
   // 获取单个文章（管理员视图）
   async getPost(slug: string): Promise<BlogPost> {
-    const response = await apiClient.get(`/admin/posts/${slug}`);
-    return response.data;
+    try {
+      const response = await apiClient.get(`/admin/posts/${slug}`);
+      return response.data;
+    } catch (error) {
+      console.error('Admin getPost API call failed:', error);
+      throw new Error('无法获取文章详情，请检查网络连接或稍后重试');
+    }
   },
 
-  // 创建新文章
-  async createPost(postData: Omit<BlogPost, 'id'> & { content: string }): Promise<{ success: boolean; message?: string; post?: BlogPost }> {
-    const response = await apiClient.post('/admin/posts', postData);
-
-    // 清理相关缓存
-    apiCache.invalidate('posts-'); // 清理文章列表缓存
-    apiCache.invalidate('categories'); // 清理分类缓存
-
-    return response.data;
+  // 创建文章
+  async createPost(post: Partial<BlogPost>): Promise<BlogPost> {
+    try {
+      const response = await apiClient.post('/admin/posts', post);
+      // 清除相关缓存
+      cacheManager.invalidate('posts');
+      return response.data;
+    } catch (error) {
+      console.error('Admin createPost API call failed:', error);
+      throw new Error('创建文章失败，请检查网络连接或稍后重试');
+    }
   },
 
   // 更新文章
-  async updatePost(slug: string, postData: Partial<BlogPost> & { content?: string }): Promise<{ success: boolean; message?: string; post?: BlogPost }> {
-    const response = await apiClient.put(`/admin/posts/${slug}`, postData);
-
-    // 清理相关缓存
-    apiCache.invalidate('posts-'); // 清理文章列表缓存
-    apiCache.invalidate(`post-${slug}`); // 清理特定文章缓存
-    apiCache.invalidate('categories'); // 清理分类缓存
-
-    return response.data;
+  async updatePost(slug: string, post: Partial<BlogPost>): Promise<BlogPost> {
+    try {
+      const response = await apiClient.put(`/admin/posts/${slug}`, post);
+      // 清除相关缓存
+      cacheManager.invalidate('posts');
+      cacheManager.invalidate(`post-${slug}`);
+      return response.data;
+    } catch (error) {
+      console.error('Admin updatePost API call failed:', error);
+      throw new Error('更新文章失败，请检查网络连接或稍后重试');
+    }
   },
 
   // 删除文章
-  async deletePost(slug: string): Promise<{ success: boolean; message?: string }> {
-    const response = await apiClient.delete(`/admin/posts/${slug}`);
-
-    // 清理相关缓存
-    apiCache.invalidate('posts-'); // 清理文章列表缓存
-    apiCache.invalidate(`post-${slug}`); // 清理特定文章缓存
-    apiCache.invalidate('categories'); // 清理分类缓存
-
-    return response.data;
-  },
-
-  // AI助手
-  async generateContent(prompt: string, type: string, deepseekApiKey?: string, deepseekModel?: string): Promise<string> {
-    const response = await apiClient.post('/admin/ai-assist', {
-      prompt,
-      type,
-      deepseekApiKey,
-      deepseekModel,
-    });
-    return response.data.content;
-  },
-
-  // 管理员认证
-  async login(token: string): Promise<boolean> {
+  async deletePost(slug: string): Promise<void> {
     try {
-      // 验证token
-      const response = await apiClient.get('/admin/dashboard', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.status === 200) {
-        localStorage.setItem('blogAdminToken', token);
+      await apiClient.delete(`/admin/posts/${slug}`);
+      // 清除相关缓存
+      cacheManager.invalidate('posts');
+      cacheManager.invalidate(`post-${slug}`);
+    } catch (error) {
+      console.error('Admin deletePost API call failed:', error);
+      throw new Error('删除文章失败，请检查网络连接或稍后重试');
+    }
+  },
+
+  // 登录验证
+  login: async (token: string): Promise<boolean> => {
+    try {
+      const response = await apiClient.post('/admin/verify', { token });
+      if (response.data.success) {
+        // 存储token到localStorage
+        localStorage.setItem('admin-token', token);
+        // 设置axios默认header
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         return true;
       }
       return false;
-    } catch {
+    } catch (error) {
+      console.error('Admin login failed:', error);
       return false;
     }
   },
 
-  // 登出
-  logout(): void {
-    localStorage.removeItem('blogAdminToken');
-  },
-
   // 检查是否已登录
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('blogAdminToken');
-  },
-
-  // 上传图片
-  async uploadImage(file: File): Promise<string> {
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const response = await apiClient.post('/admin/upload/image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        Authorization: `Bearer ${localStorage.getItem('blogAdminToken') || ''}`
-      }
-    });
-
-    return response.data.url;
-  },
-
-  // 获取系统状态
-  async getSystemStatus(): Promise<{
-    serverStatus: string;
-    databaseStatus: string;
-    storageUsage: number;
-    lastUpdated: string;
-    uptime: number;
-    version: string;
-    metrics?: object;
-  }> {
-    try {
-      const response = await apiClient.get('/admin/system-status');
-      return response.data.data;
-    } catch (error) {
-      console.warn('System status API call failed:', error);
-      throw error;
+  isAuthenticated: (): boolean => {
+    const token = localStorage.getItem('admin-token');
+    if (token) {
+      // 设置axios默认header
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      return true;
     }
+    return false;
   },
 
-  // 获取统计趋势
-  async getStatsTrends(): Promise<{
-    postsGrowth: number;
-    categoriesGrowth: number;
-    publishedGrowth: number;
-    viewsToday: number;
-    viewsGrowth: number;
-  }> {
-    try {
-      const response = await apiClient.get('/admin/stats-trends');
-      return response.data.data;
-    } catch (error) {
-      console.warn('Stats trends API call failed:', error);
-      throw error;
-    }
+  // 登出
+  logout: (): void => {
+    localStorage.removeItem('admin-token');
+    delete apiClient.defaults.headers.common['Authorization'];
   },
 };
-
-// 导出缓存管理功能
-export const cacheManager = {
-  // 清理所有缓存
-  clearAll: () => apiCache.invalidateAll(),
-
-  // 清理文章相关缓存
-  clearPosts: () => {
-    apiCache.invalidate('posts-');
-    apiCache.invalidate('post-');
-  },
-
-  // 清理分类缓存
-  clearCategories: () => apiCache.invalidate('categories'),
-
-  // 清理特定文章缓存
-  clearPost: (slug: string) => apiCache.invalidate(`post-${slug}`),
-
-  // 清理文章列表缓存
-  clearPostsList: () => apiCache.invalidate('posts-')
-};
-
-export default apiClient;

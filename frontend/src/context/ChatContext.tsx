@@ -39,7 +39,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (savedMessages) {
         const parsedMessages = JSON.parse(savedMessages);
         // 转换timestamp字符串回Date对象
-        const messagesWithDates = parsedMessages.map((msg: any) => ({
+        const messagesWithDates = parsedMessages.map((msg: Message & { timestamp: string }) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
         }));

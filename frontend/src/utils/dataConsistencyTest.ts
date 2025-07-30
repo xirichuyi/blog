@@ -1,5 +1,4 @@
 import { blogApi, adminApi, cacheManager } from '../services/api';
-import type { BlogPost } from '../types/blog';
 
 /**
  * 数据一致性测试工具
@@ -49,8 +48,8 @@ export class DataConsistencyTester {
       };
 
       const createResult = await adminApi.createPost(testPost);
-      
-      if (createResult.success) {
+
+      if (createResult) {
         // 等待一小段时间确保数据传播
         await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -98,7 +97,7 @@ export class DataConsistencyTester {
         title: newTitle
       });
 
-      if (updateResult.success) {
+      if (updateResult) {
         // 等待数据传播
         await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -139,28 +138,25 @@ export class DataConsistencyTester {
       };
 
       const createResult = await adminApi.createPost(testPost);
-      
-      if (createResult.success) {
+
+      if (createResult) {
         // 确认文章存在
         const postExists = await blogApi.getPostBySlug(testPost.slug);
         
         if (postExists) {
           // 删除文章
-          const deleteResult = await adminApi.deletePost(testPost.slug);
-          
-          if (deleteResult.success) {
-            // 等待数据传播
-            await new Promise(resolve => setTimeout(resolve, 1000));
+          await adminApi.deletePost(testPost.slug);
 
-            // 验证文章不再存在于公共API
-            try {
-              await blogApi.getPostBySlug(testPost.slug);
-              this.addTestResult('Post Deletion Consistency', false, 'Deleted post still accessible via public API');
-            } catch {
-              this.addTestResult('Post Deletion Consistency', true, 'Deleted post properly removed from public API');
-            }
-          } else {
-            this.addTestResult('Post Deletion Consistency', false, 'Failed to delete test post');
+          // 删除成功，继续验证
+          // 等待数据传播
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // 验证文章不再存在于公共API
+          try {
+            await blogApi.getPostBySlug(testPost.slug);
+            this.addTestResult('Post Deletion Consistency', false, 'Deleted post still accessible via public API');
+          } catch {
+            this.addTestResult('Post Deletion Consistency', true, 'Deleted post properly removed from public API');
           }
         } else {
           this.addTestResult('Post Deletion Consistency', false, 'Test post was not created successfully');
@@ -179,7 +175,7 @@ export class DataConsistencyTester {
   private async testCacheInvalidation(): Promise<void> {
     try {
       // 清理所有缓存
-      cacheManager.clearAll();
+      cacheManager.clear();
 
       // 获取文章列表（这会缓存结果）
       const posts1 = await blogApi.getPosts(1, 5);
@@ -188,7 +184,7 @@ export class DataConsistencyTester {
       const posts2 = await blogApi.getPosts(1, 5);
 
       // 清理缓存
-      cacheManager.clearPosts();
+      cacheManager.invalidate('posts');
 
       // 再次获取（应该重新从API获取）
       const posts3 = await blogApi.getPosts(1, 5);
@@ -249,7 +245,7 @@ export class DataConsistencyTester {
     console.log('=====================================');
     
     let passedCount = 0;
-    let totalCount = this.testResults.length;
+    const totalCount = this.testResults.length;
 
     this.testResults.forEach(result => {
       const status = result.passed ? '✅ PASS' : '❌ FAIL';

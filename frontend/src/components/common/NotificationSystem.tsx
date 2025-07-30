@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, createContext, useContext, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export interface Notification {
@@ -188,21 +188,8 @@ const NotificationItem = ({ notification, onRemove }: NotificationItemProps) => 
   );
 };
 
-// 便捷的通知函数
-export const createNotificationHelpers = () => {
-  const { addNotification } = useNotifications();
-
-  return {
-    success: (title: string, message?: string, options?: Partial<Notification>) =>
-      addNotification({ type: 'success', title, message, ...options }),
-    
-    error: (title: string, message?: string, options?: Partial<Notification>) =>
-      addNotification({ type: 'error', title, message, duration: 8000, ...options }),
-    
-    warning: (title: string, message?: string, options?: Partial<Notification>) =>
-      addNotification({ type: 'warning', title, message, ...options }),
-    
-    info: (title: string, message?: string, options?: Partial<Notification>) =>
-      addNotification({ type: 'info', title, message, ...options }),
-  };
-};
+// 便捷的通知函数 - 移动到单独的hook文件中使用
+// export const createNotificationHelpers = () => {
+//   const { addNotification } = useNotifications();
+//   return { ... };
+// };
