@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { adminApi } from '../../services/api';
+import { adminApi } from '@/services/api';
 
 export default function AdminLogin() {
   const [token, setToken] = useState('');

@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
-import type { BlogPost } from '../../types/blog';
-import { adminApi, blogApi, cacheManager } from '../../services/api';
+import type { BlogPost } from '@/types/blog';
+import { adminApi, blogApi, cacheManager } from '@/services/api';
 import ImageUploader from './ImageUploader';
-import { useNotifications } from '../common/NotificationSystem';
-import { LoadingButton, LoadingOverlay, LoadingSpinner } from '../common/LoadingStates';
+import { useNotifications } from '@/hooks/useNotification';
+import { LoadingButton, LoadingOverlay, LoadingSpinner } from '@/components/ui';
 
 interface SimplePostEditorProps {
   mode: 'new' | 'edit';

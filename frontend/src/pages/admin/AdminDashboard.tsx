@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import type { AdminDashboardData } from '../../types/blog';
-import { adminApi } from '../../services/api';
-import { dataConsistencyTester } from '../../utils/dataConsistencyTest';
+import type { AdminDashboardData } from '@/types/blog';
+import { adminApi } from '@/services/api';
+import { dataConsistencyTester } from '@/utils/dataConsistencyTest';
 
 // 系统状态接口
 interface SystemStatus {

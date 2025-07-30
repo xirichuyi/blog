@@ -3,8 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { BlogPost as BlogPostType } from '../types/blog';
-import { blogApi } from '../services/api';
+import type { BlogPost as BlogPostType } from '@/types/blog';
+import { blogApi } from '@/services/api';
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>();

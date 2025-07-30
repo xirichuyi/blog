@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import type { BlogPost } from '../../types/blog';
-import { adminApi } from '../../services/api';
-import PostsTable from '../../components/admin/PostsTable';
+import type { BlogPost } from '@/types/blog';
+import { adminApi } from '@/services/api';
+import PostsTable from '@/components/admin/PostsTable';
 
 export default function AdminPosts() {
   const [posts, setPosts] = useState<BlogPost[]>([]);

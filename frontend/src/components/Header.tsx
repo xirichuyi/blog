@@ -1,58 +1,32 @@
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
-
+import { useState } from "react";
+import { useIsMobile } from '@/hooks';
+import { PUBLIC_NAV_ITEMS } from '@/constants';
+import { navVariants, mobileMenuVariants } from '@/utils/animations';
+import { Button, Icon } from '@/components/ui';
 
 export default function Header() {
-
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // 检测窗口大小变化，更新isMobile状态
-  useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    // 初始检查
-    checkIfMobile();
-
-    // 监听窗口大小变化
-    window.addEventListener('resize', checkIfMobile);
-
-    // 清理函数
-    return () => window.removeEventListener('resize', checkIfMobile);
-  }, []);
-
-  // 当屏幕尺寸变化时，如果不再是移动设备，关闭移动菜单
-  useEffect(() => {
-    if (!isMobile && isMobileMenuOpen) {
-      setIsMobileMenuOpen(false);
-    }
-  }, [isMobile, isMobileMenuOpen]);
-
-
+  const isMobile = useIsMobile();
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // 导航链接数据
-  const navLinks = [
-    { href: "/", label: "Home", delay: 0.1 },
-    { href: "/blog", label: "Blog", delay: 0.2 },
-    { href: "/categories", label: "Categories", delay: 0.25 },
-    { href: "/about", label: "About", delay: 0.3 },
-  ];
+  // 当屏幕尺寸变化时，如果不再是移动设备，关闭移动菜单
+  if (!isMobile && isMobileMenuOpen) {
+    setIsMobileMenuOpen(false);
+  }
 
   return (
     <header className="navbar-apple">
       <div className="container-apple py-4">
         <nav className="flex justify-between items-center">
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            variants={navVariants}
+            initial="initial"
+            animate="animate"
           >
             <Link to="/" className="text-2xl font-bold text-primary">
               Cyrus
@@ -62,12 +36,13 @@ export default function Header() {
           {/* 桌面导航 */}
           <div className="flex items-center">
             <div className="hidden md:flex gap-8 mr-4">
-              {navLinks.map((link) => (
+              {PUBLIC_NAV_ITEMS.map((link) => (
                 <motion.div
                   key={link.href}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: link.delay }}
+                  variants={navVariants}
+                  initial="initial"
+                  animate="animate"
+                  transition={{ delay: link.delay }}
                 >
                   <Link
                     to={link.href}
@@ -83,26 +58,16 @@ export default function Header() {
 
 
             {/* 移动端汉堡菜单按钮 */}
-            <motion.button
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden ml-2 w-10 h-10 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
               onClick={toggleMobileMenu}
-              className="md:hidden ml-2 w-10 h-10 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.45 }}
               aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+              animated
             >
-              {isMobileMenuOpen ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </motion.button>
+              <Icon name={isMobileMenuOpen ? "close" : "menu"} size="md" />
+            </Button>
           </div>
         </nav>
       </div>
@@ -112,14 +77,14 @@ export default function Header() {
         {isMobileMenuOpen && (
           <motion.div
             className="md:hidden mobile-menu-container bg-white/95 dark:bg-gray-900/95 border-t border-gray-200 dark:border-gray-700"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
+            variants={mobileMenuVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
           >
             <div className="container-apple py-4">
               <div className="flex flex-col space-y-4">
-                {navLinks.map((link, index) => (
+                {PUBLIC_NAV_ITEMS.map((link, index) => (
                   <motion.div
                     key={link.href}
                     initial={{ opacity: 0, x: -20 }}

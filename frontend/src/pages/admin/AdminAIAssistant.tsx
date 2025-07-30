@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { adminApi } from '../../services/api';
+import { adminApi } from '@/services/api';
 
 interface ChatMessage {
   id: string;

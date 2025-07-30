@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { adminApi } from '../../services/api';
+import { adminApi } from '@/services/api';
 
 interface ImageUploaderProps {
   onImageUploaded?: (imageUrl: string) => void;

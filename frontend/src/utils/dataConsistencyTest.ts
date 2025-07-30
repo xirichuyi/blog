@@ -1,4 +1,4 @@
-import { blogApi, adminApi, cacheManager } from '../services/api';
+import { blogApi, adminApi, cacheManager } from '@/services/api';
 
 /**
  * 数据一致性测试工具

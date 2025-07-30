@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import type { BlogPost } from '../types/blog';
-import { blogApi } from '../services/api';
+import type { BlogPost } from '@/types/blog';
+import { blogApi } from '@/services/api';
 
 export default function Categories() {
   const { category } = useParams<{ category: string }>();

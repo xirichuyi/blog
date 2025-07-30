@@ -1,6 +1,6 @@
 import { useParams, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import SimplePostEditor from '../../components/admin/SimplePostEditor';
+import SimplePostEditor from '@/components/admin/SimplePostEditor';
 
 export default function AdminPostEditor() {
   const { slug } = useParams<{ slug: string }>();

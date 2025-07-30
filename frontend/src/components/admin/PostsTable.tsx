@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { BlogPost } from '../../types/blog';
-import { adminApi, cacheManager } from '../../services/api';
+import type { BlogPost } from '@/types/blog';
+import { adminApi, cacheManager } from '@/services/api';
 
 interface PostsTableProps {
   initialPosts: BlogPost[];

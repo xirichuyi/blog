@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import type { BlogPost } from '../types/blog';
-import { blogApi } from '../services/api';
+import type { BlogPost } from '@/types/blog';
+import { blogApi } from '@/services/api';
 
 export default function Blog() {
   const [posts, setPosts] = useState<BlogPost[]>([]);

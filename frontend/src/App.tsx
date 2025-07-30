@@ -1,32 +1,41 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from './context/ThemeContext';
-import { ChatProvider } from './context/ChatContext';
-import { NotificationProvider } from './components/common/NotificationSystem';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import ChatAssistant from './components/ChatAssistant';
-import Home from './pages/Home';
-import Blog from './pages/Blog';
-import BlogPost from './pages/BlogPost';
-import Categories from './pages/Categories';
-import About from './pages/About';
-import NotFound from './pages/NotFound';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { ChatProvider } from '@/context/ChatContext';
+import { ErrorBoundary } from '@/components/common';
+import { ToastProvider } from '@/components/common/Toast';
+import { setupGlobalErrorHandling, handleReactError } from '@/services/errorReporting';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import ChatAssistant from '@/components/ChatAssistant';
+import Home from '@/pages/Home';
+import Blog from '@/pages/Blog';
+import BlogPost from '@/pages/BlogPost';
+import Categories from '@/pages/Categories';
+import About from '@/pages/About';
+import NotFound from '@/pages/NotFound';
 
-import AdminLayout from './pages/admin/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminPosts from './pages/admin/AdminPosts';
-import AdminCategories from './pages/admin/AdminCategories';
-import AdminMedia from './pages/admin/AdminMedia';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminAIAssistant from './pages/admin/AdminAIAssistant';
-import AdminPostEditor from './pages/admin/AdminPostEditor';
+import AdminLayout from '@/pages/admin/AdminLayout';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminPosts from '@/pages/admin/AdminPosts';
+import AdminCategories from '@/pages/admin/AdminCategories';
+import AdminMedia from '@/pages/admin/AdminMedia';
+import AdminSettings from '@/pages/admin/AdminSettings';
+import AdminLogin from '@/pages/admin/AdminLogin';
+import AdminAIAssistant from '@/pages/admin/AdminAIAssistant';
+import AdminPostEditor from '@/pages/admin/AdminPostEditor';
 
 function App() {
+  // 设置全局错误处理
+  React.useEffect(() => {
+    setupGlobalErrorHandling();
+  }, []);
+
   return (
-    <ThemeProvider>
-      <ChatProvider>
-        <NotificationProvider>
+    <ErrorBoundary onError={handleReactError}>
+      <ThemeProvider>
+        <ChatProvider>
+          <ToastProvider>
           <Router>
             <div className="flex flex-col min-h-screen">
               <Routes>
@@ -64,9 +73,10 @@ function App() {
               </Routes>
             </div>
           </Router>
-        </NotificationProvider>
+        </ToastProvider>
       </ChatProvider>
     </ThemeProvider>
+  </ErrorBoundary>
   );
 }
 

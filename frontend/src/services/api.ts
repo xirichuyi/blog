@@ -245,6 +245,27 @@ export const adminApi = {
     }
   },
 
+  // AI内容生成
+  async generateContent(
+    prompt: string,
+    type: string,
+    deepseekApiKey?: string,
+    deepseekModel?: string
+  ): Promise<string> {
+    try {
+      const response = await apiClient.post('/admin/ai-assist', {
+        prompt,
+        type,
+        deepseekApiKey,
+        deepseekModel
+      });
+      return response.data.content;
+    } catch (error) {
+      console.error('Admin generateContent API call failed:', error);
+      throw new Error('生成内容失败，请检查网络连接或稍后重试');
+    }
+  },
+
   // 登录验证
   login: async (token: string): Promise<boolean> => {
     try {

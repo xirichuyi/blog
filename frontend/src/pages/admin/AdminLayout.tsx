@@ -1,7 +1,7 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { adminApi } from '../../services/api';
-import AdminHeader from '../../components/admin/AdminHeader';
-import AdminSidebar from '../../components/admin/AdminSidebar';
+import { adminApi } from '@/services/api';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminSidebar from '@/components/admin/AdminSidebar';
 
 export default function AdminLayout() {
   // Check if user is authenticated

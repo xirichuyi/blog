@@ -1,9 +1,8 @@
-import { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
-import { useChat } from '../context/ChatContext';
-import { chatApi } from '../services/api';
-import type { Message } from '../types/blog';
+import { useChat } from '@/context/ChatContext';
+import { useChatInput, useQuickQuestions } from '@/hooks/useChat';
+import { Button } from '@/components/ui';
 
 // 自定义滚动条样式
 const scrollbarStyles = `
@@ -95,81 +94,22 @@ interface ChatAssistantProps {
 
 export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
   const location = useLocation();
-  const { isOpen, setIsOpen, messages, addMessage } = useChat();
-  const [inputMessage, setInputMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const {
+    isOpen,
+    setIsOpen,
+    messages,
+    isLoading,
+    messagesEndRef,
+    sendMessage
+  } = useChat();
 
-  // 预设快捷问题
-  const quickQuestions = [
-    "Tell me about Cyrus",
-    "What are his technical skills?",
-    "Show me recent blog posts",
-    "How can I contact him?"
-  ];
-
-  // 滚动到最新消息
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // 聚焦输入框
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
-
-  // 发送消息
-  const sendMessage = async (content: string) => {
-    if (!content.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: content.trim(),
-      isUser: true,
-      timestamp: new Date()
-    };
-
-    addMessage(userMessage);
-    setInputMessage('');
-    setIsLoading(true);
-
-    try {
-      const response = await chatApi.sendMessage(content.trim(), messages.slice(-5));
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response || "I'm sorry, I couldn't process your request right now. Please try again.",
-        isUser: false,
-        timestamp: new Date()
-      };
-
-      addMessage(aiMessage);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
-        isUser: false,
-        timestamp: new Date()
-      };
-      addMessage(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 处理表单提交
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sendMessage(inputMessage);
-  };
+  const { questions: quickQuestions } = useQuickQuestions();
+  const {
+    inputValue: inputMessage,
+    setInputValue: setInputMessage,
+    inputRef,
+    handleSubmit
+  } = useChatInput(sendMessage);
 
   // 处理快捷问题点击
   const handleQuickQuestion = (question: string) => {
@@ -262,13 +202,15 @@ export default function ChatAssistant({ className = '' }: ChatAssistantProps) {
               <div className="px-4 pb-2">
                 <div className="flex flex-wrap gap-2">
                   {quickQuestions.map((question, index) => (
-                    <button
+                    <Button
                       key={index}
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleQuickQuestion(question)}
-                      className="text-xs px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600"
+                      className="text-xs px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
                     >
                       {question}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>

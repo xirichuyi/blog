@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { SOCIAL_LINKS } from '@/constants';
+import { fadeInUp, staggerContainer, staggerItem } from '@/utils/animations';
 
 export default function Footer() {
   return (
@@ -8,34 +10,33 @@ export default function Footer() {
           <div className="mb-6 md:mb-0">
             <motion.p
               className="text-gray-600 dark:text-gray-300"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              variants={fadeInUp}
+              initial="initial"
+              whileInView="animate"
               viewport={{ once: true }}
-              transition={{ duration: 0.7 }}
             >
               © {new Date().getFullYear()} Cyrus. All rights reserved.
             </motion.p>
           </div>
 
-          <div className="flex gap-6">
-            {[
-              { href: "#", label: "LinkedIn", delay: 0.1 },
-              { href: "#", label: "Twitter", delay: 0.2 },
-              { href: "#", label: "GitHub", delay: 0.3 },
-            ].map((link) => (
+          <motion.div
+            className="flex gap-6"
+            variants={staggerContainer}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+          >
+            {SOCIAL_LINKS.map((link) => (
               <motion.a
                 key={link.label}
                 href={link.href}
-                className="text-gray-600 dark:text-gray-300 hover:text-primary"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7, delay: link.delay }}
+                className="text-gray-600 dark:text-gray-300 hover:text-primary transition-colors"
+                variants={staggerItem}
               >
                 {link.label}
               </motion.a>
             ))}
-          </div>
+          </motion.div>
         </div>
       </div>
     </footer>
