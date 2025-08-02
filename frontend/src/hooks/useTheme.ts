@@ -67,24 +67,38 @@ export const useTheme = () => {
   // 监听系统主题变化
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const handleChange = (e: MediaQueryListEvent) => {
       const newSystemTheme = e.matches ? 'dark' : 'light';
       setSystemTheme(newSystemTheme);
-      
+
       // 如果当前使用系统主题，则应用新的系统主题
       if (theme === 'system') {
         applyTheme(newSystemTheme);
       }
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-    
+    // 使用 AbortController 确保清理
+    const controller = new AbortController();
+
+    try {
+      mediaQuery.addEventListener('change', handleChange, { signal: controller.signal });
+    } catch (error) {
+      // 降级到传统方式
+      mediaQuery.addEventListener('change', handleChange);
+    }
+
     // 初始化系统主题
     setSystemTheme(getSystemTheme());
 
     return () => {
-      mediaQuery.removeEventListener('change', handleChange);
+      controller.abort();
+      // 确保移除监听器（降级兼容）
+      try {
+        mediaQuery.removeEventListener('change', handleChange);
+      } catch (error) {
+        console.warn('Failed to remove media query listener:', error);
+      }
     };
   }, [theme, getSystemTheme, applyTheme]);
 

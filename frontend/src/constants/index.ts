@@ -4,7 +4,7 @@
 
 // API 配置
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:3001',
+  BASE_URL: 'http://localhost:3006',
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
   CACHE_TTL: 5 * 60 * 1000, // 5分钟

@@ -28,7 +28,7 @@ export interface Message {
 }
 
 // 主题类型
-export type Theme = 'dark';
+export type Theme = 'light' | 'dark' | 'system';
 
 // 管理员相关类型
 export interface AdminDashboardData {

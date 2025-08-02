@@ -2,8 +2,10 @@
  * 通用按钮组件
  */
 
-import { forwardRef, ButtonHTMLAttributes } from 'react';
-import { motion, MotionProps } from 'framer-motion';
+import { forwardRef } from 'react';
+import type { ButtonHTMLAttributes } from 'react';
+import { motion } from 'framer-motion';
+import type { MotionProps } from 'framer-motion';
 import { cn } from '@/utils/common';
 import { buttonVariants } from '@/utils/animations';
 
@@ -17,7 +19,18 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   animated?: boolean;
 }
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps & MotionProps>(
+// 分离动画和非动画按钮的类型
+type AnimatedButtonProps = ButtonProps & {
+  animated: true;
+} & Omit<MotionProps, keyof ButtonHTMLAttributes<HTMLButtonElement>>;
+
+type StaticButtonProps = ButtonProps & {
+  animated?: false;
+};
+
+type CombinedButtonProps = AnimatedButtonProps | StaticButtonProps;
+
+const Button = forwardRef<HTMLButtonElement, CombinedButtonProps>(
   ({
     className,
     variant = 'primary',
@@ -102,6 +115,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps & MotionProps>(
     );
 
     if (animated) {
+      const { animated: _, ...motionProps } = props as AnimatedButtonProps;
       return (
         <motion.button
           ref={ref}
@@ -111,7 +125,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps & MotionProps>(
           initial="initial"
           whileHover="hover"
           whileTap="tap"
-          {...props}
+          {...motionProps}
         >
           {content}
         </motion.button>

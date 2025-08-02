@@ -2,28 +2,35 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { ChatProvider } from '@/context/ChatContext';
+import { AuthProvider } from '@/hooks/useAuth.tsx';
 import { ErrorBoundary } from '@/components/common';
 import { ToastProvider } from '@/components/common/Toast';
+import { createLazyComponent } from '@/components/common/LazyWrapper';
 import { setupGlobalErrorHandling, handleReactError } from '@/services/errorReporting';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ChatAssistant from '@/components/ChatAssistant';
+
+// 公共页面 - 立即加载
 import Home from '@/pages/Home';
-import Blog from '@/pages/Blog';
-import BlogPost from '@/pages/BlogPost';
-import Categories from '@/pages/Categories';
-import About from '@/pages/About';
 import NotFound from '@/pages/NotFound';
 
-import AdminLayout from '@/pages/admin/AdminLayout';
-import AdminDashboard from '@/pages/admin/AdminDashboard';
-import AdminPosts from '@/pages/admin/AdminPosts';
-import AdminCategories from '@/pages/admin/AdminCategories';
-import AdminMedia from '@/pages/admin/AdminMedia';
-import AdminSettings from '@/pages/admin/AdminSettings';
-import AdminLogin from '@/pages/admin/AdminLogin';
-import AdminAIAssistant from '@/pages/admin/AdminAIAssistant';
-import AdminPostEditor from '@/pages/admin/AdminPostEditor';
+// 懒加载的公共页面
+const Blog = createLazyComponent(() => import('@/pages/Blog'));
+const BlogPost = createLazyComponent(() => import('@/pages/BlogPost'));
+const Categories = createLazyComponent(() => import('@/pages/Categories'));
+const About = createLazyComponent(() => import('@/pages/About'));
+
+// 懒加载的管理员页面
+const AdminLayout = createLazyComponent(() => import('@/pages/admin/AdminLayout'));
+const AdminDashboard = createLazyComponent(() => import('@/pages/admin/AdminDashboard'));
+const AdminPosts = createLazyComponent(() => import('@/pages/admin/AdminPosts'));
+const AdminCategories = createLazyComponent(() => import('@/pages/admin/AdminCategories'));
+const AdminMedia = createLazyComponent(() => import('@/pages/admin/AdminMedia'));
+const AdminSettings = createLazyComponent(() => import('@/pages/admin/AdminSettings'));
+const AdminLogin = createLazyComponent(() => import('@/pages/admin/AdminLogin'));
+const AdminAIAssistant = createLazyComponent(() => import('@/pages/admin/AdminAIAssistant'));
+const AdminPostEditor = createLazyComponent(() => import('@/pages/admin/AdminPostEditor'));
 
 function App() {
   // 设置全局错误处理
@@ -33,10 +40,11 @@ function App() {
 
   return (
     <ErrorBoundary onError={handleReactError}>
-      <ThemeProvider>
-        <ChatProvider>
-          <ToastProvider>
-          <Router>
+      <AuthProvider>
+        <ThemeProvider>
+          <ChatProvider>
+            <ToastProvider>
+            <Router>
             <div className="flex flex-col min-h-screen">
               <Routes>
                 {/* Admin routes */}
@@ -72,10 +80,11 @@ function App() {
                 } />
               </Routes>
             </div>
-          </Router>
-        </ToastProvider>
-      </ChatProvider>
-    </ThemeProvider>
+            </Router>
+          </ToastProvider>
+        </ChatProvider>
+      </ThemeProvider>
+    </AuthProvider>
   </ErrorBoundary>
   );
 }

@@ -57,8 +57,9 @@ impl Settings {
             .set_default("server.host", "127.0.0.1")?
             .set_default("server.port", 3001)?
             .set_default("database.url", "sqlite:./data/blog.db")?
-            .set_default("auth.jwt_secret", "your-super-secret-jwt-key")?
-            .set_default("auth.admin_token", "your-secret-admin-token")?
+            // Remove hardcoded secrets - require environment variables
+            .set_default("auth.jwt_secret", "")?
+            .set_default("auth.admin_token", "")?
             .set_default(
                 "ai.deepseek_api_url",
                 "https://api.deepseek.com/v1/chat/completions",
@@ -109,6 +110,37 @@ impl Settings {
                 .collect();
         }
 
+        // Validate required environment variables
+        settings.validate()?;
+        //为什么settings可以调用validate()函数？
+        //因为validate是Settings的函数。
+        //这是什么语法?
+        //这是rust的语法，用于验证配置。
+        //validate() 是用于验证配置的函数。
+        //? 是用于处理错误。
+        //如果配置不正确，则返回错误。
+        //那么为什么settings可以调用我觉得很奇怪因为validate是属于大写的Settings 而不是小写的settings
+        //这是什么语法?
+        //这是rust的语法，用于验证配置。
+        //validate() 是用于验证配置的函数。
+        //? 是用于处理错误。
+        //如果配置不正确，则返回错误。
+        //如果配置正确，则返回配置。
         Ok(settings)
+    }
+
+    /// Validate required configuration
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        if self.auth.jwt_secret.is_empty() {
+            return Err(ConfigError::NotFound(
+                "JWT_SECRET environment variable is required".to_string(),
+            ));
+        }
+        if self.auth.admin_token.is_empty() {
+            return Err(ConfigError::NotFound(
+                "BLOG_ADMIN_TOKEN environment variable is required".to_string(),
+            ));
+        }
+        Ok(())
     }
 }

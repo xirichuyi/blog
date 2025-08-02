@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { adminApi } from '@/services/api';
+import { useAuth } from '@/hooks/useAuth.tsx';
 
 export default function AdminLogin() {
   const [token, setToken] = useState('');
@@ -9,6 +9,7 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +22,7 @@ export default function AdminLogin() {
     setError('');
 
     try {
-      const success = await adminApi.login(token);
+      const success = await login(token);
       if (success) {
         navigate('/admin');
       } else {

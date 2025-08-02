@@ -9,17 +9,16 @@ use crate::config::Settings;
 use crate::database::Database;
 use crate::handlers::health;
 use crate::handlers::{admin, auth, blog, chat};
-use crate::middleware::cors::cors_layer;
+use crate::middleware::{auth::auth_middleware, cors::cors_layer};
 
 /// Create the main application router with all routes and middleware
-pub async fn create_app(database: Database, _settings: &Settings) -> Router {
+pub async fn create_app(database: Database, _settings: &Settings) -> Router<Database> {
     Router::new()
         .merge(public_routes())
-        .merge(admin_routes())
+        .merge(admin_routes(database))
         // Apply middleware layers
         .layer(TraceLayer::new_for_http())
         .layer(cors_layer())
-        .with_state(database)
 }
 
 /// Public routes that don't require authentication
@@ -43,7 +42,7 @@ fn public_routes() -> Router<Database> {
 }
 
 /// Admin routes that require authentication
-fn admin_routes() -> Router<Database> {
+fn admin_routes(database: Database) -> Router<Database> {
     Router::new()
         // Authentication
         .route("/api/admin/verify", get(auth::verify_token))
@@ -69,7 +68,11 @@ fn admin_routes() -> Router<Database> {
         .route("/api/admin/stats-trends", get(admin::get_stats_trends))
         // File upload
         .route("/api/admin/upload/image", post(admin::upload_image))
-    // Note: Authentication is handled within each admin handler function
+        // Apply authentication middleware to all admin routes
+        .layer(axum::middleware::from_fn_with_state(
+            database,
+            auth_middleware,
+        ))
 }
 
 #[cfg(test)]

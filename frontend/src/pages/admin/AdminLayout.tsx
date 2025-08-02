@@ -1,11 +1,23 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { adminApi } from '@/services/api';
+import { useAdminGuard } from '@/hooks/useAuth.tsx';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import { LoadingSpinner } from '@/components/ui';
 
 export default function AdminLayout() {
-  // Check if user is authenticated
-  if (!adminApi.isAuthenticated()) {
+  const { isAuthenticated, isLoading, shouldRedirect } = useAdminGuard();
+
+  // 显示加载状态
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  // 重定向到登录页
+  if (shouldRedirect) {
     return <Navigate to="/admin/login" replace />;
   }
 

@@ -2,6 +2,7 @@ use super::{BlogRepository, ChatRepository, UserRepository};
 use sqlx::{sqlite::SqlitePool, Pool, Sqlite};
 use std::path::Path;
 use tokio::fs;
+use tokio::time::{sleep, Duration};
 
 #[derive(Clone)]
 pub struct Database {
@@ -20,10 +21,47 @@ impl Database {
             })?;
         }
 
-        // Create connection pool
-        let pool = SqlitePool::connect(database_url).await?;
+        // Create connection pool with retry mechanism
+        let pool = Self::create_pool_with_retry(database_url).await?;
 
         Ok(Database { pool })
+    }
+
+    /// Create connection pool with retry mechanism
+    async fn create_pool_with_retry(database_url: &str) -> Result<Pool<Sqlite>, sqlx::Error> {
+        let max_retries = 3;
+        let mut last_error = None;
+
+        for attempt in 1..=max_retries {
+            match SqlitePool::connect(database_url).await {
+                Ok(pool) => {
+                    if attempt > 1 {
+                        tracing::info!(
+                            "Database connection established after {} attempts",
+                            attempt
+                        );
+                    }
+                    return Ok(pool);
+                }
+                Err(e) => {
+                    last_error = Some(e);
+                    if attempt < max_retries {
+                        tracing::warn!(
+                            "Database connection attempt {} failed, retrying in 1 second...",
+                            attempt
+                        );
+                        sleep(Duration::from_secs(1)).await;
+                    }
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to connect to database after all retries",
+            ))
+        }))
     }
 
     pub async fn migrate(&self) -> Result<(), sqlx::Error> {

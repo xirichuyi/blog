@@ -91,11 +91,18 @@ impl IntoResponse for AppError {
             ),
         };
 
-        // Log the error for debugging (in production, you might want to use structured logging)
-        tracing::error!("API Error: {} - {}", error_code, self);
+        // Enhanced structured logging
+        tracing::error!(
+            error_code = %error_code,
+            error_message = %error_message,
+            status_code = %status.as_u16(),
+            error_type = ?std::any::type_name::<Self>(),
+            "API Error occurred"
+        );
 
         let body = Json(json!({
             "error": error_message,
+            "code": error_code,
             "status": status.as_u16(),
         }));
 

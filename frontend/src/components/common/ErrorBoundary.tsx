@@ -2,7 +2,8 @@
  * 错误边界组件
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Button, Card, CardContent } from '@/components/ui';
 import { fadeInUp } from '@/utils/animations';
@@ -184,25 +185,91 @@ export const useErrorBoundary = () => {
 };
 
 /**
- * 异步错误边界组件
+ * 增强的异步错误边界组件
  */
 export const AsyncErrorBoundary: React.FC<{
   children: ReactNode;
   fallback?: ReactNode;
-}> = ({ children, fallback }) => {
+  onError?: (error: Error) => void;
+}> = ({ children, fallback, onError }) => {
   const [error, setError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      setError(new Error(event.reason));
+      const error = event.reason instanceof Error
+        ? event.reason
+        : new Error(String(event.reason));
+
+      setError(error);
+      onError?.(error);
+
+      // 阻止默认的控制台错误输出
+      event.preventDefault();
+    };
+
+    const handleError = (event: ErrorEvent) => {
+      const error = event.error || new Error(event.message);
+      setError(error);
+      onError?.(error);
+    };
+
+    // 处理异步错误
+    const originalSetTimeout = window.setTimeout;
+    const originalSetInterval = window.setInterval;
+    const originalRequestAnimationFrame = window.requestAnimationFrame;
+
+    // 包装setTimeout以捕获其中的错误
+    window.setTimeout = function(callback: Function, delay?: number, ...args: any[]) {
+      const wrappedCallback = function() {
+        try {
+          return callback.apply(this, args);
+        } catch (error) {
+          setError(error instanceof Error ? error : new Error(String(error)));
+          onError?.(error instanceof Error ? error : new Error(String(error)));
+        }
+      };
+      return originalSetTimeout.call(this, wrappedCallback, delay);
+    };
+
+    // 包装setInterval以捕获其中的错误
+    window.setInterval = function(callback: Function, delay?: number, ...args: any[]) {
+      const wrappedCallback = function() {
+        try {
+          return callback.apply(this, args);
+        } catch (error) {
+          setError(error instanceof Error ? error : new Error(String(error)));
+          onError?.(error instanceof Error ? error : new Error(String(error)));
+        }
+      };
+      return originalSetInterval.call(this, wrappedCallback, delay);
+    };
+
+    // 包装requestAnimationFrame以捕获其中的错误
+    window.requestAnimationFrame = function(callback: FrameRequestCallback) {
+      const wrappedCallback = function(time: number) {
+        try {
+          return callback(time);
+        } catch (error) {
+          setError(error instanceof Error ? error : new Error(String(error)));
+          onError?.(error instanceof Error ? error : new Error(String(error)));
+        }
+      };
+      return originalRequestAnimationFrame.call(this, wrappedCallback);
     };
 
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('error', handleError);
 
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('error', handleError);
+
+      // 恢复原始函数
+      window.setTimeout = originalSetTimeout;
+      window.setInterval = originalSetInterval;
+      window.requestAnimationFrame = originalRequestAnimationFrame;
     };
-  }, []);
+  }, [onError]);
 
   if (error) {
     if (fallback) {
@@ -211,7 +278,20 @@ export const AsyncErrorBoundary: React.FC<{
 
     return (
       <ErrorBoundary>
-        <div>Async Error: {error.message}</div>
+        <div className="p-4 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg">
+          <h3 className="text-red-800 dark:text-red-200 font-semibold mb-2">
+            Async Error Occurred
+          </h3>
+          <p className="text-red-600 dark:text-red-300 text-sm">
+            {error.message}
+          </p>
+          <button
+            onClick={() => setError(null)}
+            className="mt-2 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+          >
+            Dismiss
+          </button>
+        </div>
       </ErrorBoundary>
     );
   }

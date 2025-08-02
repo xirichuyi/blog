@@ -1,6 +1,6 @@
 import { useParams, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import SimplePostEditor from '@/components/admin/SimplePostEditor';
+import AdvancedPostEditor from '@/components/admin/AdvancedPostEditor';
 
 export default function AdminPostEditor() {
   const { slug } = useParams<{ slug: string }>();
@@ -15,7 +15,7 @@ export default function AdminPostEditor() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
     >
-      <SimplePostEditor mode={mode} />
+      <AdvancedPostEditor mode={mode} />
     </motion.div>
   );
 }

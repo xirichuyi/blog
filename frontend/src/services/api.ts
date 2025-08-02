@@ -1,26 +1,103 @@
 import axios from 'axios';
 import type { BlogPost, BlogPostsResponse, Message, AdminDashboardData } from '../types/blog';
+import { API_CONFIG } from '@/constants';
 
-// API基础配置
-const API_BASE_URL = 'http://localhost:3006/api';
+// API基础配置 - 使用统一的配置
+const API_BASE_URL = `${API_CONFIG.BASE_URL}/api`;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// 缓存管理
+// 添加请求拦截器
+apiClient.interceptors.request.use(
+  (config) => {
+    // 添加认证token
+    const token = localStorage.getItem('admin-token');
+    if (token && config.url?.includes('/admin/')) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// 添加响应拦截器
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // 统一错误处理
+    if (error.response?.status === 401) {
+      localStorage.removeItem('admin-token');
+      window.location.href = '/admin/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// 增强的缓存管理
 class ApiCache {
-  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
+  private cache = new Map<string, {
+    data: unknown;
+    timestamp: number;
+    ttl: number;
+    version: string;
+    networkStatus: 'online' | 'offline';
+  }>();
+  private version = '1.0.0'; // 缓存版本
+  private maxSize = 100; // 最大缓存条目数
+
+  constructor() {
+    // 监听网络状态变化
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this.handleNetworkChange.bind(this));
+      window.addEventListener('offline', this.handleNetworkChange.bind(this));
+    }
+  }
+
+  private handleNetworkChange() {
+    const isOnline = navigator.onLine;
+    if (isOnline) {
+      // 网络恢复时，标记所有缓存为可能过期
+      this.markAllAsStale();
+    }
+  }
+
+  private markAllAsStale() {
+    for (const [key, item] of this.cache.entries()) {
+      if (item.networkStatus === 'offline') {
+        // 将离线缓存的TTL减半，促使更新
+        this.cache.set(key, {
+          ...item,
+          ttl: item.ttl / 2,
+          networkStatus: 'online'
+        });
+      }
+    }
+  }
+
+  private evictOldest() {
+    if (this.cache.size >= this.maxSize) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
+    }
+  }
 
   set(key: string, data: unknown, ttl: number = 300000) { // 默认5分钟TTL
+    this.evictOldest();
+
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
-      ttl
+      ttl,
+      version: this.version,
+      networkStatus: navigator.onLine ? 'online' : 'offline'
     });
   }
 
@@ -28,9 +105,22 @@ class ApiCache {
     const item = this.cache.get(key);
     if (!item) return null;
 
+    // 检查版本兼容性
+    if (item.version !== this.version) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    // 检查是否过期
     if (Date.now() - item.timestamp > item.ttl) {
       this.cache.delete(key);
       return null;
+    }
+
+    // 如果是离线缓存且现在在线，考虑刷新
+    if (item.networkStatus === 'offline' && navigator.onLine) {
+      // 返回缓存数据，但标记为需要刷新
+      setTimeout(() => this.cache.delete(key), 0);
     }
 
     return item.data as T;
@@ -48,6 +138,27 @@ class ApiCache {
       // 清空所有缓存
       this.cache.clear();
     }
+  }
+
+  // 获取缓存统计信息
+  getStats() {
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize,
+      version: this.version,
+      entries: Array.from(this.cache.entries()).map(([key, item]) => ({
+        key,
+        age: Date.now() - item.timestamp,
+        ttl: item.ttl,
+        networkStatus: item.networkStatus
+      }))
+    };
+  }
+
+  // 更新缓存版本（用于强制失效所有缓存）
+  updateVersion(newVersion: string) {
+    this.version = newVersion;
+    this.cache.clear();
   }
 }
 
@@ -304,5 +415,24 @@ export const adminApi = {
   logout: (): void => {
     localStorage.removeItem('admin-token');
     delete apiClient.defaults.headers.common['Authorization'];
+  },
+
+  // 上传图片
+  async uploadImage(file: File): Promise<string> {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await apiClient.post('/admin/upload/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data.url || response.data.imageUrl;
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      throw new Error('图片上传失败，请检查网络连接或稍后重试');
+    }
   },
 };

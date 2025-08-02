@@ -28,33 +28,9 @@ pub struct AdminPostsQuery {
     pub limit: Option<i64>,
 }
 
-// Middleware function to check admin authentication
-async fn check_admin_auth(headers: &HeaderMap, database: &Database) -> AppResult<()> {
-    let auth_header = headers
-        .get("authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "));
+// Remove the check_admin_auth function since authentication is now handled by middleware
 
-    if let Some(token) = auth_header {
-        let settings = Settings::new()?;
-        let auth_service = AuthService::new(database.clone(), settings);
-
-        if auth_service.verify_admin_token(token) {
-            Ok(())
-        } else {
-            Err(AppError::authorization("Invalid admin token"))
-        }
-    } else {
-        Err(AppError::authentication("Authorization header missing"))
-    }
-}
-
-pub async fn get_dashboard(
-    headers: HeaderMap,
-    State(database): State<Database>,
-) -> AppResult<Json<serde_json::Value>> {
-    check_admin_auth(&headers, &database).await?;
-
+pub async fn get_dashboard(State(database): State<Database>) -> AppResult<Json<serde_json::Value>> {
     let blog_service = BlogService::new(database);
     let data = blog_service.get_dashboard_data().await?;
 
@@ -62,12 +38,9 @@ pub async fn get_dashboard(
 }
 
 pub async fn get_all_posts(
-    headers: HeaderMap,
     Query(params): Query<AdminPostsQuery>,
     State(database): State<Database>,
 ) -> AppResult<Json<BlogPostsResponse>> {
-    check_admin_auth(&headers, &database).await?;
-
     // Validate pagination parameters
     let (page, limit) = Validator::validate_pagination(params.page, params.limit)?;
 
@@ -80,12 +53,9 @@ pub async fn get_all_posts(
 }
 
 pub async fn get_post(
-    headers: HeaderMap,
     Path(slug): Path<String>,
     State(database): State<Database>,
 ) -> AppResult<Json<BlogPost>> {
-    check_admin_auth(&headers, &database).await?;
-
     // Validate slug format
     Validator::validate_slug(&slug)?;
 
@@ -101,12 +71,9 @@ pub async fn get_post(
 }
 
 pub async fn create_post(
-    headers: HeaderMap,
     State(database): State<Database>,
     Json(post_data): Json<BlogPostCreate>,
 ) -> AppResult<Json<serde_json::Value>> {
-    check_admin_auth(&headers, &database).await?;
-
     // Validate post data
     Validator::validate_title(&post_data.title)?;
     Validator::validate_excerpt(&post_data.excerpt)?;
@@ -128,13 +95,10 @@ pub async fn create_post(
 }
 
 pub async fn update_post(
-    headers: HeaderMap,
     Path(slug): Path<String>,
     State(database): State<Database>,
     Json(post_data): Json<BlogPostUpdate>,
 ) -> AppResult<Json<serde_json::Value>> {
-    check_admin_auth(&headers, &database).await?;
-
     // Validate slug format
     Validator::validate_slug(&slug)?;
 
@@ -167,12 +131,9 @@ pub async fn update_post(
 }
 
 pub async fn delete_post(
-    headers: HeaderMap,
     Path(slug): Path<String>,
     State(database): State<Database>,
 ) -> AppResult<Json<serde_json::Value>> {
-    check_admin_auth(&headers, &database).await?;
-
     // Validate slug format
     Validator::validate_slug(&slug)?;
 
@@ -186,12 +147,7 @@ pub async fn delete_post(
     }
 }
 
-pub async fn get_categories(
-    headers: HeaderMap,
-    State(database): State<Database>,
-) -> AppResult<Json<Vec<String>>> {
-    check_admin_auth(&headers, &database).await?;
-
+pub async fn get_categories(State(database): State<Database>) -> AppResult<Json<Vec<String>>> {
     let blog_service = BlogService::new(database);
     let categories = blog_service.get_categories().await?;
 
@@ -199,12 +155,9 @@ pub async fn get_categories(
 }
 
 pub async fn ai_assist(
-    headers: HeaderMap,
     State(database): State<Database>,
     Json(request): Json<AiAssistRequest>,
 ) -> AppResult<Json<AiAssistResponse>> {
-    check_admin_auth(&headers, &database).await?;
-
     // Validate AI prompt
     Validator::validate_ai_prompt(&request.prompt)?;
 
@@ -217,12 +170,9 @@ pub async fn ai_assist(
 
 /// Upload image handler
 pub async fn upload_image(
-    headers: HeaderMap,
     State(database): State<Database>,
     mut multipart: Multipart,
 ) -> AppResult<Json<serde_json::Value>> {
-    check_admin_auth(&headers, &database).await?;
-
     let settings = Settings::new()?;
     let upload_dir = StdPath::new(&settings.storage.upload_dir).join("images");
 
@@ -306,11 +256,8 @@ pub async fn upload_image(
 
 /// Get system status for admin dashboard
 pub async fn get_system_status(
-    headers: HeaderMap,
     State(database): State<Database>,
 ) -> AppResult<Json<serde_json::Value>> {
-    check_admin_auth(&headers, &database).await?;
-
     // Get detailed health information
     let health_response =
         crate::handlers::health::health_detailed(axum::extract::State(database.clone())).await?;
@@ -356,12 +303,9 @@ pub async fn get_system_status(
 
 /// Get post markdown content for editing
 pub async fn get_post_markdown(
-    headers: HeaderMap,
     Path(slug): Path<String>,
     State(database): State<Database>,
 ) -> AppResult<Json<serde_json::Value>> {
-    check_admin_auth(&headers, &database).await?;
-
     // Validate slug format
     Validator::validate_slug(&slug)?;
 
@@ -384,11 +328,8 @@ pub async fn get_post_markdown(
 
 /// Get statistics trends for admin dashboard
 pub async fn get_stats_trends(
-    headers: HeaderMap,
     State(database): State<Database>,
 ) -> AppResult<Json<serde_json::Value>> {
-    check_admin_auth(&headers, &database).await?;
-
     let blog_service = BlogService::new(database);
     let trends = blog_service.get_stats_trends().await?;
 
