@@ -2,13 +2,13 @@ import React from 'react';
 import './BlogHome.css';
 
 const BlogHome: React.FC = () => {
-  // Static featured articles data
-  const featuredArticles = [
+  // 所有帖子数据 - 首页显示前7个
+  const allPosts = [
     {
-      id: 'motion-physics',
+      id: 'post-1',
       title: "Start building with Material 3 Expressive",
       description: "Material's latest evolution helps you make products even more engaging and easier to use.",
-      date: "May 13, 2025",
+      date: "Jan 20, 2025",
       gradient: "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)",
       imageCollage: [
         { type: 'app-ui', color: '#6750A4' },
@@ -16,25 +16,54 @@ const BlogHome: React.FC = () => {
         { type: 'components', color: '#9C27B0' },
         { type: 'mobile-ui', color: '#673AB7' }
       ]
+    },
+    {
+      id: 'post-2',
+      title: "Adding Motion Physics with Jetpack Compose",
+      description: "Supercharge your Android transitions and animations with the new M3 Expressive motion theming system.",
+      date: "Jan 15, 2025",
+      gradient: "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)"
+    },
+    {
+      id: 'post-3',
+      title: "Material Design for XR (Developer Preview)",
+      description: "Building UI that adapts for XR with familiar frameworks and tools",
+      date: "Jan 10, 2025",
+      gradient: "linear-gradient(135deg, #B8C5D1 0%, #D6E3F0 100%)"
+    },
+    {
+      id: 'post-4',
+      title: "Material Design Components 1.12.0",
+      description: "New components and improvements for better accessibility and developer experience",
+      date: "Jan 5, 2025",
+      gradient: "linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%)"
+    },
+    {
+      id: 'post-5',
+      title: "Material Theme Builder Update",
+      description: "Enhanced color palette generation and export options for design systems",
+      date: "Dec 28, 2024",
+      gradient: "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)"
+    },
+    {
+      id: 'post-6',
+      title: "Accessibility in Material Design",
+      description: "Best practices for creating inclusive user interfaces with Material Design",
+      date: "Dec 20, 2024",
+      gradient: "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)"
+    },
+    {
+      id: 'post-7',
+      title: "Design Tokens for Cross-Platform Consistency",
+      description: "How to use design tokens to maintain consistency across web, mobile, and desktop",
+      date: "Dec 15, 2024",
+      gradient: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)"
     }
   ];
 
-  const latestReleases = [
-    {
-      id: 'release-1',
-      title: "Material Design Components 1.12.0",
-      description: "New components and improvements for better accessibility",
-      date: "Jan 15, 2025",
-      version: "1.12.0"
-    },
-    {
-      id: 'release-2',
-      title: "Material Theme Builder Update",
-      description: "Enhanced color palette generation and export options",
-      date: "Jan 10, 2025",
-      version: "2.1.0"
-    }
-  ];
+  // 分配帖子到不同区域
+  const featuredArticles = [allPosts[0]]; // 第1个帖子
+  const secondaryArticles = allPosts.slice(1, 7); // 第2-7个帖子都使用secondary样式
 
   const years = ['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018'];
 
@@ -80,24 +109,38 @@ const BlogHome: React.FC = () => {
           </div>
         </section>
 
-        {/* Latest Releases Section */}
-        <section className="blog-releases-section">
-          <h2 className="blog-section-title">Latest releases</h2>
-          <div className="blog-releases-grid">
-            {latestReleases.map((release) => (
-              <div key={release.id} className="release-card">
-                <div className="release-card-content">
-                  <div className="release-meta">
-                    <span className="release-date">{release.date}</span>
-                    <span className="release-version">{release.version}</span>
+        {/* Secondary Articles Section */}
+        <section className="blog-secondary-section">
+          <div className="blog-secondary-grid">
+            {secondaryArticles.map((article) => (
+              <div key={article.id} className="secondary-article-card">
+                {/* 上方图片区域 */}
+                <div className="secondary-article-image" style={{ background: article.gradient }}>
+                  <div className="secondary-article-visual-content">
+                    {/* 这里可以放置UI截图、设计图等视觉内容 */}
+                    <div className="visual-placeholder">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
                   </div>
-                  <h3 className="release-title">{release.title}</h3>
-                  <p className="release-description">{release.description}</p>
+                </div>
+                {/* 下方内容区域 */}
+                <div className="secondary-article-content">
+                  <div className="secondary-article-meta">
+                    <span className="secondary-article-date">{article.date}</span>
+                  </div>
+                  <h3 className="secondary-article-title">{article.title}</h3>
+                  <p className="secondary-article-description">{article.description}</p>
                 </div>
               </div>
             ))}
           </div>
         </section>
+
+
       </div>
 
       {/* Right Sidebar */}
