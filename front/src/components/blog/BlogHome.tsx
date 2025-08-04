@@ -70,9 +70,10 @@ const BlogHome: React.FC = () => {
   return (
     <div className="blog-home">
       <div className="blog-main-content">
-        {/* Featured Articles Grid */}
+        {/* Main Content Grid */}
         <section className="blog-featured-section">
           <div className="blog-featured-grid">
+            {/* Left side - Featured Article */}
             {featuredArticles.map((article) => (
               <div key={article.id} className="featured-article-card">
                 {/* Left side - Image collage area */}
@@ -106,13 +107,10 @@ const BlogHome: React.FC = () => {
                 </div>
               </div>
             ))}
-          </div>
-        </section>
 
-        {/* Secondary Articles Section */}
-        <section className="blog-secondary-section">
-          <div className="blog-secondary-grid">
-            {secondaryArticles.map((article) => (
+            {/* Right side - Secondary Articles Grid */}
+            <div className="blog-secondary-grid">
+              {secondaryArticles.slice(0, 4).map((article) => (
               <div key={article.id} className="secondary-article-card">
                 {/* 上方图片区域 */}
                 <div className="secondary-article-image" style={{ background: article.gradient }}>
