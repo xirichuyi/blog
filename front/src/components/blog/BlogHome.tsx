@@ -6,17 +6,16 @@ const BlogHome: React.FC = () => {
   const featuredArticles = [
     {
       id: 'motion-physics',
-      title: "Adding Motion Physics with Jetpack Compose",
-      description: "Supercharge your Android transitions and animations with the new M3 Expressive motion theming system.",
-      date: "May 20, 2025",
-      gradient: "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)"
-    },
-    {
-      id: 'xr-preview',
-      title: "Material Design for XR (Developer Preview)",
-      description: "Building UI that adapts for XR with familiar frameworks and tools",
-      date: "Dec 12, 2024",
-      gradient: "linear-gradient(135deg, #B8C5D1 0%, #D6E3F0 100%)"
+      title: "Start building with Material 3 Expressive",
+      description: "Material's latest evolution helps you make products even more engaging and easier to use.",
+      date: "May 13, 2025",
+      gradient: "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)",
+      imageCollage: [
+        { type: 'app-ui', color: '#6750A4' },
+        { type: 'design-system', color: '#7C4DFF' },
+        { type: 'components', color: '#9C27B0' },
+        { type: 'mobile-ui', color: '#673AB7' }
+      ]
     }
   ];
 
@@ -46,7 +45,29 @@ const BlogHome: React.FC = () => {
         <section className="blog-featured-section">
           <div className="blog-featured-grid">
             {featuredArticles.map((article) => (
-              <div key={article.id} className="featured-article-card" style={{ background: article.gradient }}>
+              <div key={article.id} className="featured-article-card">
+                {/* Left side - Image collage area */}
+                <div className="featured-article-image-area">
+                  <div className="image-collage-grid">
+                    {article.imageCollage?.map((item, index) => (
+                      <div
+                        key={index}
+                        className={`collage-item collage-item-${index + 1}`}
+                        style={{ backgroundColor: item.color }}
+                      >
+                        <div className="collage-content">
+                          {/* Placeholder for app UI mockups */}
+                          <div className="ui-mockup">
+                            <div className="mockup-header"></div>
+                            <div className="mockup-content"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right side - Content area */}
                 <div className="featured-article-content">
                   <div className="featured-article-meta">
                     <span className="featured-article-date">{article.date}</span>
