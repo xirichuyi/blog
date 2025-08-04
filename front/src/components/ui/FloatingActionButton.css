@@ -1,0 +1,89 @@
+/* Floating Action Button Styles */
+
+.fab-container {
+  position: fixed;
+  bottom: var(--md-sys-spacing-6);
+  right: var(--md-sys-spacing-6);
+  z-index: 1000;
+}
+
+.floating-action-button {
+  transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+  box-shadow: var(--md-sys-elevation-level3);
+}
+
+.floating-action-button:hover {
+  box-shadow: var(--md-sys-elevation-level4);
+  transform: scale(1.05);
+}
+
+.floating-action-button:active {
+  transform: scale(0.95);
+}
+
+/* Primary FAB */
+.fab-primary .floating-action-button {
+  --md-fab-container-color: var(--md-sys-color-primary-container);
+  --md-fab-icon-color: var(--md-sys-color-on-primary-container);
+  --md-fab-label-text-color: var(--md-sys-color-on-primary-container);
+}
+
+/* Secondary FAB */
+.fab-secondary .floating-action-button {
+  --md-fab-container-color: var(--md-sys-color-secondary-container);
+  --md-fab-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-fab-label-text-color: var(--md-sys-color-on-secondary-container);
+}
+
+/* Tertiary FAB */
+.fab-tertiary .floating-action-button {
+  --md-fab-container-color: var(--md-sys-color-tertiary-container);
+  --md-fab-icon-color: var(--md-sys-color-on-tertiary-container);
+  --md-fab-label-text-color: var(--md-sys-color-on-tertiary-container);
+}
+
+/* Size Variants */
+.fab-small {
+  bottom: var(--md-sys-spacing-4);
+  right: var(--md-sys-spacing-4);
+}
+
+.fab-large {
+  bottom: var(--md-sys-spacing-8);
+  right: var(--md-sys-spacing-8);
+}
+
+/* Extended FAB */
+.floating-action-button.extended {
+  border-radius: var(--md-sys-shape-corner-large);
+  padding: var(--md-sys-spacing-4) var(--md-sys-spacing-6);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .fab-container {
+    bottom: var(--md-sys-spacing-4);
+    right: var(--md-sys-spacing-4);
+  }
+  
+  .fab-large {
+    bottom: var(--md-sys-spacing-6);
+    right: var(--md-sys-spacing-6);
+  }
+}
+
+/* Animation for entrance */
+@keyframes fabEnter {
+  from {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.floating-action-button {
+  animation: fabEnter var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+}

@@ -1,0 +1,154 @@
+/* Error Boundary Styles */
+
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: var(--md-sys-spacing-8) var(--md-sys-spacing-4);
+  background-color: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-large);
+  margin: var(--md-sys-spacing-4);
+}
+
+.error-boundary-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--md-sys-spacing-6);
+  max-width: 500px;
+  text-align: center;
+}
+
+.error-boundary-icon {
+  font-size: 64px;
+  color: var(--md-sys-color-error);
+  animation: errorIconPulse var(--md-sys-motion-duration-long2) var(--md-sys-motion-easing-emphasized) infinite;
+}
+
+.error-boundary-title {
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-weight: 500;
+}
+
+.error-boundary-message {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.6;
+}
+
+.error-boundary-details {
+  width: 100%;
+  margin-top: var(--md-sys-spacing-4);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.error-boundary-details-summary {
+  padding: var(--md-sys-spacing-3) var(--md-sys-spacing-4);
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface);
+  font-weight: 500;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  transition: background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.error-boundary-details-summary:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+}
+
+.error-boundary-details[open] .error-boundary-details-summary {
+  background-color: var(--md-sys-color-surface-container);
+}
+
+.error-boundary-stack {
+  margin: 0;
+  padding: var(--md-sys-spacing-4);
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: var(--md-sys-spacing-3);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.error-boundary-actions md-filled-button {
+  --md-filled-button-container-color: var(--md-sys-color-primary);
+  --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
+  --md-filled-button-icon-color: var(--md-sys-color-on-primary);
+}
+
+.error-boundary-actions md-outlined-button {
+  --md-outlined-button-outline-color: var(--md-sys-color-outline);
+  --md-outlined-button-label-text-color: var(--md-sys-color-on-surface);
+  --md-outlined-button-icon-color: var(--md-sys-color-on-surface);
+}
+
+/* Animations */
+@keyframes errorIconPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .error-boundary {
+    min-height: 300px;
+    padding: var(--md-sys-spacing-6) var(--md-sys-spacing-3);
+    margin: var(--md-sys-spacing-2);
+  }
+  
+  .error-boundary-content {
+    gap: var(--md-sys-spacing-4);
+  }
+  
+  .error-boundary-icon {
+    font-size: 48px;
+  }
+  
+  .error-boundary-title {
+    font-size: var(--md-sys-typescale-headline-small-size);
+    line-height: var(--md-sys-typescale-headline-small-line-height);
+  }
+  
+  .error-boundary-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .error-boundary-actions md-filled-button,
+  .error-boundary-actions md-outlined-button {
+    width: 100%;
+  }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .error-boundary-stack {
+    background-color: var(--md-sys-color-surface-container-low);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .error-boundary-icon {
+    animation: none;
+  }
+}

@@ -1,0 +1,87 @@
+/* Layout Styles - Material Design 3 Official Style */
+
+.layout {
+  min-height: 100vh;
+  display: flex;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+  color: var(--md-sys-color-on-surface);
+  position: relative;
+  overflow: hidden;
+}
+
+.layout::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 300px;
+  background: linear-gradient(135deg, #6750a4 0%, #7d5260 50%, #625b71 100%);
+  opacity: 0.6;
+  border-radius: 0 0 50% 50%;
+  transform: scale(1.5) translateY(-50px);
+  z-index: 0;
+}
+
+.layout-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  margin-left: 72px; /* Space for side navigation */
+  min-height: 100vh;
+}
+
+.layout-content {
+  flex: 1;
+  width: 100%;
+  padding: var(--md-sys-spacing-8);
+  overflow-y: auto;
+  animation: contentFadeIn var(--md-sys-motion-duration-medium3)
+    var(--md-sys-motion-easing-emphasized);
+}
+
+/* Content Animation */
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Layout */
+/* Layout content now has no padding to allow full-width content */
+
+/* Layout with Navigation Rail (Desktop) */
+@media (min-width: 1200px) {
+  .layout-with-rail {
+    padding-left: 80px;
+  }
+
+  .layout-with-rail .layout-content {
+    margin-left: 0;
+  }
+}
+
+/* Focus Management */
+.layout:focus-within {
+  outline: none;
+}
+
+/* Print Styles */
+@media print {
+  .layout-main {
+    padding: 0;
+  }
+
+  .layout-content {
+    max-width: none;
+    padding: 0;
+  }
+}

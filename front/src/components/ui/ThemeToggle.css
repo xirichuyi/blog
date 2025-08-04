@@ -1,0 +1,73 @@
+/* Theme Toggle Styles */
+
+.theme-toggle {
+  --md-icon-button-icon-color: var(--md-sys-color-on-surface);
+  --md-icon-button-state-layer-color: var(--md-sys-color-on-surface);
+  transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+}
+
+.theme-toggle:hover {
+  --md-icon-button-state-layer-opacity: 0.08;
+  transform: rotate(15deg);
+}
+
+.theme-toggle:focus {
+  --md-icon-button-state-layer-opacity: 0.12;
+}
+
+.theme-toggle:active {
+  --md-icon-button-state-layer-opacity: 0.16;
+  transform: rotate(0deg) scale(0.95);
+}
+
+/* Size Variants */
+.theme-toggle-small {
+  --md-icon-button-icon-size: 20px;
+  --md-icon-button-state-layer-size: 36px;
+}
+
+.theme-toggle-medium {
+  --md-icon-button-icon-size: 24px;
+  --md-icon-button-state-layer-size: 48px;
+}
+
+.theme-toggle-large {
+  --md-icon-button-icon-size: 28px;
+  --md-icon-button-state-layer-size: 56px;
+}
+
+/* Animation for theme change */
+.theme-toggle md-icon {
+  transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+}
+
+/* Theme-specific styling */
+[data-theme="light"] .theme-toggle {
+  --md-icon-button-icon-color: var(--md-sys-color-primary);
+}
+
+[data-theme="dark"] .theme-toggle {
+  --md-icon-button-icon-color: var(--md-sys-color-secondary);
+}
+
+/* Accessibility */
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle,
+  .theme-toggle md-icon {
+    transition: none;
+  }
+  
+  .theme-toggle:hover {
+    transform: none;
+  }
+  
+  .theme-toggle:active {
+    transform: scale(0.95);
+  }
+}

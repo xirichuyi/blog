@@ -1,0 +1,78 @@
+/* Loading Spinner Styles */
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-sys-spacing-4);
+  padding: var(--md-sys-spacing-6);
+}
+
+.loading-spinner-small {
+  gap: var(--md-sys-spacing-2);
+  padding: var(--md-sys-spacing-3);
+}
+
+.loading-spinner-medium {
+  gap: var(--md-sys-spacing-4);
+  padding: var(--md-sys-spacing-6);
+}
+
+.loading-spinner-large {
+  gap: var(--md-sys-spacing-6);
+  padding: var(--md-sys-spacing-8);
+}
+
+.loading-message {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  text-align: center;
+  animation: messageSlideIn var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+}
+
+/* Progress indicator customization */
+.loading-spinner md-circular-progress {
+  --md-circular-progress-active-indicator-color: var(--md-sys-color-primary);
+  --md-circular-progress-track-color: var(--md-sys-color-surface-container-highest);
+  animation: spinnerFadeIn var(--md-sys-motion-duration-medium3) var(--md-sys-motion-easing-emphasized);
+}
+
+/* Animations */
+@keyframes spinnerFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .loading-spinner-large {
+    gap: var(--md-sys-spacing-4);
+    padding: var(--md-sys-spacing-6);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner md-circular-progress,
+  .loading-message {
+    animation: none;
+  }
+}

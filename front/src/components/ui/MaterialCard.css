@@ -1,0 +1,101 @@
+/* Material Design 3 Card Styles */
+
+.material-card {
+  display: block;
+  padding: var(--md-sys-spacing-4);
+  border-radius: var(--md-sys-shape-corner-medium);
+  transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.material-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-sys-elevation-level3);
+}
+
+.material-card:focus {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* Filled Card */
+md-filled-card.material-card {
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* Outlined Card */
+md-outlined-card.material-card {
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+md-outlined-card.material-card:hover {
+  border-color: var(--md-sys-color-outline);
+}
+
+/* Elevated Card */
+md-elevated-card.material-card {
+  background-color: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+md-elevated-card.material-card:hover {
+  box-shadow: var(--md-sys-elevation-level4);
+}
+
+/* Card Content Styles */
+.material-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--md-sys-spacing-3);
+  margin-bottom: var(--md-sys-spacing-3);
+}
+
+.material-card .card-title {
+  font-family: var(--md-sys-typescale-title-large-font);
+  font-size: var(--md-sys-typescale-title-large-size);
+  font-weight: var(--md-sys-typescale-title-large-weight);
+  line-height: var(--md-sys-typescale-title-large-line-height);
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
+}
+
+.material-card .card-subtitle {
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+}
+
+.material-card .card-content {
+  margin-bottom: var(--md-sys-spacing-4);
+}
+
+.material-card .card-actions {
+  display: flex;
+  gap: var(--md-sys-spacing-2);
+  justify-content: flex-end;
+  margin-top: var(--md-sys-spacing-4);
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .material-card {
+    padding: var(--md-sys-spacing-3);
+  }
+  
+  .material-card .card-actions {
+    justify-content: stretch;
+  }
+  
+  .material-card .card-actions > * {
+    flex: 1;
+  }
+}
