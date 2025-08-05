@@ -5,6 +5,7 @@ import ArticleCard from './ArticleCard';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import useBlogData from '../../hooks/useBlogData';
 import type { Article } from '../../types/blog';
+import { CustomButton } from '../ui/CustomButton';
 import './ArticleDetail.css';
 
 interface ArticleDetailProps {
@@ -180,6 +181,18 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
           className="article-body md-typescale-body-large"
           dangerouslySetInnerHTML={{ __html: article.content || '' }}
         />
+      </div>
+
+      {/* See More Articles Button */}
+      <div className="see-more-section">
+        <CustomButton
+          variant="filled"
+          size="large"
+          className="see-more-button"
+          onClick={() => navigate('/articles')}
+        >
+          See More Articles
+        </CustomButton>
       </div>
 
       {/* Related Articles */}

@@ -1,0 +1,158 @@
+/* Custom Button Component - Material Design 3 Inspired */
+
+.custom-button {
+  /* Reset default button styles */
+  border: none;
+  outline: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
+
+  /* Base button styles */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  overflow: hidden;
+
+  /* Prevent text selection */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.custom-button__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Size variants */
+.custom-button--small {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 0.875rem;
+  border-radius: 16px;
+}
+
+.custom-button--medium {
+  height: 40px;
+  padding: 0 24px;
+  font-size: 0.875rem;
+  border-radius: 20px;
+}
+
+.custom-button--large {
+  height: 48px;
+  padding: 0 32px;
+  font-size: 1rem;
+  border-radius: 24px;
+}
+
+/* Filled variant (Primary) */
+.custom-button--filled {
+  background-color: var(--md-sys-color-primary, #6750a4);
+  color: var(--md-sys-color-on-primary, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.custom-button--filled:hover {
+  background-color: var(--md-sys-color-primary, #6750a4);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  transform: translateY(-1px);
+}
+
+.custom-button--filled:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+/* Outlined variant */
+.custom-button--outlined {
+  background-color: transparent;
+  color: var(--md-sys-color-primary, #6750a4);
+  border: 1px solid var(--md-sys-color-outline, #79747e);
+}
+
+.custom-button--outlined:hover {
+  background-color: var(--md-sys-color-primary-container, #eaddff);
+  border-color: var(--md-sys-color-primary, #6750a4);
+}
+
+.custom-button--outlined:active {
+  background-color: var(--md-sys-color-primary-container, #eaddff);
+}
+
+/* Text variant */
+.custom-button--text {
+  background-color: transparent;
+  color: var(--md-sys-color-primary, #6750a4);
+  padding: 0 12px;
+}
+
+.custom-button--text:hover {
+  background-color: var(--md-sys-color-primary-container, #eaddff);
+}
+
+.custom-button--text:active {
+  background-color: var(--md-sys-color-primary-container, #eaddff);
+}
+
+/* Disabled state */
+.custom-button--disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+/* Focus styles */
+.custom-button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary, #6750a4);
+  outline-offset: 2px;
+}
+
+/* Ripple effect */
+.custom-button::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s, opacity 0.3s;
+}
+
+.custom-button:active::before {
+  width: 100%;
+  height: 100%;
+  opacity: 0.1;
+}
+
+/* Special styling for "See More Articles" button */
+.see-more-button.custom-button--filled {
+  background-color: #ccb6ff;
+  color: #1f1f1f;
+  min-width: 200px;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.see-more-button.custom-button--filled:hover {
+  background-color: #b89fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(204, 182, 255, 0.4);
+}

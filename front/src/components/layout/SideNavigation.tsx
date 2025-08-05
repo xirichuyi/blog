@@ -26,40 +26,34 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ className = '' }) => {
       path: '/'
     },
     {
-      id: 'get-started',
-      label: 'Get started',
-      icon: 'play_circle',
-      path: '/get-started'
-    },
-    {
-      id: 'develop',
-      label: 'Develop',
-      icon: 'code',
-      path: '/develop'
-    },
-    {
-      id: 'foundations',
-      label: 'Foundations',
-      icon: 'foundation',
-      path: '/foundations'
-    },
-    {
-      id: 'styles',
-      label: 'Styles',
-      icon: 'palette',
-      path: '/styles'
-    },
-    {
-      id: 'components',
-      label: 'Components',
-      icon: 'widgets',
-      path: '/components'
-    },
-    {
-      id: 'blog',
-      label: 'Blog',
+      id: 'articles',
+      label: 'Articles',
       icon: 'article',
-      path: '/blog'
+      path: '/articles'
+    },
+    {
+      id: 'categories',
+      label: 'Categories',
+      icon: 'category',
+      path: '/categories'
+    },
+    {
+      id: 'tags',
+      label: 'Tags',
+      icon: 'local_offer',
+      path: '/tags'
+    },
+    {
+      id: 'about',
+      label: 'About',
+      icon: 'person',
+      path: '/about'
+    },
+    {
+      id: 'contact',
+      label: 'Contact',
+      icon: 'mail',
+      path: '/contact'
     }
   ];
 

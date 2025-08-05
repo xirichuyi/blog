@@ -1,7 +1,25 @@
 /* Global Styles for Material Design 3 Blog */
 
-/* Reset and Base Styles */
-* {
+/* Reset and Base Styles - Safe box-sizing that doesn't affect Material Design Web Components */
+html,
+body,
+div,
+span,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+a,
+img,
+ul,
+ol,
+li,
+form,
+input,
+textarea {
   box-sizing: border-box;
 }
 
@@ -421,8 +439,6 @@ body {
   max-width: 500px;
 }
 
-.page-placeholder md-filled-button {
-  --md-filled-button-container-color: var(--md-sys-color-primary);
-  --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
-  --md-filled-button-icon-color: var(--md-sys-color-on-primary);
-}
+/* Removed global md-filled-button styles to allow default Material Design appearance */
+
+/* See More 按钮使用官方 md-elevated-button 组件，样式在各自的CSS文件中定义 */

@@ -45,6 +45,30 @@
   display: none; /* Chrome, Safari, Opera */
 }
 
+/* See More Section */
+.see-more-section {
+  display: flex;
+  justify-content: center;
+  margin: 48px 0 32px 0;
+}
+
+.see-more-button {
+  --md-elevated-button-container-color: #a855f7;
+  --md-elevated-button-label-text-color: #1f1f1f;
+  --md-elevated-button-container-shape: 20px;
+  --md-elevated-button-hover-state-layer-color: rgba(31, 31, 31, 0.08);
+  --md-elevated-button-pressed-state-layer-color: rgba(31, 31, 31, 0.12);
+  --md-elevated-button-icon-color: #1f1f1f;
+  --md-elevated-button-container-elevation: 1;
+  --md-elevated-button-hover-container-elevation: 2;
+  --md-elevated-button-pressed-container-elevation: 1;
+  --md-elevated-button-label-text-size: 1.1rem;
+  --md-elevated-button-label-text-weight: 500;
+  min-width: 200px;
+}
+
+/* Material Design组件会自动处理悬停和交互效果 */
+
 /* Featured Articles Section */
 .blog-featured-section {
   margin-bottom: 8px;
@@ -572,6 +596,16 @@
     flex: 0 0 auto;
     padding: var(--md-sys-spacing-2) var(--md-sys-spacing-3);
   }
+
+  .see-more-section {
+    margin: 32px 0 24px 0;
+  }
+
+  .see-more-button {
+    padding: 16px 32px;
+    font-size: 1rem;
+    min-width: 160px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -618,5 +652,15 @@
   .more-article-content {
     padding: var(--md-sys-spacing-3) var(--md-sys-spacing-4)
       var(--md-sys-spacing-4);
+  }
+
+  .see-more-section {
+    margin: 24px 0 16px 0;
+  }
+
+  .see-more-button {
+    padding: 14px 28px;
+    font-size: 0.9rem;
+    min-width: 140px;
   }
 }

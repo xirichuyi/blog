@@ -23,7 +23,8 @@
 .error-boundary-icon {
   font-size: 64px;
   color: var(--md-sys-color-error);
-  animation: errorIconPulse var(--md-sys-motion-duration-long2) var(--md-sys-motion-easing-emphasized) infinite;
+  animation: errorIconPulse var(--md-sys-motion-duration-long2)
+    var(--md-sys-motion-easing-emphasized) infinite;
 }
 
 .error-boundary-title {
@@ -52,7 +53,8 @@
   color: var(--md-sys-color-on-surface);
   font-weight: 500;
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
-  transition: background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+  transition: background-color var(--md-sys-motion-duration-short4)
+    var(--md-sys-motion-easing-standard);
 }
 
 .error-boundary-details-summary:hover {
@@ -68,7 +70,7 @@
   padding: var(--md-sys-spacing-4);
   background-color: var(--md-sys-color-surface-container-highest);
   color: var(--md-sys-color-on-surface);
-  font-family: 'Roboto Mono', monospace;
+  font-family: "Roboto Mono", monospace;
   font-size: 12px;
   line-height: 1.4;
   overflow-x: auto;
@@ -83,11 +85,7 @@
   justify-content: center;
 }
 
-.error-boundary-actions md-filled-button {
-  --md-filled-button-container-color: var(--md-sys-color-primary);
-  --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
-  --md-filled-button-icon-color: var(--md-sys-color-on-primary);
-}
+/* Removed md-filled-button styles to allow default Material Design appearance */
 
 .error-boundary-actions md-outlined-button {
   --md-outlined-button-outline-color: var(--md-sys-color-outline);
@@ -97,7 +95,8 @@
 
 /* Animations */
 @keyframes errorIconPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -114,25 +113,25 @@
     padding: var(--md-sys-spacing-6) var(--md-sys-spacing-3);
     margin: var(--md-sys-spacing-2);
   }
-  
+
   .error-boundary-content {
     gap: var(--md-sys-spacing-4);
   }
-  
+
   .error-boundary-icon {
     font-size: 48px;
   }
-  
+
   .error-boundary-title {
     font-size: var(--md-sys-typescale-headline-small-size);
     line-height: var(--md-sys-typescale-headline-small-line-height);
   }
-  
+
   .error-boundary-actions {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .error-boundary-actions md-filled-button,
   .error-boundary-actions md-outlined-button {
     width: 100%;

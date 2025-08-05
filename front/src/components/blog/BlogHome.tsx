@@ -1,8 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import './BlogHome.css';
 import ClassicalMusicPlayer from '../music/ClassicalMusicPlayer';
+import { CustomButton } from '../ui/CustomButton';
 
 const BlogHome: React.FC = () => {
+  const navigate = useNavigate();
+
   // 所有帖子数据 - 首页显示前7个
   const allPosts = [
     {
@@ -151,11 +155,24 @@ const BlogHome: React.FC = () => {
           </div>
         </section>
 
+        {/* See More Articles Button */}
+        <div className="see-more-section">
+          <CustomButton
+            variant="filled"
+            size="large"
+            className="see-more-button"
+            onClick={() => navigate('/articles')}
+          >
+            See More Articles
+          </CustomButton>
+        </div>
 
       </div>
 
       {/* Right Sidebar */}
       <aside className="blog-sidebar">
+
+        
         {/* Music Player Section - Fixed at top */}
         <div className="sidebar-section music-player-section">
           <ClassicalMusicPlayer />

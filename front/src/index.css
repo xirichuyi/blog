@@ -35,28 +35,7 @@ h1 {
   line-height: 1.1;
 }
 
-button {
-  border-radius: var(--md-sys-shape-corner-medium);
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short4)
-    var(--md-sys-motion-easing-standard);
-}
-button:hover {
-  background-color: var(--md-sys-color-surface-container-high);
-  border-color: var(--md-sys-color-primary);
-}
-button:focus,
-button:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
-}
+/* Global button styles removed to allow Material Design Web Components to use their default styles */
 
 /* Material Design 3 theme variables are already defined in theme.css */
 /* No need for manual light theme overrides */
