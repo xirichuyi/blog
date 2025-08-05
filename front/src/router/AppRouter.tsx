@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import BlogHome from '../components/blog/BlogHome';
 import ArticleDetail from '../components/blog/ArticleDetail';
@@ -57,16 +57,12 @@ const NotFoundPage: React.FC = () => (
 
 // Article Detail Route Component
 const ArticleDetailRoute: React.FC = () => {
-  const articleId = window.location.pathname.split('/').pop() || '1';
-  
-  const handleBack = () => {
-    window.history.back();
-  };
+  const { id } = useParams<{ id: string }>();
+  const articleId = id || '1';
 
   return (
-    <ArticleDetail 
-      articleId={articleId} 
-      onBack={handleBack}
+    <ArticleDetail
+      articleId={articleId}
     />
   );
 };

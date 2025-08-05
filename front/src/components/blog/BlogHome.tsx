@@ -11,6 +11,11 @@ const BlogHome: React.FC = () => {
   // 搜索状态
   const [searchQuery, setSearchQuery] = useState('');
 
+  // 处理文章点击
+  const handleArticleClick = (articleId: string) => {
+    navigate(`/article/${articleId}`);
+  };
+
   // 所有帖子数据 - 首页显示前7个
   const allPosts = [
     {
@@ -105,7 +110,20 @@ const BlogHome: React.FC = () => {
           <div className="blog-featured-grid">
             {/* Left side - Featured Article */}
             {featuredArticles.map((article) => (
-              <div key={article.id} className="featured-article-card">
+              <div
+                key={article.id}
+                className="featured-article-card"
+                onClick={() => handleArticleClick(article.id)}
+                style={{ cursor: 'pointer' }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleArticleClick(article.id);
+                  }
+                }}
+              >
                 {/* Left side - Image collage area */}
                 <div className="featured-article-image-area">
                   <div className="image-collage-grid">
@@ -142,7 +160,20 @@ const BlogHome: React.FC = () => {
           {/* Right side - Secondary Articles Grid */}
           <div className="blog-secondary-grid">
               {secondaryArticles.slice(0, 4).map((article) => (
-              <div key={article.id} className="secondary-article-card">
+              <div
+                key={article.id}
+                className="secondary-article-card"
+                onClick={() => handleArticleClick(article.id)}
+                style={{ cursor: 'pointer' }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleArticleClick(article.id);
+                  }
+                }}
+              >
                 {/* 上方图片区域 */}
                 <div className="secondary-article-image" style={{ background: article.gradient }}>
                   <div className="secondary-article-visual-content">
