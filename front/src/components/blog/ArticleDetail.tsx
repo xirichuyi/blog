@@ -17,6 +17,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [headings, setHeadings] = useState<Array<{id: string, text: string, level: number}>>([]);
   const [activeHeading, setActiveHeading] = useState<string>('');
+  const [scrollProgress, setScrollProgress] = useState(0);
   const navigate = useNavigate();
 
   // Mock articles data for immediate testing
@@ -172,9 +173,23 @@ npm install @material/material-color-utilities</code></pre>
     }
   }, [article]);
 
-  // Scroll spy for active heading
+  // Scroll spy for active heading and progress calculation
   useEffect(() => {
     const handleScroll = () => {
+      // Calculate scroll progress based on entire page
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const windowHeight = window.innerHeight;
+
+      // Calculate the maximum scrollable distance (total height - window height)
+      const maxScroll = documentHeight - windowHeight;
+
+      // Calculate progress percentage
+      const progress = maxScroll > 0 ? (scrollTop / maxScroll) * 100 : 0;
+
+      setScrollProgress(Math.min(100, Math.max(0, progress)));
+
+      // Handle active heading
       const headingElements = document.querySelectorAll('.article-body h2, .article-body h3');
       let activeId = '';
       let closestDistance = Infinity;
@@ -272,14 +287,45 @@ npm install @material/material-color-utilities</code></pre>
   }
 
   return (
-    <article className="article-detail">
-      <Helmet>
-        <title>{article.title} - Cyrus Blog</title>
-        <meta name="description" content={article.excerpt} />
-        <meta property="og:title" content={article.title} />
-        <meta property="og:description" content={article.excerpt} />
-        {article.imageUrl && <meta property="og:image" content={article.imageUrl} />}
-      </Helmet>
+    <>
+      {/* Android 13 Style Wavy Progress Bar */}
+      <div
+        className={`wave-progress-container ${scrollProgress > 5 ? 'visible' : ''}`}
+        style={{ width: `${scrollProgress}%` }}
+      >
+        <svg className="wave-progress" viewBox="0 0 160 10" preserveAspectRatio="none">
+          {/* Background wavy track */}
+          <path
+            className="wave-background"
+            d="M0,5 q2.5,3,5,0 t5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0"
+            fill="none"
+            stroke="rgba(255,255,255,0.15)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+          {/* Progress wavy indicator */}
+          <path
+            className="wave-path"
+            d="M0,5 q2.5,3,5,0 t5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0 5,0"
+            fill="none"
+            stroke="var(--md-sys-color-primary)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            style={{
+              filter: 'drop-shadow(0 0 6px rgba(var(--md-sys-color-primary-rgb), 0.5))'
+            }}
+          />
+        </svg>
+      </div>
+
+      <article className="article-detail">
+        <Helmet>
+          <title>{article.title} - Cyrus Blog</title>
+          <meta name="description" content={article.excerpt} />
+          <meta property="og:title" content={article.title} />
+          <meta property="og:description" content={article.excerpt} />
+          {article.imageUrl && <meta property="og:image" content={article.imageUrl} />}
+        </Helmet>
 
       {/* Main Content */}
       <div className="article-main">
@@ -408,6 +454,7 @@ npm install @material/material-color-utilities</code></pre>
         </div>
       </aside>
     </article>
+    </>
   );
 };
 

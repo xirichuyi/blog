@@ -28,6 +28,31 @@ body {
   /* place-items: center; */
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Hide scrollbars globally */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+html::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
+body::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
+/* Hide scrollbars for all elements */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* WebKit */
 }
 
 h1 {
