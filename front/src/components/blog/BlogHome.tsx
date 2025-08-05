@@ -145,6 +145,11 @@ const BlogHome: React.FC = () => {
 
       {/* Right Sidebar */}
       <aside className="blog-sidebar">
+        {/* Music Player Section - Fixed at top */}
+        <div className="sidebar-section music-player-section">
+          <ClassicalMusicPlayer />
+        </div>
+
         <div className="sidebar-section">
           <h3 className="sidebar-title">On this page</h3>
           <div className="sidebar-content">
@@ -162,11 +167,6 @@ const BlogHome: React.FC = () => {
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Music Player Section */}
-        <div className="sidebar-section">
-          <ClassicalMusicPlayer />
         </div>
       </aside>
     </div>

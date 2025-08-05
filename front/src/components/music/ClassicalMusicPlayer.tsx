@@ -107,6 +107,12 @@ const ClassicalMusicPlayer: React.FC = () => {
               <div className="audio-bar"></div>
               <div className="audio-bar"></div>
               <div className="audio-bar"></div>
+              <div className="audio-bar"></div>
+              <div className="audio-bar"></div>
+              <div className="audio-bar"></div>
+              <div className="audio-bar"></div>
+              <div className="audio-bar"></div>
+              <div className="audio-bar"></div>
             </div>
           </div>
         </div>
