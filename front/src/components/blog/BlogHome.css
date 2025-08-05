@@ -14,7 +14,7 @@
 .blog-main-content {
   flex: 1;
   max-width: calc(100% - 280px);
-  padding: 0 18px 0 48px;
+  padding: 48px 18px 0 48px;
 }
 
 .blog-sidebar {

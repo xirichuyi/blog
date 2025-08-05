@@ -66,7 +66,7 @@ const BlogHome: React.FC = () => {
   const featuredArticles = [allPosts[0]]; // 第1个帖子
   const secondaryArticles = allPosts.slice(1, 7); // 第2-7个帖子都使用secondary样式
 
-  const years = ['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018'];
+
 
   return (
     <div className="blog-home">
@@ -148,25 +148,6 @@ const BlogHome: React.FC = () => {
         {/* Music Player Section - Fixed at top */}
         <div className="sidebar-section music-player-section">
           <ClassicalMusicPlayer />
-        </div>
-
-        <div className="sidebar-section">
-          <h3 className="sidebar-title">On this page</h3>
-          <div className="sidebar-content">
-            <p className="sidebar-page-title">Material Design Blog</p>
-            <div className="sidebar-tag">Featured</div>
-          </div>
-        </div>
-
-        <div className="sidebar-section">
-          <h3 className="sidebar-title">Latest releases</h3>
-          <div className="sidebar-years">
-            {years.map((year) => (
-              <button key={year} className="sidebar-year-button">
-                {year}
-              </button>
-            ))}
-          </div>
         </div>
       </aside>
     </div>
