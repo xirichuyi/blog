@@ -1,5 +1,6 @@
 import React from 'react';
 import './BlogHome.css';
+import ClassicalMusicPlayer from '../music/ClassicalMusicPlayer';
 
 const BlogHome: React.FC = () => {
   // 所有帖子数据 - 首页显示前7个
@@ -107,9 +108,10 @@ const BlogHome: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
 
-            {/* Right side - Secondary Articles Grid */}
-            <div className="blog-secondary-grid">
+          {/* Right side - Secondary Articles Grid */}
+          <div className="blog-secondary-grid">
               {secondaryArticles.slice(0, 4).map((article) => (
               <div key={article.id} className="secondary-article-card">
                 {/* 上方图片区域 */}
@@ -160,6 +162,11 @@ const BlogHome: React.FC = () => {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Music Player Section */}
+        <div className="sidebar-section">
+          <ClassicalMusicPlayer />
         </div>
       </aside>
     </div>
