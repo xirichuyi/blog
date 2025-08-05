@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './BlogHome.css';
 import ClassicalMusicPlayer from '../music/ClassicalMusicPlayer';
 import { CustomButton } from '../ui/CustomButton';
+import { CustomSearchBox } from '../ui/CustomSearchBox';
 
 const BlogHome: React.FC = () => {
   const navigate = useNavigate();
+
+  // 搜索状态
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 所有帖子数据 - 首页显示前7个
   const allPosts = [
@@ -82,8 +86,19 @@ const BlogHome: React.FC = () => {
   return (
     <div className="blog-home">
       <div className="blog-main-content">
-        {/* Featured Section Title */}
-        <h2 className="section-title">Featured</h2>
+        {/* Featured Section Header with Search */}
+        <div className="section-header">
+          <h2 className="section-title">Featured</h2>
+          <CustomSearchBox
+            placeholder="Search articles..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onSearch={(query) => {
+              console.log('Searching for:', query);
+              // 这里可以添加实际的搜索逻辑
+            }}
+          />
+        </div>
 
         {/* Main Content Grid */}
         <section className="blog-featured-section">

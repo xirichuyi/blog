@@ -17,13 +17,28 @@
   padding: 48px 18px 0 48px;
 }
 
-/* Section Title */
+/* Section Header with Title and Search */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  gap: 24px;
+}
+
 .section-title {
   font-size: 3.5rem;
   font-weight: 400;
   color: #e8eaed;
-  margin: 0 0 32px 0;
+  margin: 0;
   letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+/* Custom Search Box Integration */
+.section-header .custom-search-box {
+  min-width: 170px;
+  max-width: 280px;
 }
 
 .blog-sidebar {
@@ -374,6 +389,22 @@
   .image-collage-grid {
     height: 120px;
     max-width: 240px;
+  }
+
+  /* Section Header Responsive */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .section-title {
+    font-size: 2.5rem;
+  }
+
+  .section-header .custom-search-box {
+    min-width: 100%;
+    max-width: 100%;
   }
 }
 
