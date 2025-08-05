@@ -10,6 +10,7 @@ const BlogHome: React.FC = () => {
       title: "Start building with Material 3 Expressive",
       description: "Material's latest evolution helps you make products even more engaging and easier to use.",
       date: "Jan 20, 2025",
+      tag: "Design System",
       gradient: "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)",
       imageCollage: [
         { type: 'app-ui', color: '#6750A4' },
@@ -23,6 +24,7 @@ const BlogHome: React.FC = () => {
       title: "Adding Motion Physics with Jetpack Compose",
       description: "Supercharge your Android transitions and animations with the new M3 Expressive motion theming system.",
       date: "Jan 15, 2025",
+      tag: "Development",
       gradient: "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)"
     },
     {
@@ -30,6 +32,7 @@ const BlogHome: React.FC = () => {
       title: "Material Design for XR (Developer Preview)",
       description: "Building UI that adapts for XR with familiar frameworks and tools",
       date: "Jan 10, 2025",
+      tag: "XR/VR",
       gradient: "linear-gradient(135deg, #B8C5D1 0%, #D6E3F0 100%)"
     },
     {
@@ -37,6 +40,7 @@ const BlogHome: React.FC = () => {
       title: "Material Design Components 1.12.0",
       description: "New components and improvements for better accessibility and developer experience",
       date: "Jan 5, 2025",
+      tag: "Components",
       gradient: "linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%)"
     },
     {
@@ -44,6 +48,7 @@ const BlogHome: React.FC = () => {
       title: "Material Theme Builder Update",
       description: "Enhanced color palette generation and export options for design systems",
       date: "Dec 28, 2024",
+      tag: "Tools",
       gradient: "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)"
     },
     {
@@ -51,6 +56,7 @@ const BlogHome: React.FC = () => {
       title: "Accessibility in Material Design",
       description: "Best practices for creating inclusive user interfaces with Material Design",
       date: "Dec 20, 2024",
+      tag: "Accessibility",
       gradient: "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)"
     },
     {
@@ -58,6 +64,7 @@ const BlogHome: React.FC = () => {
       title: "Design Tokens for Cross-Platform Consistency",
       description: "How to use design tokens to maintain consistency across web, mobile, and desktop",
       date: "Dec 15, 2024",
+      tag: "Design System",
       gradient: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)"
     }
   ];
@@ -71,6 +78,9 @@ const BlogHome: React.FC = () => {
   return (
     <div className="blog-home">
       <div className="blog-main-content">
+        {/* Featured Section Title */}
+        <h2 className="section-title">Featured</h2>
+
         {/* Main Content Grid */}
         <section className="blog-featured-section">
           <div className="blog-featured-grid">
@@ -130,6 +140,7 @@ const BlogHome: React.FC = () => {
                 {/* 下方内容区域 */}
                 <div className="secondary-article-content">
                   <div className="secondary-article-meta">
+                    <span className="secondary-article-tag">{article.tag}</span>
                     <span className="secondary-article-date">{article.date}</span>
                   </div>
                   <h3 className="secondary-article-title">{article.title}</h3>
