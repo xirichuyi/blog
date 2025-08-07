@@ -1,0 +1,34 @@
+/* Page Placeholder Styles */
+.page-placeholder {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--md-sys-spacing-8);
+  min-height: 200vh; /* Make pages tall enough to test scroll progress */
+}
+
+.page-placeholder h1 {
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: var(--md-sys-spacing-6);
+  text-align: center;
+}
+
+.page-placeholder p {
+  color: var(--md-sys-color-on-surface-variant);
+  text-align: center;
+  margin-bottom: var(--md-sys-spacing-8);
+}
+
+/* Add some demo content to test scrolling */
+.page-placeholder::after {
+  content: "";
+  display: block;
+  height: 100vh;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(var(--md-sys-color-primary-rgb), 0.05) 50%,
+    transparent 100%
+  );
+  margin-top: var(--md-sys-spacing-8);
+  border-radius: var(--md-sys-shape-corner-large);
+}

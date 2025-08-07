@@ -1,6 +1,7 @@
 import React from 'react';
 import SideNavigation from './SideNavigation';
 import Footer from './Footer';
+import ScrollProgressBar from '../ui/ScrollProgressBar';
 import './Layout.css';
 
 interface LayoutProps {
@@ -16,6 +17,9 @@ const Layout: React.FC<LayoutProps> = ({
 }) => {
   return (
     <div className={`layout ${className}`}>
+      {/* Global Scroll Progress Bar */}
+      <ScrollProgressBar />
+
       <SideNavigation />
 
       <main className="layout-main">

@@ -4,6 +4,7 @@ import Layout from '../components/layout/Layout';
 import BlogHome from '../components/blog/BlogHome';
 import ArticleDetail from '../components/blog/ArticleDetail';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
+import '../styles/page-placeholder.css';
 
 // Placeholder components for other routes
 const ArticlesPage: React.FC = () => (
