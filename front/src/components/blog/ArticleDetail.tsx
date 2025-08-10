@@ -155,72 +155,97 @@ npm install @material/material-color-utilities</code></pre>
     }
   }, [articleId, mockArticles]);
 
-  // Extract headings from article content
+
+
+  // Scroll spy for active heading with debounce and improved logic
   useEffect(() => {
-    if (article?.content) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(article.content, 'text/html');
-      const headingElements = doc.querySelectorAll('h2, h3');
+    let timeoutId: number;
 
-      const extractedHeadings = Array.from(headingElements).map((heading, index) => {
-        const text = heading.textContent || '';
-        const level = parseInt(heading.tagName.charAt(1));
-        const id = `heading-${index}`;
-        return { id, text, level };
-      });
-
-      setHeadings(extractedHeadings);
-    }
-  }, [article]);
-
-  // Scroll spy for active heading
-  useEffect(() => {
     const handleScroll = () => {
-      // Handle active heading
-      const headingElements = document.querySelectorAll('.article-body h2, .article-body h3');
-      let activeId = '';
-      let closestDistance = Infinity;
+      // Clear previous timeout to debounce
+      clearTimeout(timeoutId);
 
-      headingElements.forEach((element, index) => {
-        const rect = element.getBoundingClientRect();
-        const distance = Math.abs(rect.top - 100); // Distance from the top offset
+      timeoutId = setTimeout(() => {
+        const headingElements = document.querySelectorAll('.article-body h2, .article-body h3');
+        if (headingElements.length === 0) return;
 
-        // Find the heading closest to the top offset (100px from top)
-        if (rect.top <= 150 && distance < closestDistance) {
-          closestDistance = distance;
-          activeId = `heading-${index}`;
-        }
-      });
+        const OFFSET_TOP = 120; // Fixed offset from top
+        const VIEWPORT_HEIGHT = window.innerHeight;
+        let activeId = '';
+        let bestCandidate = null;
+        let bestScore = -1;
 
-      // If no heading is close to the top, find the first visible heading
-      if (!activeId) {
         headingElements.forEach((element, index) => {
           const rect = element.getBoundingClientRect();
-          if (rect.top >= 0 && rect.top <= window.innerHeight) {
-            activeId = `heading-${index}`;
+          const elementTop = rect.top;
+          const elementBottom = rect.bottom;
+
+          // Skip elements that are completely out of view
+          if (elementBottom < 0 || elementTop > VIEWPORT_HEIGHT) {
             return;
           }
-        });
-      }
 
-      setActiveHeading(activeId);
+          // Calculate a score based on position relative to the offset
+          let score = 0;
+
+          if (elementTop <= OFFSET_TOP) {
+            // Element is above or at the offset line
+            // Prefer elements closer to the offset (higher score for closer elements)
+            score = 1000 - Math.abs(elementTop - OFFSET_TOP);
+          } else {
+            // Element is below the offset line
+            // Give lower score, but still consider it if it's the first visible element
+            score = 500 - elementTop;
+          }
+
+          // Prefer elements that are more visible (not cut off at top)
+          if (elementTop >= 0) {
+            score += 100;
+          }
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestCandidate = index;
+          }
+        });
+
+        if (bestCandidate !== null) {
+          activeId = `heading-${bestCandidate}`;
+        }
+
+        setActiveHeading(activeId);
+      }, 10); // 10ms debounce
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll(); // Initial call
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(timeoutId);
+    };
   }, [article]);
 
-  // Add IDs to headings in the content
+  // Add IDs to headings and extract heading information
   useEffect(() => {
     if (article?.content) {
       const articleBody = document.querySelector('.article-body');
       if (articleBody) {
         const headingElements = articleBody.querySelectorAll('h2, h3');
+        const extractedHeadings: Array<{id: string, text: string, level: number}> = [];
+
         headingElements.forEach((heading, index) => {
-          heading.id = `heading-${index}`;
+          const id = `heading-${index}`;
+          heading.id = id;
+
+          extractedHeadings.push({
+            id,
+            text: heading.textContent || '',
+            level: parseInt(heading.tagName.charAt(1))
+          });
         });
+
+        setHeadings(extractedHeadings);
       }
     }
   }, [article]);
@@ -391,10 +416,15 @@ npm install @material/material-color-utilities</code></pre>
                     }`}
                     onClick={(e) => {
                       e.preventDefault();
-                      document.getElementById(heading.id)?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                      });
+                      const element = document.getElementById(heading.id);
+                      if (element) {
+                        const elementTop = element.getBoundingClientRect().top + window.pageYOffset;
+                        const offsetTop = 120; // Same as OFFSET_TOP in scroll detection
+                        window.scrollTo({
+                          top: elementTop - offsetTop,
+                          behavior: 'smooth'
+                        });
+                      }
                     }}
                   >
                     {heading.text}

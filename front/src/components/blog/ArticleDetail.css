@@ -12,7 +12,7 @@
 
 .article-main {
   min-width: 0; /* Prevent grid overflow */
-  margin-left: 30px; /* Move article content to the right */
+  margin-left: 136px; /* Move article content to the right */
 }
 
 .article-sidebar {
@@ -272,8 +272,6 @@
   text-align: center;
   margin: var(--md-sys-spacing-12) 0;
   padding: var(--md-sys-spacing-8);
-  background-color: var(--md-sys-color-surface-container-low);
-  border-radius: var(--md-sys-shape-corner-large);
 }
 
 .see-more-title {

@@ -31,12 +31,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ className = '' }) => {
       icon: 'article',
       path: '/articles'
     },
-    {
-      id: 'categories',
-      label: 'Categories',
-      icon: 'category',
-      path: '/categories'
-    },
+    
     {
       id: 'tags',
       label: 'Tags',
