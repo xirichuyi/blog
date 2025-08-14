@@ -1,9 +1,11 @@
-pub mod blog_service;
-pub mod auth_service;
-pub mod chat_service;
-pub mod ai_service;
+pub mod post_service;
+pub mod music_service;
+pub mod download_service;
+pub mod category_service;
+pub mod tag_service;
 
-pub use blog_service::BlogService;
-pub use auth_service::AuthService;
-pub use chat_service::ChatService;
-pub use ai_service::AiService;
+pub use post_service::PostService;
+pub use music_service::MusicService;
+pub use download_service::DownloadService;
+pub use category_service::CategoryService;
+pub use tag_service::TagService;

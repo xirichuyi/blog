@@ -1,53 +1,34 @@
+use crate::routes::AppState;
+use crate::utils::error::{AppError, Result};
 use axum::{
     extract::{Request, State},
-    http::StatusCode,
+    http::HeaderMap,
     middleware::Next,
     response::Response,
 };
 
-use crate::config::Settings;
-use crate::database::Database;
-use crate::services::AuthService;
-
-pub async fn auth_middleware(
-    State(database): State<Database>,
+pub async fn admin_middleware(
+    State(app_state): State<AppState>,
+    headers: HeaderMap,
     request: Request,
     next: Next,
-) -> Result<Response, StatusCode> {
-    // Skip auth for public routes
-    let path = request.uri().path();
-    if is_public_route(path) {
-        return Ok(next.run(request).await);
-    }
-
-    // Check for admin token
-    let headers = request.headers();
+) -> Result<Response> {
     let auth_header = headers
-        .get("authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "));
+        .get("Authorization")
+        .and_then(|header| header.to_str().ok())
+        .ok_or_else(|| AppError::Unauthorized("Missing Authorization header".to_string()))?;
 
-    if let Some(token) = auth_header {
-        let settings = Settings::new().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        let auth_service = AuthService::new(database, settings);
-
-        if auth_service.verify_admin_token(token) {
-            Ok(next.run(request).await)
-        } else {
-            Err(StatusCode::UNAUTHORIZED)
-        }
-    } else {
-        Err(StatusCode::UNAUTHORIZED)
+    if !auth_header.starts_with("Bearer ") {
+        return Err(AppError::Unauthorized(
+            "Invalid Authorization header format".to_string(),
+        ));
     }
-}
 
-fn is_public_route(path: &str) -> bool {
-    let public_routes = ["/api/posts", "/api/categories", "/api/chat"];
+    let token = &auth_header[7..]; // Remove "Bearer " prefix
 
-    // Check exact matches and path prefixes
-    public_routes
-        .iter()
-        .any(|&route| path == route || path.starts_with(&format!("{}/", route)))
-        || path.starts_with("/api/posts/")
-        || path.starts_with("/api/categories/")
+    if token != app_state.config.jwt.admin_token {
+        return Err(AppError::Unauthorized("Invalid admin token".to_string()));
+    }
+
+    Ok(next.run(request).await)
 }

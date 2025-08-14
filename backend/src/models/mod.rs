@@ -1,7 +1,13 @@
-pub mod blog_post;
-pub mod chat;
-pub mod user;
+pub mod post;
+pub mod music;
+pub mod download;
+pub mod category;
+pub mod tag;
+pub mod response;
 
-pub use blog_post::*;
-pub use chat::*;
-pub use user::*;
+pub use post::*;
+pub use music::*;
+pub use download::*;
+pub use category::*;
+pub use tag::*;
+pub use response::*;

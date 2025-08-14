@@ -1,20 +1,20 @@
-use axum::http::{HeaderName, Method};
 use tower_http::cors::{Any, CorsLayer};
+use crate::config::Config;
 
-pub fn cors_layer() -> CorsLayer {
-    CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::PUT,
-            Method::DELETE,
-            Method::OPTIONS,
-        ])
-        .allow_headers([
-            HeaderName::from_static("content-type"),
-            HeaderName::from_static("authorization"),
-            HeaderName::from_static("x-requested-with"),
-        ])
-        .allow_credentials(false)
+pub fn create_cors_layer(config: &Config) -> CorsLayer {
+    if config.cors.origins.is_empty() || config.cors.origins.contains(&"*".to_string()) {
+        CorsLayer::permissive()
+    } else {
+        CorsLayer::new()
+            .allow_origin(
+                config
+                    .cors
+                    .origins
+                    .iter()
+                    .map(|origin| origin.parse().unwrap())
+                    .collect::<Vec<_>>(),
+            )
+            .allow_methods(Any)
+            .allow_headers(Any)
+    }
 }

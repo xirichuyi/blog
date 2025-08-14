@@ -1,70 +1,72 @@
--- Create blog_posts table
-CREATE TABLE IF NOT EXISTS blog_posts (
+-- Create posts table according to DevDoc.md specification
+CREATE TABLE IF NOT EXISTS posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
-    excerpt TEXT NOT NULL,
+    cover_url TEXT,
     content TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    date TEXT NOT NULL, -- ISO 8601 format
-    categories TEXT NOT NULL, -- JSON array as string
+    category_id INTEGER,
+    status INTEGER NOT NULL DEFAULT 0, -- 0: draft, 1: published, 2: deleted, 3: private
+    post_images TEXT, -- JSON array of image URLs
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
--- Create index on slug for fast lookups
-CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug);
-
--- Create index on date for sorting
-CREATE INDEX IF NOT EXISTS idx_blog_posts_date ON blog_posts(date DESC);
-
--- Create categories table for better normalization (optional, for future use)
+-- Create categories table
 CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create post_categories junction table (optional, for future use)
-CREATE TABLE IF NOT EXISTS post_categories (
-    post_id INTEGER NOT NULL,
-    category_id INTEGER NOT NULL,
-    PRIMARY KEY (post_id, category_id),
-    FOREIGN KEY (post_id) REFERENCES blog_posts(id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-);
-
--- Create users table for future authentication expansion
-CREATE TABLE IF NOT EXISTS users (
+-- Create tags table
+CREATE TABLE IF NOT EXISTS tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    is_admin BOOLEAN DEFAULT FALSE,
+    name TEXT UNIQUE NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create chat_sessions table for AI chat history (optional)
-CREATE TABLE IF NOT EXISTS chat_sessions (
-    id TEXT PRIMARY KEY, -- UUID
+-- Create post_tags junction table for many-to-many relationship
+CREATE TABLE IF NOT EXISTS post_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, tag_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+-- Create music table according to DevDoc.md specification
+CREATE TABLE IF NOT EXISTS music (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    music_name TEXT NOT NULL,
+    music_author TEXT NOT NULL,
+    music_url TEXT NOT NULL,
+    music_cover_url TEXT,
+    status INTEGER NOT NULL DEFAULT 1, -- 1: published, 2: deleted
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create chat_messages table for AI chat history (optional)
-CREATE TABLE IF NOT EXISTS chat_messages (
-    id TEXT PRIMARY KEY, -- UUID
-    session_id TEXT NOT NULL,
-    content TEXT NOT NULL,
-    is_user BOOLEAN NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+-- Create downloads table according to DevDoc.md specification
+CREATE TABLE IF NOT EXISTS downloads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_name TEXT NOT NULL,
+    file_url TEXT NOT NULL,
+    file_type TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create index on chat messages for session lookup
-CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id, timestamp);
-
--- Insert default admin user (password: admin123)
--- Note: In production, this should be done through a proper setup process
-INSERT OR IGNORE INTO users (username, email, password_hash, is_admin) 
-VALUES ('admin', 'admin@cyrusblog.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.s5uO.6', TRUE);
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_posts_category_id ON posts(category_id);
+CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
+CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_post_tags_post_id ON post_tags(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_tags_tag_id ON post_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_music_status ON music(status);
+CREATE INDEX IF NOT EXISTS idx_music_created_at ON music(created_at DESC);
