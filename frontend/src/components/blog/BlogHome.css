@@ -46,7 +46,7 @@
   flex-shrink: 0;
   position: fixed;
   top: 0;
-  right: 0;
+  right: 24px; /* 添加右边距 */
   height: 100vh;
   overflow-y: auto;
   /* padding: 24px; */
@@ -58,6 +58,20 @@
 
 .blog-sidebar::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
+}
+
+/* Sidebar Sections */
+.sidebar-section {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.sidebar-section:first-child {
+  padding-top: 48px;
+}
+
+.sidebar-section:last-child {
+  margin-bottom: 0;
 }
 
 /* See More Section */

@@ -27,7 +27,7 @@
   color: var(--md-sys-color-on-primary);
   padding: 8px;
   text-decoration: none;
-  border-radius: var(--md-sys-shape-corner-small);
+  /* border-radius: var(--md-sys-shape-corner-small); */
   z-index: 1000;
   transition: top var(--md-sys-motion-duration-short4)
     var(--md-sys-motion-easing-standard);

@@ -90,6 +90,7 @@ const BlogHome: React.FC = () => {
 
   return (
     <div className="blog-home">
+      
       <div className="blog-main-content">
         {/* Featured Section Header with Search */}
         <div className="section-header">

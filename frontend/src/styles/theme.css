@@ -172,13 +172,13 @@
     0px 8px 12px 6px rgba(0, 0, 0, 0.15);
 
   /* Shape Tokens */
-  --md-sys-shape-corner-none: 0px;
+  /* --md-sys-shape-corner-none: 0px;
   --md-sys-shape-corner-extra-small: 4px;
   --md-sys-shape-corner-small: 8px;
   --md-sys-shape-corner-medium: 12px;
   --md-sys-shape-corner-large: 16px;
   --md-sys-shape-corner-extra-large: 28px;
-  --md-sys-shape-corner-full: 50%;
+  --md-sys-shape-corner-full: 50%; */
 
   /* Motion Tokens */
   --md-sys-motion-duration-short1: 50ms;

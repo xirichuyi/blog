@@ -289,7 +289,7 @@ body {
 }
 
 /* Shape Utilities */
-.shape-none {
+/* .shape-none {
   border-radius: var(--md-sys-shape-corner-none);
 }
 
@@ -315,7 +315,7 @@ body {
 
 .shape-full {
   border-radius: var(--md-sys-shape-corner-full);
-}
+} */
 
 /* Spacing Utilities */
 .p-0 {
