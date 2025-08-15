@@ -1,0 +1,161 @@
+/* Radio Card Styles - Simple and Clean */
+
+.radio-card {
+  width: 100%;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--md-sys-motion-duration-short2)
+    var(--md-sys-motion-easing-standard);
+  cursor: pointer;
+}
+
+.radio-card:hover {
+  /* transform: translateY(-2px); */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.radio-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+/* 左侧文本内容 */
+.radio-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.radio-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #2d2d2d;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.radio-subtitle {
+  font-size: 0.875rem;
+  color: #5d5d5d;
+  margin: 0;
+  line-height: 1.3;
+  opacity: 0.8;
+}
+
+/* 播放按钮 */
+.radio-play-button {
+  --md-fab-container-color: #6750a4;
+  --md-fab-icon-color: white;
+  --md-fab-icon-size: 18px;
+  /* --md-fab-container-shape: 50%;
+   */
+  border-radius: 50%;
+  margin-top: 12px;
+  align-self: flex-start;
+  transition: all var(--md-sys-motion-duration-short2)
+    var(--md-sys-motion-easing-standard);
+}
+
+.radio-play-button:hover {
+  transform: scale(1.05);
+}
+
+.radio-play-button:active {
+  transform: scale(0.95);
+}
+
+/* 右侧音乐图标 */
+.radio-music-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+}
+
+.music-note-icon {
+  font-size: 48px;
+  color: rgba(45, 45, 45, 0.4);
+  opacity: 0.7;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .radio-card {
+    padding: 16px;
+  }
+
+  .radio-content {
+    gap: 12px;
+  }
+
+  .radio-title {
+    font-size: 1.25rem;
+  }
+
+  .radio-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .radio-music-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .music-note-icon {
+    font-size: 40px;
+  }
+}
+
+/* 播放状态动画 */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.radio-card.playing .radio-play-button {
+  animation: pulse 2s infinite;
+}
+
+/* 无障碍支持 */
+.radio-card:focus-within {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.radio-play-button:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+/* 深色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .radio-title {
+    color: #2d2d2d;
+  }
+
+  .radio-subtitle {
+    color: #5d5d5d;
+  }
+
+  .default-cover-icon {
+    color: rgba(45, 45, 45, 0.6);
+  }
+}

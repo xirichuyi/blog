@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './BlogHome.css';
+import RadioCard from '../music/RadioCard';
 import AuthorCard from './AuthorCard';
 import { CustomButton } from '../ui/CustomButton';
 import { CustomSearchBox } from '../ui/CustomSearchBox';
@@ -218,6 +219,11 @@ const BlogHome: React.FC = () => {
 
       {/* Right Sidebar */}
       <aside className="blog-sidebar">
+        {/* Radio Card Section */}
+        <div className="sidebar-section">
+          <RadioCard />
+        </div>
+
         {/* Author Card Section */}
         <div className="sidebar-section">
           <AuthorCard />
