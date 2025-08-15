@@ -1,0 +1,278 @@
+/* Page State Styles */
+.page-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 300px;
+  padding: 2rem;
+}
+
+.page-state__content {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+/* Size Variants */
+.page-state--small {
+  min-height: 200px;
+  padding: 1rem;
+}
+
+.page-state--small .page-state__content {
+  max-width: 300px;
+}
+
+.page-state--medium {
+  min-height: 300px;
+  padding: 2rem;
+}
+
+.page-state--medium .page-state__content {
+  max-width: 500px;
+}
+
+.page-state--large {
+  min-height: 400px;
+  padding: 3rem;
+}
+
+.page-state--large .page-state__content {
+  max-width: 600px;
+}
+
+/* Icons */
+.page-state__icon {
+  margin-bottom: 1.5rem;
+  opacity: 0.8;
+}
+
+.page-state__icon--error {
+  color: var(--md-sys-color-error);
+}
+
+.page-state__icon--empty {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.page-state__icon--offline {
+  color: var(--md-sys-color-outline);
+}
+
+/* Typography */
+.page-state__title {
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.page-state__message {
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+/* Actions */
+.page-state__actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Loading State */
+.page-state--loading .page-state__loading {
+  margin: 0 auto;
+}
+
+/* Error State */
+.page-state--error .page-state__title {
+  color: var(--md-sys-color-error);
+}
+
+.page-state--error .page-state__icon {
+  animation: errorPulse 2s ease-in-out infinite;
+}
+
+@keyframes errorPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+/* Empty State */
+.page-state--empty .page-state__icon {
+  opacity: 0.6;
+}
+
+/* Offline State */
+.page-state--offline .page-state__icon {
+  animation: offlineBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes offlineBlink {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .page-state {
+    padding: 1.5rem 1rem;
+    min-height: 250px;
+  }
+
+  .page-state--small {
+    padding: 1rem 0.5rem;
+    min-height: 150px;
+  }
+
+  .page-state--large {
+    padding: 2rem 1rem;
+    min-height: 300px;
+  }
+
+  .page-state__content {
+    max-width: 100%;
+  }
+
+  .page-state__icon {
+    margin-bottom: 1rem;
+  }
+
+  .page-state__message {
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-state {
+    padding: 1rem 0.5rem;
+    min-height: 200px;
+  }
+
+  .page-state--small {
+    padding: 0.5rem;
+    min-height: 120px;
+  }
+
+  .page-state--large {
+    padding: 1.5rem 0.5rem;
+    min-height: 250px;
+  }
+
+  .page-state__actions {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .page-state__icon--error {
+    color: #ff0000;
+  }
+  
+  .page-state__icon--empty,
+  .page-state__icon--offline {
+    color: #666666;
+  }
+  
+  .page-state__title,
+  .page-state__message {
+    color: inherit;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .page-state__icon {
+    animation: none !important;
+  }
+}
+
+/* Dark Theme Adjustments */
+@media (prefers-color-scheme: dark) {
+  .page-state__icon--empty,
+  .page-state__icon--offline {
+    opacity: 0.7;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .page-state {
+    min-height: auto;
+    padding: 1rem;
+  }
+  
+  .page-state__icon {
+    display: none;
+  }
+  
+  .page-state__actions {
+    display: none;
+  }
+  
+  .page-state__title,
+  .page-state__message {
+    color: black;
+  }
+}
+
+/* Focus States for Accessibility */
+.page-state__actions md-filled-button:focus {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* Animation for state transitions */
+.page-state {
+  animation: pageStateSlideIn 0.3s ease-out;
+}
+
+@keyframes pageStateSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar for long messages */
+.page-state__message {
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline) transparent;
+}
+
+.page-state__message::-webkit-scrollbar {
+  width: 6px;
+}
+
+.page-state__message::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.page-state__message::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline);
+  border-radius: 3px;
+}
+
+.page-state__message::-webkit-scrollbar-thumb:hover {
+  background: var(--md-sys-color-on-surface-variant);
+}

@@ -111,8 +111,6 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ className = '' }) => {
       icon: 'category',
       path: '/categories'
     },
-    
-    
     {
       id: 'about',
       label: 'About',

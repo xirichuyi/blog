@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../ui/ThemeToggle';
 import EnhancedSearch from '../ui/EnhancedSearch';
 import useResponsive from '../../hooks/useResponsive';
@@ -20,6 +21,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   onSearchClick,
   className = ""
 }) => {
+  const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -35,8 +37,17 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      console.log('Search query:', searchQuery);
-      // TODO: Implement search functionality
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearchOpen(false);
+      setSearchQuery('');
+    }
+  };
+
+  const handleSearchFromEnhanced = (query: string) => {
+    if (query.trim()) {
+      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      setIsSearchOpen(false);
+      setSearchQuery('');
     }
   };
 
@@ -76,10 +87,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
                 {isSearchOpen ? (
                   <EnhancedSearch
                     placeholder="Search articles..."
-                    onSearch={(query) => {
-                      setSearchQuery(query);
-                      handleSearchSubmit(new Event('submit') as any);
-                    }}
+                    onSearch={handleSearchFromEnhanced}
                     className="top-app-bar-search"
                   />
                 ) : (

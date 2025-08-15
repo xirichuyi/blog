@@ -5,6 +5,10 @@ import BlogHome from '../components/blog/BlogHome';
 import ArticleDetail from '../components/blog/ArticleDetail';
 import CategoriesPage from '../components/blog/CategoriesPage';
 import TagsPage from '../components/blog/TagsPage';
+import ArticlesPage from '../components/blog/ArticlesPage';
+import SearchResultsPage from '../components/blog/SearchResultsPage';
+import AboutPage from '../components/pages/AboutPage';
+import ContactPage from '../components/pages/ContactPage';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 import LoginPage from '../components/admin/LoginPage';
 import ProtectedRoute from '../components/admin/ProtectedRoute';
@@ -18,31 +22,15 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import NotificationContainer from '../components/ui/NotificationContainer';
 import '../styles/page-placeholder.css';
 
-// Placeholder components for other routes
-const ArticlesPage: React.FC = () => (
-  <div className="page-placeholder">
-    <h1 className="md-typescale-display-small">All Articles</h1>
-    <p className="md-typescale-body-large">Browse all articles in the blog.</p>
-  </div>
-);
+// ArticlesPage is now imported from components
 
 // CategoriesPage is now imported from components
 
 // TagsPage is now imported from components
 
-const AboutPage: React.FC = () => (
-  <div className="page-placeholder">
-    <h1 className="md-typescale-display-small">About</h1>
-    <p className="md-typescale-body-large">Learn more about this blog and its author.</p>
-  </div>
-);
+// AboutPage is now imported from components
 
-const ContactPage: React.FC = () => (
-  <div className="page-placeholder">
-    <h1 className="md-typescale-display-small">Contact</h1>
-    <p className="md-typescale-body-large">Get in touch with us.</p>
-  </div>
-);
+// ContactPage is now imported from components
 
 const NotFoundPage: React.FC = () => (
   <div className="page-placeholder">
@@ -94,6 +82,12 @@ const AppRouter: React.FC = () => {
           <Route path="/articles" element={
             <Layout title="All Articles - Cyrus Blog">
               <ArticlesPage />
+            </Layout>
+          } />
+
+          <Route path="/search" element={
+            <Layout title="Search Results - Cyrus Blog">
+              <SearchResultsPage />
             </Layout>
           } />
           
