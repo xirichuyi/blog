@@ -11,8 +11,9 @@ export interface Article {
   category: string;
   tags: string[];
   imageUrl?: string;
+  coverImage?: string; // Add coverImage for compatibility
   featured?: boolean;
-  status?: 'draft' | 'published';
+  status?: 'draft' | 'published' | 'private';
 }
 
 export interface Category {

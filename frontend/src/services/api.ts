@@ -61,7 +61,7 @@ class ApiService {
       if (credentials.username === 'admin' && credentials.password === 'admin123456') {
         const response: LoginResponse = {
           success: true,
-          token: 'admin123456',
+          token: 'admin123456', // This matches the BLOG_ADMIN_TOKEN in backend
           user: {
             id: '1',
             username: 'admin',
@@ -95,32 +95,70 @@ class ApiService {
   }
 
   // Blog Management APIs
-  async getPosts(params?: { status?: string; search?: string; category?: string }): Promise<ApiResponse<Article[]>> {
+  async getPosts(params?: { status?: string; search?: string; category?: string; page?: number; page_size?: number }): Promise<ApiResponse<Article[]>> {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const queryParams = new URLSearchParams();
 
-      let posts = storageService.getPosts();
-
-      // Apply filters
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
       if (params?.status && params.status !== 'all') {
-        posts = posts.filter(post => post.status === params.status);
+        // Map frontend status to backend status
+        const statusMap: { [key: string]: string } = {
+          'published': '1',
+          'draft': '0',
+          'private': '3'
+        };
+        queryParams.append('status', statusMap[params.status] || '1');
       }
 
-      if (params?.search) {
-        const searchLower = params.search.toLowerCase();
-        posts = posts.filter(post =>
-          post.title.toLowerCase().includes(searchLower) ||
-          post.excerpt.toLowerCase().includes(searchLower) ||
-          post.tags.some(tag => tag.toLowerCase().includes(searchLower))
-        );
+      const url = `/post/list${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      const response = await this.request<any>(url);
+
+      if (response.success && response.data) {
+        // Get categories to map category_id to category name
+        const categoriesResponse = await this.getPublicCategories();
+        const categoryMap = new Map<string, string>();
+
+        if (categoriesResponse.success && categoriesResponse.data) {
+          categoriesResponse.data.forEach((cat: Category) => {
+            categoryMap.set(cat.id, cat.name);
+          });
+        }
+
+        // Transform backend response to frontend format
+        const backendData = response.data;
+        const articles: Article[] = await Promise.all((backendData.data || []).map(async (post: any) => {
+          // Get tags for this post
+          let tags: string[] = [];
+          try {
+            const tagsResponse = await this.request<any>(`/post/${post.id}/tags`);
+            if (tagsResponse.success && tagsResponse.data) {
+              tags = (tagsResponse.data.data || []).map((tag: any) => tag.name);
+            }
+          } catch (error) {
+            console.warn(`Failed to load tags for post ${post.id}:`, error);
+          }
+
+          return {
+            id: post.id.toString(),
+            title: post.title,
+            content: post.content,
+            excerpt: post.content.substring(0, 200) + '...',
+            author: 'Cyrus',
+            publishDate: post.created_at,
+            readTime: Math.ceil(post.content.length / 1000),
+            category: post.category_id ? (categoryMap.get(post.category_id.toString()) || 'Uncategorized') : 'Uncategorized',
+            tags: tags,
+            featured: false,
+            status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : 'private',
+            coverImage: post.cover_url
+          };
+        }));
+
+        return { success: true, data: articles };
       }
 
-      if (params?.category) {
-        posts = posts.filter(post => post.category === params.category);
-      }
-
-      return { success: true, data: posts };
+      return response;
     } catch (error) {
       return {
         success: false,
@@ -131,14 +169,51 @@ class ApiService {
 
   async getPost(id: string): Promise<ApiResponse<Article>> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await this.request<any>(`/post/get/${id}`);
 
-      const post = storageService.getPost(id);
-      if (post) {
-        return { success: true, data: post };
-      } else {
-        return { success: false, error: 'Post not found' };
+      if (response.success && response.data) {
+        const post = response.data.data;
+        if (post) {
+          // Get categories to map category_id to category name
+          const categoriesResponse = await this.getPublicCategories();
+          const categoryMap = new Map<string, string>();
+
+          if (categoriesResponse.success && categoriesResponse.data) {
+            categoriesResponse.data.forEach((cat: Category) => {
+              categoryMap.set(cat.id, cat.name);
+            });
+          }
+
+          // Get tags for this post
+          let tags: string[] = [];
+          try {
+            const tagsResponse = await this.request<any>(`/post/${post.id}/tags`);
+            if (tagsResponse.success && tagsResponse.data) {
+              tags = (tagsResponse.data.data || []).map((tag: any) => tag.name);
+            }
+          } catch (error) {
+            console.warn(`Failed to load tags for post ${post.id}:`, error);
+          }
+
+          const article: Article = {
+            id: post.id.toString(),
+            title: post.title,
+            content: post.content,
+            excerpt: post.content.substring(0, 200) + '...',
+            author: 'Cyrus',
+            publishDate: post.created_at,
+            readTime: Math.ceil(post.content.length / 1000),
+            category: post.category_id ? (categoryMap.get(post.category_id.toString()) || 'Uncategorized') : 'Uncategorized',
+            tags: tags,
+            featured: false,
+            status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : 'private',
+            coverImage: post.cover_url
+          };
+          return { success: true, data: article };
+        }
       }
+
+      return { success: false, error: 'Post not found' };
     } catch (error) {
       return {
         success: false,
@@ -149,24 +224,48 @@ class ApiService {
 
   async createPost(post: Partial<Article> & { status: 'draft' | 'published' }): Promise<ApiResponse<Article>> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const newPost: Article = {
-        id: storageService.generateId(),
-        title: post.title || '',
-        content: post.content || '',
-        excerpt: post.excerpt || '',
-        author: post.author || 'Admin',
-        publishDate: post.publishDate || new Date().toISOString(),
-        readTime: post.readTime || 1,
-        category: post.category || '',
-        tags: post.tags || [],
-        featured: post.featured || false,
-        status: post.status || 'draft',
+      // Map frontend status to backend status
+      const statusMap: { [key: string]: string } = {
+        'draft': 'Draft',
+        'published': 'Published',
+        'private': 'Private'
       };
 
-      const savedPost = storageService.savePost(newPost);
-      return { success: true, data: savedPost };
+      const requestData = {
+        title: post.title || '',
+        content: post.content || '',
+        cover_url: post.coverImage || post.imageUrl || '',
+        category_id: post.category ? parseInt(post.category) : null,
+        status: statusMap[post.status || 'draft'] || 'Draft',
+        post_images: [] // Will be handled separately if needed
+      };
+
+      const response = await this.request<any>('/post/create', {
+        method: 'POST',
+        body: JSON.stringify(requestData),
+      });
+
+      if (response.success && response.data) {
+        const backendPost = response.data.data;
+        const article: Article = {
+          id: backendPost.id.toString(),
+          title: backendPost.title,
+          content: backendPost.content,
+          excerpt: post.excerpt || backendPost.content.substring(0, 200) + '...',
+          author: 'Admin',
+          publishDate: backendPost.created_at,
+          readTime: Math.ceil(backendPost.content.length / 1000),
+          category: backendPost.category_id ? `Category ${backendPost.category_id}` : 'Uncategorized',
+          tags: post.tags || [],
+          featured: post.featured || false,
+          status: post.status || 'draft',
+          imageUrl: backendPost.cover_url,
+          coverImage: backendPost.cover_url
+        };
+        return { success: true, data: article };
+      }
+
+      return { success: false, error: response.error || 'Failed to create post' };
     } catch (error) {
       return {
         success: false,
@@ -175,23 +274,55 @@ class ApiService {
     }
   }
 
-  async updatePost(id: string, post: Partial<Article> & { status?: 'draft' | 'published' }): Promise<ApiResponse<Article>> {
+  async updatePost(id: string, post: Partial<Article> & { status?: 'draft' | 'published' | 'private' }): Promise<ApiResponse<Article>> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const existingPost = storageService.getPost(id);
-      if (!existingPost) {
-        return { success: false, error: 'Post not found' };
-      }
-
-      const updatedPost: Article = {
-        ...existingPost,
-        ...post,
-        id, // Ensure ID doesn't change
+      // Map frontend status to backend status
+      const statusMap: { [key: string]: string } = {
+        'draft': 'Draft',
+        'published': 'Published',
+        'private': 'Private'
       };
 
-      const savedPost = storageService.savePost(updatedPost);
-      return { success: true, data: savedPost };
+      const requestData: any = {};
+
+      if (post.title !== undefined) requestData.title = post.title;
+      if (post.content !== undefined) requestData.content = post.content;
+      if (post.coverImage !== undefined || post.imageUrl !== undefined) {
+        requestData.cover_url = post.coverImage || post.imageUrl || '';
+      }
+      if (post.category !== undefined) {
+        requestData.category_id = post.category ? parseInt(post.category) : null;
+      }
+      if (post.status !== undefined) {
+        requestData.status = statusMap[post.status] || 'Draft';
+      }
+
+      const response = await this.request<any>(`/post/update/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(requestData),
+      });
+
+      if (response.success && response.data) {
+        const backendPost = response.data.data;
+        const article: Article = {
+          id: backendPost.id.toString(),
+          title: backendPost.title,
+          content: backendPost.content,
+          excerpt: post.excerpt || backendPost.content.substring(0, 200) + '...',
+          author: 'Admin',
+          publishDate: backendPost.updated_at || backendPost.created_at,
+          readTime: Math.ceil(backendPost.content.length / 1000),
+          category: backendPost.category_id ? `Category ${backendPost.category_id}` : 'Uncategorized',
+          tags: post.tags || [],
+          featured: post.featured || false,
+          status: post.status || 'draft',
+          imageUrl: backendPost.cover_url,
+          coverImage: backendPost.cover_url
+        };
+        return { success: true, data: article };
+      }
+
+      return { success: false, error: response.error || 'Failed to update post' };
     } catch (error) {
       return {
         success: false,
@@ -202,13 +333,14 @@ class ApiService {
 
   async deletePost(id: string): Promise<ApiResponse<void>> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await this.request<any>(`/post/delete/${id}`, {
+        method: 'DELETE',
+      });
 
-      const success = storageService.deletePost(id);
-      if (success) {
+      if (response.success) {
         return { success: true };
       } else {
-        return { success: false, error: 'Post not found' };
+        return { success: false, error: response.error || 'Failed to delete post' };
       }
     } catch (error) {
       return {
@@ -250,46 +382,54 @@ class ApiService {
 
   // Category Management APIs
   async getCategories(): Promise<ApiResponse<Category[]>> {
-    return this.request('/admin/categories');
+    return this.getPublicCategories();
   }
 
   // Public Categories API
   async getPublicCategories(): Promise<ApiResponse<Category[]>> {
     try {
-      // For now, use mock data. In real implementation, this would call /api/category/list
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await this.request<any>('/category/list');
 
-      // Get all posts to calculate category counts
-      const postsResponse = await this.getPosts();
-      if (!postsResponse.success || !postsResponse.data) {
-        return { success: false, error: 'Failed to fetch posts for category calculation' };
+      if (response.success && response.data) {
+        const backendCategories = response.data.data || [];
+
+        // Get all posts to calculate category counts
+        const postsResponse = await this.request<any>('/post/list');
+        const posts = postsResponse.success && postsResponse.data ? postsResponse.data.data || [] : [];
+
+        // Create a map of category ID to category name
+        const categoryIdToNameMap = new Map<number, string>();
+        backendCategories.forEach((cat: any) => {
+          categoryIdToNameMap.set(cat.id, cat.name);
+        });
+
+        const categoryCountMap = new Map<string, number>();
+        posts.forEach((post: any) => {
+          if (post.category_id) {
+            const categoryName = categoryIdToNameMap.get(post.category_id);
+            if (categoryName) {
+              categoryCountMap.set(categoryName, (categoryCountMap.get(categoryName) || 0) + 1);
+            }
+          }
+        });
+
+        const categories: Category[] = [
+          { id: 'all', name: 'All Articles', count: posts.length, icon: 'article' }
+        ];
+
+        backendCategories.forEach((cat: any) => {
+          categories.push({
+            id: cat.id.toString(),
+            name: cat.name,
+            count: categoryCountMap.get(cat.name) || 0,
+            icon: this.getCategoryIcon(cat.name)
+          });
+        });
+
+        return { success: true, data: categories };
       }
 
-      const posts = postsResponse.data;
-      const categoryMap = new Map<string, number>();
-
-      // Count articles per category
-      posts.forEach(post => {
-        if (post.category) {
-          categoryMap.set(post.category, (categoryMap.get(post.category) || 0) + 1);
-        }
-      });
-
-      // Create category objects with counts
-      const categories: Category[] = [
-        { id: 'all', name: 'All Articles', count: posts.length, icon: 'article' }
-      ];
-
-      categoryMap.forEach((count, categoryName) => {
-        categories.push({
-          id: categoryName.toLowerCase().replace(/\s+/g, '-'),
-          name: categoryName,
-          count,
-          icon: this.getCategoryIcon(categoryName)
-        });
-      });
-
-      return { success: true, data: categories };
+      return { success: false, error: 'Failed to fetch categories' };
     } catch (error) {
       return {
         success: false,
@@ -301,44 +441,42 @@ class ApiService {
   // Public Tags API
   async getPublicTags(): Promise<ApiResponse<Tag[]>> {
     try {
-      // For now, use mock data. In real implementation, this would call /api/tag/list
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await this.request<any>('/tag/list');
 
-      // Get all posts to calculate tag counts
-      const postsResponse = await this.getPosts();
-      if (!postsResponse.success || !postsResponse.data) {
-        return { success: false, error: 'Failed to fetch posts for tag calculation' };
+      if (response.success && response.data) {
+        const backendTags = response.data.data || [];
+
+        // Get all posts to calculate tag counts (for now using mock data)
+        const postsResponse = await this.getPosts();
+        const posts = postsResponse.success ? postsResponse.data || [] : [];
+
+        const tagCountMap = new Map<string, number>();
+        posts.forEach((post: any) => {
+          if (post.tags) {
+            post.tags.forEach((tag: string) => {
+              tagCountMap.set(tag, (tagCountMap.get(tag) || 0) + 1);
+            });
+          }
+        });
+
+        const tags: Tag[] = backendTags.map((tag: any) => ({
+          id: tag.id.toString(),
+          name: tag.name,
+          count: tagCountMap.get(tag.name) || 0
+        }));
+
+        // Sort tags by count (descending) then by name
+        tags.sort((a, b) => {
+          if (b.count !== a.count) {
+            return b.count - a.count;
+          }
+          return a.name.localeCompare(b.name);
+        });
+
+        return { success: true, data: tags };
       }
 
-      const posts = postsResponse.data;
-      const tagMap = new Map<string, number>();
-
-      // Count articles per tag
-      posts.forEach(post => {
-        post.tags.forEach(tag => {
-          tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
-        });
-      });
-
-      // Create tag objects with counts
-      const tags: Tag[] = [];
-      tagMap.forEach((count, tagName) => {
-        tags.push({
-          id: tagName.toLowerCase().replace(/\s+/g, '-'),
-          name: tagName,
-          count
-        });
-      });
-
-      // Sort tags by count (descending) then by name
-      tags.sort((a, b) => {
-        if (b.count !== a.count) {
-          return b.count - a.count;
-        }
-        return a.name.localeCompare(b.name);
-      });
-
-      return { success: true, data: tags };
+      return { success: false, error: 'Failed to fetch tags' };
     } catch (error) {
       return {
         success: false,
@@ -359,7 +497,7 @@ class ApiService {
         return postsResponse;
       }
 
-      const filteredPosts = postsResponse.data.filter(post =>
+      const filteredPosts = postsResponse.data.filter((post: Article) =>
         post.category.toLowerCase().replace(/\s+/g, '-') === categoryId
       );
 
@@ -380,8 +518,8 @@ class ApiService {
         return postsResponse;
       }
 
-      const filteredPosts = postsResponse.data.filter(post =>
-        post.tags.some(tag => tag.toLowerCase().replace(/\s+/g, '-') === tagName)
+      const filteredPosts = postsResponse.data.filter((post: Article) =>
+        post.tags.some((tag: string) => tag.toLowerCase().replace(/\s+/g, '-') === tagName)
       );
 
       return { success: true, data: filteredPosts };
@@ -396,6 +534,11 @@ class ApiService {
   // Helper method to get category icon
   private getCategoryIcon(categoryName: string): string {
     const iconMap: { [key: string]: string } = {
+      // Real categories from our backend
+      '技术分享': 'share',
+      'Web开发': 'web',
+      'Rust编程': 'code',
+      // Legacy categories for backward compatibility
       'Development': 'code',
       'Design': 'palette',
       'Technology': 'computer',

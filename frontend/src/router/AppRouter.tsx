@@ -19,6 +19,7 @@ import MusicManagement from '../components/admin/MusicManagement';
 import MusicUpload from '../components/admin/MusicUpload';
 import { AuthProvider } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
+import { DataProvider } from '../contexts/DataContext';
 import NotificationContainer from '../components/ui/NotificationContainer';
 import '../styles/page-placeholder.css';
 
@@ -70,7 +71,8 @@ const AppRouter: React.FC = () => {
     <BrowserRouter>
       <AuthProvider>
         <NotificationProvider>
-          <ErrorBoundary>
+          <DataProvider>
+            <ErrorBoundary>
             <Routes>
           {/* Main Layout Routes */}
           <Route path="/" element={
@@ -174,7 +176,8 @@ const AppRouter: React.FC = () => {
           } />
             </Routes>
             <NotificationContainer />
-          </ErrorBoundary>
+            </ErrorBoundary>
+          </DataProvider>
         </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>

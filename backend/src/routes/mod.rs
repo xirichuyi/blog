@@ -58,7 +58,12 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         // Category public routes
         .route("/api/category/list", get(category_handler::list_categories))
         // Tag public routes
-        .route("/api/tag/list", get(tag_handler::list_tags));
+        .route("/api/tag/list", get(tag_handler::list_tags))
+        // Post tags public routes
+        .route(
+            "/api/post/:id/tags",
+            get(post_handler::get_post_tags_public),
+        );
 
     // Admin routes (authentication required)
     let admin_routes = Router::new()

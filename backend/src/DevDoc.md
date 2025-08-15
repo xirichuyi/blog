@@ -948,7 +948,7 @@ CREATE TABLE video_comments (
 );
 ```
 
-##### API接口设计
+##### API 接口设计
 
 ###### 1. 视频上传功能
 
@@ -1000,10 +1000,10 @@ CREATE TABLE video_comments (
 - **GET** `/api/videos`
 - **功能**: 获取视频列表
 - **查询参数**:
-  - `page`: 页码（默认1）
-  - `limit`: 每页数量（默认10）
-  - `category_id`: 分类ID
-  - `tag_id`: 标签ID
+  - `page`: 页码（默认 1）
+  - `limit`: 每页数量（默认 10）
+  - `category_id`: 分类 ID
+  - `tag_id`: 标签 ID
   - `status`: 状态筛选
   - `sort`: 排序方式（views, likes, created_at）
   - `order`: 排序顺序（asc, desc）
@@ -1031,8 +1031,8 @@ CREATE TABLE video_comments (
             "name": "分类名称"
           },
           "tags": [
-            {"id": 1, "name": "标签1"},
-            {"id": 2, "name": "标签2"}
+            { "id": 1, "name": "标签1" },
+            { "id": 2, "name": "标签2" }
           ],
           "created_at": "2024-01-01 12:00:00"
         }
@@ -1077,8 +1077,8 @@ CREATE TABLE video_comments (
         "name": "分类名称"
       },
       "tags": [
-        {"id": 1, "name": "标签1"},
-        {"id": 2, "name": "标签2"}
+        { "id": 1, "name": "标签1" },
+        { "id": 2, "name": "标签2" }
       ],
       "created_at": "2024-01-01 12:00:00",
       "updated_at": "2024-01-01 12:00:00"
@@ -1232,8 +1232,8 @@ CREATE TABLE video_comments (
 ###### 日志内容
 
 - 操作类型
-- 用户ID
-- 视频ID
+- 用户 ID
+- 视频 ID
 - 操作时间
 - 错误详情（如有）
 
@@ -1253,9 +1253,9 @@ CREATE TABLE video_comments (
 - 分页优化
 - 连接池管理
 
-###### CDN加速
+###### CDN 加速
 
-- 视频文件CDN分发
+- 视频文件 CDN 分发
 - 静态资源缓存
 - 地理位置优化
 
@@ -1278,9 +1278,9 @@ CREATE TABLE video_comments (
 ###### 数据安全
 
 - 敏感信息加密
-- SQL注入防护
-- XSS攻击防护
-- CSRF防护
+- SQL 注入防护
+- XSS 攻击防护
+- CSRF 防护
 
 ##### 测试用例
 
@@ -1292,7 +1292,7 @@ CREATE TABLE video_comments (
 
 ###### 集成测试
 
-- API接口测试
+- API 接口测试
 - 文件上传测试
 - 数据库操作测试
 
@@ -1304,7 +1304,7 @@ CREATE TABLE video_comments (
 
 ##### 文档
 
-###### API文档
+###### API 文档
 
 - 接口说明
 - 参数说明

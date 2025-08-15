@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useData } from '../../contexts/DataContext';
 import type { Article } from '../../types';
 import AdminLayout from './AdminLayout';
 import './PostManagement.css';
@@ -27,6 +28,7 @@ const PostManagement: React.FC = () => {
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const { categories } = useData();
 
   useEffect(() => {
     loadPosts();
@@ -74,7 +76,11 @@ const PostManagement: React.FC = () => {
 
     // Category filter
     if (filters.category) {
-      filtered = filtered.filter(post => post.category === filters.category);
+      // Find the category name by ID
+      const selectedCategory = categories.find(cat => cat.id === filters.category);
+      if (selectedCategory) {
+        filtered = filtered.filter(post => post.category === selectedCategory.name);
+      }
     }
 
     setFilteredPosts(filtered);
@@ -229,9 +235,13 @@ const PostManagement: React.FC = () => {
             onInput={(e: any) => setFilters({ ...filters, category: e.target.value })}
           >
             <md-select-option value="">All Categories</md-select-option>
-            <md-select-option value="React">React</md-select-option>
-            <md-select-option value="Rust">Rust</md-select-option>
-            <md-select-option value="Design">Design</md-select-option>
+            {categories
+              .filter(cat => cat.id !== 'all') // Exclude "All Articles" category
+              .map((category) => (
+                <md-select-option key={category.id} value={category.id}>
+                  {category.name}
+                </md-select-option>
+              ))}
           </md-outlined-select>
 
           <md-outlined-select

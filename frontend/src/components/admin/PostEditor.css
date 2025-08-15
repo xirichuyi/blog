@@ -99,7 +99,7 @@
 
 .content-field {
   --md-outlined-text-field-container-height: auto;
-  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-family: "Fira Code", "Monaco", "Consolas", monospace;
 }
 
 /* Content Section */
@@ -120,7 +120,9 @@
 
 .content-actions md-outlined-button.active {
   --md-outlined-button-container-color: var(--md-sys-color-primary-container);
-  --md-outlined-button-label-text-color: var(--md-sys-color-on-primary-container);
+  --md-outlined-button-label-text-color: var(
+    --md-sys-color-on-primary-container
+  );
   --md-outlined-button-icon-color: var(--md-sys-color-on-primary-container);
 }
 
@@ -169,6 +171,13 @@
   gap: 16px;
 }
 
+.tags-input-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .tags-input {
   display: flex;
   gap: 12px;
@@ -201,32 +210,129 @@
   color: var(--md-sys-color-error);
 }
 
+/* Current Tags */
+.current-tags {
+  margin-bottom: 16px;
+}
+
+.current-tag-wrapper {
+  display: inline-flex;
+  align-items: center;
+  margin: 4px 8px 4px 0;
+  position: relative;
+}
+
+.current-tag-chip {
+  --md-assist-chip-container-color: var(--md-sys-color-primary-container);
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-primary-container);
+  --md-assist-chip-icon-color: var(--md-sys-color-on-primary-container);
+  margin-right: 4px;
+}
+
+.remove-tag-btn {
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: -8px;
+  z-index: 1;
+}
+
+.remove-tag-btn:hover {
+  background: var(--md-sys-color-error);
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Tag Suggestions */
+.tag-suggestions,
+.all-tags {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.suggestions-header {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 8px;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestion-chip,
+.available-chip {
+  --md-assist-chip-container-shape: 16px;
+  --md-assist-chip-container-color: var(--md-sys-color-primary-container);
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-primary-container);
+  --md-assist-chip-icon-color: var(--md-sys-color-on-primary-container);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggestion-chip:hover,
+.available-chip:hover {
+  --md-assist-chip-container-color: var(--md-sys-color-primary);
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-primary);
+  --md-assist-chip-icon-color: var(--md-sys-color-on-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.available-chip {
+  --md-assist-chip-container-color: var(--md-sys-color-tertiary-container);
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-tertiary-container);
+  --md-assist-chip-icon-color: var(--md-sys-color-on-tertiary-container);
+}
+
+.available-chip:hover {
+  --md-assist-chip-container-color: var(--md-sys-color-tertiary);
+  --md-assist-chip-label-text-color: var(--md-sys-color-on-tertiary);
+  --md-assist-chip-icon-color: var(--md-sys-color-on-tertiary);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .post-editor-header {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .editor-actions {
     justify-content: flex-end;
   }
-  
+
   .form-section {
     padding: 16px;
   }
-  
+
   .content-header {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
   }
-  
+
   .metadata-grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .featured-toggle {
     justify-content: flex-start;
   }
@@ -236,17 +342,17 @@
   .editor-actions {
     flex-direction: column;
   }
-  
+
   .editor-actions md-filled-button,
   .editor-actions md-outlined-button,
   .editor-actions md-text-button {
     width: 100%;
   }
-  
+
   .tags-input {
     flex-direction: column;
   }
-  
+
   .content-preview {
     min-height: 300px;
   }
@@ -282,4 +388,111 @@
 /* Select Styles */
 .metadata-grid md-outlined-select {
   --md-outlined-select-text-field-container-height: 56px;
+}
+
+/* Cover Image Upload */
+.cover-upload-section {
+  margin-top: 24px;
+}
+
+.cover-upload-section label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--md-sys-color-on-surface);
+  font-weight: 500;
+}
+
+.cover-upload-container {
+  position: relative;
+}
+
+.cover-upload-area {
+  border: 2px dashed var(--md-sys-color-outline);
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--md-sys-color-surface-variant);
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.cover-upload-area:hover {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+}
+
+.cover-upload-area .upload-icon {
+  font-size: 48px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 8px;
+}
+
+.cover-upload-area p {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.cover-preview {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 300px;
+}
+
+.cover-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.cover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cover-preview:hover .cover-overlay {
+  opacity: 1;
+}
+
+.cover-overlay md-icon-button {
+  --md-icon-button-icon-color: white;
+  --md-icon-button-hover-state-layer-color: rgba(255, 255, 255, 0.1);
+  --md-icon-button-pressed-state-layer-color: rgba(255, 255, 255, 0.2);
+}
+
+.upload-progress {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 24px;
+  border-radius: 12px;
+  color: white;
+}
+
+.upload-progress p {
+  margin: 0;
+  color: white;
 }

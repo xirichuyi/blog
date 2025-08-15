@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::database::Database;
 use crate::models::{
     ApiListResponse, ApiResponse, CreatePostRequest, FileUploadResponse, PostListQuery,
     UpdatePostRequest, UpdatePostTagsRequest,
@@ -203,6 +204,25 @@ pub async fn get_post_tags(
         app_state.config.storage.max_file_size,
     );
     let service = PostService::new(app_state.database, file_handler);
+
+    match service.get_post_tags(id).await {
+        Ok(tags) => Ok(Json(ApiResponse::success(tags))),
+        Err(e) => {
+            tracing::error!("Failed to get post tags: {}", e);
+            Ok(Json(ApiResponse::internal_error("Failed to get post tags")))
+        }
+    }
+}
+
+pub async fn get_post_tags_public(
+    State(database): State<Database>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<Vec<crate::models::Tag>>>, StatusCode> {
+    let file_handler = FileHandler::new(
+        "uploads".to_string(),
+        1024 * 1024 * 10, // 10MB
+    );
+    let service = PostService::new(database, file_handler);
 
     match service.get_post_tags(id).await {
         Ok(tags) => Ok(Json(ApiResponse::success(tags))),
