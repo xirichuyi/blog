@@ -174,7 +174,7 @@ const ArticlesPage: React.FC = () => {
               return (
                 <md-filter-chip
                   key={tag.id}
-                  label={`${tag.name} (${tag.count}}`}
+                  label={`${tag.name} (${tag.count})`}
                   {...(isSelected ? { selected: true } : {})}
                   data-tag-id={tag.id}
                   onClick={() => handleTagToggle(tag.id)}

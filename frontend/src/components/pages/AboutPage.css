@@ -9,41 +9,89 @@
 /* Hero Section */
 .about-hero {
   padding: 4rem 2rem;
-  background: linear-gradient(
-    135deg,
-    var(--md-sys-color-primary-container) 0%,
-    var(--md-sys-color-secondary-container) 100%
-  );
+  background: #141414;
   margin-bottom: 3rem;
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
 }
 
 .about-hero-content {
-  display: flex;
-  align-items: center;
-  gap: 3rem;
-  max-width: 1000px;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 4rem;
+  max-width: 1200px;
   margin: 0 auto;
+  width: 100%;
+  align-items: center;
 }
 
-.about-avatar {
-  flex-shrink: 0;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: var(--md-sys-color-surface);
+/* Left Side - Content */
+.about-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Right Side - Photo */
+.about-photo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.photo-container {
+  position: relative;
+  width: 300px;
+  height: 400px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.photo-container:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+}
+
+.profile-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.photo-container:hover .profile-photo {
+  transform: scale(1.05);
+}
+
+.photo-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(var(--md-sys-color-primary-rgb), 0.1) 0%,
+    rgba(var(--md-sys-color-secondary-rgb), 0.1) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.avatar-icon {
-  font-size: 120px !important;
-  color: var(--md-sys-color-on-surface-variant);
+.photo-container:hover .photo-overlay {
+  opacity: 1;
 }
 
-.about-intro {
-  flex: 1;
+.camera-icon {
+  font-size: 48px !important;
+  color: var(--md-sys-color-on-primary-container);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .about-title {
@@ -61,8 +109,44 @@
 .about-description {
   color: var(--md-sys-color-on-primary-container);
   line-height: 1.6;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   opacity: 0.8;
+}
+
+.about-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.highlight-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateX(8px);
+}
+
+.highlight-item md-icon {
+  font-size: 24px !important;
+  color: var(--md-sys-color-on-primary-container);
+  flex-shrink: 0;
+}
+
+.highlight-item span {
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: 500;
+  font-size: 1rem;
 }
 
 .about-actions {
@@ -277,24 +361,50 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+  .about-hero-content {
+    grid-template-columns: 1fr 300px;
+    gap: 3rem;
+  }
+
+  .photo-container {
+    width: 250px;
+    height: 350px;
+  }
+}
+
 @media (max-width: 768px) {
   .about-hero {
     padding: 2rem 1rem;
+    min-height: auto;
   }
 
   .about-hero-content {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    gap: 3rem;
     text-align: center;
-    gap: 2rem;
   }
 
-  .about-avatar {
-    width: 150px;
-    height: 150px;
+  .about-content {
+    order: 2;
   }
 
-  .avatar-icon {
-    font-size: 90px !important;
+  .about-photo {
+    order: 1;
+  }
+
+  .photo-container {
+    width: 200px;
+    height: 280px;
+  }
+
+  .about-highlights {
+    align-items: center;
+  }
+
+  .highlight-item {
+    max-width: 300px;
+    justify-content: center;
   }
 
   .about-section {
@@ -323,5 +433,35 @@
 
   .timeline-marker {
     left: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .about-hero {
+    padding: 1.5rem 1rem;
+  }
+
+  .photo-container {
+    width: 180px;
+    height: 240px;
+  }
+
+  .about-title {
+    font-size: 2rem;
+  }
+
+  .about-subtitle {
+    font-size: 1.2rem;
+  }
+
+  .highlight-item {
+    padding: 0.75rem;
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+
+  .highlight-item md-icon {
+    font-size: 20px !important;
   }
 }
