@@ -1,0 +1,163 @@
+/* Author Card Styles - Material Design 3 */
+
+.author-card {
+  --md-elevated-card-container-color: var(--md-sys-color-surface-container-low);
+  --md-elevated-card-container-shape: 16px;
+  --md-elevated-card-container-elevation: 1;
+
+  width: 100%;
+  margin-bottom: 24px;
+  transition: all var(--md-sys-motion-duration-medium2)
+    var(--md-sys-motion-easing-standard);
+}
+
+.author-card:hover {
+  --md-elevated-card-container-elevation: 2;
+  transform: translateY(-2px);
+}
+
+.author-card-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 头像和基本信息 */
+.author-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.author-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--md-sys-color-surface-container-highest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.default-avatar-icon {
+  font-size: 32px;
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.7;
+}
+
+.author-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.author-name {
+  color: var(--md-sys-color-on-surface);
+  margin: 0 0 4px 0;
+  font-weight: 500;
+}
+
+.author-title {
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* 社交媒体链接 */
+.author-social {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.social-button {
+  --md-icon-button-state-layer-shape: 50%;
+  --md-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-icon-button-hover-state-layer-color: var(--md-sys-color-primary);
+  --md-icon-button-hover-icon-color: var(--md-sys-color-primary);
+  --md-icon-button-pressed-state-layer-color: var(--md-sys-color-primary);
+  --md-icon-button-pressed-icon-color: var(--md-sys-color-primary);
+
+  transition: all var(--md-sys-motion-duration-short2)
+    var(--md-sys-motion-easing-standard);
+}
+
+.social-button:hover {
+  transform: translateY(-2px);
+}
+
+.social-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .author-card-content {
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .author-header {
+    gap: 12px;
+  }
+
+  .author-avatar {
+    width: 56px;
+    height: 56px;
+  }
+
+  .author-social {
+    gap: 4px;
+  }
+}
+
+/* 深色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .author-card {
+    --md-elevated-card-container-color: var(
+      --md-sys-color-surface-container-low
+    );
+  }
+
+  .author-avatar {
+    background: var(--md-sys-color-surface-container);
+  }
+}
+
+/* 动画效果 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.author-card {
+  animation: fadeInUp var(--md-sys-motion-duration-medium3)
+    var(--md-sys-motion-easing-emphasized);
+}
+
+/* 无障碍支持 */
+.author-card:focus-within {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.social-button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
