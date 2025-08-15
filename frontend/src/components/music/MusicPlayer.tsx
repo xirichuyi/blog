@@ -40,8 +40,8 @@ export const MusicPlayer: FC<MusicPlayerProps> = ({className, ...otherProps}) =>
     <Card
       isBlurred
       className={clsx(
-        // 玻璃风格基础
-        "relative overflow-hidden  dark:border-white/10",
+        // 玻璃风格基础 + 圆角
+        "relative overflow-hidden rounded-2xl dark:border-white/10",
         // 半透明背景
         "bg-white/10 dark:bg-white/5",
         // 模糊效果
@@ -55,6 +55,7 @@ export const MusicPlayer: FC<MusicPlayerProps> = ({className, ...otherProps}) =>
         className
       )}
       shadow="lg"
+      radius="lg"
       {...otherProps}
     >
       <CardBody>
@@ -90,18 +91,18 @@ export const MusicPlayer: FC<MusicPlayerProps> = ({className, ...otherProps}) =>
               </Button>
             </div>
 
-            <div className="flex flex-col mt-3 gap-1">
+            <div className="flex flex-col mt-3 gap-1 px-1">
               <Slider
                 aria-label="Music progress"
                 classNames={{
-                  track: "bg-white/15 h-1 rounded-full !border-x-0",
-                  filler: "bg-white/80 rounded-full",
-                  thumb: "w-3 h-3 bg-white/90 border-1 border-white/50 shadow-sm",
-                  base: "max-w-full px-0",
-                  trackWrapper: "px-0 !border-x-0",
+                  track: "bg-white/20 h-1",
+                  filler: "bg-white/90 h-1",
+                  thumb: "w-2 h-2 bg-white shadow-md border-1 border-white/20 -mt-0.5 [&]:!transform-none",
+                  base: "w-full max-w-full",
+                  trackWrapper: "w-full",
                 }}
                 size="sm"
-                step={1}
+                step={0.1}
                 maxValue={100}
                 minValue={0}
                 value={progress}
@@ -109,9 +110,9 @@ export const MusicPlayer: FC<MusicPlayerProps> = ({className, ...otherProps}) =>
                 hideThumb={false}
                 radius="full"
               />
-              <div className="flex justify-between">
-                <p className="text-sm text-white/90">{formatTime(currentTime)}</p>
-                <p className="text-sm text-white/60">{formatTime(totalDuration)}</p>
+              <div className="flex justify-between text-xs mt-1 px-1">
+                <p className="text-white/90 font-mono">{formatTime(currentTime)}</p>
+                <p className="text-white/60 font-mono">{formatTime(totalDuration)}</p>
               </div>
             </div>
 
@@ -136,17 +137,19 @@ export const MusicPlayer: FC<MusicPlayerProps> = ({className, ...otherProps}) =>
               </Button>
               <Button
                 isIconOnly
-                className=" fill-white data-[hover]:bg-white/80 mx-3 text-black bg-white/90   "
+                className="fill-white data-[hover]:bg-white/80 mx-3 text-black bg-white/90 min-w-12 w-12 h-12"
                 radius="full"
                 variant="light"
                 size="lg"
                 onPress={() => setIsPlaying(!isPlaying)}
               >
-                {isPlaying ? (
-                  <Pause className="w-8 h-8" style={{color: '#323232', fill: '#323232'}} />
-                ) : (
-                  <Play className="w-8 h-8 ml-0.5" style={{color: '#323232', fill: '#323232'}} />
-                )}
+                <div className="flex items-center justify-center w-8 h-8">
+                  {isPlaying ? (
+                    <Pause className="w-6 h-6" style={{color: '#323232', fill: '#323232'}} />
+                  ) : (
+                    <Play className="w-6 h-6 ml-0.5" style={{color: '#323232', fill: '#323232'}} />
+                  )}
+                </div>
               </Button>
               <Button
                 isIconOnly
