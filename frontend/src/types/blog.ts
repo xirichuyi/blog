@@ -22,9 +22,16 @@ export interface Category {
   icon: string;
 }
 
+export interface Tag {
+  id: string;
+  name: string;
+  count: number;
+}
+
 export interface BlogDataState {
   articles: Article[];
   categories: Category[];
+  tags: Tag[];
   isLoading: boolean;
   error: string | null;
 }
@@ -33,6 +40,9 @@ export interface BlogDataActions {
   fetchArticles: () => Promise<void>;
   fetchArticleById: (id: string) => Promise<Article | null>;
   fetchCategories: () => Promise<void>;
+  fetchTags: () => Promise<void>;
+  fetchArticlesByCategory: (categoryId: string) => Promise<void>;
+  fetchArticlesByTag: (tagName: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 

@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-
 import Layout from '../components/layout/Layout';
 import BlogHome from '../components/blog/BlogHome';
 import ArticleDetail from '../components/blog/ArticleDetail';
+import CategoriesPage from '../components/blog/CategoriesPage';
+import TagsPage from '../components/blog/TagsPage';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 import LoginPage from '../components/admin/LoginPage';
 import ProtectedRoute from '../components/admin/ProtectedRoute';
@@ -24,19 +26,9 @@ const ArticlesPage: React.FC = () => (
   </div>
 );
 
-const CategoriesPage: React.FC = () => (
-  <div className="page-placeholder">
-    <h1 className="md-typescale-display-small">Categories</h1>
-    <p className="md-typescale-body-large">Explore articles by category.</p>
-  </div>
-);
+// CategoriesPage is now imported from components
 
-const TagsPage: React.FC = () => (
-  <div className="page-placeholder">
-    <h1 className="md-typescale-display-small">Tags</h1>
-    <p className="md-typescale-body-large">Find articles by tags.</p>
-  </div>
-);
+// TagsPage is now imported from components
 
 const AboutPage: React.FC = () => (
   <div className="page-placeholder">

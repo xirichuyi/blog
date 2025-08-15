@@ -1,6 +1,6 @@
 // API service for backend communication
 
-import type { LoginCredentials, LoginResponse, Article, Category, ApiResponse, DashboardStats, UploadResponse, MusicTrack } from '../types';
+import type { LoginCredentials, LoginResponse, Article, Category, Tag, ApiResponse, DashboardStats, UploadResponse, MusicTrack } from '../types';
 import { storageService } from './storage';
 
 // API Configuration
@@ -251,6 +251,168 @@ class ApiService {
   // Category Management APIs
   async getCategories(): Promise<ApiResponse<Category[]>> {
     return this.request('/admin/categories');
+  }
+
+  // Public Categories API
+  async getPublicCategories(): Promise<ApiResponse<Category[]>> {
+    try {
+      // For now, use mock data. In real implementation, this would call /api/category/list
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Get all posts to calculate category counts
+      const postsResponse = await this.getPosts();
+      if (!postsResponse.success || !postsResponse.data) {
+        return { success: false, error: 'Failed to fetch posts for category calculation' };
+      }
+
+      const posts = postsResponse.data;
+      const categoryMap = new Map<string, number>();
+
+      // Count articles per category
+      posts.forEach(post => {
+        if (post.category) {
+          categoryMap.set(post.category, (categoryMap.get(post.category) || 0) + 1);
+        }
+      });
+
+      // Create category objects with counts
+      const categories: Category[] = [
+        { id: 'all', name: 'All Articles', count: posts.length, icon: 'article' }
+      ];
+
+      categoryMap.forEach((count, categoryName) => {
+        categories.push({
+          id: categoryName.toLowerCase().replace(/\s+/g, '-'),
+          name: categoryName,
+          count,
+          icon: this.getCategoryIcon(categoryName)
+        });
+      });
+
+      return { success: true, data: categories };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch categories',
+      };
+    }
+  }
+
+  // Public Tags API
+  async getPublicTags(): Promise<ApiResponse<Tag[]>> {
+    try {
+      // For now, use mock data. In real implementation, this would call /api/tag/list
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Get all posts to calculate tag counts
+      const postsResponse = await this.getPosts();
+      if (!postsResponse.success || !postsResponse.data) {
+        return { success: false, error: 'Failed to fetch posts for tag calculation' };
+      }
+
+      const posts = postsResponse.data;
+      const tagMap = new Map<string, number>();
+
+      // Count articles per tag
+      posts.forEach(post => {
+        post.tags.forEach(tag => {
+          tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
+        });
+      });
+
+      // Create tag objects with counts
+      const tags: Tag[] = [];
+      tagMap.forEach((count, tagName) => {
+        tags.push({
+          id: tagName.toLowerCase().replace(/\s+/g, '-'),
+          name: tagName,
+          count
+        });
+      });
+
+      // Sort tags by count (descending) then by name
+      tags.sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      return { success: true, data: tags };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch tags',
+      };
+    }
+  }
+
+  // Get articles by category
+  async getPostsByCategory(categoryId: string): Promise<ApiResponse<Article[]>> {
+    try {
+      if (categoryId === 'all') {
+        return this.getPosts();
+      }
+
+      const postsResponse = await this.getPosts();
+      if (!postsResponse.success || !postsResponse.data) {
+        return postsResponse;
+      }
+
+      const filteredPosts = postsResponse.data.filter(post =>
+        post.category.toLowerCase().replace(/\s+/g, '-') === categoryId
+      );
+
+      return { success: true, data: filteredPosts };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch posts by category',
+      };
+    }
+  }
+
+  // Get articles by tag
+  async getPostsByTag(tagName: string): Promise<ApiResponse<Article[]>> {
+    try {
+      const postsResponse = await this.getPosts();
+      if (!postsResponse.success || !postsResponse.data) {
+        return postsResponse;
+      }
+
+      const filteredPosts = postsResponse.data.filter(post =>
+        post.tags.some(tag => tag.toLowerCase().replace(/\s+/g, '-') === tagName)
+      );
+
+      return { success: true, data: filteredPosts };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch posts by tag',
+      };
+    }
+  }
+
+  // Helper method to get category icon
+  private getCategoryIcon(categoryName: string): string {
+    const iconMap: { [key: string]: string } = {
+      'Development': 'code',
+      'Design': 'palette',
+      'Technology': 'computer',
+      'React': 'code',
+      'Rust': 'code',
+      'JavaScript': 'code',
+      'TypeScript': 'code',
+      'Web Development': 'web',
+      'Mobile': 'phone_android',
+      'AI': 'psychology',
+      'Machine Learning': 'psychology',
+      'Tutorial': 'school',
+      'News': 'newspaper',
+      'Review': 'rate_review'
+    };
+
+    return iconMap[categoryName] || 'article';
   }
 
   // Music Management APIs

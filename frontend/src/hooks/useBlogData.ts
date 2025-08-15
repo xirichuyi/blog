@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import type {
   Article,
   Category,
+  Tag,
   BlogDataState,
   BlogDataActions,
   UseBlogDataReturn
 } from '../types';
 
 // Re-export types for convenience
-export type { Article, Category };
+export type { Article, Category, Tag };
 
 // Mock API functions - replace with actual API calls
 const mockApiDelay = (ms: number = 800) => new Promise(resolve => setTimeout(resolve, ms));
@@ -354,6 +355,7 @@ const useBlogData = (): UseBlogDataReturn => {
   const [state, setState] = useState<BlogDataState>({
     articles: [],
     categories: [],
+    tags: [],
     isLoading: false,
     error: null
   });
@@ -390,7 +392,7 @@ const useBlogData = (): UseBlogDataReturn => {
 
   const fetchCategories = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
-    
+
     try {
       await mockApiDelay(300);
       setState(prev => ({
@@ -407,9 +409,105 @@ const useBlogData = (): UseBlogDataReturn => {
     }
   }, []);
 
+  const fetchTags = useCallback(async () => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      await mockApiDelay(300);
+
+      // Generate mock tags from articles
+      const tagMap = new Map<string, number>();
+      mockArticles.forEach(article => {
+        article.tags.forEach(tag => {
+          tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
+        });
+      });
+
+      const mockTags: Tag[] = [];
+      tagMap.forEach((count, tagName) => {
+        mockTags.push({
+          id: tagName.toLowerCase().replace(/\s+/g, '-'),
+          name: tagName,
+          count
+        });
+      });
+
+      // Sort tags by count (descending) then by name
+      mockTags.sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      setState(prev => ({
+        ...prev,
+        tags: mockTags,
+        isLoading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to fetch tags',
+        isLoading: false
+      }));
+    }
+  }, []);
+
+  const fetchArticlesByCategory = useCallback(async (categoryId: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      await mockApiDelay(400);
+
+      let filteredArticles = mockArticles;
+      if (categoryId !== 'all') {
+        filteredArticles = mockArticles.filter(article =>
+          article.category.toLowerCase().replace(/\s+/g, '-') === categoryId
+        );
+      }
+
+      setState(prev => ({
+        ...prev,
+        articles: filteredArticles,
+        isLoading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to fetch articles by category',
+        isLoading: false
+      }));
+    }
+  }, []);
+
+  const fetchArticlesByTag = useCallback(async (tagName: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      await mockApiDelay(400);
+
+      const filteredArticles = mockArticles.filter(article =>
+        article.tags.some(tag => tag.toLowerCase().replace(/\s+/g, '-') === tagName)
+      );
+
+      setState(prev => ({
+        ...prev,
+        articles: filteredArticles,
+        isLoading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to fetch articles by tag',
+        isLoading: false
+      }));
+    }
+  }, []);
+
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchArticles(), fetchCategories()]);
-  }, [fetchArticles, fetchCategories]);
+    await Promise.all([fetchArticles(), fetchCategories(), fetchTags()]);
+  }, [fetchArticles, fetchCategories, fetchTags]);
 
   // Initial data fetch
   useEffect(() => {
@@ -421,6 +519,9 @@ const useBlogData = (): UseBlogDataReturn => {
     fetchArticles,
     fetchArticleById,
     fetchCategories,
+    fetchTags,
+    fetchArticlesByCategory,
+    fetchArticlesByTag,
     refreshData
   };
 };

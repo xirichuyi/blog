@@ -13,6 +13,7 @@ export type {
 export type {
   Article,
   Category,
+  Tag,
   BlogDataState,
   BlogDataActions,
   UseBlogDataReturn,
