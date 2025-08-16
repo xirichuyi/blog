@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useBlogData from '../../hooks/useBlogData';
 import type { Article } from '../../types';
@@ -7,10 +7,12 @@ import ErrorMessage from '../ui/ErrorMessage';
 
 import './ArticlesPage.css';
 
+// 分页常量
+const ARTICLES_PER_PAGE = 12;
+
 const ArticlesPage: React.FC = () => {
   const navigate = useNavigate();
   const {
-    articles,
     categories,
     tags,
     isLoading,
@@ -20,8 +22,9 @@ const ArticlesPage: React.FC = () => {
     fetchTags
   } = useBlogData();
 
-  // Filter states
-  const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
+  // Article states
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [totalArticles, setTotalArticles] = useState(0);
 
   // Active filter state - only one filter can be active at a time
   const [activeFilter, setActiveFilter] = useState<{type: 'category' | 'tag' | null, id: string | null}>({
@@ -29,12 +32,24 @@ const ArticlesPage: React.FC = () => {
     id: 'all'
   });
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Load articles with pagination
+  const loadArticles = useCallback(async (page: number = 1) => {
+    const result = await fetchArticles(page, ARTICLES_PER_PAGE);
+    if (result) {
+      setArticles(result.articles);
+      setTotalArticles(result.total);
+    }
+  }, [fetchArticles]);
+
   // Load data on component mount
   useEffect(() => {
-    fetchArticles();
+    loadArticles(currentPage);
     fetchCategories();
     fetchTags();
-  }, [fetchArticles, fetchCategories, fetchTags]);
+  }, [loadArticles, currentPage, fetchCategories, fetchTags]);
 
   // Handle category selection
   const handleCategorySelect = useCallback((categoryId: string) => {
@@ -50,6 +65,8 @@ const ArticlesPage: React.FC = () => {
         return { type: 'category', id: categoryId };
       }
     });
+    // Reset to first page when filter changes
+    setCurrentPage(1);
   }, []);
 
   // Handle tag selection
@@ -63,39 +80,26 @@ const ArticlesPage: React.FC = () => {
         return { type: 'tag', id: tagId };
       }
     });
+    // Reset to first page when filter changes
+    setCurrentPage(1);
   }, []);
 
-
-
-  // Filter articles based on active filter
-  useEffect(() => {
-    let filtered = [...articles];
-
-    // Apply active filter
-    if (activeFilter.type === 'category' && activeFilter.id !== 'all') {
-      filtered = filtered.filter(article =>
-        article.category.toLowerCase().replace(/\s+/g, '-') === activeFilter.id
-      );
-    } else if (activeFilter.type === 'tag' && activeFilter.id) {
-      filtered = filtered.filter(article =>
-        article.tags.some(tag =>
-          tag.toLowerCase().replace(/\s+/g, '-') === activeFilter.id
-        )
-      );
-    }
-
-    // Sort by date (newest first)
-    filtered.sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
-
-    setFilteredArticles(filtered);
-  }, [articles, activeFilter]);
+  // Calculate pagination
+  const totalPages = useMemo(() => {
+    return Math.ceil(totalArticles / ARTICLES_PER_PAGE);
+  }, [totalArticles]);
 
   // Handle article click
   const handleArticleClick = (articleId: string) => {
     navigate(`/article/${articleId}`);
   };
 
-
+  // Handle page change
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   // Clear all filters
   const clearFilters = useCallback(() => {
@@ -201,16 +205,17 @@ const ArticlesPage: React.FC = () => {
         {/* Results Count */}
         <div className="filter-results">
           <p className="results-count md-typescale-body-medium">
-            Showing {filteredArticles.length} of {articles.length} articles
+            Showing {Math.min(currentPage * ARTICLES_PER_PAGE, totalArticles)} of {totalArticles} articles
+            {activeFilter.id !== 'all' && ' (filtered)'}
           </p>
         </div>
       </section>
 
       {/* Articles Grid */}
       <section className="articles-content">
-        {filteredArticles.length > 0 ? (
+        {articles.length > 0 ? (
           <div className="articles-grid">
-            {filteredArticles.map((article) => (
+            {articles.map((article) => (
                 <div
                   key={article.id}
                   className="secondary-article-card"
@@ -265,6 +270,74 @@ const ArticlesPage: React.FC = () => {
             <p className="md-typescale-body-medium">
               No articles are available at the moment.
             </p>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="articles-pagination">
+            <div className="pagination-controls">
+              {/* Previous Button */}
+              <md-icon-button
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="pagination-button"
+              >
+                <md-icon>chevron_left</md-icon>
+              </md-icon-button>
+
+              {/* Page Numbers */}
+              <div className="pagination-numbers">
+                {Array.from({ length: totalPages }, (_, index) => {
+                  const pageNumber = index + 1;
+                  const isCurrentPage = pageNumber === currentPage;
+
+                  // Show first page, last page, current page, and pages around current page
+                  const showPage =
+                    pageNumber === 1 ||
+                    pageNumber === totalPages ||
+                    Math.abs(pageNumber - currentPage) <= 1;
+
+                  if (!showPage) {
+                    // Show ellipsis for gaps
+                    if (pageNumber === 2 && currentPage > 4) {
+                      return <span key={pageNumber} className="pagination-ellipsis">...</span>;
+                    }
+                    if (pageNumber === totalPages - 1 && currentPage < totalPages - 3) {
+                      return <span key={pageNumber} className="pagination-ellipsis">...</span>;
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <md-text-button
+                      key={pageNumber}
+                      className={`pagination-number ${isCurrentPage ? 'current' : ''}`}
+                      onClick={() => handlePageChange(pageNumber)}
+                      {...(isCurrentPage ? { disabled: true } : {})}
+                    >
+                      {pageNumber}
+                    </md-text-button>
+                  );
+                })}
+              </div>
+
+              {/* Next Button */}
+              <md-icon-button
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="pagination-button"
+              >
+                <md-icon>chevron_right</md-icon>
+              </md-icon-button>
+            </div>
+
+            {/* Page Info */}
+            <div className="pagination-info">
+              <span className="md-typescale-body-small">
+                Page {currentPage} of {totalPages}
+              </span>
+            </div>
           </div>
         )}
       </section>

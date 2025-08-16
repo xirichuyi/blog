@@ -21,26 +21,37 @@ const useBlogData = (): UseBlogDataReturn => {
     error: null
   });
 
-  const fetchArticles = useCallback(async () => {
+  const fetchArticles = useCallback(async (page: number = 1, pageSize: number = 12) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // 暂时不传递status参数，获取所有文章然后在前端过滤
-      const response = await apiService.getPosts();
+      // 使用后端分页功能，只获取已发布的文章
+      const response = await apiService.getPosts({
+        page,
+        page_size: pageSize,
+        status: 'published'
+      });
       if (response.success && response.data) {
-        // 只显示已发布的文章
-        const publishedArticles = response.data.filter((article: Article) => article.status === 'published');
         setState(prev => ({
           ...prev,
-          articles: publishedArticles,
+          articles: response.data,
           isLoading: false
         }));
+
+        // 返回分页信息
+        return {
+          articles: response.data,
+          total: response.total || response.data.length,
+          page: response.page || page,
+          pageSize: response.page_size || pageSize
+        };
       } else {
         setState(prev => ({
           ...prev,
           error: response.error || 'Failed to fetch articles',
           isLoading: false
         }));
+        return null;
       }
     } catch (error) {
       setState(prev => ({
@@ -48,6 +59,7 @@ const useBlogData = (): UseBlogDataReturn => {
         error: error instanceof Error ? error.message : 'Failed to fetch articles',
         isLoading: false
       }));
+      return null;
     }
   }, []);
 
@@ -175,7 +187,7 @@ const useBlogData = (): UseBlogDataReturn => {
   }, []);
 
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchArticles(), fetchCategories(), fetchTags()]);
+    await Promise.all([fetchArticles(1, 12), fetchCategories(), fetchTags()]);
   }, [fetchArticles, fetchCategories, fetchTags]);
 
   // Initial data fetch

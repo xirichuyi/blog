@@ -37,8 +37,15 @@ export interface BlogDataState {
   error: string | null;
 }
 
+export interface PaginationInfo {
+  articles: Article[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface BlogDataActions {
-  fetchArticles: () => Promise<void>;
+  fetchArticles: (page?: number, pageSize?: number) => Promise<PaginationInfo | null>;
   fetchArticleById: (id: string) => Promise<Article | null>;
   fetchCategories: () => Promise<void>;
   fetchTags: () => Promise<void>;

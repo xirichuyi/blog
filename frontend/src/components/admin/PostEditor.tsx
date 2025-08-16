@@ -413,29 +413,20 @@ const PostEditor: React.FC = () => {
       setIsSaving(true);
       setError(null);
 
-      // Validate required fields
-      if (!formData.title.trim()) {
-        throw new Error('Title is required');
-      }
-
-      if (!formData.content.trim()) {
-        throw new Error('Content is required');
-      }
-
       // Extract current images from content to ensure images array is up to date
       const currentImages = extractImagesFromContent(formData.content);
 
       const postData = {
-        title: formData.title.trim(),
-        excerpt: formData.excerpt.trim() || formData.content.substring(0, 150) + '...',
-        content: formData.content.trim(),
+        title: formData.title.trim() || 'Untitled',
+        excerpt: formData.excerpt.trim() || (formData.content.trim() ? formData.content.substring(0, 150) + '...' : 'No excerpt'),
+        content: formData.content.trim() || '',
         category: formData.category,
         tags: formData.tags,
         featured: formData.featured,
         status,
         author: 'Admin', // This should come from auth context
         publishDate: status === 'published' ? new Date().toISOString() : undefined,
-        readTime: Math.ceil(formData.content.split(' ').length / 200), // Estimate reading time
+        readTime: Math.ceil((formData.content || '').split(' ').length / 200), // Estimate reading time
         images: currentImages, // Include images array
       };
 
@@ -506,11 +497,12 @@ const PostEditor: React.FC = () => {
             
             <md-outlined-button
               onClick={() => handleSave('draft')}
+            
             >
               {isSaving ? (
                 <>
-                  <md-circular-progress 
-                    indeterminate 
+                  <md-circular-progress
+                    indeterminate
                     slot="icon"
                     style={{ width: '18px', height: '18px' }}
                   ></md-circular-progress>
@@ -523,14 +515,15 @@ const PostEditor: React.FC = () => {
                 </>
               )}
             </md-outlined-button>
-            
+
             <md-filled-button
               onClick={() => handleSave('published')}
+    
             >
               {isSaving ? (
                 <>
-                  <md-circular-progress 
-                    indeterminate 
+                  <md-circular-progress
+                    indeterminate
                     slot="icon"
                     style={{ width: '18px', height: '18px' }}
                   ></md-circular-progress>

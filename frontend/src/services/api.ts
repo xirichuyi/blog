@@ -163,7 +163,13 @@ class ApiService {
           };
         }));
 
-        return { success: true, data: articles };
+        return {
+          success: true,
+          data: articles,
+          total: backendData.total || articles.length,
+          page: backendData.page || 1,
+          page_size: backendData.page_size || articles.length
+        };
       }
 
       return response;

@@ -1,6 +1,6 @@
 // Music Upload Component
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -25,6 +25,7 @@ const MusicUpload: React.FC = () => {
   
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const musicFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -278,7 +279,7 @@ const MusicUpload: React.FC = () => {
                     <md-icon class="upload-icon">cloud_upload</md-icon>
                     <p className="md-typescale-body-large">Drag and drop your music file here</p>
                     <p className="md-typescale-body-medium">or</p>
-                    <md-outlined-button>
+                    <md-outlined-button onClick={() => musicFileInputRef.current?.click()}>
                       <md-icon slot="icon">folder_open</md-icon>
                       Browse Files
                     </md-outlined-button>
@@ -286,6 +287,7 @@ const MusicUpload: React.FC = () => {
                   </div>
                 )}
                 <input
+                  ref={musicFileInputRef}
                   type="file"
                   accept="audio/*"
                   onChange={(e) => handleMusicFileChange(e.target.files?.[0] || null)}

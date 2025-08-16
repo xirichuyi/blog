@@ -151,7 +151,7 @@ const SearchResultsPage: React.FC = () => {
             )}
           </md-outlined-text-field>
           
-          <md-filled-button type="submit" disabled={isSearching}>
+          <md-filled-button type="submit" disabled={isSearching || !searchQuery.trim()}>
             {isSearching ? (
               <>
                 <md-circular-progress indeterminate slot="icon" style="--md-circular-progress-size: 18px"></md-circular-progress>

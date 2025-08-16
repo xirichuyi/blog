@@ -75,39 +75,45 @@ impl PostRepository {
         let page_size = query.page_size.unwrap_or(10);
         let offset = (page - 1) * page_size;
 
+        // Build WHERE conditions and parameters
         let mut where_conditions = vec!["status != ?".to_string()];
-        let mut params: Vec<Box<dyn sqlx::Encode<'_, sqlx::Sqlite> + Send + Sync>> =
-            vec![Box::new(PostStatus::Deleted as i32)];
+        let mut count_params = vec![PostStatus::Deleted as i32];
+        let mut query_params = vec![PostStatus::Deleted as i32];
 
         if let Some(category_id) = query.category_id {
             where_conditions.push("category_id = ?".to_string());
-            params.push(Box::new(category_id));
+            count_params.push(category_id as i32);
+            query_params.push(category_id as i32);
         }
 
         if let Some(status) = query.status {
             where_conditions.push("status = ?".to_string());
-            params.push(Box::new(status as i32));
+            count_params.push(status as i32);
+            query_params.push(status as i32);
         }
 
         let where_clause = where_conditions.join(" AND ");
 
         // Get total count
         let count_query = format!("SELECT COUNT(*) as count FROM posts WHERE {}", where_clause);
-        let total: i64 = sqlx::query(&count_query)
-            .bind(PostStatus::Deleted as i32)
-            .fetch_one(pool)
-            .await?
-            .get("count");
+        let mut count_query_builder = sqlx::query(&count_query);
+        for param in count_params {
+            count_query_builder = count_query_builder.bind(param);
+        }
+        let total: i64 = count_query_builder.fetch_one(pool).await?.get("count");
 
         // Get posts
         let posts_query = format!(
-            "SELECT id, title, cover_url, content, category_id, status, post_images, created_at, updated_at 
+            "SELECT id, title, cover_url, content, category_id, status, post_images, created_at, updated_at
              FROM posts WHERE {} ORDER BY created_at DESC LIMIT ? OFFSET ?",
             where_clause
         );
 
-        let rows = sqlx::query(&posts_query)
-            .bind(PostStatus::Deleted as i32)
+        let mut posts_query_builder = sqlx::query(&posts_query);
+        for param in query_params {
+            posts_query_builder = posts_query_builder.bind(param);
+        }
+        let rows = posts_query_builder
             .bind(page_size as i64)
             .bind(offset as i64)
             .fetch_all(pool)

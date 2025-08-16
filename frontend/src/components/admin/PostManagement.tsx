@@ -48,6 +48,7 @@ const PostManagement: React.FC = () => {
       const response = await apiService.getPosts({
         search: filters.search,
         category: filters.category,
+        page_size: 1000, // 获取所有文章
       });
 
       if (response.success && response.data) {

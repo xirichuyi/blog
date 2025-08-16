@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useForm, FormConfigs } from '../../hooks/useForm';
+import { ValidationRules } from '../../utils';
 import './LoginPage.css';
 
 const LoginPage: React.FC = () => {
@@ -28,11 +30,7 @@ const LoginPage: React.FC = () => {
     return () => clearError();
   }, [clearError]);
 
-  useEffect(() => {
-    if (error) {
-      clearError();
-    }
-  }, [username, password, clearError]);
+  // Clear error when user starts typing (handled in input handlers)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +92,11 @@ const LoginPage: React.FC = () => {
               <md-outlined-text-field
                 label="Username"
                 value={username}
-                onInput={(e: any) => setUsername(e.target.value)}
+                onInput={(e: any) => {
+                  const value = e.target.value || e.detail?.value || '';
+                  setUsername(value);
+                  if (error) clearError();
+                }}
                 required
                 type="text"
                 autocomplete="username"
@@ -108,7 +110,11 @@ const LoginPage: React.FC = () => {
               <md-outlined-text-field
                 label="Password"
                 value={password}
-                onInput={(e: any) => setPassword(e.target.value)}
+                onInput={(e: any) => {
+                  const value = e.target.value || e.detail?.value || '';
+                  setPassword(value);
+                  if (error) clearError();
+                }}
                 required
                 type={showPassword ? 'text' : 'password'}
                 autocomplete="current-password"
@@ -128,7 +134,6 @@ const LoginPage: React.FC = () => {
             <div className="login-actions">
               <md-filled-button
                 type="submit"
-                disabled={isSubmitting || !username.trim() || !password.trim()}
                 class="login-button"
               >
                 {isSubmitting ? (
