@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useBlogData from '../../hooks/useBlogData';
 import type { Article } from '../../types';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import ErrorMessage from '../ui/ErrorMessage';
 
 import './ArticlesPage.css';
 
@@ -116,14 +117,15 @@ const ArticlesPage: React.FC = () => {
   if (error) {
     return (
       <div className="articles-page">
-        <div className="articles-error">
-          <md-icon className="error-icon">error</md-icon>
-          <h2 className="md-typescale-headline-medium">Error Loading Articles</h2>
-          <p className="md-typescale-body-large">{error}</p>
-          <md-filled-button onClick={() => window.location.reload()}>
-            Try Again
-          </md-filled-button>
-        </div>
+        <ErrorMessage
+          title="Error Loading Articles"
+          message={error}
+          onRetry={() => {
+            fetchArticles();
+            fetchCategories();
+            fetchTags();
+          }}
+        />
       </div>
     );
   }
@@ -224,15 +226,24 @@ const ArticlesPage: React.FC = () => {
                   }}
                 >
                   {/* 上方图片区域 */}
-                  <div className="secondary-article-image" style={{ background: `linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)` }}>
+                  <div className="secondary-article-image">
                     <div className="secondary-article-visual-content">
-                      <div className="visual-placeholder">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
+                      {article.imageUrl ? (
+                        <img
+                          src={article.imageUrl.startsWith('http') ? article.imageUrl : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${article.imageUrl}`}
+                          alt={article.title}
+                          className="secondary-article-cover-image"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="visual-placeholder" style={{ background: `linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)` }}>
+                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                      )}
                     </div>
                   </div>
                   {/* 下方内容区域 */}

@@ -14,13 +14,86 @@ pub struct Post {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 #[repr(i32)]
 pub enum PostStatus {
     Draft = 0,
     Published = 1,
     Deleted = 2,
     Private = 3,
+}
+
+impl<'de> serde::Deserialize<'de> for PostStatus {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        struct PostStatusVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for PostStatusVisitor {
+            type Value = PostStatus;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a string or integer representing PostStatus")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<PostStatus, E>
+            where
+                E: Error,
+            {
+                match value {
+                    "Draft" => Ok(PostStatus::Draft),
+                    "Published" => Ok(PostStatus::Published),
+                    "Deleted" => Ok(PostStatus::Deleted),
+                    "Private" => Ok(PostStatus::Private),
+                    "0" => Ok(PostStatus::Draft),
+                    "1" => Ok(PostStatus::Published),
+                    "2" => Ok(PostStatus::Deleted),
+                    "3" => Ok(PostStatus::Private),
+                    _ => Err(Error::unknown_variant(
+                        value,
+                        &[
+                            "Draft",
+                            "Published",
+                            "Deleted",
+                            "Private",
+                            "0",
+                            "1",
+                            "2",
+                            "3",
+                        ],
+                    )),
+                }
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<PostStatus, E>
+            where
+                E: Error,
+            {
+                match value {
+                    0 => Ok(PostStatus::Draft),
+                    1 => Ok(PostStatus::Published),
+                    2 => Ok(PostStatus::Deleted),
+                    3 => Ok(PostStatus::Private),
+                    _ => Err(Error::invalid_value(
+                        serde::de::Unexpected::Signed(value),
+                        &"0, 1, 2, or 3",
+                    )),
+                }
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<PostStatus, E>
+            where
+                E: Error,
+            {
+                self.visit_i64(value as i64)
+            }
+        }
+
+        deserializer.deserialize_any(PostStatusVisitor)
+    }
 }
 
 impl From<i32> for PostStatus {

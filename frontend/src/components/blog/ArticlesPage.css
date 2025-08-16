@@ -309,6 +309,17 @@
   height: 100%;
 }
 
+.secondary-article-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.secondary-article-card:hover .secondary-article-cover-image {
+  transform: scale(1.05);
+}
+
 .visual-placeholder {
   color: rgba(255, 255, 255, 0.8);
   display: flex;

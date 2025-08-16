@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useData } from '../../contexts/DataContext';
+import MarkdownRenderer from '../ui/MarkdownRenderer';
 import type { Article, Category, Tag } from '../../types';
 import AdminLayout from './AdminLayout';
 import './PostEditor.css';
@@ -97,7 +98,7 @@ const PostEditor: React.FC = () => {
           tags: post.tags,
           featured: post.featured || false,
           status: post.status || 'draft',
-          coverUrl: post.coverUrl || '',
+          coverUrl: post.coverImage || post.imageUrl || '',
         });
       } else {
         setError(response.error || 'Failed to load post');
@@ -182,15 +183,18 @@ const PostEditor: React.FC = () => {
     try {
       setIsUploadingCover(true);
 
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
+      const authToken = localStorage.getItem('admin_token') || 'admin123456';
+
       if (isEditing && id) {
         // Update existing post cover
         const formData = new FormData();
         formData.append('cover', file);
 
-        const response = await fetch(`http://localhost:3006/api/post/update_cover/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/post/update_cover/${id}`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer admin123456`,
+            'Authorization': `Bearer ${authToken}`,
           },
           body: formData,
         });
@@ -198,9 +202,12 @@ const PostEditor: React.FC = () => {
         const result = await response.json();
 
         if (result.code === 200 && result.data) {
+          const coverUrl = result.data.cover_url;
+          const fullCoverUrl = coverUrl.startsWith('http') ? coverUrl : `${API_BASE_URL}${coverUrl}`;
+
           setFormData(prev => ({
             ...prev,
-            coverUrl: result.data.cover_url,
+            coverUrl: fullCoverUrl,
           }));
 
           showNotification({
@@ -216,10 +223,10 @@ const PostEditor: React.FC = () => {
         const uploadFormData = new FormData();
         uploadFormData.append('image', file);
 
-        const response = await fetch('http://localhost:3006/api/post/upload_post_image', {
+        const response = await fetch(`${API_BASE_URL}/api/post/upload_post_image`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer admin123456`,
+            'Authorization': `Bearer ${authToken}`,
           },
           body: uploadFormData,
         });
@@ -227,9 +234,12 @@ const PostEditor: React.FC = () => {
         const result = await response.json();
 
         if (result.code === 200 && result.data) {
+          const coverUrl = result.data.file_url;
+          const fullCoverUrl = coverUrl.startsWith('http') ? coverUrl : `${API_BASE_URL}${coverUrl}`;
+
           setFormData(prev => ({
             ...prev,
-            coverUrl: result.data.file_url,
+            coverUrl: fullCoverUrl,
           }));
 
           showNotification({
@@ -284,10 +294,11 @@ const PostEditor: React.FC = () => {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
 
-      const response = await fetch('http://localhost:3006/api/post/upload_post_image', {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
+      const response = await fetch(`${API_BASE_URL}/api/post/upload_post_image`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer admin123456`,
+          'Authorization': `Bearer ${localStorage.getItem('admin_token') || 'admin123456'}`,
         },
         body: uploadFormData,
       });
@@ -301,7 +312,13 @@ const PostEditor: React.FC = () => {
           message: 'Image has been uploaded successfully',
         });
 
-        return `http://localhost:3006${result.data.file_url}`;
+        // Handle both absolute and relative URLs
+        const imageUrl = result.data.file_url;
+        if (imageUrl.startsWith('http')) {
+          return imageUrl;
+        } else {
+          return `${API_BASE_URL}${imageUrl}`;
+        }
       } else {
         throw new Error(result.message || 'Failed to upload image');
       }
@@ -511,7 +528,7 @@ const PostEditor: React.FC = () => {
                 {formData.coverUrl ? (
                   <div className="cover-preview">
                     <img
-                      src={formData.coverUrl.startsWith('http') ? formData.coverUrl : `http://localhost:3006${formData.coverUrl}`}
+                      src={formData.coverUrl.startsWith('http') ? formData.coverUrl : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${formData.coverUrl}`}
                       alt="Cover preview"
                       className="cover-image"
                     />
@@ -614,9 +631,10 @@ const PostEditor: React.FC = () => {
             
             {previewMode ? (
               <div className="content-preview">
-                <div className="markdown-preview">
-                  {formData.content || 'No content to preview'}
-                </div>
+                <MarkdownRenderer
+                  content={formData.content || 'No content to preview'}
+                  className="markdown-preview"
+                />
               </div>
             ) : (
               <md-outlined-text-field

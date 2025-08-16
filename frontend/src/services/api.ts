@@ -34,6 +34,13 @@ class ApiService {
         ...options,
       });
 
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Server returned non-JSON response: ${text}`);
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -102,7 +109,7 @@ class ApiService {
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
       if (params?.status && params.status !== 'all') {
-        // Map frontend status to backend status
+        // Map frontend status to backend status numbers
         const statusMap: { [key: string]: string } = {
           'published': '1',
           'draft': '0',
@@ -150,7 +157,8 @@ class ApiService {
             category: post.category_id ? (categoryMap.get(post.category_id.toString()) || 'Uncategorized') : 'Uncategorized',
             tags: tags,
             featured: false,
-            status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : 'private',
+            status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
+            imageUrl: post.cover_url,
             coverImage: post.cover_url
           };
         }));
@@ -206,7 +214,8 @@ class ApiService {
             category: post.category_id ? (categoryMap.get(post.category_id.toString()) || 'Uncategorized') : 'Uncategorized',
             tags: tags,
             featured: false,
-            status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : 'private',
+            status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
+            imageUrl: post.cover_url,
             coverImage: post.cover_url
           };
           return { success: true, data: article };
@@ -224,7 +233,7 @@ class ApiService {
 
   async createPost(post: Partial<Article> & { status: 'draft' | 'published' }): Promise<ApiResponse<Article>> {
     try {
-      // Map frontend status to backend status
+      // Map frontend status to backend PostStatus enum strings
       const statusMap: { [key: string]: string } = {
         'draft': 'Draft',
         'published': 'Published',
@@ -276,7 +285,7 @@ class ApiService {
 
   async updatePost(id: string, post: Partial<Article> & { status?: 'draft' | 'published' | 'private' }): Promise<ApiResponse<Article>> {
     try {
-      // Map frontend status to backend status
+      // Map frontend status to backend PostStatus enum strings
       const statusMap: { [key: string]: string } = {
         'draft': 'Draft',
         'published': 'Published',

@@ -7,6 +7,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useData } from '../../contexts/DataContext';
 import type { Article } from '../../types';
 import AdminLayout from './AdminLayout';
+import ErrorMessage from '../ui/ErrorMessage';
 import './PostManagement.css';
 
 interface PostFilters {
@@ -43,8 +44,8 @@ const PostManagement: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
+      // Load all posts without status filter to handle filtering on frontend
       const response = await apiService.getPosts({
-        status: filters.status,
         search: filters.search,
         category: filters.category,
       });
@@ -63,6 +64,11 @@ const PostManagement: React.FC = () => {
 
   const applyFilters = () => {
     let filtered = [...posts];
+
+    // Status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(post => post.status === filters.status);
+    }
 
     // Search filter
     if (filters.search) {
@@ -186,15 +192,11 @@ const PostManagement: React.FC = () => {
   if (error) {
     return (
       <AdminLayout title="Post Management">
-        <div className="post-management-error">
-          <md-icon class="error-icon">error</md-icon>
-          <h2 className="md-typescale-headline-small">Error Loading Posts</h2>
-          <p className="md-typescale-body-medium">{error}</p>
-          <md-filled-button onClick={loadPosts}>
-            <md-icon slot="icon">refresh</md-icon>
-            Retry
-          </md-filled-button>
-        </div>
+        <ErrorMessage
+          title="Error Loading Posts"
+          message={error}
+          onRetry={loadPosts}
+        />
       </AdminLayout>
     );
   }
@@ -315,8 +317,10 @@ const PostManagement: React.FC = () => {
                     {formatDate(post.publishDate)}
                   </td>
                   <td>
-                    <md-assist-chip class="status-published">
-                      Published
+                    <md-assist-chip class={`status-${post.status || 'draft'}`}>
+                      {post.status === 'published' ? 'Published' :
+                       post.status === 'draft' ? 'Draft' :
+                       post.status === 'private' ? 'Private' : 'Draft'}
                     </md-assist-chip>
                   </td>
                   <td>

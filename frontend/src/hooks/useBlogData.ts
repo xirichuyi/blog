@@ -25,11 +25,14 @@ const useBlogData = (): UseBlogDataReturn => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      // 暂时不传递status参数，获取所有文章然后在前端过滤
       const response = await apiService.getPosts();
       if (response.success && response.data) {
+        // 只显示已发布的文章
+        const publishedArticles = response.data.filter((article: Article) => article.status === 'published');
         setState(prev => ({
           ...prev,
-          articles: response.data,
+          articles: publishedArticles,
           isLoading: false
         }));
       } else {

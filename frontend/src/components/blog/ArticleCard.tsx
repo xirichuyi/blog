@@ -54,8 +54,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     >
       {imageUrl && (
         <div className="article-card-media">
-          <img 
-            src={imageUrl} 
+          <img
+            src={imageUrl.startsWith('http') ? imageUrl : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${imageUrl}`}
             alt={title}
             className="article-card-image"
             loading="lazy"
