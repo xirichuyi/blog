@@ -246,7 +246,7 @@ class ApiService {
         cover_url: post.coverImage || post.imageUrl || '',
         category_id: post.category ? parseInt(post.category) : null,
         status: statusMap[post.status || 'draft'] || 'Draft',
-        post_images: [] // Will be handled separately if needed
+        post_images: (post as any).images || [] // Include images array from post data
       };
 
       const response = await this.request<any>('/post/create', {
@@ -304,6 +304,9 @@ class ApiService {
       }
       if (post.status !== undefined) {
         requestData.status = statusMap[post.status] || 'Draft';
+      }
+      if ((post as any).images !== undefined) {
+        requestData.post_images = (post as any).images;
       }
 
       const response = await this.request<any>(`/post/update/${id}`, {

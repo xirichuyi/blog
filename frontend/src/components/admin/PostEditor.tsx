@@ -6,7 +6,7 @@ import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useData } from '../../contexts/DataContext';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
-import type { Article, Category, Tag } from '../../types';
+
 import AdminLayout from './AdminLayout';
 import './PostEditor.css';
 
@@ -19,17 +19,10 @@ interface PostFormData {
   featured: boolean;
   status: 'draft' | 'published';
   coverUrl?: string;
+  images: string[]; // Array of image URLs used in content
 }
 
-interface ImageUploadResponse {
-  success: boolean;
-  data?: {
-    file_url: string;
-    file_name: string;
-    file_size: number;
-  };
-  error?: string;
-}
+
 
 const PostEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +40,7 @@ const PostEditor: React.FC = () => {
     featured: false,
     status: 'draft',
     coverUrl: '',
+    images: [],
   });
 
   const [tagInput, setTagInput] = useState('');
@@ -62,13 +56,81 @@ const PostEditor: React.FC = () => {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper function to extract image URLs from markdown content
+  const extractImagesFromContent = (content: string): string[] => {
+    const imageRegex = /!\[.*?\]\((.*?)\)/g;
+    const images: string[] = [];
+    let match;
 
+    while ((match = imageRegex.exec(content)) !== null) {
+      const imageUrl = match[1];
+      if (imageUrl && !images.includes(imageUrl)) {
+        images.push(imageUrl);
+      }
+    }
+
+    return images;
+  };
+
+  // Helper function to insert image into content at cursor position
+  const insertImageIntoContent = (imageUrl: string) => {
+    const imageMarkdown = `![Image](${imageUrl})`;
+
+    // Try to find the Material Design text field's internal textarea
+    const mdTextField = document.querySelector('md-outlined-text-field[label="Content (Markdown)"]') as any;
+    let textarea: HTMLTextAreaElement | null = null;
+
+    if (mdTextField) {
+      // Look for the textarea inside the shadow DOM or as a child
+      textarea = mdTextField.querySelector('textarea') ||
+                 mdTextField.shadowRoot?.querySelector('textarea') ||
+                 mdTextField.renderRoot?.querySelector('textarea');
+    }
+
+    if (textarea) {
+      const cursorPosition = textarea.selectionStart || 0;
+      const currentContent = formData.content;
+
+      const newContent =
+        currentContent.slice(0, cursorPosition) +
+        imageMarkdown +
+        currentContent.slice(cursorPosition);
+
+      // Update content
+      setFormData(prev => ({
+        ...prev,
+        content: newContent,
+        images: [...prev.images, imageUrl].filter((url, index, arr) => arr.indexOf(url) === index) // Remove duplicates
+      }));
+
+      // Set cursor position after the inserted image
+      setTimeout(() => {
+        textarea!.focus();
+        textarea!.setSelectionRange(
+          cursorPosition + imageMarkdown.length,
+          cursorPosition + imageMarkdown.length
+        );
+      }, 0);
+    } else {
+      // Fallback: just append to the end of content
+      setFormData(prev => ({
+        ...prev,
+        content: prev.content + '\n' + imageMarkdown,
+        images: [...prev.images, imageUrl].filter((url, index, arr) => arr.indexOf(url) === index) // Remove duplicates
+      }));
+    }
+  };
 
   useEffect(() => {
     if (isEditing && id) {
       loadPost(id);
     }
   }, [isEditing, id]);
+
+  // Debug: Monitor isUploadingImage state
+  useEffect(() => {
+    console.log('isUploadingImage state changed:', isUploadingImage);
+  }, [isUploadingImage]);
 
 
 
@@ -90,6 +152,9 @@ const PostEditor: React.FC = () => {
           categoryId = matchingCategory.id;
         }
 
+        // Extract images from content
+        const contentImages = extractImagesFromContent(post.content || '');
+
         setFormData({
           title: post.title,
           excerpt: post.excerpt,
@@ -99,6 +164,7 @@ const PostEditor: React.FC = () => {
           featured: post.featured || false,
           status: post.status || 'draft',
           coverUrl: post.coverImage || post.imageUrl || '',
+          images: contentImages,
         });
       } else {
         setError(response.error || 'Failed to load post');
@@ -335,29 +401,7 @@ const PostEditor: React.FC = () => {
     }
   };
 
-  const insertImageIntoContent = (imageUrl: string) => {
-    const imageMarkdown = `![Image](${imageUrl})`;
-    const textarea = document.querySelector('md-outlined-text-field[label="Content"] textarea') as HTMLTextAreaElement;
 
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const currentContent = formData.content;
-
-      const newContent = currentContent.substring(0, start) + imageMarkdown + currentContent.substring(end);
-
-      setFormData(prev => ({
-        ...prev,
-        content: newContent,
-      }));
-
-      // Set cursor position after the inserted image
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + imageMarkdown.length, start + imageMarkdown.length);
-      }, 0);
-    }
-  };
 
   const handleTagInputChange = (value: string) => {
     setTagInput(value);
@@ -378,6 +422,9 @@ const PostEditor: React.FC = () => {
         throw new Error('Content is required');
       }
 
+      // Extract current images from content to ensure images array is up to date
+      const currentImages = extractImagesFromContent(formData.content);
+
       const postData = {
         title: formData.title.trim(),
         excerpt: formData.excerpt.trim() || formData.content.substring(0, 150) + '...',
@@ -389,6 +436,7 @@ const PostEditor: React.FC = () => {
         author: 'Admin', // This should come from auth context
         publishDate: status === 'published' ? new Date().toISOString() : undefined,
         readTime: Math.ceil(formData.content.split(' ').length / 200), // Estimate reading time
+        images: currentImages, // Include images array
       };
 
       let response;
@@ -595,11 +643,29 @@ const PostEditor: React.FC = () => {
               <div className="content-actions">
                 <md-outlined-button
                   onClick={() => imageInputRef.current?.click()}
-                  disabled={isUploadingImage ? 'true' : undefined}
                 >
                   <md-icon slot="icon">image</md-icon>
                   {isUploadingImage ? 'Uploading...' : 'Insert Image'}
                 </md-outlined-button>
+
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const imageUrl = await handleContentImageUpload(file);
+                      if (imageUrl) {
+                        insertImageIntoContent(imageUrl);
+                      }
+                    }
+                    // Reset input value to allow uploading the same file again
+                    e.target.value = '';
+                  }}
+                  style={{ display: 'none' }}
+                  disabled={isUploadingImage}
+                />
 
                 <md-outlined-button
                   onClick={() => setPreviewMode(!previewMode)}
@@ -611,23 +677,7 @@ const PostEditor: React.FC = () => {
               </div>
             </div>
 
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const imageUrl = await handleContentImageUpload(file);
-                  if (imageUrl) {
-                    insertImageIntoContent(imageUrl);
-                  }
-                }
-                // Reset input value to allow uploading the same file again
-                e.target.value = '';
-              }}
-              style={{ display: 'none' }}
-            />
+
             
             {previewMode ? (
               <div className="content-preview">
@@ -735,7 +785,7 @@ const PostEditor: React.FC = () => {
                   </div>
                 )}
               </div>
-              
+
               {/* Current Tags */}
               {formData.tags.length > 0 && (
                 <div className="current-tags">
