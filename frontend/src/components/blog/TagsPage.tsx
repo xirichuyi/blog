@@ -1,58 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../../services/api';
-import type { Tag, Article } from '../../types';
+import { useData } from '../../contexts/DataContext';
+import type { Article } from '../../types';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ArticleCard from './ArticleCard';
 import './TagsPage.css';
 
 const TagsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [tags, setTags] = useState<Tag[]>([]);
+  const {
+    tags,
+    isLoading,
+    error,
+    fetchArticlesByTag
+  } = useData();
+
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [articles, setArticles] = useState<Article[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingArticles, setIsLoadingArticles] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [articlesError, setArticlesError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Fetch tags on component mount
-  useEffect(() => {
-    const fetchTags = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const response = await apiService.getPublicTags();
-        if (response.success && response.data) {
-          setTags(response.data);
-        } else {
-          setError(response.error || 'Failed to fetch tags');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch tags');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTags();
-  }, []);
 
   // Load articles by tag
   const loadArticlesByTag = async (tagId: string) => {
     setIsLoadingArticles(true);
-    setError(null);
-    
+    setArticlesError(null);
+
     try {
-      const response = await apiService.getPostsByTag(tagId);
-      if (response.success && response.data) {
-        setArticles(response.data);
-      } else {
-        setError(response.error || 'Failed to fetch articles');
-      }
+      const articlesList = await fetchArticlesByTag(tagId);
+      setArticles(articlesList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch articles');
+      setArticlesError(err instanceof Error ? err.message : 'Failed to fetch articles');
     } finally {
       setIsLoadingArticles(false);
     }

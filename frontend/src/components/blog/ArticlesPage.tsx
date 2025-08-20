@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useBlogData from '../../hooks/useBlogData';
+import { useData } from '../../contexts/DataContext';
 import type { Article } from '../../types';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ErrorMessage from '../ui/ErrorMessage';
@@ -15,14 +15,17 @@ const ArticlesPage: React.FC = () => {
   const {
     categories,
     tags,
+    articles: contextArticles,
     isLoading,
+    articlesLoading,
     error,
+    articlesError,
     fetchArticles,
-    fetchCategories,
-    fetchTags
-  } = useBlogData();
+    fetchArticlesByCategory,
+    fetchArticlesByTag
+  } = useData();
 
-  // Article states
+  // Local article states for filtered results
   const [articles, setArticles] = useState<Article[]>([]);
   const [totalArticles, setTotalArticles] = useState(0);
 
@@ -35,21 +38,53 @@ const ArticlesPage: React.FC = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Load articles with pagination
+  // Load articles based on current filter
   const loadArticles = useCallback(async (page: number = 1) => {
-    const result = await fetchArticles(page, ARTICLES_PER_PAGE);
-    if (result) {
-      setArticles(result.articles);
-      setTotalArticles(result.total);
-    }
-  }, [fetchArticles]);
+    try {
+      let result;
 
-  // Load data on component mount
+      if (activeFilter.type === 'category' && activeFilter.id !== 'all' && activeFilter.id) {
+        // Load articles by category
+        const categoryArticles = await fetchArticlesByCategory(activeFilter.id);
+        // For category filtering, we get all articles and handle pagination locally
+        const startIndex = (page - 1) * ARTICLES_PER_PAGE;
+        const endIndex = startIndex + ARTICLES_PER_PAGE;
+        setArticles(categoryArticles.slice(startIndex, endIndex));
+        setTotalArticles(categoryArticles.length);
+      } else if (activeFilter.type === 'tag' && activeFilter.id) {
+        // Load articles by tag
+        const tagArticles = await fetchArticlesByTag(activeFilter.id);
+        // For tag filtering, we get all articles and handle pagination locally
+        const startIndex = (page - 1) * ARTICLES_PER_PAGE;
+        const endIndex = startIndex + ARTICLES_PER_PAGE;
+        setArticles(tagArticles.slice(startIndex, endIndex));
+        setTotalArticles(tagArticles.length);
+      } else {
+        // Load all articles with server-side pagination
+        result = await fetchArticles(page, ARTICLES_PER_PAGE);
+        if (result) {
+          setArticles(result.articles);
+          setTotalArticles(result.total);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load articles:', error);
+    }
+  }, [fetchArticles, fetchArticlesByCategory, fetchArticlesByTag, activeFilter]);
+
+  // Load data on component mount and when filter changes
   useEffect(() => {
     loadArticles(currentPage);
-    fetchCategories();
-    fetchTags();
-  }, [loadArticles, currentPage, fetchCategories, fetchTags]);
+  }, [loadArticles, currentPage]);
+
+  // Reset to first page when filter changes
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    } else {
+      loadArticles(1);
+    }
+  }, [activeFilter, loadArticles, currentPage]);
 
   // Handle category selection
   const handleCategorySelect = useCallback((categoryId: string) => {
@@ -125,9 +160,7 @@ const ArticlesPage: React.FC = () => {
           title="Error Loading Articles"
           message={error}
           onRetry={() => {
-            fetchArticles();
-            fetchCategories();
-            fetchTags();
+            loadArticles(currentPage);
           }}
         />
       </div>

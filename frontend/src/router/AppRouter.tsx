@@ -10,6 +10,7 @@ import SearchResultsPage from '../components/blog/SearchResultsPage';
 import AboutPage from '../components/pages/AboutPage';
 import ContactPage from '../components/pages/ContactPage';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
+import PerformanceTest from '../components/debug/PerformanceTest';
 import LoginPage from '../components/admin/LoginPage';
 import ProtectedRoute from '../components/admin/ProtectedRoute';
 import Dashboard from '../components/admin/Dashboard';
@@ -122,7 +123,14 @@ const AppRouter: React.FC = () => {
               <ContactPage />
             </Layout>
           } />
-          
+
+          {/* Debug Routes */}
+          <Route path="/debug/performance" element={
+            <Layout title="Performance Test - Cyrus Blog">
+              <PerformanceTest />
+            </Layout>
+          } />
+
           {/* Admin Routes */}
           <Route path="/admin/login" element={<LoginPage />} />
 

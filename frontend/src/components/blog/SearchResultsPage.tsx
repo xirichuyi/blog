@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import useBlogData from '../../hooks/useBlogData';
+import { useData } from '../../contexts/DataContext';
 import type { Article } from '../../types';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ArticleCard from './ArticleCard';
@@ -11,7 +11,7 @@ import './SearchResultsPage.css';
 const SearchResultsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { articles, categories, isLoading, error, fetchArticles, fetchCategories } = useBlogData();
+  const { articles, categories, isLoading, error, fetchArticles } = useData();
   
   const [searchResults, setSearchResults] = useState<Article[]>([]);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');

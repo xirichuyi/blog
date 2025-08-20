@@ -1,59 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../../services/api';
-import type { Category, Article } from '../../types';
+import { useData } from '../../contexts/DataContext';
+import type { Article } from '../../types';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ArticleCard from './ArticleCard';
 import './CategoriesPage.css';
 
 const CategoriesPage: React.FC = () => {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const {
+    categories,
+    isLoading,
+    error,
+    fetchArticlesByCategory
+  } = useData();
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [articles, setArticles] = useState<Article[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingArticles, setIsLoadingArticles] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [articlesError, setArticlesError] = useState<string | null>(null);
 
-  // Fetch categories on component mount
+  // Load articles initially
   useEffect(() => {
-    const fetchCategories = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const response = await apiService.getPublicCategories();
-        if (response.success && response.data) {
-          setCategories(response.data);
-          // Load all articles initially
-          await loadArticlesByCategory('all');
-        } else {
-          setError(response.error || 'Failed to fetch categories');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch categories');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCategories();
+    loadArticlesByCategory('all');
   }, []);
 
   // Load articles by category
   const loadArticlesByCategory = async (categoryId: string) => {
     setIsLoadingArticles(true);
-    setError(null);
-    
+    setArticlesError(null);
+
     try {
-      const response = await apiService.getPostsByCategory(categoryId);
-      if (response.success && response.data) {
-        setArticles(response.data);
-      } else {
-        setError(response.error || 'Failed to fetch articles');
-      }
+      const articlesList = await fetchArticlesByCategory(categoryId);
+      setArticles(articlesList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch articles');
+      setArticlesError(err instanceof Error ? err.message : 'Failed to fetch articles');
     } finally {
       setIsLoadingArticles(false);
     }
