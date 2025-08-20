@@ -120,24 +120,50 @@ impl CategoryRepository {
     }
 
     pub async fn delete(pool: &DatabasePool, id: i64) -> Result<bool> {
-        // Check if category is being used by any posts
-        let posts_using_category = sqlx::query!(
-            "SELECT COUNT(*) as count FROM posts WHERE category_id = ? AND status != 2",
-            id
-        )
-        .fetch_one(pool)
-        .await?;
+        let mut tx = pool.begin().await?;
 
-        if posts_using_category.count > 0 {
-            return Err(AppError::BadRequest(
-                "Cannot delete category that is being used by posts".to_string(),
-            ));
-        }
+        let result = async {
+            // Lock the category record to prevent concurrent modifications
+            let category = sqlx::query!("SELECT id, name FROM categories WHERE id = ?", id)
+                .fetch_optional(&mut *tx)
+                .await?;
 
-        let result = sqlx::query!("DELETE FROM categories WHERE id = ?", id)
-            .execute(pool)
+            if category.is_none() {
+                return Err(AppError::NotFound("Category not found".to_string()));
+            }
+
+            // Check if category is being used by any posts (in same transaction)
+            let posts_using_category = sqlx::query!(
+                "SELECT COUNT(*) as count FROM posts WHERE category_id = ? AND status != 2",
+                id
+            )
+            .fetch_one(&mut *tx)
             .await?;
 
-        Ok(result.rows_affected() > 0)
+            if posts_using_category.count > 0 {
+                return Err(AppError::BadRequest(
+                    "Cannot delete category that is being used by posts".to_string(),
+                ));
+            }
+
+            // Delete the category
+            let result = sqlx::query!("DELETE FROM categories WHERE id = ?", id)
+                .execute(&mut *tx)
+                .await?;
+
+            Ok(result.rows_affected() > 0)
+        }
+        .await;
+
+        match result {
+            Ok(deleted) => {
+                tx.commit().await?;
+                Ok(deleted)
+            }
+            Err(e) => {
+                tx.rollback().await?;
+                Err(e)
+            }
+        }
     }
 }

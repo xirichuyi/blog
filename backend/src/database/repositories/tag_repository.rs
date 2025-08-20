@@ -102,25 +102,51 @@ impl TagRepository {
     }
 
     pub async fn delete(pool: &DatabasePool, id: i64) -> Result<bool> {
-        // Check if tag is being used by any posts
-        let posts_using_tag = sqlx::query!(
-            "SELECT COUNT(*) as count FROM post_tags WHERE tag_id = ?",
-            id
-        )
-        .fetch_one(pool)
-        .await?;
+        let mut tx = pool.begin().await?;
 
-        if posts_using_tag.count > 0 {
-            return Err(AppError::BadRequest(
-                "Cannot delete tag that is being used by posts".to_string(),
-            ));
-        }
+        let result = async {
+            // Lock the tag record to prevent concurrent modifications
+            let tag = sqlx::query!("SELECT id, name FROM tags WHERE id = ?", id)
+                .fetch_optional(&mut *tx)
+                .await?;
 
-        let result = sqlx::query!("DELETE FROM tags WHERE id = ?", id)
-            .execute(pool)
+            if tag.is_none() {
+                return Err(AppError::NotFound("Tag not found".to_string()));
+            }
+
+            // Check if tag is being used by any posts (in same transaction)
+            let posts_using_tag = sqlx::query!(
+                "SELECT COUNT(*) as count FROM post_tags WHERE tag_id = ?",
+                id
+            )
+            .fetch_one(&mut *tx)
             .await?;
 
-        Ok(result.rows_affected() > 0)
+            if posts_using_tag.count > 0 {
+                return Err(AppError::BadRequest(
+                    "Cannot delete tag that is being used by posts".to_string(),
+                ));
+            }
+
+            // Delete the tag
+            let result = sqlx::query!("DELETE FROM tags WHERE id = ?", id)
+                .execute(&mut *tx)
+                .await?;
+
+            Ok(result.rows_affected() > 0)
+        }
+        .await;
+
+        match result {
+            Ok(deleted) => {
+                tx.commit().await?;
+                Ok(deleted)
+            }
+            Err(e) => {
+                tx.rollback().await?;
+                Err(e)
+            }
+        }
     }
 
     // Post-Tag relationship methods
@@ -156,38 +182,66 @@ impl TagRepository {
         post_id: i64,
         tag_ids: Vec<i64>,
     ) -> Result<()> {
-        // Start transaction
         let mut tx = pool.begin().await?;
 
-        // Delete existing post-tag relationships
-        sqlx::query!("DELETE FROM post_tags WHERE post_id = ?", post_id)
-            .execute(&mut *tx)
+        let result = async {
+            // Verify post exists and is not deleted
+            let post_exists = sqlx::query!(
+                "SELECT id FROM posts WHERE id = ? AND status != 2",
+                post_id
+            )
+            .fetch_optional(&mut *tx)
             .await?;
 
-        // Insert new post-tag relationships
-        for tag_id in tag_ids {
-            // Verify tag exists
-            let tag_exists = sqlx::query!("SELECT id FROM tags WHERE id = ?", tag_id)
-                .fetch_optional(&mut *tx)
-                .await?;
-
-            if tag_exists.is_none() {
-                return Err(AppError::BadRequest(format!(
-                    "Tag with id {} does not exist",
-                    tag_id
-                )));
+            if post_exists.is_none() {
+                return Err(AppError::NotFound("Post not found or deleted".to_string()));
             }
 
-            sqlx::query!(
-                "INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)",
-                post_id,
-                tag_id
-            )
-            .execute(&mut *tx)
-            .await?;
-        }
+            // Batch verify all tags exist (more efficient than individual checks)
+            if !tag_ids.is_empty() {
+                let tag_ids_json = serde_json::to_string(&tag_ids)?;
+                let existing_tags = sqlx::query!(
+                    "SELECT COUNT(*) as count FROM tags WHERE id IN (SELECT value FROM json_each(?))",
+                    tag_ids_json
+                )
+                .fetch_one(&mut *tx)
+                .await?;
 
-        tx.commit().await?;
-        Ok(())
+                if existing_tags.count.unwrap_or(0) as usize != tag_ids.len() {
+                    return Err(AppError::BadRequest(
+                        "One or more tags do not exist".to_string(),
+                    ));
+                }
+            }
+
+            // Delete existing post-tag relationships
+            sqlx::query!("DELETE FROM post_tags WHERE post_id = ?", post_id)
+                .execute(&mut *tx)
+                .await?;
+
+            // Batch insert new post-tag relationships
+            for tag_id in tag_ids {
+                sqlx::query!(
+                    "INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)",
+                    post_id,
+                    tag_id
+                )
+                .execute(&mut *tx)
+                .await?;
+            }
+
+            Ok(())
+        }.await;
+
+        match result {
+            Ok(_) => {
+                tx.commit().await?;
+                Ok(())
+            }
+            Err(e) => {
+                tx.rollback().await?;
+                Err(e)
+            }
+        }
     }
 }

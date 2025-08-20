@@ -208,4 +208,65 @@ impl PostRepository {
 
         Ok(result.rows_affected() > 0)
     }
+
+    pub async fn update_in_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        id: i64,
+        request: UpdatePostRequest,
+    ) -> Result<Option<Post>> {
+        // Get current post data
+        let current = sqlx::query!(
+            "SELECT title, cover_url, content, category_id, status, post_images FROM posts WHERE id = ?",
+            id
+        )
+        .fetch_optional(&mut **tx)
+        .await?;
+
+        if let Some(_current) = current {
+            let post_images_json = request
+                .post_images
+                .map(|images| serde_json::to_string(&images))
+                .transpose()?;
+
+            let status_i32 = request.status.map(|s| s as i32);
+
+            let row = sqlx::query!(
+                r#"
+                UPDATE posts
+                SET title = COALESCE(?, title),
+                    cover_url = COALESCE(?, cover_url),
+                    content = COALESCE(?, content),
+                    category_id = COALESCE(?, category_id),
+                    status = COALESCE(?, status),
+                    post_images = COALESCE(?, post_images),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                RETURNING id, title, cover_url, content, category_id, status, post_images, created_at, updated_at
+                "#,
+                request.title,
+                request.cover_url,
+                request.content,
+                request.category_id,
+                status_i32,
+                post_images_json,
+                id
+            )
+            .fetch_one(&mut **tx)
+            .await?;
+
+            Ok(Some(Post {
+                id: row.id.unwrap(),
+                title: row.title,
+                cover_url: row.cover_url,
+                content: row.content,
+                category_id: row.category_id,
+                status: row.status as i32,
+                post_images: row.post_images,
+                created_at: row.created_at.unwrap().and_utc(),
+                updated_at: row.updated_at.unwrap().and_utc(),
+            }))
+        } else {
+            Ok(None)
+        }
+    }
 }

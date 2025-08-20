@@ -79,22 +79,42 @@ impl PostService {
     pub async fn update_post_cover(&self, id: i64, new_cover_url: String) -> Result<Option<Post>> {
         // Get existing post to delete old cover
         if let Some(existing_post) = PostRepository::get_by_id(self.database.pool(), id).await? {
-            // Delete old cover if exists
-            if let Some(old_cover_url) = &existing_post.cover_url {
-                let _ = self.file_handler.delete_file(old_cover_url).await;
+            // Start transaction for atomic operation
+            let mut tx = self.database.pool().begin().await?;
+
+            let result = async {
+                // Update database first
+                let update_request = UpdatePostRequest {
+                    title: None,
+                    cover_url: Some(new_cover_url),
+                    content: None,
+                    category_id: None,
+                    status: None,
+                    post_images: None,
+                };
+
+                let updated_post =
+                    PostRepository::update_in_tx(&mut tx, id, update_request).await?;
+
+                // Only delete old file after successful database update
+                if let Some(old_cover_url) = &existing_post.cover_url {
+                    let _ = self.file_handler.delete_file(old_cover_url).await;
+                }
+
+                Ok(updated_post)
             }
+            .await;
 
-            // Update with new cover
-            let update_request = UpdatePostRequest {
-                title: None,
-                cover_url: Some(new_cover_url),
-                content: None,
-                category_id: None,
-                status: None,
-                post_images: None,
-            };
-
-            PostRepository::update(self.database.pool(), id, update_request).await
+            match result {
+                Ok(post) => {
+                    tx.commit().await?;
+                    Ok(post)
+                }
+                Err(e) => {
+                    tx.rollback().await?;
+                    Err(e)
+                }
+            }
         } else {
             Ok(None)
         }
