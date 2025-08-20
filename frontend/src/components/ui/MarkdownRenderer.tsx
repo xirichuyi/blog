@@ -16,20 +16,29 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
         components={{
           // Custom heading renderer to add IDs for navigation
           h1: ({ children, ...props }) => {
-            const id = typeof children === 'string' 
-              ? children.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')
+            const id = typeof children === 'string'
+              ? children.toLowerCase()
+                  .replace(/\s+/g, '-')
+                  .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                  .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
               : '';
             return <h1 id={id} {...props}>{children}</h1>;
           },
           h2: ({ children, ...props }) => {
-            const id = typeof children === 'string' 
-              ? children.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')
+            const id = typeof children === 'string'
+              ? children.toLowerCase()
+                  .replace(/\s+/g, '-')
+                  .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                  .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
               : '';
             return <h2 id={id} {...props}>{children}</h2>;
           },
           h3: ({ children, ...props }) => {
-            const id = typeof children === 'string' 
-              ? children.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')
+            const id = typeof children === 'string'
+              ? children.toLowerCase()
+                  .replace(/\s+/g, '-')
+                  .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                  .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
               : '';
             return <h3 id={id} {...props}>{children}</h3>;
           },

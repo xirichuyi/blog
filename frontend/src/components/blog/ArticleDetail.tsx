@@ -80,7 +80,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
         let bestCandidate = null;
         let bestScore = -1;
 
-        headingElements.forEach((element, index) => {
+        headingElements.forEach((element) => {
           const rect = element.getBoundingClientRect();
           const elementTop = rect.top;
           const elementBottom = rect.bottom;
@@ -110,12 +110,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
 
           if (score > bestScore) {
             bestScore = score;
-            bestCandidate = index;
+            bestCandidate = element.id; // Use the actual element ID
           }
         });
 
         if (bestCandidate !== null) {
-          activeId = `heading-${bestCandidate}`;
+          activeId = bestCandidate;
         }
 
         setActiveHeading(activeId);
@@ -131,6 +131,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
     };
   }, [article]);
 
+  // Helper function to generate consistent heading IDs
+  const generateHeadingId = (text: string): string => {
+    return text.toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+      .replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
+  };
+
   // Add IDs to headings and extract heading information
   useEffect(() => {
     if (article?.content) {
@@ -138,14 +146,40 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({
       if (articleBody) {
         const headingElements = articleBody.querySelectorAll('h2, h3');
         const extractedHeadings: Array<{id: string, text: string, level: number}> = [];
+        const usedIds = new Set<string>();
 
-        headingElements.forEach((heading, index) => {
-          const id = `heading-${index}`;
-          heading.id = id;
+        headingElements.forEach((heading) => {
+          const text = heading.textContent || '';
+          const id = generateHeadingId(text);
+
+          // Only set ID if it doesn't already exist (MarkdownRenderer might have set it)
+          if (!heading.id) {
+            // Ensure unique ID by adding a suffix if needed
+            let uniqueId = id;
+            let counter = 1;
+            while (usedIds.has(uniqueId)) {
+              uniqueId = `${id}-${counter}`;
+              counter++;
+            }
+            heading.id = uniqueId;
+            usedIds.add(uniqueId);
+          } else {
+            // If heading already has an ID, make sure it's unique
+            let uniqueId = heading.id;
+            let counter = 1;
+            while (usedIds.has(uniqueId)) {
+              uniqueId = `${heading.id}-${counter}`;
+              counter++;
+            }
+            if (uniqueId !== heading.id) {
+              heading.id = uniqueId;
+            }
+            usedIds.add(uniqueId);
+          }
 
           extractedHeadings.push({
-            id,
-            text: heading.textContent || '',
+            id: heading.id, // Use the actual ID from the element
+            text,
             level: parseInt(heading.tagName.charAt(1))
           });
         });

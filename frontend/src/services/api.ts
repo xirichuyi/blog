@@ -2,16 +2,62 @@
 
 import type { LoginCredentials, LoginResponse, Article, Category, Tag, ApiResponse, DashboardStats, UploadResponse, MusicTrack } from '../types';
 import { storageService } from './storage';
+import { globalCache, CacheKeys } from '../utils/cacheManager';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
 const API_PREFIX = '/api';
 
+// Backend response typing helpers
+interface BackendListResponse<T> {
+  data: T[];
+  total?: number;
+  page?: number;
+  page_size?: number;
+}
+
+interface BackendPost {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+  status: number;
+  category_id?: number;
+  cover_url?: string;
+}
+
+interface BackendTag { id: number; name: string }
+// interface BackendCategory { id: number; name: string } // used in getPublicCategories
+
+type PostImagesPayload = { post_images?: string[] };
+
 class ApiService {
   private baseURL: string;
-
   constructor() {
     this.baseURL = `${API_BASE_URL}${API_PREFIX}`;
+
+    // Clean expired cache entries periodically
+    setInterval(() => {
+      globalCache.cleanExpired();
+    }, 60000); // Every minute
+  }
+
+  // Enhanced cache methods using global cache manager
+  private getCachedData<T>(key: string): T | null {
+    return globalCache.get<T>(key);
+  }
+
+  private setCachedData<T>(key: string, data: T, ttl?: number): void {
+    globalCache.set(key, data, ttl);
+  }
+
+  private invalidateCache(pattern: RegExp): void {
+    globalCache.invalidatePattern(pattern);
+  }
+
+  // 清理缓存方法
+  public clearCache(): void {
+    globalCache.clear();
   }
 
   // Helper method to get auth headers
@@ -62,28 +108,22 @@ class ApiService {
 
   // Authentication APIs
   async login(credentials: LoginCredentials): Promise<ApiResponse<LoginResponse>> {
-    // For now, simulate login with admin token
-    // In real implementation, this would call /api/admin/login
     try {
-      if (credentials.username === 'admin' && credentials.password === 'admin123456') {
-        const response: LoginResponse = {
-          success: true,
-          token: 'admin123456', // This matches the BLOG_ADMIN_TOKEN in backend
-          user: {
-            id: '1',
-            username: 'admin',
-            email: 'admin@cyrusblog.com',
-            role: 'admin',
-            lastLogin: new Date().toISOString(),
-          },
-        };
-        return { success: true, data: response };
-      } else {
-        return {
-          success: false,
-          error: 'Invalid username or password',
-        };
+      const response = await fetch(`${this.baseURL}/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
+
+      return { success: true, data };
     } catch (error) {
       return {
         success: false,
@@ -117,34 +157,37 @@ class ApiService {
         };
         queryParams.append('status', statusMap[params.status] || '1');
       }
+      if (params?.category) {
+        queryParams.append('category_id', params.category);
+      }
 
       const url = `/post/list${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      const response = await this.request<any>(url);
+      const response = await this.request<BackendListResponse<BackendPost>>(url);
 
       if (response.success && response.data) {
-        // Get categories to map category_id to category name
-        const categoriesResponse = await this.getPublicCategories();
-        const categoryMap = new Map<string, string>();
+        // 使用缓存获取categories，避免重复请求
+        const cacheKey = CacheKeys.categories();
+        const categoryMap: Map<string, string> = this.getCachedData<Map<string, string>>(cacheKey) ?? new Map<string, string>();
 
-        if (categoriesResponse.success && categoriesResponse.data) {
-          categoriesResponse.data.forEach((cat: Category) => {
-            categoryMap.set(cat.id, cat.name);
-          });
+        if (categoryMap.size === 0) {
+          const categoriesResponse = await this.getPublicCategories();
+          if (categoriesResponse.success && categoriesResponse.data) {
+            categoriesResponse.data.forEach((cat: Category) => {
+              categoryMap.set(cat.id, cat.name);
+            });
+          }
+          this.setCachedData(cacheKey, categoryMap);
         }
 
         // Transform backend response to frontend format
-        const backendData = response.data;
-        const articles: Article[] = await Promise.all((backendData.data || []).map(async (post: any) => {
-          // Get tags for this post
-          let tags: string[] = [];
-          try {
-            const tagsResponse = await this.request<any>(`/post/${post.id}/tags`);
-            if (tagsResponse.success && tagsResponse.data) {
-              tags = (tagsResponse.data.data || []).map((tag: any) => tag.name);
-            }
-          } catch (error) {
-            console.warn(`Failed to load tags for post ${post.id}:`, error);
-          }
+        const backendData: BackendListResponse<BackendPost> = response.data as BackendListResponse<BackendPost>;
+        const postIds = (backendData.data || []).map((post) => post.id.toString());
+
+        // 批量获取所有文章的tags，避免N+1查询
+        const tagsMap = await this.getBatchPostTags(postIds);
+
+        const articles: Article[] = (backendData.data || []).map((post) => {
+          const tags = tagsMap.get(post.id.toString()) || [];
 
           return {
             id: post.id.toString(),
@@ -161,7 +204,7 @@ class ApiService {
             imageUrl: post.cover_url,
             coverImage: post.cover_url
           };
-        }));
+        });
 
         return {
           success: true,
@@ -181,33 +224,71 @@ class ApiService {
     }
   }
 
+  // 批量获取文章tags的辅助方法
+  private async getBatchPostTags(postIds: string[]): Promise<Map<string, string[]>> {
+    const tagsMap = new Map<string, string[]>();
+
+    // 检查缓存
+    const cachedTags = new Map<string, string[]>();
+    const uncachedIds: string[] = [];
+
+    postIds.forEach(id => {
+      const cacheKey = `post_tags_${id}`;
+      const cached = this.getCachedData<string[]>(cacheKey);
+      if (cached) {
+        cachedTags.set(id, cached);
+      } else {
+        uncachedIds.push(id);
+      }
+    });
+
+    // 对于未缓存的，批量请求（这里暂时还是单独请求，但可以优化为真正的批量API）
+    const tagPromises = uncachedIds.map(async (id) => {
+      try {
+        const tagsResponse = await this.request<BackendListResponse<BackendTag>>(`/post/${id}/tags`);
+        if (tagsResponse.success && tagsResponse.data) {
+          const tags = (tagsResponse.data.data || []).map((tag: BackendTag) => tag.name);
+          this.setCachedData(`post_tags_${id}`, tags);
+          return { id, tags };
+        }
+      } catch (error) {
+        console.warn(`Failed to load tags for post ${id}:`, error);
+      }
+      return { id, tags: [] };
+    });
+
+    const tagResults = await Promise.all(tagPromises);
+
+    // 合并缓存和新获取的数据
+    cachedTags.forEach((tags, id) => tagsMap.set(id, tags));
+    tagResults.forEach(({ id, tags }) => tagsMap.set(id, tags));
+
+    return tagsMap;
+  }
+
   async getPost(id: string): Promise<ApiResponse<Article>> {
     try {
-      const response = await this.request<any>(`/post/get/${id}`);
+      const response = await this.request<{ data: BackendPost }>(`/post/get/${id}`);
 
       if (response.success && response.data) {
         const post = response.data.data;
         if (post) {
-          // Get categories to map category_id to category name
-          const categoriesResponse = await this.getPublicCategories();
-          const categoryMap = new Map<string, string>();
-
-          if (categoriesResponse.success && categoriesResponse.data) {
-            categoriesResponse.data.forEach((cat: Category) => {
-              categoryMap.set(cat.id, cat.name);
-            });
-          }
-
-          // Get tags for this post
-          let tags: string[] = [];
-          try {
-            const tagsResponse = await this.request<any>(`/post/${post.id}/tags`);
-            if (tagsResponse.success && tagsResponse.data) {
-              tags = (tagsResponse.data.data || []).map((tag: any) => tag.name);
+          // Use cached categories map
+          const cacheKey = 'categories';
+          const categoryMap: Map<string, string> = this.getCachedData<Map<string, string>>(cacheKey) ?? new Map<string, string>();
+          if (categoryMap.size === 0) {
+            const categoriesResponse = await this.getPublicCategories();
+            if (categoriesResponse.success && categoriesResponse.data) {
+              categoriesResponse.data.forEach((cat: Category) => {
+                categoryMap.set(cat.id, cat.name);
+              });
+              this.setCachedData(cacheKey, categoryMap);
             }
-          } catch (error) {
-            console.warn(`Failed to load tags for post ${post.id}:`, error);
           }
+
+          // Get tags with cache helper
+          const tagsMap = await this.getBatchPostTags([post.id.toString()]);
+          const tags = tagsMap.get(post.id.toString()) || [];
 
           const article: Article = {
             id: post.id.toString(),
@@ -252,10 +333,10 @@ class ApiService {
         cover_url: post.coverImage || post.imageUrl || '',
         category_id: post.category ? parseInt(post.category) : null,
         status: statusMap[post.status || 'draft'] || 'Draft',
-        post_images: (post as any).images || [] // Include images array from post data
+        post_images: (post as Partial<Article> & { images?: string[] }).images || []
       };
 
-      const response = await this.request<any>('/post/create', {
+      const response = await this.request<{ data: BackendPost }>('/post/create', {
         method: 'POST',
         body: JSON.stringify(requestData),
       });
@@ -298,7 +379,7 @@ class ApiService {
         'private': 'Private'
       };
 
-      const requestData: any = {};
+      const requestData: Partial<{ title: string; content: string; cover_url: string; category_id: number | null; status: string } & PostImagesPayload> = {};
 
       if (post.title !== undefined) requestData.title = post.title;
       if (post.content !== undefined) requestData.content = post.content;
@@ -311,11 +392,12 @@ class ApiService {
       if (post.status !== undefined) {
         requestData.status = statusMap[post.status] || 'Draft';
       }
-      if ((post as any).images !== undefined) {
-        requestData.post_images = (post as any).images;
+      const maybeImages = (post as Partial<Article> & { images?: string[] }).images;
+      if (maybeImages !== undefined) {
+        requestData.post_images = maybeImages;
       }
 
-      const response = await this.request<any>(`/post/update/${id}`, {
+      const response = await this.request<{ data: BackendPost }>(`/post/update/${id}`, {
         method: 'PUT',
         body: JSON.stringify(requestData),
       });
@@ -351,7 +433,7 @@ class ApiService {
 
   async deletePost(id: string): Promise<ApiResponse<void>> {
     try {
-      const response = await this.request<any>(`/post/delete/${id}`, {
+      const response = await this.request<object>(`/post/delete/${id}`, {
         method: 'DELETE',
       });
 
@@ -387,7 +469,7 @@ class ApiService {
   }
 
   async publishPost(id: string): Promise<ApiResponse<Article>> {
-    return this.request(`/admin/posts/${id}/publish`, {
+    return this.request<Article>(`/admin/posts/${id}/publish`, {
       method: 'POST',
     });
   }
@@ -403,43 +485,23 @@ class ApiService {
     return this.getPublicCategories();
   }
 
-  // Public Categories API
+  // Public Categories API - 轻量实现（不再额外请求所有文章来统计数量，避免循环和巨大开销）
   async getPublicCategories(): Promise<ApiResponse<Category[]>> {
     try {
-      const response = await this.request<any>('/category/list');
+      const response = await this.request<BackendListResponse<{ id: number; name: string }>>('/category/list');
 
       if (response.success && response.data) {
-        const backendCategories = response.data.data || [];
-
-        // Get all posts to calculate category counts
-        const postsResponse = await this.request<any>('/post/list');
-        const posts = postsResponse.success && postsResponse.data ? postsResponse.data.data || [] : [];
-
-        // Create a map of category ID to category name
-        const categoryIdToNameMap = new Map<number, string>();
-        backendCategories.forEach((cat: any) => {
-          categoryIdToNameMap.set(cat.id, cat.name);
-        });
-
-        const categoryCountMap = new Map<string, number>();
-        posts.forEach((post: any) => {
-          if (post.category_id) {
-            const categoryName = categoryIdToNameMap.get(post.category_id);
-            if (categoryName) {
-              categoryCountMap.set(categoryName, (categoryCountMap.get(categoryName) || 0) + 1);
-            }
-          }
-        });
+        const backendCategories: Array<{ id: number; name: string }> = response.data.data || [];
 
         const categories: Category[] = [
-          { id: 'all', name: 'All Articles', count: posts.length, icon: 'article' }
+          { id: 'all', name: 'All Articles', count: 0, icon: 'article' }
         ];
 
-        backendCategories.forEach((cat: any) => {
+        backendCategories.forEach((cat) => {
           categories.push({
             id: cat.id.toString(),
             name: cat.name,
-            count: categoryCountMap.get(cat.name) || 0,
+            count: 0,
             icon: this.getCategoryIcon(cat.name)
           });
         });
@@ -459,28 +521,42 @@ class ApiService {
   // Public Tags API
   async getPublicTags(): Promise<ApiResponse<Tag[]>> {
     try {
-      const response = await this.request<any>('/tag/list');
+      const response = await this.request<BackendListResponse<BackendTag>>('/tag/list');
 
       if (response.success && response.data) {
         const backendTags = response.data.data || [];
 
-        // Get all posts to calculate tag counts (for now using mock data)
-        const postsResponse = await this.getPosts();
-        const posts = postsResponse.success ? postsResponse.data || [] : [];
+        // 使用缓存获取标签数量，避免重复API调用
+        const cacheKey = 'tag_counts';
+        let tagCountMap = this.getCachedData<Map<string, number>>(cacheKey);
 
-        const tagCountMap = new Map<string, number>();
-        posts.forEach((post: any) => {
-          if (post.tags) {
-            post.tags.forEach((tag: string) => {
-              tagCountMap.set(tag, (tagCountMap.get(tag) || 0) + 1);
-            });
-          }
-        });
+        if (!tagCountMap) {
+          // 只在缓存未命中时获取文章数据
+          const postsResponse = await this.getPosts();
+          const posts = postsResponse.success ? postsResponse.data || [] : [];
 
-        const tags: Tag[] = backendTags.map((tag: any) => ({
+          tagCountMap = new Map<string, number>();
+          posts.forEach((post: { tags?: string[] }) => {
+            if (post.tags) {
+              post.tags.forEach((tag: string) => {
+                tagCountMap!.set(tag, (tagCountMap!.get(tag) || 0) + 1);
+              });
+            }
+          });
+
+          // 缓存标签数量，设置较短的TTL
+          this.setCachedData(cacheKey, tagCountMap);
+        }
+
+        // 确保tagCountMap不为null
+        if (!tagCountMap) {
+          tagCountMap = new Map<string, number>();
+        }
+
+        const tags: Tag[] = backendTags.map((tag: BackendTag) => ({
           id: tag.id.toString(),
           name: tag.name,
-          count: tagCountMap.get(tag.name) || 0
+          count: tagCountMap?.get(tag.name) || 0
         }));
 
         // Sort tags by count (descending) then by name
@@ -507,19 +583,22 @@ class ApiService {
   async getPostsByCategory(categoryId: string): Promise<ApiResponse<Article[]>> {
     try {
       if (categoryId === 'all') {
-        return this.getPosts();
+        return this.getPosts({ page_size: 1000 });
       }
 
-      const postsResponse = await this.getPosts();
-      if (!postsResponse.success || !postsResponse.data) {
-        return postsResponse;
+      // Use the backend's category filtering by passing category_id as a number
+      const categoryIdNum = parseInt(categoryId);
+      if (isNaN(categoryIdNum)) {
+        return {
+          success: false,
+          error: 'Invalid category ID',
+        };
       }
 
-      const filteredPosts = postsResponse.data.filter((post: Article) =>
-        post.category.toLowerCase().replace(/\s+/g, '-') === categoryId
-      );
-
-      return { success: true, data: filteredPosts };
+      return this.getPosts({
+        category: categoryId,
+        page_size: 1000
+      });
     } catch (error) {
       return {
         success: false,
@@ -529,15 +608,35 @@ class ApiService {
   }
 
   // Get articles by tag
-  async getPostsByTag(tagName: string): Promise<ApiResponse<Article[]>> {
+  async getPostsByTag(tagId: string): Promise<ApiResponse<Article[]>> {
     try {
-      const postsResponse = await this.getPosts();
+      // First, get the tag name from tag ID
+      const tagsResponse = await this.getPublicTags();
+      if (!tagsResponse.success || !tagsResponse.data) {
+        return {
+          success: false,
+          error: 'Failed to fetch tags',
+        };
+      }
+
+      const targetTag = tagsResponse.data.find((tag: Tag) => tag.id === tagId);
+      if (!targetTag) {
+        return {
+          success: false,
+          error: 'Tag not found',
+        };
+      }
+
+      // Since backend doesn't support tag filtering in getPosts,
+      // we need to get all posts and filter by tag name on frontend
+      const postsResponse = await this.getPosts({ page_size: 1000 });
       if (!postsResponse.success || !postsResponse.data) {
         return postsResponse;
       }
 
+      // Filter posts that have the specified tag name
       const filteredPosts = postsResponse.data.filter((post: Article) =>
-        post.tags.some((tag: string) => tag.toLowerCase().replace(/\s+/g, '-') === tagName)
+        post.tags.some((tagName: string) => tagName === targetTag.name)
       );
 
       return { success: true, data: filteredPosts };
@@ -551,7 +650,7 @@ class ApiService {
 
   // Helper method to get category icon
   private getCategoryIcon(categoryName: string): string {
-    const iconMap: { [key: string]: string } = {
+    const iconMap: Record<string, string> = {
       // Real categories from our backend
       '技术分享': 'share',
       'Web开发': 'web',
@@ -688,11 +787,21 @@ class ApiService {
     formData.append('type', type);
 
     try {
-      const token = localStorage.getItem('admin_token');
+      const authToken = localStorage.getItem('admin_token');
+      if (!authToken) {
+        // Assuming showNotification is available globally or imported
+        // If not, you might need to import it or handle it differently
+        // For now, we'll just return an error response
+        return {
+          success: false,
+          error: 'Authentication token not found. Please log in to upload files.',
+        };
+      }
+
       const response = await fetch(`${this.baseURL}/admin/upload`, {
         method: 'POST',
         headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` }),
+          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
         },
         body: formData,
       });
