@@ -340,8 +340,7 @@ const ArticlesPage: React.FC = () => {
                     <md-text-button
                       key={pageNumber}
                       className={`pagination-number ${isCurrentPage ? 'current' : ''}`}
-                      onClick={() => handlePageChange(pageNumber)}
-                      {...(isCurrentPage ? { disabled: true } : {})}
+                      onClick={() => !isCurrentPage && handlePageChange(pageNumber)}
                     >
                       {pageNumber}
                     </md-text-button>

@@ -668,8 +668,12 @@
 }
 
 .pagination-number.current {
-  --md-text-button-label-text-color: var(--md-sys-color-on-primary);
-  background-color: var(--md-sys-color-primary);
+  --md-text-button-label-text-color: white !important;
+  background-color: #1976d2 !important;
+  color: white !important;
+  cursor: default;
+  border: 2px solid #1565c0 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
 .pagination-ellipsis {
