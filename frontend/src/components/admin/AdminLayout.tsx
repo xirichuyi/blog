@@ -32,6 +32,12 @@ const navigationItems: NavigationItem[] = [
     path: '/admin/posts',
   },
   {
+    id: 'categories-tags',
+    label: 'Categories & Tags',
+    icon: 'label',
+    path: '/admin/categories-tags',
+  },
+  {
     id: 'music',
     label: 'Music',
     icon: 'library_music',

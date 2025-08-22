@@ -132,21 +132,15 @@ impl CategoryRepository {
                 return Err(AppError::NotFound("Category not found".to_string()));
             }
 
-            // Check if category is being used by any posts (in same transaction)
-            let posts_using_category = sqlx::query!(
-                "SELECT COUNT(*) as count FROM posts WHERE category_id = ? AND status != 2",
+            // First, set category_id to NULL for all posts using this category
+            sqlx::query!(
+                "UPDATE posts SET category_id = NULL WHERE category_id = ?",
                 id
             )
-            .fetch_one(&mut *tx)
+            .execute(&mut *tx)
             .await?;
 
-            if posts_using_category.count > 0 {
-                return Err(AppError::BadRequest(
-                    "Cannot delete category that is being used by posts".to_string(),
-                ));
-            }
-
-            // Delete the category
+            // Then delete the category
             let result = sqlx::query!("DELETE FROM categories WHERE id = ?", id)
                 .execute(&mut *tx)
                 .await?;

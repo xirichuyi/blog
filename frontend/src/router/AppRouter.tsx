@@ -18,6 +18,7 @@ import PostManagement from '../components/admin/PostManagement';
 import PostEditor from '../components/admin/PostEditor';
 import MusicManagement from '../components/admin/MusicManagement';
 import MusicUpload from '../components/admin/MusicUpload';
+import CategoriesTagsManagement from '../components/admin/CategoriesTagsManagement';
 import { AuthProvider } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { DataProvider } from '../contexts/DataContext';
@@ -66,6 +67,8 @@ const AdminDashboard: React.FC = () => <Dashboard />;
 const AdminPosts: React.FC = () => <PostManagement />;
 
 const AdminMusic: React.FC = () => <MusicManagement />;
+
+const AdminCategoriesTags: React.FC = () => <CategoriesTagsManagement />;
 
 const AppRouter: React.FC = () => {
   return (
@@ -167,6 +170,12 @@ const AppRouter: React.FC = () => {
           <Route path="/admin/music/upload" element={
             <ProtectedRoute>
               <MusicUpload />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/categories-tags" element={
+            <ProtectedRoute>
+              <AdminCategoriesTags />
             </ProtectedRoute>
           } />
 

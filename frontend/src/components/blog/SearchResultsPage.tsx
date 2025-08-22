@@ -11,22 +11,39 @@ import './SearchResultsPage.css';
 const SearchResultsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { articles, isLoading, error } = useData();
-  
+  const { isLoading, error, fetchArticles } = useData();
+
   const [searchResults, setSearchResults] = useState<Article[]>([]);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [isSearching, setIsSearching] = useState(false);
+  const [allArticles, setAllArticles] = useState<Article[]>([]);
 
-  // Data is already loaded by DataContext, no need to fetch again
+  // Load all articles for search (not just the limited set from home page)
+  useEffect(() => {
+    const loadAllArticles = async () => {
+      try {
+        const result = await fetchArticles(1, 1000); // Load up to 1000 articles for search
+        if (result) {
+          setAllArticles(result.articles);
+        }
+      } catch (err) {
+        console.error('Failed to load articles for search:', err);
+      }
+    };
+
+    if (allArticles.length === 0) {
+      loadAllArticles();
+    }
+  }, [fetchArticles, allArticles.length]);
 
   // Perform search when query changes
   useEffect(() => {
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && allArticles.length > 0) {
       performSearch();
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery, articles]);
+  }, [searchQuery, allArticles]);
 
   // Update URL when search query changes
   useEffect(() => {
@@ -44,7 +61,7 @@ const SearchResultsPage: React.FC = () => {
       // Simulate search delay
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      let results = [...articles];
+      let results = [...allArticles];
       const query = searchQuery.toLowerCase().trim();
 
       if (query) {
@@ -151,7 +168,7 @@ const SearchResultsPage: React.FC = () => {
           <md-filled-button type="submit" disabled={isSearching || !searchQuery.trim()}>
             {isSearching ? (
               <>
-                <md-circular-progress indeterminate slot="icon" style="--md-circular-progress-size: 18px"></md-circular-progress>
+                <md-circular-progress indeterminate slot="icon" style={{"--md-circular-progress-size": "18px"}}></md-circular-progress>
                 Searching...
               </>
             ) : (

@@ -114,21 +114,12 @@ impl TagRepository {
                 return Err(AppError::NotFound("Tag not found".to_string()));
             }
 
-            // Check if tag is being used by any posts (in same transaction)
-            let posts_using_tag = sqlx::query!(
-                "SELECT COUNT(*) as count FROM post_tags WHERE tag_id = ?",
-                id
-            )
-            .fetch_one(&mut *tx)
-            .await?;
+            // First, remove all associations with posts
+            sqlx::query!("DELETE FROM post_tags WHERE tag_id = ?", id)
+                .execute(&mut *tx)
+                .await?;
 
-            if posts_using_tag.count > 0 {
-                return Err(AppError::BadRequest(
-                    "Cannot delete tag that is being used by posts".to_string(),
-                ));
-            }
-
-            // Delete the tag
+            // Then delete the tag
             let result = sqlx::query!("DELETE FROM tags WHERE id = ?", id)
                 .execute(&mut *tx)
                 .await?;

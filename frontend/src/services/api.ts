@@ -208,8 +208,8 @@ class ApiService {
             tags: tags,
             featured: false,
             status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
-            imageUrl: post.cover_url,
-            coverImage: post.cover_url
+            imageUrl: post.cover_url ? `${API_BASE_URL}${post.cover_url}` : undefined,
+            coverImage: post.cover_url ? `${API_BASE_URL}${post.cover_url}` : undefined
           };
         });
 
@@ -311,8 +311,8 @@ class ApiService {
             tags: tags,
             featured: false,
             status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
-            imageUrl: post.cover_url,
-            coverImage: post.cover_url
+            imageUrl: post.cover_url ? `${API_BASE_URL}${post.cover_url}` : undefined,
+            coverImage: post.cover_url ? `${API_BASE_URL}${post.cover_url}` : undefined
           };
           return { success: true, data: article };
         }
@@ -364,8 +364,8 @@ class ApiService {
           tags: post.tags || [],
           featured: post.featured || false,
           status: post.status || 'draft',
-          imageUrl: backendPost.cover_url,
-          coverImage: backendPost.cover_url
+          imageUrl: backendPost.cover_url ? `${API_BASE_URL}${backendPost.cover_url}` : undefined,
+          coverImage: backendPost.cover_url ? `${API_BASE_URL}${backendPost.cover_url}` : undefined
         };
         return { success: true, data: article };
       }
@@ -425,8 +425,8 @@ class ApiService {
           tags: post.tags || [],
           featured: post.featured || false,
           status: post.status || 'draft',
-          imageUrl: backendPost.cover_url,
-          coverImage: backendPost.cover_url
+          imageUrl: backendPost.cover_url ? `${API_BASE_URL}${backendPost.cover_url}` : undefined,
+          coverImage: backendPost.cover_url ? `${API_BASE_URL}${backendPost.cover_url}` : undefined
         };
         return { success: true, data: article };
       }
@@ -830,6 +830,48 @@ class ApiService {
   // Health Check
   async healthCheck(): Promise<ApiResponse<{ status: string }>> {
     return this.request('/health');
+  }
+
+  // Category Management APIs
+  async createCategory(categoryData: { name: string; description?: string; icon?: string }): Promise<ApiResponse<Category>> {
+    return this.request('/category/create', {
+      method: 'POST',
+      body: JSON.stringify(categoryData),
+    });
+  }
+
+  async updateCategory(categoryId: string, categoryData: { name?: string; description?: string; icon?: string }): Promise<ApiResponse<Category>> {
+    return this.request(`/category/update/${categoryId}`, {
+      method: 'PUT',
+      body: JSON.stringify(categoryData),
+    });
+  }
+
+  async deleteCategory(categoryId: string): Promise<ApiResponse<void>> {
+    return this.request(`/category/delete/${categoryId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Tag Management APIs
+  async createTag(tagData: { name: string }): Promise<ApiResponse<Tag>> {
+    return this.request('/tag/create', {
+      method: 'POST',
+      body: JSON.stringify(tagData),
+    });
+  }
+
+  async updateTag(tagId: string, tagData: { name?: string }): Promise<ApiResponse<Tag>> {
+    return this.request(`/tag/update/${tagId}`, {
+      method: 'PUT',
+      body: JSON.stringify(tagData),
+    });
+  }
+
+  async deleteTag(tagId: string): Promise<ApiResponse<void>> {
+    return this.request(`/tag/delete/${tagId}`, {
+      method: 'DELETE',
+    });
   }
 }
 
