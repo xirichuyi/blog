@@ -11,16 +11,13 @@ import './SearchResultsPage.css';
 const SearchResultsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { articles, categories, isLoading, error, fetchArticles } = useData();
+  const { articles, isLoading, error } = useData();
   
   const [searchResults, setSearchResults] = useState<Article[]>([]);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [isSearching, setIsSearching] = useState(false);
 
-  // Load data on component mount
-  useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+  // Data is already loaded by DataContext, no need to fetch again
 
   // Perform search when query changes
   useEffect(() => {

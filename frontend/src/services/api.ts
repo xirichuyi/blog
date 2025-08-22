@@ -47,9 +47,7 @@ class ApiService {
     return globalCache.get<T>(key);
   }
 
-  private setCachedData<T>(key: string, data: T, ttl?: number): void {
-    globalCache.set(key, data, ttl);
-  }
+
 
   private invalidateCache(pattern: RegExp): void {
     globalCache.invalidatePattern(pattern);
@@ -58,6 +56,11 @@ class ApiService {
   // 清理缓存方法
   public clearCache(): void {
     globalCache.clear();
+  }
+
+  // 公共方法设置缓存，供DataContext使用
+  public setCachedData<T>(key: string, data: T, ttl?: number): void {
+    globalCache.set(key, data, ttl);
   }
 
   // Helper method to get auth headers
@@ -169,14 +172,18 @@ class ApiService {
         const cacheKey = CacheKeys.categories();
         const categoryMap: Map<string, string> = this.getCachedData<Map<string, string>>(cacheKey) ?? new Map<string, string>();
 
+        // 完全避免在getPosts中调用getPublicCategories，防止循环调用
+        // 分类数据应该由DataContext统一管理
         if (categoryMap.size === 0) {
-          const categoriesResponse = await this.getPublicCategories();
-          if (categoriesResponse.success && categoriesResponse.data) {
-            categoriesResponse.data.forEach((cat: Category) => {
+          // 先尝试从全局缓存获取
+          const cachedCategories = this.getCachedData<Category[]>('public_categories');
+          if (cachedCategories && cachedCategories.length > 0) {
+            cachedCategories.forEach((cat: Category) => {
               categoryMap.set(cat.id, cat.name);
             });
+            this.setCachedData(cacheKey, categoryMap);
           }
-          this.setCachedData(cacheKey, categoryMap);
+          // 如果缓存中没有分类数据，使用默认值，不再发起请求
         }
 
         // Transform backend response to frontend format
@@ -273,17 +280,19 @@ class ApiService {
       if (response.success && response.data) {
         const post = response.data.data;
         if (post) {
-          // Use cached categories map
+          // Use cached categories map - avoid calling getPublicCategories to prevent duplicate requests
           const cacheKey = 'categories';
           const categoryMap: Map<string, string> = this.getCachedData<Map<string, string>>(cacheKey) ?? new Map<string, string>();
           if (categoryMap.size === 0) {
-            const categoriesResponse = await this.getPublicCategories();
-            if (categoriesResponse.success && categoriesResponse.data) {
-              categoriesResponse.data.forEach((cat: Category) => {
+            // 先尝试从全局缓存获取
+            const cachedCategories = this.getCachedData<Category[]>('public_categories');
+            if (cachedCategories && cachedCategories.length > 0) {
+              cachedCategories.forEach((cat: Category) => {
                 categoryMap.set(cat.id, cat.name);
               });
               this.setCachedData(cacheKey, categoryMap);
             }
+            // 如果缓存中没有分类数据，使用默认值，不再发起请求
           }
 
           // Get tags with cache helper
@@ -531,20 +540,11 @@ class ApiService {
         let tagCountMap = this.getCachedData<Map<string, number>>(cacheKey);
 
         if (!tagCountMap) {
-          // 只在缓存未命中时获取文章数据
-          const postsResponse = await this.getPosts();
-          const posts = postsResponse.success ? postsResponse.data || [] : [];
-
+          // 暂时不计算标签数量，避免循环调用
+          // 标签数量将在DataContext中统一计算
           tagCountMap = new Map<string, number>();
-          posts.forEach((post: { tags?: string[] }) => {
-            if (post.tags) {
-              post.tags.forEach((tag: string) => {
-                tagCountMap!.set(tag, (tagCountMap!.get(tag) || 0) + 1);
-              });
-            }
-          });
 
-          // 缓存标签数量，设置较短的TTL
+          // 缓存空的标签数量映射，避免重复检查
           this.setCachedData(cacheKey, tagCountMap);
         }
 
@@ -610,16 +610,18 @@ class ApiService {
   // Get articles by tag
   async getPostsByTag(tagId: string): Promise<ApiResponse<Article[]>> {
     try {
-      // First, get the tag name from tag ID
-      const tagsResponse = await this.getPublicTags();
-      if (!tagsResponse.success || !tagsResponse.data) {
-        return {
-          success: false,
-          error: 'Failed to fetch tags',
-        };
+      // 使用缓存获取标签数据，避免重复请求
+      const cachedTags = this.getCachedData<Tag[]>('public_tags');
+      let targetTag: Tag | undefined;
+
+      if (cachedTags && cachedTags.length > 0) {
+        targetTag = cachedTags.find((tag: Tag) => tag.id === tagId);
+      } else {
+        // 如果缓存中没有标签数据，直接使用标签ID作为名称
+        // 这是一个临时解决方案，避免循环调用
+        targetTag = { id: tagId, name: tagId, count: 0 };
       }
 
-      const targetTag = tagsResponse.data.find((tag: Tag) => tag.id === tagId);
       if (!targetTag) {
         return {
           success: false,
@@ -636,7 +638,7 @@ class ApiService {
 
       // Filter posts that have the specified tag name
       const filteredPosts = postsResponse.data.filter((post: Article) =>
-        post.tags.some((tagName: string) => tagName === targetTag.name)
+        post.tags.some((tagName: string) => tagName === targetTag!.name)
       );
 
       return { success: true, data: filteredPosts };

@@ -72,19 +72,13 @@ const ArticlesPage: React.FC = () => {
     }
   }, [fetchArticles, fetchArticlesByCategory, fetchArticlesByTag, activeFilter]);
 
-  // Load data on component mount and when filter changes
+  // Load data on component mount and when filter/page changes
+  // Wait for basic data (categories/tags) to load first to avoid race conditions
   useEffect(() => {
-    loadArticles(currentPage);
-  }, [loadArticles, currentPage]);
-
-  // Reset to first page when filter changes
-  useEffect(() => {
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-    } else {
-      loadArticles(1);
+    if (!isLoading) {
+      loadArticles(currentPage);
     }
-  }, [activeFilter, loadArticles, currentPage]);
+  }, [loadArticles, currentPage, activeFilter, isLoading]);
 
   // Handle category selection
   const handleCategorySelect = useCallback((categoryId: string) => {
