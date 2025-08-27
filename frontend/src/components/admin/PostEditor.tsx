@@ -581,13 +581,15 @@ const PostEditor: React.FC = () => {
                     <div className="cover-overlay">
                       <md-icon-button
                         onClick={() => coverInputRef.current?.click()}
-                        disabled={isUploadingCover}
                       >
                         <md-icon>edit</md-icon>
                       </md-icon-button>
                       <md-icon-button
-                        onClick={() => setFormData(prev => ({ ...prev, coverUrl: '' }))}
-                        disabled={isUploadingCover}
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, coverUrl: '' }));
+                          showNotification({ type: 'success', title: 'Cover Removed' });
+                        }}
+
                       >
                         <md-icon>delete</md-icon>
                       </md-icon-button>

@@ -55,6 +55,16 @@ const AboutManagement: React.FC = () => {
         }
     };
 
+    const refreshAbout = async () => {
+        const resp = await apiService.getAbout();
+        if (resp.success && resp.data) {
+            setTitle(resp.data.title);
+            setSubtitle(resp.data.subtitle);
+            setContent(resp.data.content);
+            setPhotoUrl(resp.data.photo_url ? (resp.data.photo_url.startsWith('http') ? resp.data.photo_url : `${API_BASE_URL}${resp.data.photo_url}`) : '');
+        }
+    };
+
     const save = async () => {
         const payload: any = { title, subtitle, content };
         if (photoUrl) {
@@ -63,6 +73,7 @@ const AboutManagement: React.FC = () => {
         const resp = await apiService.updateAbout(payload);
         if (resp.success) {
             showNotification({ type: 'success', title: 'About Saved' });
+            await refreshAbout();
         } else {
             showNotification({ type: 'error', title: resp.error || 'Save Failed' });
         }
@@ -89,9 +100,23 @@ const AboutManagement: React.FC = () => {
                             {photoUrl ? (
                                 <div className="cover-preview">
                                     <img src={photoUrl} alt="About" className="cover-image" />
-                                    <div className="cover-overlay">
-                                        <md-icon-button onClick={() => fileRef.current?.click()} disabled={isUploading}><md-icon>edit</md-icon></md-icon-button>
-                                        <md-icon-button onClick={() => setPhotoUrl('')} disabled={isUploading}><md-icon>delete</md-icon></md-icon-button>
+                                    <div className="cover-overlay" style={{ pointerEvents: 'auto' }}>
+                                        <md-icon-button onClick={() => fileRef.current?.click()} ><md-icon>edit</md-icon></md-icon-button>
+                                        <md-icon-button onClick={async () => {
+                                            // 立即更新本地 UI
+                                            setPhotoUrl('');
+                                            // 同步保存到后端
+                                            const resp = await apiService.updateAbout({ photo_url: '' });
+                                            if (resp.success) {
+                                                showNotification({ type: 'success', title: 'Image Removed' });
+                                            } else {
+                                                showNotification({ type: 'error', title: resp.error || 'Remove Failed' });
+                                            }
+                                            // 再次从服务端拉取以确保一致
+                                            await refreshAbout();
+                                        }} >
+                                            <md-icon>delete</md-icon>
+                                        </md-icon-button>
                                     </div>
                                 </div>
                             ) : (
