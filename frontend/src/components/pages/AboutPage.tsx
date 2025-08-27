@@ -1,8 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { apiService } from '../../services/api';
 import './AboutPage.css';
 
-const AboutPage: React.FC = () => {
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
 
+const AboutPage: React.FC = () => {
+  const [title, setTitle] = useState<string>('Hi, I\'m Cyrus');
+  const [subtitle, setSubtitle] = useState<string>('Full-Stack Developer & Tech Enthusiast');
+  const [content, setContent] = useState<string>('');
+  const [photoUrl, setPhotoUrl] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    (async () => {
+      const resp = await apiService.getAbout();
+      if (resp.success && resp.data) {
+        setTitle(resp.data.title || title);
+        setSubtitle(resp.data.subtitle || subtitle);
+        setContent(resp.data.content || '');
+        const url = resp.data.photo_url || '';
+        setPhotoUrl(url ? (url.startsWith('http') ? url : `${API_BASE_URL}${url}`) : '');
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="about-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <md-circular-progress indeterminate></md-circular-progress>
+      </div>
+    );
+  }
 
   return (
     <div className="about-page">
@@ -11,22 +40,10 @@ const AboutPage: React.FC = () => {
         <div className="about-hero-content">
           {/* Left Side - Content */}
           <div className="about-content">
-            <h1 className="about-title md-typescale-display-medium">
-              Hi, I'm Cyrus
-            </h1>
-            <p className="about-subtitle md-typescale-headline-small">
-              Full-Stack Developer & Tech Enthusiast
-            </p>
+            <h1 className="about-title md-typescale-display-medium">{title}</h1>
+            <p className="about-subtitle md-typescale-headline-small">{subtitle}</p>
             <p className="about-description md-typescale-body-large">
-              Passionate about creating innovative web applications and sharing knowledge
-              through this blog. I love exploring new technologies, especially Rust, React,
-              and modern web development practices.
-            </p>
-            <p className="about-description md-typescale-body-large">
-              With years of experience in both frontend and backend development, I enjoy
-              building scalable solutions and exploring the latest trends in web technology.
-              This blog serves as a platform to share my insights, tutorials, and discoveries
-              in the ever-evolving world of software development.
+              {content || 'Passionate about creating innovative web applications and sharing knowledge through this blog.'}
             </p>
 
           </div>
@@ -35,7 +52,7 @@ const AboutPage: React.FC = () => {
           <div className="about-photo">
             <div className="photo-container">
               <img
-                src="/api/placeholder/300/400"
+                src={photoUrl || '/api/placeholder/300/400'}
                 alt="Cyrus - Full-Stack Developer"
                 className="profile-photo"
               />

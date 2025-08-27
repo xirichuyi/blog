@@ -42,6 +42,11 @@ const navigationItems: NavigationItem[] = [
     label: 'Music',
     icon: 'library_music',
     path: '/admin/music',
+  }, {
+    id: 'about',
+    label: 'About',
+    icon: 'person',
+    path: '/admin/about',
   },
 ];
 
@@ -80,12 +85,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin Dash
             </md-icon-button>
             <h1 className="admin-title md-typescale-headline-small">{title}</h1>
           </div>
-          
+
           <div className="admin-header-end">
             <md-icon-button class="header-action">
               <md-icon>notifications</md-icon>
             </md-icon-button>
-            
+
             <div className="user-menu">
               <md-icon-button class="user-avatar">
                 <md-icon>account_circle</md-icon>
@@ -110,7 +115,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin Dash
             <span className="brand-text md-typescale-title-medium">Admin Panel</span>
           </div>
         </div>
-        
+
         <div className="sidebar-content">
           <md-list class="navigation-list">
             {navigationItems.map((item) => (
@@ -128,7 +133,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin Dash
             ))}
           </md-list>
         </div>
-        
+
         <div className="sidebar-footer">
           <md-divider></md-divider>
           <md-list-item onClick={handleLogout} class="logout-item">

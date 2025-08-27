@@ -4,7 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { formatFileSize } from '../../utils/musicMetadata';
 import type { MusicTrack } from '../../types';
+import MusicPlayer from '../music/MusicPlayer';
 import AdminLayout from './AdminLayout';
 import './MusicManagement.css';
 
@@ -26,6 +28,8 @@ const MusicManagement: React.FC = () => {
   });
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [currentPlaying, setCurrentPlaying] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
   const navigate = useNavigate();
   const { showNotification } = useNotification();
 
@@ -85,11 +89,42 @@ const MusicManagement: React.FC = () => {
   };
 
   const handlePlayTrack = (trackId: string) => {
-    if (currentPlaying === trackId) {
-      setCurrentPlaying(null);
+    const track = filteredTracks.find(t => t.id === trackId);
+    if (!track) return;
+
+    if (currentPlaying === trackId && isPlaying) {
+      setIsPlaying(false);
+    } else if (currentPlaying === trackId && !isPlaying) {
+      setIsPlaying(true);
     } else {
       setCurrentPlaying(trackId);
+      setCurrentTrack(track);
+      setIsPlaying(true);
     }
+  };
+
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleNextTrack = () => {
+    if (!currentTrack) return;
+    const currentIndex = filteredTracks.findIndex(t => t.id === currentTrack.id);
+    const nextIndex = (currentIndex + 1) % filteredTracks.length;
+    const nextTrack = filteredTracks[nextIndex];
+    setCurrentPlaying(nextTrack.id);
+    setCurrentTrack(nextTrack);
+    setIsPlaying(true);
+  };
+
+  const handlePreviousTrack = () => {
+    if (!currentTrack) return;
+    const currentIndex = filteredTracks.findIndex(t => t.id === currentTrack.id);
+    const prevIndex = currentIndex === 0 ? filteredTracks.length - 1 : currentIndex - 1;
+    const prevTrack = filteredTracks[prevIndex];
+    setCurrentPlaying(prevTrack.id);
+    setCurrentTrack(prevTrack);
+    setIsPlaying(true);
   };
 
   const handleDeleteTrack = async (trackId: string) => {
@@ -226,6 +261,19 @@ const MusicManagement: React.FC = () => {
           </div>
         </div>
 
+        {/* Music Player */}
+        {currentTrack && (
+          <div className="music-player-section">
+            <MusicPlayer
+              track={currentTrack}
+              isPlaying={isPlaying}
+              onPlayPause={handlePlayPause}
+              onNext={handleNextTrack}
+              onPrevious={handlePreviousTrack}
+            />
+          </div>
+        )}
+
         {/* Filters */}
         <div className="music-filters">
           <md-outlined-text-field
@@ -293,7 +341,7 @@ const MusicManagement: React.FC = () => {
                       onClick={() => handlePlayTrack(track.id)}
                     >
                       <md-icon>
-                        {currentPlaying === track.id ? 'pause' : 'play_arrow'}
+                        {currentPlaying === track.id && isPlaying ? 'pause' : 'play_arrow'}
                       </md-icon>
                     </md-icon-button>
                   </div>

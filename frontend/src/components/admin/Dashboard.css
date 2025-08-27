@@ -303,3 +303,25 @@
     padding: 8px;
   }
 }
+
+/* Ensure icons inside cards/buttons render fully without clipping */
+.quick-action-content md-icon,
+.stat-trend md-icon,
+.stat-header md-icon,
+.action-arrow md-icon {
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+/* Keep arrow icon visible on hover transitions */
+.action-arrow {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 20px;
+  transition: transform 0.2s ease;
+  overflow: visible;
+}

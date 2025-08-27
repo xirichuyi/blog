@@ -183,3 +183,38 @@ pub async fn upload_music_cover(
 
     Ok(Json(ApiResponse::bad_request("No file provided")))
 }
+
+pub async fn upload_cover_image(
+    State(config): State<Config>,
+    mut multipart: Multipart,
+) -> Result<Json<ApiResponse<FileUploadResponse>>, StatusCode> {
+    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
+
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        if let Some(file_name) = field.file_name() {
+            // Validate file type
+            if let Err(e) = file_handler.validate_file_type(file_name, IMAGE_TYPES) {
+                return Ok(Json(ApiResponse::bad_request(&e.to_string())));
+            }
+
+            match file_handler.save_file(field, "music_covers").await {
+                Ok((file_url, file_name, file_size)) => {
+                    let response = FileUploadResponse {
+                        file_url,
+                        file_name,
+                        file_size,
+                    };
+                    return Ok(Json(ApiResponse::success(response)));
+                }
+                Err(e) => {
+                    tracing::error!("Failed to upload cover image: {}", e);
+                    return Ok(Json(ApiResponse::internal_error(
+                        "Failed to upload cover image",
+                    )));
+                }
+            }
+        }
+    }
+
+    Ok(Json(ApiResponse::bad_request("No file provided")))
+}

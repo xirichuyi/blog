@@ -19,6 +19,7 @@ import PostEditor from '../components/admin/PostEditor';
 import MusicManagement from '../components/admin/MusicManagement';
 import MusicUpload from '../components/admin/MusicUpload';
 import CategoriesTagsManagement from '../components/admin/CategoriesTagsManagement';
+import AboutManagement from '../components/admin/AboutManagement';
 import { AuthProvider } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { DataProvider } from '../contexts/DataContext';
@@ -77,122 +78,128 @@ const AppRouter: React.FC = () => {
         <NotificationProvider>
           <DataProvider>
             <ErrorBoundary>
-            <Routes>
-          {/* Main Layout Routes */}
-          <Route path="/" element={
-            <Layout title="Cyrus Blog - Modern Web Development & Design">
-              <BlogHome />
-            </Layout>
-          } />
-          
-          <Route path="/articles" element={
-            <Layout title="All Articles - Cyrus Blog">
-              <ArticlesPage />
-            </Layout>
-          } />
+              <Routes>
+                {/* Main Layout Routes */}
+                <Route path="/" element={
+                  <Layout title="Cyrus Blog - Modern Web Development & Design">
+                    <BlogHome />
+                  </Layout>
+                } />
 
-          <Route path="/search" element={
-            <Layout title="Search Results - Cyrus Blog">
-              <SearchResultsPage />
-            </Layout>
-          } />
-          
-          <Route path="/article/:id" element={
-            <Layout title="Article - Cyrus Blog">
-              <ArticleDetailRoute />
-            </Layout>
-          } />
-          
-          <Route path="/categories" element={
-            <Layout title="Categories - Cyrus Blog">
-              <CategoriesPage />
-            </Layout>
-          } />
-          
-          <Route path="/tags" element={
-            <Layout title="Tags - Cyrus Blog">
-              <TagsPage />
-            </Layout>
-          } />
-          
-          <Route path="/about" element={
-            <Layout title="About - Cyrus Blog">
-              <AboutPage />
-            </Layout>
-          } />
-          
-          <Route path="/contact" element={
-            <Layout title="Contact - Cyrus Blog">
-              <ContactPage />
-            </Layout>
-          } />
+                <Route path="/articles" element={
+                  <Layout title="All Articles - Cyrus Blog">
+                    <ArticlesPage />
+                  </Layout>
+                } />
 
-          {/* Debug Routes */}
-          <Route path="/debug/performance" element={
-            <Layout title="Performance Test - Cyrus Blog">
-              <PerformanceTest />
-            </Layout>
-          } />
+                <Route path="/search" element={
+                  <Layout title="Search Results - Cyrus Blog">
+                    <SearchResultsPage />
+                  </Layout>
+                } />
 
-          {/* Admin Routes */}
-          <Route path="/admin/login" element={<LoginPage />} />
+                <Route path="/article/:id" element={
+                  <Layout title="Article - Cyrus Blog">
+                    <ArticleDetailRoute />
+                  </Layout>
+                } />
 
-          <Route path="/admin/dashboard" element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+                <Route path="/categories" element={
+                  <Layout title="Categories - Cyrus Blog">
+                    <CategoriesPage />
+                  </Layout>
+                } />
 
-          <Route path="/admin/posts" element={
-            <ProtectedRoute>
-              <AdminPosts />
-            </ProtectedRoute>
-          } />
+                <Route path="/tags" element={
+                  <Layout title="Tags - Cyrus Blog">
+                    <TagsPage />
+                  </Layout>
+                } />
 
-          <Route path="/admin/posts/new" element={
-            <ProtectedRoute>
-              <PostEditor />
-            </ProtectedRoute>
-          } />
+                <Route path="/about" element={
+                  <Layout title="About - Cyrus Blog">
+                    <AboutPage />
+                  </Layout>
+                } />
 
-          <Route path="/admin/posts/edit/:id" element={
-            <ProtectedRoute>
-              <PostEditor />
-            </ProtectedRoute>
-          } />
+                <Route path="/contact" element={
+                  <Layout title="Contact - Cyrus Blog">
+                    <ContactPage />
+                  </Layout>
+                } />
 
-          <Route path="/admin/music" element={
-            <ProtectedRoute>
-              <AdminMusic />
-            </ProtectedRoute>
-          } />
+                {/* Debug Routes */}
+                <Route path="/debug/performance" element={
+                  <Layout title="Performance Test - Cyrus Blog">
+                    <PerformanceTest />
+                  </Layout>
+                } />
 
-          <Route path="/admin/music/upload" element={
-            <ProtectedRoute>
-              <MusicUpload />
-            </ProtectedRoute>
-          } />
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<LoginPage />} />
 
-          <Route path="/admin/categories-tags" element={
-            <ProtectedRoute>
-              <AdminCategoriesTags />
-            </ProtectedRoute>
-          } />
+                <Route path="/admin/dashboard" element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
 
-          {/* Redirect admin root to dashboard */}
-          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/admin/posts" element={
+                  <ProtectedRoute>
+                    <AdminPosts />
+                  </ProtectedRoute>
+                } />
 
-          {/* Redirect old paths */}
-          <Route path="/home" element={<Navigate to="/" replace />} />
+                <Route path="/admin/posts/new" element={
+                  <ProtectedRoute>
+                    <PostEditor />
+                  </ProtectedRoute>
+                } />
 
-          {/* 404 Page */}
-          <Route path="*" element={
-            <Layout title="Page Not Found - Cyrus Blog">
-              <NotFoundPage />
-            </Layout>
-          } />
-            </Routes>
-            <NotificationContainer />
+                <Route path="/admin/posts/edit/:id" element={
+                  <ProtectedRoute>
+                    <PostEditor />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/admin/music" element={
+                  <ProtectedRoute>
+                    <AdminMusic />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/admin/music/upload" element={
+                  <ProtectedRoute>
+                    <MusicUpload />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/admin/categories-tags" element={
+                  <ProtectedRoute>
+                    <AdminCategoriesTags />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/admin/about" element={
+                  <ProtectedRoute>
+                    <AboutManagement />
+                  </ProtectedRoute>
+                } />
+
+                {/* Redirect admin root to dashboard */}
+                <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+
+                {/* Redirect old paths */}
+                <Route path="/home" element={<Navigate to="/" replace />} />
+
+                {/* 404 Page */}
+                <Route path="*" element={
+                  <Layout title="Page Not Found - Cyrus Blog">
+                    <NotFoundPage />
+                  </Layout>
+                } />
+              </Routes>
+              <NotificationContainer />
             </ErrorBoundary>
           </DataProvider>
         </NotificationProvider>

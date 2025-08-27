@@ -496,3 +496,30 @@
   margin: 0;
   color: white;
 }
+
+/* Ensure icons inside header action buttons are fully visible */
+.editor-actions md-filled-button {
+  --md-filled-button-icon-size: 20px;
+  overflow: visible;
+}
+.editor-actions md-outlined-button {
+  --md-outlined-button-icon-size: 20px;
+  overflow: visible;
+}
+.editor-actions md-filled-button md-icon,
+.editor-actions md-outlined-button md-icon {
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+}
+
+/* Content action buttons (Insert Image / Preview) */
+.content-actions md-outlined-button {
+  --md-outlined-button-icon-size: 20px;
+  overflow: visible;
+}
+.content-actions md-outlined-button md-icon {
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+}

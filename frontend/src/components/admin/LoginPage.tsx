@@ -25,7 +25,7 @@ const LoginPage: React.FC = () => {
     }
   }, [isAuthenticated, isLoading, navigate, location]);
 
-  // Clear error when component unmounts or inputs change
+  // Clear error when component unmounts
   useEffect(() => {
     return () => clearError();
   }, [clearError]);

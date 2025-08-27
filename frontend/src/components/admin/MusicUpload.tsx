@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { analyzeAudioFile, formatFileSize } from '../../utils/musicMetadata';
 import type { MusicUploadData } from '../../types';
 import AdminLayout from './AdminLayout';
 import './MusicUpload.css';
@@ -15,17 +16,25 @@ const MusicUpload: React.FC = () => {
     album: '',
     genre: '',
   });
-  
+
   const [musicFile, setMusicFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  
+
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const musicFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if form is valid for enabling upload button
+  const isFormValid = () => {
+    return musicFile &&
+      formData.title.trim() &&
+      formData.artist.trim() &&
+      !isUploading;
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -34,30 +43,48 @@ const MusicUpload: React.FC = () => {
     }));
   };
 
-  const handleMusicFileChange = (file: File | null) => {
+  const handleMusicFileChange = async (file: File | null) => {
     if (file) {
-      // Validate file type
-      const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'];
-      if (!allowedTypes.includes(file.type)) {
-        setError('Please select a valid audio file (MP3, WAV, OGG, MP4)');
-        return;
+      try {
+        // Analyze the audio file
+        const analysis = await analyzeAudioFile(file);
+
+        if (!analysis.isValid) {
+          setError('Please select a valid audio file (MP3, WAV, OGG, MP4, AAC, FLAC)');
+          setMusicFile(null); // Reset music file when validation fails
+          return;
+        }
+
+        // Validate file size (max 50MB)
+        const maxSize = 50 * 1024 * 1024;
+        if (file.size > maxSize) {
+          setError('File size must be less than 50MB');
+          setMusicFile(null); // Reset music file when validation fails
+          return;
+        }
+
+        setMusicFile(file);
+        setError(null);
+
+        // Auto-fill form data from metadata
+        setFormData(prev => ({
+          ...prev,
+          title: prev.title || analysis.metadata.title || file.name.replace(/\.[^/.]+$/, ''),
+          artist: prev.artist || analysis.metadata.artist || '',
+          album: prev.album || analysis.metadata.album || '',
+          genre: prev.genre || analysis.metadata.genre || '',
+        }));
+
+        console.log('Audio file analysis:', analysis);
+      } catch (error) {
+        console.error('Failed to analyze audio file:', error);
+        setError('Failed to analyze audio file. Please try again.');
+        setMusicFile(null); // Reset music file when analysis fails
       }
-      
-      // Validate file size (max 50MB)
-      const maxSize = 50 * 1024 * 1024;
-      if (file.size > maxSize) {
-        setError('File size must be less than 50MB');
-        return;
-      }
-      
-      setMusicFile(file);
+    } else {
+      // When file is null, reset the state
+      setMusicFile(null);
       setError(null);
-      
-      // Auto-fill title if empty
-      if (!formData.title) {
-        const fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
-        setFormData(prev => ({ ...prev, title: fileName }));
-      }
     }
   };
 
@@ -67,17 +94,23 @@ const MusicUpload: React.FC = () => {
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         setError('Please select a valid image file (JPEG, PNG, WebP)');
+        setCoverFile(null); // Reset cover file when validation fails
         return;
       }
-      
+
       // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024;
       if (file.size > maxSize) {
         setError('Cover image size must be less than 5MB');
+        setCoverFile(null); // Reset cover file when validation fails
         return;
       }
-      
+
       setCoverFile(file);
+      setError(null);
+    } else {
+      // When file is null, reset the state
+      setCoverFile(null);
       setError(null);
     }
   };
@@ -95,7 +128,7 @@ const MusicUpload: React.FC = () => {
   const handleDrop = (e: React.DragEvent, type: 'music' | 'cover') => {
     e.preventDefault();
     setDragOver(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       if (type === 'music') {
@@ -111,20 +144,20 @@ const MusicUpload: React.FC = () => {
       setIsUploading(true);
       setError(null);
       setUploadProgress(0);
-      
+
       // Validate required fields
       if (!formData.title.trim()) {
         throw new Error('Title is required');
       }
-      
+
       if (!formData.artist.trim()) {
         throw new Error('Artist is required');
       }
-      
+
       if (!musicFile) {
         throw new Error('Please select a music file');
       }
-      
+
       // Create form data
       const uploadFormData = new FormData();
       uploadFormData.append('title', formData.title.trim());
@@ -132,11 +165,11 @@ const MusicUpload: React.FC = () => {
       uploadFormData.append('album', formData.album.trim());
       uploadFormData.append('genre', formData.genre);
       uploadFormData.append('music', musicFile);
-      
+
       if (coverFile) {
         uploadFormData.append('cover', coverFile);
       }
-      
+
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -147,12 +180,12 @@ const MusicUpload: React.FC = () => {
           return prev + 10;
         });
       }, 200);
-      
+
       const response = await apiService.uploadMusic(uploadFormData);
-      
+
       clearInterval(progressInterval);
       setUploadProgress(100);
-      
+
       if (response.success) {
         // Show success notification
         showNotification({
@@ -208,20 +241,19 @@ const MusicUpload: React.FC = () => {
               Add new music tracks to your collection
             </p>
           </div>
-          
+
           <div className="upload-actions">
             <md-text-button onClick={handleCancel}>
               Cancel
             </md-text-button>
-            
-            <md-filled-button 
+
+            <md-filled-button
               onClick={handleUpload}
-              disabled={isUploading || !musicFile}
             >
               {isUploading ? (
                 <>
-                  <md-circular-progress 
-                    indeterminate 
+                  <md-circular-progress
+                    indeterminate
                     slot="icon"
                     style={{ width: '18px', height: '18px' }}
                   ></md-circular-progress>
@@ -253,11 +285,11 @@ const MusicUpload: React.FC = () => {
           {/* File Upload Section */}
           <div className="form-section">
             <h2 className="md-typescale-headline-small">Files</h2>
-            
+
             {/* Music File Upload */}
             <div className="file-upload-section">
               <label className="md-typescale-title-medium">Music File *</label>
-              <div 
+              <div
                 className={`file-drop-zone ${dragOver ? 'drag-over' : ''} ${musicFile ? 'has-file' : ''}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -299,7 +331,7 @@ const MusicUpload: React.FC = () => {
             {/* Cover Image Upload */}
             <div className="file-upload-section">
               <label className="md-typescale-title-medium">Cover Image (Optional)</label>
-              <div 
+              <div
                 className={`file-drop-zone cover-zone ${coverFile ? 'has-file' : ''}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -339,7 +371,7 @@ const MusicUpload: React.FC = () => {
           {/* Metadata Section */}
           <div className="form-section">
             <h2 className="md-typescale-headline-small">Track Information</h2>
-            
+
             <div className="metadata-grid">
               <md-outlined-text-field
                 label="Title *"
@@ -348,7 +380,7 @@ const MusicUpload: React.FC = () => {
                 required
                 class="metadata-field"
               ></md-outlined-text-field>
-              
+
               <md-outlined-text-field
                 label="Artist *"
                 value={formData.artist}
@@ -356,14 +388,14 @@ const MusicUpload: React.FC = () => {
                 required
                 class="metadata-field"
               ></md-outlined-text-field>
-              
+
               <md-outlined-text-field
                 label="Album"
                 value={formData.album}
                 onInput={(e: any) => handleInputChange('album', e.target.value)}
                 class="metadata-field"
               ></md-outlined-text-field>
-              
+
               <md-outlined-select
                 label="Genre"
                 value={formData.genre}

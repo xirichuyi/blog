@@ -44,7 +44,7 @@ interface UpdateTagRequest {
 
 const CategoriesTagsManagement: React.FC = () => {
   const { showNotification } = useNotification();
-  
+
   // State for categories
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
@@ -84,7 +84,10 @@ const CategoriesTagsManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load categories:', error);
-      showNotification('Failed to load categories', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Failed to load categories'
+      });
     } finally {
       setCategoriesLoading(false);
     }
@@ -92,46 +95,70 @@ const CategoriesTagsManagement: React.FC = () => {
 
   const handleCreateCategory = async () => {
     if (!categoryForm.name.trim()) {
-      showNotification('Category name is required', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Category name is required'
+      });
       return;
     }
 
     try {
       const response = await apiService.createCategory(categoryForm);
       if (response.success) {
-        showNotification('Category created successfully', 'success');
+        showNotification({
+          type: 'success',
+          title: 'Category created successfully'
+        });
         setShowCategoryDialog(false);
         setCategoryForm({ name: '', description: '', icon: 'folder' });
         loadCategories();
       } else {
-        showNotification(response.message || 'Failed to create category', 'error');
+        showNotification({
+          type: 'error',
+          title: response.message || 'Failed to create category'
+        });
       }
     } catch (error) {
       console.error('Failed to create category:', error);
-      showNotification('Failed to create category', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Failed to create category'
+      });
     }
   };
 
   const handleUpdateCategory = async () => {
     if (!editingCategory || !categoryForm.name.trim()) {
-      showNotification('Category name is required', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Category name is required'
+      });
       return;
     }
 
     try {
       const response = await apiService.updateCategory(editingCategory.id, categoryForm);
       if (response.success) {
-        showNotification('Category updated successfully', 'success');
+        showNotification({
+          type: 'success',
+          title: 'Category updated successfully'
+        });
         setShowCategoryDialog(false);
         setEditingCategory(null);
         setCategoryForm({ name: '', description: '', icon: 'folder' });
         loadCategories();
       } else {
-        showNotification(response.message || 'Failed to update category', 'error');
+        showNotification({
+          type: 'error',
+          title: response.message || 'Failed to update category'
+        });
       }
     } catch (error) {
       console.error('Failed to update category:', error);
-      showNotification('Failed to update category', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Failed to update category'
+      });
     }
   };
 
@@ -143,14 +170,23 @@ const CategoriesTagsManagement: React.FC = () => {
     try {
       const response = await apiService.deleteCategory(categoryId);
       if (response.success) {
-        showNotification('Category deleted successfully', 'success');
+        showNotification({
+          type: 'success',
+          title: 'Category deleted successfully'
+        });
         loadCategories();
       } else {
-        showNotification(response.message || 'Failed to delete category', 'error');
+        showNotification({
+          type: 'error',
+          title: response.message || 'Failed to delete category'
+        });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      showNotification('Failed to delete category', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Failed to delete category'
+      });
     }
   };
 
@@ -164,7 +200,10 @@ const CategoriesTagsManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load tags:', error);
-      showNotification('Failed to load tags', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Failed to load tags'
+      });
     } finally {
       setTagsLoading(false);
     }
@@ -172,46 +211,70 @@ const CategoriesTagsManagement: React.FC = () => {
 
   const handleCreateTag = async () => {
     if (!tagForm.name.trim()) {
-      showNotification('Tag name is required', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Tag name is required'
+      });
       return;
     }
 
     try {
       const response = await apiService.createTag(tagForm);
       if (response.success) {
-        showNotification('Tag created successfully', 'success');
+        showNotification({
+          type: 'success',
+          title: 'Tag created successfully'
+        });
         setShowTagDialog(false);
         setTagForm({ name: '' });
         loadTags();
       } else {
-        showNotification(response.message || 'Failed to create tag', 'error');
+        showNotification({
+          type: 'error',
+          title: response.message || 'Failed to create tag'
+        });
       }
     } catch (error) {
       console.error('Failed to create tag:', error);
-      showNotification('Failed to create tag', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Failed to create tag'
+      });
     }
   };
 
   const handleUpdateTag = async () => {
     if (!editingTag || !tagForm.name.trim()) {
-      showNotification('Tag name is required', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Tag name is required'
+      });
       return;
     }
 
     try {
       const response = await apiService.updateTag(editingTag.id, tagForm);
       if (response.success) {
-        showNotification('Tag updated successfully', 'success');
+        showNotification({
+          type: 'success',
+          title: 'Tag updated successfully'
+        });
         setShowTagDialog(false);
         setEditingTag(null);
         setTagForm({ name: '' });
         loadTags();
       } else {
-        showNotification(response.message || 'Failed to update tag', 'error');
+        showNotification({
+          type: 'error',
+          title: response.message || 'Failed to update tag'
+        });
       }
     } catch (error) {
       console.error('Failed to update tag:', error);
-      showNotification('Failed to update tag', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Failed to update tag'
+      });
     }
   };
 
@@ -223,14 +286,23 @@ const CategoriesTagsManagement: React.FC = () => {
     try {
       const response = await apiService.deleteTag(tagId);
       if (response.success) {
-        showNotification('Tag deleted successfully', 'success');
+        showNotification({
+          type: 'success',
+          title: 'Tag deleted successfully'
+        });
         loadTags();
       } else {
-        showNotification(response.message || 'Failed to delete tag', 'error');
+        showNotification({
+          type: 'error',
+          title: response.message || 'Failed to delete tag'
+        });
       }
     } catch (error) {
       console.error('Failed to delete tag:', error);
-      showNotification('Failed to delete tag', 'error');
+      showNotification({
+        type: 'error',
+        title: 'Failed to delete tag'
+      });
     }
   };
 

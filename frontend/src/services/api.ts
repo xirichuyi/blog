@@ -29,6 +29,26 @@ interface BackendPost {
 interface BackendTag { id: number; name: string }
 // interface BackendCategory { id: number; name: string } // used in getPublicCategories
 
+interface BackendMusic {
+  id: number;
+  music_name: string;
+  music_author: string;
+  music_url: string;
+  music_cover_url?: string;
+  status: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface BackendAbout {
+  id: number;
+  title: string;
+  subtitle: string;
+  content: string;
+  photo_url?: string;
+  updated_at: string;
+}
+
 type PostImagesPayload = { post_images?: string[] };
 
 class ApiService {
@@ -40,6 +60,54 @@ class ApiService {
     setInterval(() => {
       globalCache.cleanExpired();
     }, 60000); // Every minute
+  }
+
+  // Helper function to clean Markdown content and generate plain text excerpt
+  private generatePlainTextExcerpt(content: string, maxLength: number = 80): string {
+    if (!content) return '';
+
+    // Remove Markdown syntax
+    let plainText = content
+      // Remove headers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove bold and italic
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/_(.*?)_/g, '$1')
+      // Remove code blocks
+      .replace(/```[\s\S]*?```/g, '')
+      // Remove inline code
+      .replace(/`([^`]+)`/g, '$1')
+      // Remove links but keep text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Remove images
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+      // Remove blockquotes
+      .replace(/^>\s+/gm, '')
+      // Remove lists
+      .replace(/^[\s]*[-*+]\s+/gm, '')
+      .replace(/^[\s]*\d+\.\s+/gm, '')
+      // Remove horizontal rules
+      .replace(/^---$/gm, '')
+      // Remove HTML tags
+      .replace(/<[^>]*>/g, '')
+      // Remove extra whitespace and newlines
+      .replace(/\n+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Truncate to maxLength and add ellipsis if needed
+    if (plainText.length > maxLength) {
+      plainText = plainText.substring(0, maxLength).trim();
+      // Try to break at a word boundary
+      const lastSpaceIndex = plainText.lastIndexOf(' ');
+      if (lastSpaceIndex > maxLength * 0.8) { // Only break at word if it's not too early
+        plainText = plainText.substring(0, lastSpaceIndex);
+      }
+      plainText += '...';
+    }
+
+    return plainText;
   }
 
   // Enhanced cache methods using global cache manager
@@ -58,6 +126,29 @@ class ApiService {
     globalCache.clear();
   }
 
+  // Helper method to get auth headers for file uploads (without Content-Type)
+  private getUploadHeaders(): HeadersInit {
+    const token = localStorage.getItem('admin_token');
+    return {
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+  }
+
+  // Get headers for API requests
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add auth token if available
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }
+
   // 公共方法设置缓存，供DataContext使用
   public setCachedData<T>(key: string, data: T, ttl?: number): void {
     globalCache.set(key, data, ttl);
@@ -70,6 +161,28 @@ class ApiService {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
+  }
+
+  // About APIs
+  async getAbout(): Promise<ApiResponse<BackendAbout>> {
+    const resp = await this.request<{ data: BackendAbout }>(`/about/get`);
+    if (resp.success && resp.data) {
+      const body = resp.data as unknown as { data: BackendAbout };
+      return { success: true, data: body.data };
+    }
+    return resp as unknown as ApiResponse<BackendAbout>;
+  }
+
+  async updateAbout(payload: { title?: string; subtitle?: string; content?: string; photo_url?: string; }): Promise<ApiResponse<BackendAbout>> {
+    const resp = await this.request<{ data: BackendAbout }>(`/about/update`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (resp.success && resp.data) {
+      const body = resp.data as unknown as { data: BackendAbout };
+      return { success: true, data: body.data };
+    }
+    return resp as unknown as ApiResponse<BackendAbout>;
   }
 
   // Generic request method
@@ -200,7 +313,7 @@ class ApiService {
             id: post.id.toString(),
             title: post.title,
             content: post.content,
-            excerpt: post.content.substring(0, 200) + '...',
+            excerpt: this.generatePlainTextExcerpt(post.content, 80),
             author: 'Cyrus',
             publishDate: post.created_at,
             readTime: Math.ceil(post.content.length / 1000),
@@ -303,7 +416,7 @@ class ApiService {
             id: post.id.toString(),
             title: post.title,
             content: post.content,
-            excerpt: post.content.substring(0, 200) + '...',
+            excerpt: this.generatePlainTextExcerpt(post.content, 80),
             author: 'Cyrus',
             publishDate: post.created_at,
             readTime: Math.ceil(post.content.length / 1000),
@@ -356,7 +469,7 @@ class ApiService {
           id: backendPost.id.toString(),
           title: backendPost.title,
           content: backendPost.content,
-          excerpt: post.excerpt || backendPost.content.substring(0, 200) + '...',
+          excerpt: post.excerpt || this.generatePlainTextExcerpt(backendPost.content, 80),
           author: 'Admin',
           publishDate: backendPost.created_at,
           readTime: Math.ceil(backendPost.content.length / 1000),
@@ -417,7 +530,7 @@ class ApiService {
           id: backendPost.id.toString(),
           title: backendPost.title,
           content: backendPost.content,
-          excerpt: post.excerpt || backendPost.content.substring(0, 200) + '...',
+          excerpt: post.excerpt || this.generatePlainTextExcerpt(backendPost.content, 80),
           author: 'Admin',
           publishDate: backendPost.updated_at || backendPost.created_at,
           readTime: Math.ceil(backendPost.content.length / 1000),
@@ -678,28 +791,60 @@ class ApiService {
   }
 
   // Music Management APIs
-  async getMusicTracks(params?: { search?: string; genre?: string }): Promise<ApiResponse<MusicTrack[]>> {
+  async getMusicTracks(params?: { search?: string; genre?: string; page?: number; page_size?: number }): Promise<ApiResponse<MusicTrack[]>> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 
-      let tracks = storageService.getMusicTracks();
+      const response = await fetch(`${this.baseURL}/music/list?${queryParams}`, {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
 
-      // Apply filters
-      if (params?.search) {
-        const searchLower = params.search.toLowerCase();
-        tracks = tracks.filter(track =>
-          track.title.toLowerCase().includes(searchLower) ||
-          track.artist.toLowerCase().includes(searchLower) ||
-          track.album?.toLowerCase().includes(searchLower)
-        );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      if (params?.genre) {
-        tracks = tracks.filter(track => track.genre === params.genre);
-      }
+      const result = await response.json();
 
-      return { success: true, data: tracks };
+      if (result.code === 200) {
+        // Convert backend Music model to frontend MusicTrack model
+        const tracks: MusicTrack[] = result.data.map((music: BackendMusic) => ({
+          id: music.id.toString(),
+          title: music.music_name,
+          artist: music.music_author,
+          album: undefined, // Backend doesn't have album field yet
+          genre: undefined, // Backend doesn't have genre field yet
+          duration: 0, // Will be extracted from file metadata
+          fileUrl: music.music_url,
+          coverUrl: music.music_cover_url,
+          uploadDate: music.created_at,
+          fileSize: 0, // Will be calculated
+          status: music.status === 1 ? 'active' : 'inactive',
+        }));
+
+        // Apply client-side filters for search and genre (until backend supports them)
+        let filteredTracks = tracks;
+        if (params?.search) {
+          const searchLower = params.search.toLowerCase();
+          filteredTracks = filteredTracks.filter(track =>
+            track.title.toLowerCase().includes(searchLower) ||
+            track.artist.toLowerCase().includes(searchLower) ||
+            track.album?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        if (params?.genre) {
+          filteredTracks = filteredTracks.filter(track => track.genre === params.genre);
+        }
+
+        return { success: true, data: filteredTracks };
+      } else {
+        throw new Error(result.message || 'Failed to fetch music tracks');
+      }
     } catch (error) {
+      console.error('Failed to fetch music tracks:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch music tracks',
@@ -709,34 +854,103 @@ class ApiService {
 
   async uploadMusic(formData: FormData): Promise<ApiResponse<MusicTrack>> {
     try {
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Extract form data
       const title = formData.get('title') as string;
       const artist = formData.get('artist') as string;
-      const album = formData.get('album') as string;
-      const genre = formData.get('genre') as string;
       const musicFile = formData.get('music') as File;
       const coverFile = formData.get('cover') as File;
 
-      // Create new music track
-      const newTrack: MusicTrack = {
-        id: storageService.generateId(),
-        title: title || 'Untitled',
-        artist: artist || 'Unknown Artist',
-        album: album || undefined,
-        genre: genre || undefined,
-        duration: Math.floor(Math.random() * 300) + 60, // Random duration 1-6 minutes
-        fileUrl: `/music/${musicFile.name}`, // Simulated URL
-        coverUrl: coverFile ? `/covers/${coverFile.name}` : undefined,
-        uploadDate: new Date().toISOString(),
-        fileSize: musicFile.size / (1024 * 1024), // Convert to MB
-        status: 'active',
+      console.log('Uploading music:', { title, artist, musicFile: musicFile?.name, coverFile: coverFile?.name });
+
+      if (!title || !artist || !musicFile) {
+        throw new Error('Title, artist, and music file are required');
+      }
+
+      // Step 1: Upload music file
+      const musicUploadFormData = new FormData();
+      musicUploadFormData.append('file', musicFile);
+
+      console.log('Music upload FormData:', musicUploadFormData);
+
+      const musicUploadResponse = await fetch(`${this.baseURL}/music/upload_music`, {
+        method: 'POST',
+        headers: this.getUploadHeaders(),
+        body: musicUploadFormData,
+      });
+
+      if (!musicUploadResponse.ok) {
+        const errorText = await musicUploadResponse.text();
+        console.error('Music upload failed:', musicUploadResponse.status, errorText);
+        throw new Error(`Music upload failed: ${musicUploadResponse.status} - ${errorText}`);
+      }
+
+      const musicUploadResult = await musicUploadResponse.json();
+      if (!musicUploadResult.success) {
+        throw new Error(musicUploadResult.message || 'Music upload failed');
+      }
+
+      let coverUrl: string | undefined;
+
+      // Step 2: Upload cover file if provided
+      if (coverFile) {
+        const coverUploadFormData = new FormData();
+        coverUploadFormData.append('file', coverFile);
+
+        const coverUploadResponse = await fetch(`${this.baseURL}/music/upload_cover`, {
+          method: 'POST',
+          headers: this.getUploadHeaders(),
+          body: coverUploadFormData,
+        });
+
+        if (coverUploadResponse.ok) {
+          const coverUploadResult = await coverUploadResponse.json();
+          if (coverUploadResult.success) {
+            coverUrl = coverUploadResult.data.file_url;
+          }
+        }
+      }
+
+      // Step 3: Create music record
+      const createMusicData = {
+        music_name: title,
+        music_author: artist,
+        music_url: musicUploadResult.data.file_url,
+        music_cover_url: coverUrl,
+        status: 1, // Published
       };
 
-      const savedTrack = storageService.saveMusicTrack(newTrack);
-      return { success: true, data: savedTrack };
+      const createResponse = await fetch(`${this.baseURL}/music/create`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(createMusicData),
+      });
+
+      if (!createResponse.ok) {
+        throw new Error(`Create music failed: ${createResponse.status}`);
+      }
+
+      const createResult = await createResponse.json();
+      if (!createResult.success) {
+        throw new Error(createResult.message || 'Create music failed');
+      }
+
+      // Convert to frontend format
+      const music = createResult.data;
+      const newTrack: MusicTrack = {
+        id: music.id.toString(),
+        title: music.music_name,
+        artist: music.music_author,
+        album: undefined,
+        genre: undefined,
+        duration: 0, // Will be extracted later
+        fileUrl: music.music_url,
+        coverUrl: music.music_cover_url,
+        uploadDate: music.created_at,
+        fileSize: musicFile.size / (1024 * 1024), // Convert to MB
+        status: music.status === 1 ? 'active' : 'inactive',
+      };
+
+      return { success: true, data: newTrack };
     } catch (error) {
       console.error('Music upload failed:', error);
       return {
@@ -748,15 +962,23 @@ class ApiService {
 
   async deleteMusic(id: string): Promise<ApiResponse<void>> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await fetch(`${this.baseURL}/music/delete/${id}`, {
+        method: 'DELETE',
+        headers: this.getHeaders(),
+      });
 
-      const success = storageService.deleteMusicTrack(id);
-      if (success) {
+      if (!response.ok) {
+        throw new Error(`Delete music failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success) {
         return { success: true };
       } else {
-        return { success: false, error: 'Music track not found' };
+        throw new Error(result.message || 'Delete music failed');
       }
     } catch (error) {
+      console.error('Delete music failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete music track',
@@ -766,14 +988,23 @@ class ApiService {
 
   async bulkDeleteMusic(ids: string[]): Promise<ApiResponse<void>> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 600));
+      // Delete each music track individually since backend doesn't have bulk delete
+      const deletePromises = ids.map(id => this.deleteMusic(id));
+      const results = await Promise.allSettled(deletePromises);
 
-      const success = storageService.deleteMusicTracks(ids);
-      if (success) {
-        return { success: true };
-      } else {
-        return { success: false, error: 'Some music tracks could not be deleted' };
+      const failedDeletes = results.filter(result =>
+        result.status === 'rejected' ||
+        (result.status === 'fulfilled' && !result.value.success)
+      );
+
+      if (failedDeletes.length > 0) {
+        return {
+          success: false,
+          error: `Failed to delete ${failedDeletes.length} out of ${ids.length} music tracks`
+        };
       }
+
+      return { success: true };
     } catch (error) {
       return {
         success: false,

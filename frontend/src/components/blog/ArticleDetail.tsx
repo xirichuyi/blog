@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import type { Article } from '../../types/blog';
 import ArticleCard from './ArticleCard';
+import MarkdownRenderer from '../ui/MarkdownRenderer';
 import './ArticleDetail.css';
 
 interface ArticleDetailProps {
@@ -21,12 +22,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
     const loadArticle = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const fetchedArticle = await fetchArticleById(articleId);
         if (fetchedArticle) {
           setArticle(fetchedArticle);
-          
+
           // Find related articles (same category, excluding current article)
           const related = articles
             .filter((a: Article) => a.id !== articleId && a.category === fetchedArticle.category)
@@ -60,13 +61,25 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
   };
 
   const generateOutline = (content: string) => {
-    const headings = content.match(/<h[2-3][^>]*>.*?<\/h[2-3]>/gi) || [];
-    return headings.map((heading, index) => {
-      const level = heading.match(/<h([2-3])/)?.[1] || '2';
-      const text = heading.replace(/<[^>]*>/g, '');
-      const id = `heading-${index}`;
-      return { level: parseInt(level), text, id };
-    });
+    // Extract headings from Markdown content instead of HTML
+    const headingRegex = /^(#{1,3})\s+(.+)$/gm;
+    const headings: Array<{ level: number; text: string; id: string }> = [];
+    let match;
+
+    while ((match = headingRegex.exec(content)) !== null) {
+      const level = match[1].length;
+      const text = match[2].trim();
+      const id = text.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+        .replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
+
+      if (level >= 2 && level <= 3) { // Only include h2 and h3
+        headings.push({ level, text, id });
+      }
+    }
+
+    return headings;
   };
 
   if (isLoading) {
@@ -104,8 +117,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
           {article.imageUrl && (
             <div className="article-hero-image">
               <img
-                src={article.imageUrl.startsWith('http') 
-                  ? article.imageUrl 
+                src={article.imageUrl.startsWith('http')
+                  ? article.imageUrl
                   : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${article.imageUrl}`
                 }
                 alt={article.title}
@@ -138,7 +151,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
             {article.tags && article.tags.length > 0 && (
               <div className="article-tags">
                 {article.tags.map((tag, index) => (
-                  <md-filter-chip 
+                  <md-filter-chip
                     key={index}
                     className="article-tag"
                     disabled
@@ -153,9 +166,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
 
         {/* Article Content */}
         <div className="article-content">
-          <div 
+          <MarkdownRenderer
+            content={article.content || ''}
             className="article-body md-typescale-body-large"
-            dangerouslySetInnerHTML={{ __html: article.content || '' }}
           />
         </div>
 
@@ -180,7 +193,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
 
         {/* See More Section */}
         <div className="see-more-section">
-          <md-filled-button 
+          <md-filled-button
             className="see-more-button"
             onClick={() => navigate('/articles')}
           >
@@ -199,13 +212,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
             </h3>
             <nav className="outline-nav">
               {outline.map((item, index) => (
-                <a
+                <div
                   key={index}
-                  href={`#${item.id}`}
                   className={`outline-item outline-level-${item.level} md-typescale-body-medium`}
                 >
-                  {item.text}
-                </a>
+                  <a href={`#${item.id}`}>
+                    {item.text}
+                  </a>
+                </div>
               ))}
             </nav>
           </div>

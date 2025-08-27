@@ -1,6 +1,7 @@
 // Enhanced Data Context for managing all shared data with caching and deduplication
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { apiService } from '../services/api';
 import type { Category, Tag, Article, PaginationInfo } from '../types';
 
@@ -308,12 +309,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const refreshData = useCallback(async () => {
     clearCache();
     await loadBasicData();
-  }, [loadBasicData, clearCache]);
+  }, [clearCache]);
 
   // Initialize data on mount
   useEffect(() => {
     loadBasicData();
-  }, [loadBasicData]);
+  }, []);
 
   // Cleanup on unmount - don't clear global deduplicator as it's shared
   useEffect(() => {

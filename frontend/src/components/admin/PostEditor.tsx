@@ -30,7 +30,7 @@ const PostEditor: React.FC = () => {
   const { showNotification } = useNotification();
   const { categories, tags: availableTags } = useData();
   const isEditing = id !== 'new';
-  
+
   const [formData, setFormData] = useState<PostFormData>({
     title: '',
     excerpt: '',
@@ -83,8 +83,8 @@ const PostEditor: React.FC = () => {
     if (mdTextField) {
       // Look for the textarea inside the shadow DOM or as a child
       textarea = mdTextField.querySelector('textarea') ||
-                 mdTextField.shadowRoot?.querySelector('textarea') ||
-                 mdTextField.renderRoot?.querySelector('textarea');
+        mdTextField.shadowRoot?.querySelector('textarea') ||
+        mdTextField.renderRoot?.querySelector('textarea');
     }
 
     if (textarea) {
@@ -403,6 +403,13 @@ const PostEditor: React.FC = () => {
 
 
 
+  // Check if form is valid for enabling save buttons
+  const isFormValid = () => {
+    return formData.title.trim() &&
+      formData.content.trim() &&
+      !isSaving;
+  };
+
   const handleTagInputChange = (value: string) => {
     setTagInput(value);
     setShowTagSuggestions(value.length > 0);
@@ -489,15 +496,14 @@ const PostEditor: React.FC = () => {
               {isEditing ? 'Edit Post' : 'Create New Post'}
             </h1>
           </div>
-          
+
           <div className="editor-actions">
             <md-text-button onClick={handleCancel}>
               Cancel
             </md-text-button>
-            
+
             <md-outlined-button
               onClick={() => handleSave('draft')}
-            
             >
               {isSaving ? (
                 <>
@@ -518,7 +524,6 @@ const PostEditor: React.FC = () => {
 
             <md-filled-button
               onClick={() => handleSave('published')}
-    
             >
               {isSaving ? (
                 <>
@@ -671,7 +676,7 @@ const PostEditor: React.FC = () => {
             </div>
 
 
-            
+
             {previewMode ? (
               <div className="content-preview">
                 <MarkdownRenderer
@@ -694,7 +699,7 @@ const PostEditor: React.FC = () => {
           {/* Metadata */}
           <div className="form-section">
             <h2 className="md-typescale-headline-small">Metadata</h2>
-            
+
             <div className="metadata-grid">
               <md-outlined-select
                 label="Category"
@@ -708,7 +713,7 @@ const PostEditor: React.FC = () => {
                   </md-select-option>
                 ))}
               </md-outlined-select>
-              
+
               <div className="featured-toggle">
                 <md-switch
                   selected={formData.featured}
@@ -717,7 +722,7 @@ const PostEditor: React.FC = () => {
                 <span className="md-typescale-body-medium">Featured Post</span>
               </div>
             </div>
-            
+
             {/* Tags */}
             <div className="tags-section">
               <div className="tags-input-container">
@@ -764,16 +769,16 @@ const PostEditor: React.FC = () => {
                       {availableTags
                         .filter(tag => !formData.tags.includes(tag.name))
                         .map(tag => (
-                        <md-assist-chip
-                          key={tag.id}
-                          label={tag.name}
-                          onClick={() => handleSelectExistingTag(tag.name)}
-                          class="available-chip"
-                        >
-                          <md-icon slot="icon">add</md-icon>
-                          {tag.name}
-                        </md-assist-chip>
-                      ))}
+                          <md-assist-chip
+                            key={tag.id}
+                            label={tag.name}
+                            onClick={() => handleSelectExistingTag(tag.name)}
+                            class="available-chip"
+                          >
+                            <md-icon slot="icon">add</md-icon>
+                            {tag.name}
+                          </md-assist-chip>
+                        ))}
                     </div>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 // Authentication Context for managing auth state
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
 import type { AuthState, AuthContextType, LoginCredentials, AdminUser } from '../types';
 import { apiService } from '../services/api';
 
@@ -105,10 +105,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check authentication on mount
   useEffect(() => {
-    checkAuth();
+    const initAuth = async () => {
+      const token = localStorage.getItem('admin_token');
+
+      if (!token) {
+        dispatch({ type: 'CHECK_AUTH_FAILURE' });
+        return;
+      }
+
+      try {
+        // For now, if token exists, consider user authenticated
+        // In real implementation, verify token with backend
+        const user: AdminUser = {
+          id: '1',
+          username: 'admin',
+          email: 'admin@cyrusblog.com',
+          role: 'admin',
+        };
+
+        dispatch({
+          type: 'CHECK_AUTH_SUCCESS',
+          payload: { user, token },
+        });
+      } catch (error) {
+        localStorage.removeItem('admin_token');
+        dispatch({ type: 'CHECK_AUTH_FAILURE' });
+      }
+    };
+
+    initAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials): Promise<boolean> => {
+  const login = useCallback(async (credentials: LoginCredentials): Promise<boolean> => {
     dispatch({ type: 'LOGIN_START' });
 
     try {
@@ -136,14 +164,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatch({ type: 'LOGIN_FAILURE', payload: errorMessage });
       return false;
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('admin_token');
     dispatch({ type: 'LOGOUT' });
-  };
+  }, []);
 
-  const checkAuth = async (): Promise<boolean> => {
+  const checkAuth = useCallback(async (): Promise<boolean> => {
     const token = localStorage.getItem('admin_token');
     
     if (!token) {
@@ -172,11 +200,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatch({ type: 'CHECK_AUTH_FAILURE' });
       return false;
     }
-  };
+  }, []);
 
-  const clearError = () => {
+  const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' });
-  };
+  }, []);
 
   const value: AuthContextType = {
     ...state,

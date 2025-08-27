@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
-    category_handler, download_handler, music_handler, post_handler, tag_handler,
+    category_handler, download_handler, music_handler, post_handler, tag_handler, about_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use axum::{
@@ -63,7 +63,9 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route(
             "/api/post/:id/tags",
             get(post_handler::get_post_tags_public),
-        );
+        )
+        // About public route
+        .route("/api/about/get", get(about_handler::get_about));
 
     // Admin routes (authentication required)
     let admin_routes = Router::new()
@@ -84,11 +86,17 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             "/api/post/update_tags/:id",
             put(post_handler::update_post_tags),
         )
+        // About admin routes
+        .route("/api/about/update", put(about_handler::update_about))
         // Music admin routes
         .route("/api/music/create", post(music_handler::create_music))
         .route("/api/music/update/:id", put(music_handler::update_music))
         .route("/api/music/delete/:id", delete(music_handler::delete_music))
         .route("/api/music/upload_music", post(music_handler::upload_music))
+        .route(
+            "/api/music/upload_cover",
+            post(music_handler::upload_cover_image),
+        )
         .route(
             "/api/music/upload_music_cover/:id",
             post(music_handler::upload_music_cover),
