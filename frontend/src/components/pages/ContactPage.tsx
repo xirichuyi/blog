@@ -19,14 +19,15 @@ const ContactPage: React.FC = () => {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const contactInfo = {
-    email: 'hello@cyrusblog.com',
+    email: 'xrcy123@gmail.com',
     location: 'San Francisco, CA'
   };
 
   const socialLinks = [
-    { name: 'GitHub', url: 'https://github.com' },
-    { name: 'LinkedIn', url: 'https://linkedin.com' },
-    { name: 'Twitter', url: 'https://twitter.com' }
+    { name: 'GitHub', url: 'https://github.com/xirichuyi' },
+    { name: 'LinkedIn', url: 'https://www.linkedin.com/in/%E5%88%9D%E4%B8%80-%E6%98%94%E6%97%A5-223012366/' },
+    { name: 'Telegram', url: 'https://t.me/xrcy97' },
+    { name: 'Linux.do', url: 'https://linux.do/u/xirichuyi/summary' }
   ];
 
   const handleInputChange = (field: keyof ContactForm, value: string) => {
@@ -44,10 +45,10 @@ const ContactPage: React.FC = () => {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // For now, just log the form data
       console.log('Contact form submitted:', formData);
-      
+
       setSubmitStatus('success');
       setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error) {

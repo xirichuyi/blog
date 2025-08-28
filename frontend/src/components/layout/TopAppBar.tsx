@@ -15,7 +15,7 @@ interface TopAppBarProps {
 }
 
 const TopAppBar: React.FC<TopAppBarProps> = ({
-  title = "Cyrus Blog",
+  title = "chuyi's Blog",
   showSearch = true,
   onMenuClick,
   onSearchClick,
@@ -25,7 +25,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { isMobile, isTablet } = useResponsive();
+  const { isMobile } = useResponsive();
 
   const handleSearchToggle = () => {
     setIsSearchOpen(!isSearchOpen);
@@ -34,14 +34,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
     }
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setIsSearchOpen(false);
-      setSearchQuery('');
-    }
-  };
+
 
   const handleSearchFromEnhanced = (query: string) => {
     if (query.trim()) {
@@ -62,19 +55,19 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
       <Helmet>
         <title>{title}</title>
       </Helmet>
-      
+
       <header className={`top-app-bar surface-container ${className}`}>
         <div className="top-app-bar-content">
           {/* Leading Section */}
           <div className="top-app-bar-leading">
-            <md-icon-button 
+            <md-icon-button
               className="menu-button"
               onClick={onMenuClick}
               aria-label="Open navigation menu"
             >
               <md-icon>menu</md-icon>
             </md-icon-button>
-            
+
             <div className="app-title">
               <h1 className="md-typescale-title-large">{title}</h1>
             </div>

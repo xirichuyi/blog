@@ -13,7 +13,6 @@ interface NavigationItem {
 interface NavigationProps {
   isOpen: boolean;
   onClose: () => void;
-  currentPath?: string;
   className?: string;
 }
 
@@ -59,7 +58,6 @@ const navigationItems: NavigationItem[] = [
 const Navigation: React.FC<NavigationProps> = ({
   isOpen,
   onClose,
-  currentPath = '/',
   className = ""
 }) => {
   const [selectedItem, setSelectedItem] = useState('home');
@@ -85,11 +83,28 @@ const Navigation: React.FC<NavigationProps> = ({
     }
   };
 
+  const handleSearchClick = () => {
+    navigate('/articles');
+    onClose();
+  };
+
+  const handleBookmarksClick = () => {
+    // Navigate to articles with a bookmark filter or show a message
+    navigate('/articles');
+    onClose();
+  };
+
+  const handleRSSClick = () => {
+    // Open RSS feed - this would be the backend API endpoint
+    window.open(`${window.location.origin}/api/rss`, '_blank');
+    onClose();
+  };
+
   return (
     <>
       {/* Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="navigation-backdrop"
           onClick={handleBackdropClick}
           aria-hidden="true"
@@ -101,9 +116,9 @@ const Navigation: React.FC<NavigationProps> = ({
         <div className="navigation-header">
           <div className="navigation-title">
             <md-icon className="navigation-logo">article</md-icon>
-            <h2 className="md-typescale-title-medium">Cyrus Blog</h2>
+            <h2 className="md-typescale-title-medium">chuyi's Blog</h2>
           </div>
-          <md-icon-button 
+          <md-icon-button
             className="navigation-close"
             onClick={onClose}
             aria-label="Close navigation"
@@ -141,15 +156,15 @@ const Navigation: React.FC<NavigationProps> = ({
               Quick Actions
             </div>
             <md-list className="navigation-list">
-              <md-list-item type="button" className="navigation-item">
+              <md-list-item type="button" className="navigation-item" onClick={handleSearchClick}>
                 <md-icon slot="start">search</md-icon>
                 <div slot="headline">Search</div>
               </md-list-item>
-              <md-list-item type="button" className="navigation-item">
+              <md-list-item type="button" className="navigation-item" onClick={handleBookmarksClick}>
                 <md-icon slot="start">bookmark</md-icon>
                 <div slot="headline">Bookmarks</div>
               </md-list-item>
-              <md-list-item type="button" className="navigation-item">
+              <md-list-item type="button" className="navigation-item" onClick={handleRSSClick}>
                 <md-icon slot="start">rss_feed</md-icon>
                 <div slot="headline">RSS Feed</div>
               </md-list-item>

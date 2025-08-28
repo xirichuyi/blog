@@ -5,7 +5,7 @@ import './AboutPage.css';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
 
 const AboutPage: React.FC = () => {
-  const [title, setTitle] = useState<string>('Hi, I\'m Cyrus');
+  const [title, setTitle] = useState<string>('Hi, I\'m chuyi');
   const [subtitle, setSubtitle] = useState<string>('Full-Stack Developer & Tech Enthusiast');
   const [content, setContent] = useState<string>('');
   const [photoUrl, setPhotoUrl] = useState<string>('');
@@ -53,7 +53,7 @@ const AboutPage: React.FC = () => {
             <div className="photo-container">
               <img
                 src={photoUrl || '/api/placeholder/300/400'}
-                alt="Cyrus - Full-Stack Developer"
+                alt="chuyi - Full-Stack Developer"
                 className="profile-photo"
               />
               <div className="photo-overlay">

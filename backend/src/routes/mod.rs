@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
-    category_handler, download_handler, music_handler, post_handler, tag_handler, about_handler,
+    about_handler, category_handler, download_handler, music_handler, post_handler, tag_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use axum::{

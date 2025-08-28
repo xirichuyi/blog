@@ -121,6 +121,11 @@ class ApiService {
     globalCache.invalidatePattern(pattern);
   }
 
+  // 公共方法供外部使用
+  public invalidateCachePattern(pattern: RegExp): void {
+    this.invalidateCache(pattern);
+  }
+
   // 清理缓存方法
   public clearCache(): void {
     globalCache.clear();
@@ -314,7 +319,7 @@ class ApiService {
             title: post.title,
             content: post.content,
             excerpt: this.generatePlainTextExcerpt(post.content, 80),
-            author: 'Cyrus',
+            author: 'chuyi',
             publishDate: post.created_at,
             readTime: Math.ceil(post.content.length / 1000),
             category: post.category_id ? (categoryMap.get(post.category_id.toString()) || 'Uncategorized') : 'Uncategorized',
@@ -417,7 +422,7 @@ class ApiService {
             title: post.title,
             content: post.content,
             excerpt: this.generatePlainTextExcerpt(post.content, 80),
-            author: 'Cyrus',
+            author: 'chuyi',
             publishDate: post.created_at,
             readTime: Math.ceil(post.content.length / 1000),
             category: post.category_id ? (categoryMap.get(post.category_id.toString()) || 'Uncategorized') : 'Uncategorized',

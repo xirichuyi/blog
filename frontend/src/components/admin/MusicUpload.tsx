@@ -4,8 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
-import { analyzeAudioFile, formatFileSize } from '../../utils/musicMetadata';
-import type { MusicUploadData } from '../../types';
+import { analyzeAudioFile } from '../../utils/musicMetadata';
 import AdminLayout from './AdminLayout';
 import './MusicUpload.css';
 
@@ -249,6 +248,7 @@ const MusicUpload: React.FC = () => {
 
             <md-filled-button
               onClick={handleUpload}
+              disabled={!isFormValid()}
             >
               {isUploading ? (
                 <>

@@ -38,11 +38,6 @@ const navigationItems: NavigationItem[] = [
     path: '/admin/categories-tags',
   },
   {
-    id: 'music',
-    label: 'Music',
-    icon: 'library_music',
-    path: '/admin/music',
-  }, {
     id: 'about',
     label: 'About',
     icon: 'person',

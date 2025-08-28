@@ -40,20 +40,42 @@ const Dashboard: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // For now, use mock data since backend might not be ready
-      const mockStats: DashboardStats = {
-        totalPosts: 12,
-        totalCategories: 5,
-        totalViews: 1234,
-        recentPosts: 3,
-      };
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setStats(mockStats);
+
+      // Try to load real data from API
+      const response = await apiService.getDashboardStats();
+
+      if (response.success && response.data) {
+        setStats(response.data);
+      } else {
+        // Fallback to calculated stats if dashboard API fails
+        console.warn('Dashboard API failed, calculating stats manually:', response.error);
+
+        // Get posts, categories and calculate basic stats
+        const [postsResponse, categoriesResponse] = await Promise.all([
+          apiService.getPosts({ page: 1, page_size: 1000 }),
+          apiService.getPublicCategories()
+        ]);
+
+        const calculatedStats: DashboardStats = {
+          totalPosts: postsResponse.success ? (postsResponse.total || postsResponse.data?.length || 0) : 0,
+          totalCategories: categoriesResponse.success ? (categoriesResponse.data?.length || 0) : 0,
+          totalViews: 0, // This would require view tracking in backend
+          recentPosts: postsResponse.success ? Math.min(postsResponse.data?.length || 0, 10) : 0,
+        };
+
+        setStats(calculatedStats);
+      }
     } catch (err) {
+      console.error('Failed to load dashboard data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+
+      // Last resort fallback to prevent complete failure
+      setStats({
+        totalPosts: 0,
+        totalCategories: 0,
+        totalViews: 0,
+        recentPosts: 0,
+      });
     } finally {
       setIsLoading(false);
     }
