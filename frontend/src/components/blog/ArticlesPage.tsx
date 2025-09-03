@@ -30,7 +30,7 @@ const ArticlesPage: React.FC = () => {
   const [totalArticles, setTotalArticles] = useState(0);
 
   // Active filter state - only one filter can be active at a time
-  const [activeFilter, setActiveFilter] = useState<{type: 'category' | 'tag' | null, id: string | null}>({
+  const [activeFilter, setActiveFilter] = useState<{ type: 'category' | 'tag' | null, id: string | null }>({
     type: 'category',
     id: 'all'
   });
@@ -243,52 +243,52 @@ const ArticlesPage: React.FC = () => {
         {articles.length > 0 ? (
           <div className="articles-grid">
             {articles.map((article) => (
-                <div
-                  key={article.id}
-                  className="secondary-article-card"
-                  onClick={() => handleArticleClick(article.id)}
-                  style={{ cursor: 'pointer' }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleArticleClick(article.id);
-                    }
-                  }}
-                >
-                  {/* 上方图片区域 */}
-                  <div className="secondary-article-image">
-                    <div className="secondary-article-visual-content">
-                      {article.imageUrl ? (
-                        <img
-                          src={article.imageUrl.startsWith('http') ? article.imageUrl : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${article.imageUrl}`}
-                          alt={article.title}
-                          className="secondary-article-cover-image"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="visual-placeholder" style={{ background: `linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)` }}>
-                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {/* 下方内容区域 */}
-                  <div className="secondary-article-content">
-                    <div className="secondary-article-meta">
-                      <span className="secondary-article-tag">{article.category}</span>
-                      <span className="secondary-article-date">{new Date(article.publishDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                    </div>
-                    <h3 className="secondary-article-title">{article.title}</h3>
-                    <p className="secondary-article-description">{article.excerpt}</p>
+              <div
+                key={article.id}
+                className="secondary-article-card"
+                onClick={() => handleArticleClick(article.id)}
+                style={{ cursor: 'pointer' }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleArticleClick(article.id);
+                  }
+                }}
+              >
+                {/* 上方图片区域 */}
+                <div className="secondary-article-image">
+                  <div className="secondary-article-visual-content">
+                    {article.imageUrl ? (
+                      <img
+                        src={article.imageUrl.startsWith('http') ? article.imageUrl : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${article.imageUrl}`}
+                        alt={article.title}
+                        className="secondary-article-cover-image"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="visual-placeholder" style={{ background: `linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)` }}>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+                {/* 下方内容区域 */}
+                <div className="secondary-article-content">
+                  <div className="secondary-article-meta">
+                    <span className="secondary-article-tag">{article.category}</span>
+                    <span className="secondary-article-date">{new Date(article.publishDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                  <h3 className="secondary-article-title">{article.title}</h3>
+                  <p className="secondary-article-description">{article.excerpt}</p>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="no-articles">
@@ -307,7 +307,11 @@ const ArticlesPage: React.FC = () => {
               {/* Previous Button */}
               <md-icon-button
                 disabled={currentPage === 1}
-                onClick={() => handlePageChange(currentPage - 1)}
+                onClick={() => {
+                  if (currentPage > 1) {
+                    handlePageChange(currentPage - 1);
+                  }
+                }}
                 className="pagination-button"
               >
                 <md-icon>chevron_left</md-icon>
@@ -341,6 +345,13 @@ const ArticlesPage: React.FC = () => {
                       key={pageNumber}
                       className={`pagination-number ${isCurrentPage ? 'current' : ''}`}
                       onClick={() => !isCurrentPage && handlePageChange(pageNumber)}
+                      style={isCurrentPage ? {
+                        '--md-text-button-label-text-color': 'var(--md-sys-color-on-primary-container)',
+                        '--md-text-button-container-color': 'var(--md-sys-color-primary-container)',
+                        backgroundColor: 'var(--md-sys-color-primary-container)',
+                        color: 'var(--md-sys-color-on-primary-container)',
+                        boxShadow: 'var(--md-sys-elevation-level1)'
+                      } : {}}
                     >
                       {pageNumber}
                     </md-text-button>
@@ -351,7 +362,11 @@ const ArticlesPage: React.FC = () => {
               {/* Next Button */}
               <md-icon-button
                 disabled={currentPage === totalPages}
-                onClick={() => handlePageChange(currentPage + 1)}
+                onClick={() => {
+                  if (currentPage < totalPages) {
+                    handlePageChange(currentPage + 1);
+                  }
+                }}
                 className="pagination-button"
               >
                 <md-icon>chevron_right</md-icon>

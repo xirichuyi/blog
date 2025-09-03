@@ -173,14 +173,15 @@
   transform: translateX(4px);
 }
 
-.outline-item a.active {
+.outline-item.active a {
   background-color: rgba(204, 182, 255, 0.2);
   color: #ccb6ff;
   border-left-color: #ccb6ff;
   transform: translateX(8px);
+  font-weight: 600;
 }
 
-.outline-item a.active::before {
+.outline-item.active a::before {
   content: "";
   position: absolute;
   right: var(--md-sys-spacing-3);

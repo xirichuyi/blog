@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import type { Article } from '../../types/blog';
@@ -17,6 +17,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
+  const [activeHeading, setActiveHeading] = useState<string>('');
+  const [isScrollingToHeading, setIsScrollingToHeading] = useState(false);
 
   useEffect(() => {
     const loadArticle = async () => {
@@ -47,8 +49,117 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
     loadArticle();
   }, [articleId, fetchArticleById, articles]);
 
+  // Simple scroll-based heading tracking
+  const updateActiveHeading = useCallback(() => {
+    // Skip update if we're programmatically scrolling
+    if (isScrollingToHeading) return;
+
+    // Find all headings with IDs
+    const headings = Array.from(document.querySelectorAll('h2[id], h3[id]'));
+
+    if (headings.length === 0) return;
+
+    // Get current scroll position
+    const scrollTop = window.scrollY;
+    const windowHeight = window.innerHeight;
+    const triggerPoint = scrollTop + windowHeight * 0.2; // 20% from top of viewport for more sensitive tracking
+
+    // Find the active heading
+    let activeId = '';
+
+    for (let i = headings.length - 1; i >= 0; i--) {
+      const heading = headings[i] as HTMLElement;
+      const headingTop = heading.offsetTop;
+
+      if (headingTop <= triggerPoint) {
+        activeId = heading.id;
+        break;
+      }
+    }
+
+    // If we're at the very top, activate the first heading
+    if (!activeId && headings.length > 0 && scrollTop < 200) {
+      activeId = (headings[0] as HTMLElement).id;
+    }
+
+    if (activeId && activeId !== activeHeading) {
+      setActiveHeading(activeId);
+    }
+  }, [activeHeading, isScrollingToHeading]);
+
+  // Setup scroll listener after article content is rendered
+  useEffect(() => {
+    if (article && !isLoading) {
+      // Wait for DOM to update and markdown to render
+      const timer = setTimeout(() => {
+        updateActiveHeading(); // Initial call
+      }, 500);
+
+      // Throttled scroll handler for better performance
+      let ticking = false;
+      const handleScroll = () => {
+        if (!ticking) {
+          requestAnimationFrame(() => {
+            updateActiveHeading();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      };
+
+      // Add scroll listener
+      window.addEventListener('scroll', handleScroll, { passive: true });
+
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, [article, isLoading, updateActiveHeading]);
+
   const handleArticleClick = (id: string) => {
     navigate(`/article/${id}`);
+  };
+
+  const handleOutlineClick = (e: React.MouseEvent<HTMLAnchorElement>, headingId: string) => {
+    e.preventDefault();
+    const targetElement = document.getElementById(headingId);
+    if (targetElement) {
+      // Set scrolling flag to prevent updates during programmatic scroll
+      setIsScrollingToHeading(true);
+
+      // Update active heading immediately for better UX
+      setActiveHeading(headingId);
+
+      const offsetTop = targetElement.offsetTop - 100; // Account for fixed header
+      const targetPosition = offsetTop;
+
+      window.scrollTo({
+        top: offsetTop,
+        behavior: 'smooth'
+      });
+
+      // More precise scroll completion detection
+      let checkCount = 0;
+      const maxChecks = 40; // Maximum 2 seconds of checking
+
+      const checkScrollComplete = () => {
+        const currentPosition = window.scrollY;
+        const isNearTarget = Math.abs(currentPosition - targetPosition) < 10;
+        const hasStoppedScrolling = checkCount > 10 && Math.abs(currentPosition - targetPosition) < 50;
+
+        checkCount++;
+
+        if (isNearTarget || hasStoppedScrolling || checkCount >= maxChecks) {
+          setIsScrollingToHeading(false);
+        } else {
+          setTimeout(checkScrollComplete, 50);
+        }
+      };
+
+      // Start checking after a short delay
+      setTimeout(checkScrollComplete, 200);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -214,9 +325,13 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
               {outline.map((item, index) => (
                 <div
                   key={index}
-                  className={`outline-item outline-level-${item.level} md-typescale-body-medium`}
+                  className={`outline-item outline-level-${item.level} md-typescale-body-medium ${activeHeading === item.id ? 'active' : ''
+                    }`}
                 >
-                  <a href={`#${item.id}`}>
+                  <a
+                    href={`#${item.id}`}
+                    onClick={(e) => handleOutlineClick(e, item.id)}
+                  >
                     {item.text}
                   </a>
                 </div>
