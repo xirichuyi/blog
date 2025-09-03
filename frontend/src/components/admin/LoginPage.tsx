@@ -12,7 +12,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const { login, isAuthenticated, error, isLoading, clearError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,16 +34,16 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username.trim() || !password.trim()) {
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const success = await login({ username: username.trim(), password });
-      
+
       if (success) {
         const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
         navigate(from, { replace: true });
@@ -121,7 +121,7 @@ const LoginPage: React.FC = () => {
                 class="login-input"
               >
                 <md-icon slot="leading-icon">lock</md-icon>
-                <md-icon-button 
+                <md-icon-button
                   slot="trailing-icon"
                   onClick={togglePasswordVisibility}
                   type="button"
@@ -138,8 +138,8 @@ const LoginPage: React.FC = () => {
               >
                 {isSubmitting ? (
                   <>
-                    <md-circular-progress 
-                      indeterminate 
+                    <md-circular-progress
+                      indeterminate
                       slot="icon"
                       style={{ width: '18px', height: '18px' }}
                     ></md-circular-progress>
@@ -157,7 +157,7 @@ const LoginPage: React.FC = () => {
 
           <div className="login-footer">
             <p className="md-typescale-body-small">
-              Default credentials: admin / admin123456
+              Please enter your admin credentials
             </p>
           </div>
         </div>

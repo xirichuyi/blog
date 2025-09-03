@@ -1,4 +1,5 @@
 import React from 'react';
+import { apiService } from '../../services/api';
 import type { Article } from '../../types/blog';
 import './ArticleCard.css';
 
@@ -44,7 +45,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
   };
 
   return (
-    <md-elevated-card 
+    <md-elevated-card
       className={`article-card ${featured ? 'article-card-featured' : ''} ${className}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -55,7 +56,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
       {imageUrl && (
         <div className="article-card-media">
           <img
-            src={imageUrl.startsWith('http') ? imageUrl : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${imageUrl}`}
+            src={apiService.getImageUrl(imageUrl)}
             alt={title}
             className="article-card-image"
             loading="lazy"
@@ -68,14 +69,14 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
           )}
         </div>
       )}
-      
+
       <div className="article-card-content">
         <div className="article-card-header">
           <md-assist-chip className="article-card-category">
             <md-icon slot="icon">category</md-icon>
             {category}
           </md-assist-chip>
-          
+
           <div className="article-card-meta">
             <span className="article-card-date md-typescale-body-small">
               {formatDate(publishDate)}
@@ -96,7 +97,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
 
         <div className="article-card-tags">
           {tags.slice(0, 3).map((tag, index) => (
-            <md-filter-chip 
+            <md-filter-chip
               key={index}
               className="article-card-tag"
               disabled

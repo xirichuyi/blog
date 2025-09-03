@@ -1027,9 +1027,6 @@ class ApiService {
     try {
       const authToken = localStorage.getItem('admin_token');
       if (!authToken) {
-        // Assuming showNotification is available globally or imported
-        // If not, you might need to import it or handle it differently
-        // For now, we'll just return an error response
         return {
           success: false,
           error: 'Authentication token not found. Please log in to upload files.',
@@ -1061,6 +1058,77 @@ class ApiService {
         error: error instanceof Error ? error.message : 'Upload failed',
       };
     }
+  }
+
+  // Upload post cover image
+  async uploadPostCover(file: File, postId?: string): Promise<ApiResponse<{ file_url: string }>> {
+    const formData = new FormData();
+    formData.append('cover', file);
+
+    try {
+      const endpoint = postId ? `/post/${postId}/cover` : '/post/upload_cover';
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'POST',
+        headers: this.getUploadHeaders(),
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      console.error('Cover upload failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Cover upload failed',
+      };
+    }
+  }
+
+  // Upload post content image
+  async uploadPostImage(file: File): Promise<ApiResponse<{ file_url: string }>> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`${this.baseURL}/post/upload_post_image`, {
+        method: 'POST',
+        headers: this.getUploadHeaders(),
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Image upload failed',
+      };
+    }
+  }
+
+  // Get full image URL (helper method)
+  getImageUrl(imagePath: string): string {
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    return `${API_BASE_URL}${imagePath}`;
   }
 
   // Health Check

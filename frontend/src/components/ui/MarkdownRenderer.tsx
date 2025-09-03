@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { apiService } from '../../services/api';
 import './MarkdownRenderer.css';
 
 interface MarkdownRendererProps {
@@ -18,35 +19,33 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
           h1: ({ children, ...props }) => {
             const id = typeof children === 'string'
               ? children.toLowerCase()
-                  .replace(/\s+/g, '-')
-                  .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                  .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
+                .replace(/\s+/g, '-')
+                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
               : '';
             return <h1 id={id} {...props}>{children}</h1>;
           },
           h2: ({ children, ...props }) => {
             const id = typeof children === 'string'
               ? children.toLowerCase()
-                  .replace(/\s+/g, '-')
-                  .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                  .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
+                .replace(/\s+/g, '-')
+                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
               : '';
             return <h2 id={id} {...props}>{children}</h2>;
           },
           h3: ({ children, ...props }) => {
             const id = typeof children === 'string'
               ? children.toLowerCase()
-                  .replace(/\s+/g, '-')
-                  .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                  .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
+                .replace(/\s+/g, '-')
+                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
               : '';
             return <h3 id={id} {...props}>{children}</h3>;
           },
           // Custom image renderer to handle relative URLs
           img: ({ src, alt, ...props }) => {
-            const imageSrc = src?.startsWith('http') 
-              ? src 
-              : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${src}`;
+            const imageSrc = src ? apiService.getImageUrl(src) : '';
             return <img src={imageSrc} alt={alt} {...props} />;
           },
           // Custom code block renderer
@@ -77,8 +76,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
           ),
           // Custom link renderer
           a: ({ href, children, ...props }) => (
-            <a 
-              href={href} 
+            <a
+              href={href}
               target={href?.startsWith('http') ? '_blank' : undefined}
               rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
               {...props}

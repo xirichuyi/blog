@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
+import { apiService } from '../../services/api';
 import type { Article } from '../../types/blog';
 import ArticleCard from './ArticleCard';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
@@ -228,10 +229,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
           {article.imageUrl && (
             <div className="article-hero-image">
               <img
-                src={article.imageUrl.startsWith('http')
-                  ? article.imageUrl
-                  : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${article.imageUrl}`
-                }
+                src={apiService.getImageUrl(article.imageUrl)}
                 alt={article.title}
                 loading="eager"
               />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
+import { apiService } from '../../services/api';
 import type { Article } from '../../types';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ErrorMessage from '../ui/ErrorMessage';
@@ -262,7 +263,7 @@ const ArticlesPage: React.FC = () => {
                   <div className="secondary-article-visual-content">
                     {article.imageUrl ? (
                       <img
-                        src={article.imageUrl.startsWith('http') ? article.imageUrl : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${article.imageUrl}`}
+                        src={apiService.getImageUrl(article.imageUrl)}
                         alt={article.title}
                         className="secondary-article-cover-image"
                         loading="lazy"

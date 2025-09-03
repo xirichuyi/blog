@@ -263,73 +263,25 @@ const PostEditor: React.FC = () => {
     try {
       setIsUploadingCover(true);
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
-      const authToken = localStorage.getItem('admin_token') || 'admin123456';
+      const result = await apiService.uploadPostCover(file, isEditing && id ? id : undefined);
 
-      if (isEditing && id) {
-        // Update existing post cover
-        const formData = new FormData();
-        formData.append('cover', file);
+      if (result.success && result.data?.file_url) {
+        const fullCoverUrl = apiService.getImageUrl(result.data.file_url);
 
-        const response = await fetch(`${API_BASE_URL}/api/post/update_cover/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
-          body: formData,
+        setFormData(prev => ({
+          ...prev,
+          coverUrl: fullCoverUrl,
+        }));
+
+        showNotification({
+          type: 'success',
+          title: isEditing ? 'Cover Updated' : 'Cover Uploaded',
+          message: isEditing
+            ? 'Post cover has been updated successfully'
+            : 'Cover image has been uploaded successfully',
         });
-
-        const result = await response.json();
-
-        if (result.code === 200 && result.data) {
-          const coverUrl = result.data.cover_url;
-          const fullCoverUrl = coverUrl.startsWith('http') ? coverUrl : `${API_BASE_URL}${coverUrl}`;
-
-          setFormData(prev => ({
-            ...prev,
-            coverUrl: fullCoverUrl,
-          }));
-
-          showNotification({
-            type: 'success',
-            title: 'Cover Updated',
-            message: 'Post cover has been updated successfully',
-          });
-        } else {
-          throw new Error(result.message || 'Failed to update cover');
-        }
       } else {
-        // Upload image for new post
-        const uploadFormData = new FormData();
-        uploadFormData.append('image', file);
-
-        const response = await fetch(`${API_BASE_URL}/api/post/upload_post_image`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
-          body: uploadFormData,
-        });
-
-        const result = await response.json();
-
-        if (result.code === 200 && result.data) {
-          const coverUrl = result.data.file_url;
-          const fullCoverUrl = coverUrl.startsWith('http') ? coverUrl : `${API_BASE_URL}${coverUrl}`;
-
-          setFormData(prev => ({
-            ...prev,
-            coverUrl: fullCoverUrl,
-          }));
-
-          showNotification({
-            type: 'success',
-            title: 'Cover Uploaded',
-            message: 'Cover image has been uploaded successfully',
-          });
-        } else {
-          throw new Error(result.message || 'Failed to upload cover');
-        }
+        throw new Error(result.error || 'Failed to upload cover');
       }
     } catch (error) {
       console.error('Cover upload failed:', error);
@@ -371,36 +323,18 @@ const PostEditor: React.FC = () => {
     try {
       setIsUploadingImage(true);
 
-      const uploadFormData = new FormData();
-      uploadFormData.append('image', file);
+      const result = await apiService.uploadPostImage(file);
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
-      const response = await fetch(`${API_BASE_URL}/api/post/upload_post_image`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('admin_token') || 'admin123456'}`,
-        },
-        body: uploadFormData,
-      });
-
-      const result = await response.json();
-
-      if (result.code === 200 && result.data) {
+      if (result.success && result.data?.file_url) {
         showNotification({
           type: 'success',
           title: 'Image Uploaded',
           message: 'Image has been uploaded successfully',
         });
 
-        // Handle both absolute and relative URLs
-        const imageUrl = result.data.file_url;
-        if (imageUrl.startsWith('http')) {
-          return imageUrl;
-        } else {
-          return `${API_BASE_URL}${imageUrl}`;
-        }
+        return apiService.getImageUrl(result.data.file_url);
       } else {
-        throw new Error(result.message || 'Failed to upload image');
+        throw new Error(result.error || 'Failed to upload image');
       }
     } catch (error) {
       console.error('Image upload failed:', error);
@@ -669,7 +603,7 @@ const PostEditor: React.FC = () => {
                 {formData.coverUrl ? (
                   <div className="cover-preview">
                     <img
-                      src={formData.coverUrl.startsWith('http') ? formData.coverUrl : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006'}${formData.coverUrl}`}
+                      src={apiService.getImageUrl(formData.coverUrl)}
                       alt="Cover preview"
                       className="cover-image"
                     />

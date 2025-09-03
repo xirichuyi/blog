@@ -4,7 +4,7 @@ import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
 import './PostEditor.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
+
 
 const AboutManagement: React.FC = () => {
     const { showNotification } = useNotification();
@@ -24,7 +24,7 @@ const AboutManagement: React.FC = () => {
                 setTitle(resp.data.title);
                 setSubtitle(resp.data.subtitle);
                 setContent(resp.data.content);
-                setPhotoUrl(resp.data.photo_url ? (resp.data.photo_url.startsWith('http') ? resp.data.photo_url : `${API_BASE_URL}${resp.data.photo_url}`) : '');
+                setPhotoUrl(resp.data.photo_url ? apiService.getImageUrl(resp.data.photo_url) : '');
             }
             setIsLoading(false);
         })();
@@ -33,23 +33,16 @@ const AboutManagement: React.FC = () => {
     const uploadImage = async (file: File) => {
         setIsUploading(true);
         try {
-            const form = new FormData();
-            form.append('image', file);
-            const resp = await fetch(`${API_BASE_URL}/api/post/upload_post_image`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('admin_token') || 'admin123456'}`,
-                },
-                body: form,
-            });
-            const result = await resp.json();
-            if (result?.code === 200 && result?.data?.file_url) {
-                const url: string = result.data.file_url.startsWith('http') ? result.data.file_url : `${API_BASE_URL}${result.data.file_url}`;
+            const result = await apiService.uploadPostImage(file);
+            if (result.success && result.data?.file_url) {
+                const url = apiService.getImageUrl(result.data.file_url);
                 setPhotoUrl(url);
                 showNotification({ type: 'success', title: 'Image Uploaded' });
             } else {
-                showNotification({ type: 'error', title: 'Upload Failed' });
+                showNotification({ type: 'error', title: 'Upload Failed', message: result.error });
             }
+        } catch (error) {
+            showNotification({ type: 'error', title: 'Upload Failed', message: (error as Error).message });
         } finally {
             setIsUploading(false);
         }
@@ -61,14 +54,15 @@ const AboutManagement: React.FC = () => {
             setTitle(resp.data.title);
             setSubtitle(resp.data.subtitle);
             setContent(resp.data.content);
-            setPhotoUrl(resp.data.photo_url ? (resp.data.photo_url.startsWith('http') ? resp.data.photo_url : `${API_BASE_URL}${resp.data.photo_url}`) : '');
+            setPhotoUrl(resp.data.photo_url ? apiService.getImageUrl(resp.data.photo_url) : '');
         }
     };
 
     const save = async () => {
         const payload: any = { title, subtitle, content };
         if (photoUrl) {
-            payload.photo_url = photoUrl.startsWith(API_BASE_URL) ? photoUrl.replace(API_BASE_URL, '') : photoUrl;
+            // Extract relative path from full URL if needed
+            payload.photo_url = photoUrl.startsWith('http') ? photoUrl : photoUrl;
         }
         const resp = await apiService.updateAbout(payload);
         if (resp.success) {

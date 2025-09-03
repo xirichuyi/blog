@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
 import './AboutPage.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3006';
+
 
 const AboutPage: React.FC = () => {
   const [title, setTitle] = useState<string>('Hi, I\'m chuyi');
@@ -19,7 +19,7 @@ const AboutPage: React.FC = () => {
         setSubtitle(resp.data.subtitle || subtitle);
         setContent(resp.data.content || '');
         const url = resp.data.photo_url || '';
-        setPhotoUrl(url ? (url.startsWith('http') ? url : `${API_BASE_URL}${url}`) : '');
+        setPhotoUrl(url ? apiService.getImageUrl(url) : '');
       }
       setLoading(false);
     })();
