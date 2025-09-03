@@ -56,6 +56,10 @@ const PostEditor: React.FC = () => {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // Drag and drop states
+  const [isDragOver, setIsDragOver] = useState(false);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   // Helper function to extract image URLs from markdown content
   const extractImagesFromContent = (content: string): string[] => {
     const imageRegex = /!\[.*?\]\((.*?)\)/g;
@@ -112,12 +116,22 @@ const PostEditor: React.FC = () => {
         );
       }, 0);
     } else {
-      // Fallback: just append to the end of content
+      // Fallback: insert at the end with proper spacing
+      const currentContent = formData.content;
+      const separator = currentContent && !currentContent.endsWith('\n') ? '\n\n' : '\n';
+
       setFormData(prev => ({
         ...prev,
-        content: prev.content + '\n' + imageMarkdown,
+        content: prev.content + separator + imageMarkdown,
         images: [...prev.images, imageUrl].filter((url, index, arr) => arr.indexOf(url) === index) // Remove duplicates
       }));
+
+      // Show notification about where the image was inserted
+      showNotification({
+        type: 'info',
+        title: 'Image Inserted',
+        message: 'Image has been added to the end of your content.',
+      });
     }
   };
 
@@ -401,7 +415,88 @@ const PostEditor: React.FC = () => {
     }
   };
 
+  // Handle drag and drop events for content area
+  const handleContentDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
+    // Check if dragged items contain files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleContentDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleContentDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) {
+      showNotification({
+        type: 'warning',
+        title: 'No Images Found',
+        message: 'Please drop image files only.',
+      });
+      return;
+    }
+
+    // Upload and insert each image
+    for (const file of imageFiles) {
+      const imageUrl = await handleContentImageUpload(file);
+      if (imageUrl) {
+        insertImageIntoContent(imageUrl);
+      }
+    }
+  };
+
+  // Handle paste events for content area
+  const handleContentPaste = async (e: React.ClipboardEvent) => {
+    const clipboardData = e.clipboardData;
+
+    // Check for files in clipboard
+    const files = Array.from(clipboardData.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length > 0) {
+      e.preventDefault(); // Prevent default paste behavior for images
+
+      // Upload and insert each image
+      for (const file of imageFiles) {
+        const imageUrl = await handleContentImageUpload(file);
+        if (imageUrl) {
+          insertImageIntoContent(imageUrl);
+        }
+      }
+      return;
+    }
+
+    // Check for image data in clipboard (e.g., from screenshots)
+    const items = Array.from(clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith('image/'));
+
+    if (imageItems.length > 0) {
+      e.preventDefault(); // Prevent default paste behavior for images
+
+      for (const item of imageItems) {
+        const file = item.getAsFile();
+        if (file) {
+          const imageUrl = await handleContentImageUpload(file);
+          if (imageUrl) {
+            insertImageIntoContent(imageUrl);
+          }
+        }
+      }
+    }
+  };
 
   // Check if form is valid for enabling save buttons
   const isFormValid = () => {
@@ -639,7 +734,12 @@ const PostEditor: React.FC = () => {
           {/* Content */}
           <div className="form-section">
             <div className="content-header">
-              <h2 className="md-typescale-headline-small">Content</h2>
+              <div className="content-title-section">
+                <h2 className="md-typescale-headline-small">Content</h2>
+                <p className="md-typescale-body-small content-hint">
+                  Supports Markdown • Drag & drop images • Paste images from clipboard
+                </p>
+              </div>
               <div className="content-actions">
                 <md-outlined-button
                   onClick={() => imageInputRef.current?.click()}
@@ -687,14 +787,32 @@ const PostEditor: React.FC = () => {
                 />
               </div>
             ) : (
-              <md-outlined-text-field
-                label="Content (Markdown)"
-                value={formData.content}
-                onInput={(e: any) => handleInputChange('content', e.target.value)}
-                type="textarea"
-                rows={20}
-                class="content-field"
-              ></md-outlined-text-field>
+              <div
+                className={`content-editor-wrapper ${isDragOver ? 'drag-over' : ''}`}
+                onDragOver={handleContentDragOver}
+                onDragLeave={handleContentDragLeave}
+                onDrop={handleContentDrop}
+              >
+                <md-outlined-text-field
+                  label="Content (Markdown)"
+                  value={formData.content}
+                  onInput={(e: any) => handleInputChange('content', e.target.value)}
+                  onPaste={handleContentPaste}
+                  type="textarea"
+                  rows={20}
+                  class="content-field"
+                  ref={contentTextareaRef}
+                ></md-outlined-text-field>
+                {isDragOver && (
+                  <div className="drag-overlay">
+                    <div className="drag-overlay-content">
+                      <md-icon class="drag-icon">image</md-icon>
+                      <p className="md-typescale-body-large">Drop images here to upload</p>
+                      <p className="md-typescale-body-medium">Images will be uploaded and inserted as markdown</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

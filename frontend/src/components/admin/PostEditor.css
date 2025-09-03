@@ -110,8 +110,20 @@
   margin-bottom: 24px;
 }
 
-.content-header h2 {
+.content-title-section h2 {
   margin: 0;
+}
+
+.content-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.content-hint {
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+  font-style: italic;
 }
 
 .content-actions md-outlined-button {
@@ -522,4 +534,55 @@
   width: 20px;
   height: 20px;
   line-height: 1;
+}
+
+/* Content Editor Wrapper with Drag and Drop */
+.content-editor-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.content-editor-wrapper.drag-over {
+  position: relative;
+}
+
+.content-editor-wrapper.drag-over .content-field {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.drag-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(var(--md-sys-color-primary-rgb), 0.1);
+  border: 2px dashed var(--md-sys-color-primary);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.drag-overlay-content {
+  text-align: center;
+  color: var(--md-sys-color-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.drag-overlay-content .drag-icon {
+  font-size: 48px;
+  color: var(--md-sys-color-primary);
+  margin-bottom: 8px;
+}
+
+.drag-overlay-content p {
+  margin: 0;
+  color: var(--md-sys-color-primary);
 }
