@@ -18,8 +18,10 @@
   border-radius: 20px;
   font-weight: 500;
   text-decoration: none;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
   overflow: hidden;
+  font-feature-settings: "kern" 1, "liga" 1;
+  letter-spacing: 0.1px;
 
   /* Prevent text selection */
   user-select: none;
@@ -61,15 +63,21 @@
 
 /* Filled variant (Primary) */
 .custom-button--filled {
-  background-color: var(--md-sys-color-primary, #6750a4);
+  background: linear-gradient(135deg,
+    var(--md-sys-color-primary, #6750a4) 0%,
+    color-mix(in srgb, var(--md-sys-color-primary, #6750a4) 90%, black 10%) 100%);
   color: var(--md-sys-color-on-primary, #ffffff);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  box-shadow: var(--md-sys-elevation-level2);
+  border: 1px solid transparent;
 }
 
 .custom-button--filled:hover {
-  background-color: var(--md-sys-color-primary, #6750a4);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--md-sys-color-primary, #6750a4) 95%, white 5%) 0%,
+    var(--md-sys-color-primary, #6750a4) 100%);
+  box-shadow: var(--md-sys-elevation-level4);
+  transform: translateY(-2px) scale(1.02);
+  border-color: var(--md-sys-color-primary);
 }
 
 .custom-button--filled:active {

@@ -1,11 +1,12 @@
 /* Material Design 3 Theme Configuration */
 
-/* Import Material Web Typography */
+/* Import Enhanced Typography - Google Fonts */
 @import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&display=swap");
 
 /* Material Design 3 Design Tokens - Purple Theme (Based on Official MD3 Screenshots) */
 :root {
-  /* Primary Color Palette - Modern Purple Theme */
+  /* Primary Color Palette - Enhanced Google-style Purple */
   --md-sys-color-primary: #6750a4;
   --md-sys-color-on-primary: #ffffff;
   --md-sys-color-primary-container: #eaddff;
@@ -82,36 +83,42 @@
   --md-sys-color-surface-tint-color: #6750a4;
   --md-sys-color-overlay: rgba(0, 0, 0, 0.5);
 
-  /* Typography Scale */
-  --md-sys-typescale-display-large-font: "Roboto";
+  /* Typography Scale - Enhanced Google-style */
+  --md-sys-typescale-display-large-font: "Google Sans", "Roboto", sans-serif;
   --md-sys-typescale-display-large-weight: 400;
   --md-sys-typescale-display-large-size: 57px;
   --md-sys-typescale-display-large-line-height: 64px;
+  --md-sys-typescale-display-large-letter-spacing: -0.25px;
 
-  --md-sys-typescale-display-medium-font: "Roboto";
+  --md-sys-typescale-display-medium-font: "Google Sans", "Roboto", sans-serif;
   --md-sys-typescale-display-medium-weight: 400;
   --md-sys-typescale-display-medium-size: 45px;
   --md-sys-typescale-display-medium-line-height: 52px;
+  --md-sys-typescale-display-medium-letter-spacing: 0px;
 
-  --md-sys-typescale-display-small-font: "Roboto";
+  --md-sys-typescale-display-small-font: "Google Sans", "Roboto", sans-serif;
   --md-sys-typescale-display-small-weight: 400;
   --md-sys-typescale-display-small-size: 36px;
   --md-sys-typescale-display-small-line-height: 44px;
+  --md-sys-typescale-display-small-letter-spacing: 0px;
 
-  --md-sys-typescale-headline-large-font: "Roboto";
-  --md-sys-typescale-headline-large-weight: 400;
+  --md-sys-typescale-headline-large-font: "Google Sans", "Roboto", sans-serif;
+  --md-sys-typescale-headline-large-weight: 500;
   --md-sys-typescale-headline-large-size: 32px;
   --md-sys-typescale-headline-large-line-height: 40px;
+  --md-sys-typescale-headline-large-letter-spacing: 0px;
 
-  --md-sys-typescale-headline-medium-font: "Roboto";
-  --md-sys-typescale-headline-medium-weight: 400;
+  --md-sys-typescale-headline-medium-font: "Google Sans", "Roboto", sans-serif;
+  --md-sys-typescale-headline-medium-weight: 500;
   --md-sys-typescale-headline-medium-size: 28px;
   --md-sys-typescale-headline-medium-line-height: 36px;
+  --md-sys-typescale-headline-medium-letter-spacing: 0px;
 
-  --md-sys-typescale-headline-small-font: "Roboto";
-  --md-sys-typescale-headline-small-weight: 400;
+  --md-sys-typescale-headline-small-font: "Google Sans", "Roboto", sans-serif;
+  --md-sys-typescale-headline-small-weight: 500;
   --md-sys-typescale-headline-small-size: 24px;
   --md-sys-typescale-headline-small-line-height: 32px;
+  --md-sys-typescale-headline-small-letter-spacing: 0px;
 
   --md-sys-typescale-title-large-font: "Roboto";
   --md-sys-typescale-title-large-weight: 400;
@@ -158,18 +165,40 @@
   --md-sys-typescale-label-small-size: 11px;
   --md-sys-typescale-label-small-line-height: 16px;
 
-  /* Elevation Shadows */
+  /* Enhanced Elevation Shadows - Google-style */
   --md-sys-elevation-level0: none;
-  --md-sys-elevation-level1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3),
-    0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-  --md-sys-elevation-level2: 0px 1px 2px 0px rgba(0, 0, 0, 0.3),
-    0px 2px 6px 2px rgba(0, 0, 0, 0.15);
-  --md-sys-elevation-level3: 0px 1px 3px 0px rgba(0, 0, 0, 0.3),
-    0px 4px 8px 3px rgba(0, 0, 0, 0.15);
-  --md-sys-elevation-level4: 0px 2px 3px 0px rgba(0, 0, 0, 0.3),
-    0px 6px 10px 4px rgba(0, 0, 0, 0.15);
-  --md-sys-elevation-level5: 0px 4px 4px 0px rgba(0, 0, 0, 0.3),
-    0px 8px 12px 6px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level1: 0px 1px 3px 0px rgba(0, 0, 0, 0.12),
+    0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+    0px 2px 1px -1px rgba(0, 0, 0, 0.20);
+  --md-sys-elevation-level2: 0px 1px 5px 0px rgba(0, 0, 0, 0.12),
+    0px 2px 2px 0px rgba(0, 0, 0, 0.14),
+    0px 3px 1px -2px rgba(0, 0, 0, 0.20);
+  --md-sys-elevation-level3: 0px 1px 8px 0px rgba(0, 0, 0, 0.12),
+    0px 3px 4px 0px rgba(0, 0, 0, 0.14),
+    0px 3px 3px -2px rgba(0, 0, 0, 0.20);
+  --md-sys-elevation-level4: 0px 2px 4px -1px rgba(0, 0, 0, 0.20),
+    0px 4px 5px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 10px 0px rgba(0, 0, 0, 0.12);
+  --md-sys-elevation-level5: 0px 3px 5px -1px rgba(0, 0, 0, 0.20),
+    0px 5px 8px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 14px 0px rgba(0, 0, 0, 0.12);
+
+  /* Additional elevation levels for enhanced depth */
+  --md-sys-elevation-level6: 0px 3px 5px -1px rgba(0, 0, 0, 0.20),
+    0px 6px 10px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 18px 0px rgba(0, 0, 0, 0.12);
+  --md-sys-elevation-level8: 0px 5px 5px -3px rgba(0, 0, 0, 0.20),
+    0px 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0px 3px 14px 2px rgba(0, 0, 0, 0.12);
+  --md-sys-elevation-level12: 0px 7px 8px -4px rgba(0, 0, 0, 0.20),
+    0px 12px 17px 2px rgba(0, 0, 0, 0.14),
+    0px 5px 22px 4px rgba(0, 0, 0, 0.12);
+  --md-sys-elevation-level16: 0px 8px 10px -5px rgba(0, 0, 0, 0.20),
+    0px 16px 24px 2px rgba(0, 0, 0, 0.14),
+    0px 6px 30px 5px rgba(0, 0, 0, 0.12);
+  --md-sys-elevation-level24: 0px 11px 15px -7px rgba(0, 0, 0, 0.20),
+    0px 24px 38px 3px rgba(0, 0, 0, 0.14),
+    0px 9px 46px 8px rgba(0, 0, 0, 0.12);
 
   /* Shape Tokens */
   /* --md-sys-shape-corner-none: 0px;
@@ -208,7 +237,7 @@
   --md-sys-breakpoint-expanded: 1200px;
   --md-sys-breakpoint-large: 1600px;
 
-  /* Spacing Scale */
+  /* Enhanced Spacing Scale - Google 8px Grid */
   --md-sys-spacing-0: 0px;
   --md-sys-spacing-1: 4px;
   --md-sys-spacing-2: 8px;
@@ -222,6 +251,29 @@
   --md-sys-spacing-10: 40px;
   --md-sys-spacing-11: 44px;
   --md-sys-spacing-12: 48px;
+  --md-sys-spacing-14: 56px;
+  --md-sys-spacing-16: 64px;
+  --md-sys-spacing-18: 72px;
+  --md-sys-spacing-20: 80px;
+  --md-sys-spacing-22: 88px;
+  --md-sys-spacing-24: 96px;
+  --md-sys-spacing-28: 112px;
+  --md-sys-spacing-32: 128px;
+  --md-sys-spacing-36: 144px;
+  --md-sys-spacing-40: 160px;
+  --md-sys-spacing-44: 176px;
+  --md-sys-spacing-48: 192px;
+
+  /* Enhanced Color Utilities */
+  --md-sys-color-primary-alpha-8: rgba(103, 80, 164, 0.08);
+  --md-sys-color-primary-alpha-12: rgba(103, 80, 164, 0.12);
+  --md-sys-color-primary-alpha-16: rgba(103, 80, 164, 0.16);
+  --md-sys-color-primary-alpha-24: rgba(103, 80, 164, 0.24);
+
+  /* Gradient Utilities */
+  --md-sys-gradient-primary: linear-gradient(135deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-secondary) 100%);
+  --md-sys-gradient-surface: linear-gradient(135deg, var(--md-sys-color-surface-container-low) 0%, var(--md-sys-color-surface-container) 100%);
+  --md-sys-gradient-accent: linear-gradient(135deg, var(--md-sys-color-tertiary) 0%, var(--md-sys-color-primary) 100%);
 }
 
 /* Dark Theme - Modern Purple Theme (Material Design 3 2024) */

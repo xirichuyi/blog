@@ -96,12 +96,20 @@
 
 .material-hero-title {
   font-size: clamp(3rem, 8vw, 6rem);
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.1;
   margin: 0 0 var(--md-sys-spacing-6);
   color: rgba(255, 255, 255, 0.95);
-  font-family: "Roboto", sans-serif;
+  font-family: "Google Sans", "Roboto", sans-serif;
   letter-spacing: -0.02em;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  font-feature-settings: "kern" 1, "liga" 1;
 }
 
 .material-hero-subtitle {

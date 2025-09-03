@@ -1,6 +1,6 @@
 // Post Management Component
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -8,6 +8,9 @@ import { useData } from '../../contexts/DataContext';
 import type { Article } from '../../types';
 import AdminLayout from './AdminLayout';
 import ErrorMessage from '../ui/ErrorMessage';
+import EnhancedDataTable from '../ui/EnhancedDataTable';
+import type { TableColumn, TableAction, BulkAction } from '../ui/EnhancedDataTable';
+import { showConfirmDialog } from '../ui/ConfirmDialog';
 import './PostManagement.css';
 
 interface PostFilters {
@@ -16,9 +19,19 @@ interface PostFilters {
   status: 'all' | 'published' | 'draft';
 }
 
+interface PaginationState {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface SortState {
+  key: string | null;
+  direction: 'asc' | 'desc' | null;
+}
+
 const PostManagement: React.FC = () => {
   const [posts, setPosts] = useState<Article[]>([]);
-  const [filteredPosts, setFilteredPosts] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<PostFilters>({
@@ -26,33 +39,59 @@ const PostManagement: React.FC = () => {
     category: '',
     status: 'all',
   });
-  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
+  const [pagination, setPagination] = useState<PaginationState>({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [sortState, setSortState] = useState<SortState>({
+    key: null,
+    direction: null,
+  });
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const { categories } = useData();
 
   useEffect(() => {
     loadPosts();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [posts, filters]);
+  }, [pagination.current, pagination.pageSize, filters, sortState]);
 
   const loadPosts = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Load all posts without status filter to handle filtering on frontend
-      const response = await apiService.getPosts({
-        search: filters.search,
-        category: filters.category,
-        page_size: 1000, // 获取所有文章
-      });
+      // Build API parameters
+      const params: any = {
+        page: pagination.current,
+        page_size: pagination.pageSize,
+      };
+
+      if (filters.search) {
+        params.search = filters.search;
+      }
+
+      if (filters.category) {
+        params.category = filters.category;
+      }
+
+      if (filters.status !== 'all') {
+        params.status = filters.status;
+      }
+
+      if (sortState.key && sortState.direction) {
+        params.sort_by = sortState.key;
+        params.sort_order = sortState.direction;
+      }
+
+      const response = await apiService.getPosts(params);
 
       if (response.success && response.data) {
         setPosts(response.data);
+        setPagination(prev => ({
+          ...prev,
+          total: response.total || response.data.length,
+        }));
       } else {
         throw new Error(response.error || 'Failed to load posts');
       }
@@ -63,60 +102,31 @@ const PostManagement: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
-    let filtered = [...posts];
-
-    // Status filter
-    if (filters.status !== 'all') {
-      filtered = filtered.filter(post => post.status === filters.status);
-    }
-
-    // Search filter
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(post =>
-        post.title.toLowerCase().includes(searchLower) ||
-        post.excerpt.toLowerCase().includes(searchLower) ||
-        post.tags.some(tag => tag.toLowerCase().includes(searchLower))
-      );
-    }
-
-    // Category filter
-    if (filters.category) {
-      // Find the category name by ID
-      const selectedCategory = categories.find(cat => cat.id === filters.category);
-      if (selectedCategory) {
-        filtered = filtered.filter(post => post.category === selectedCategory.name);
-      }
-    }
-
-    setFilteredPosts(filtered);
-  };
-
+  // Event handlers (defined before useMemo to avoid hoisting issues)
   const handleCreatePost = () => {
     navigate('/admin/posts/new');
   };
 
-  const handleEditPost = (postId: string) => {
-    navigate(`/admin/posts/edit/${postId}`);
-  };
+  const handleDeletePost = async (post: Article) => {
+    const confirmed = await showConfirmDialog({
+      title: 'Delete Post',
+      message: `Are you sure you want to delete "${post.title}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'error',
+    });
 
-  const handleDeletePost = async (postId: string) => {
-    if (confirm('Are you sure you want to delete this post?')) {
+    if (confirmed) {
       try {
-        const response = await apiService.deletePost(postId);
+        const response = await apiService.deletePost(post.id);
         if (response.success) {
-          setPosts(posts.filter(post => post.id !== postId));
-          // Remove from selected if it was selected
-          const newSelected = new Set(selectedPosts);
-          newSelected.delete(postId);
-          setSelectedPosts(newSelected);
+          // Reload data to reflect changes
+          loadPosts();
 
-          // Show success notification
           showNotification({
             type: 'success',
             title: 'Post Deleted',
-            message: 'The post has been deleted successfully.',
+            message: 'Post deleted successfully.',
           });
         } else {
           throw new Error(response.error || 'Failed to delete post');
@@ -127,40 +137,27 @@ const PostManagement: React.FC = () => {
     }
   };
 
-  const handleSelectPost = (postId: string) => {
-    const newSelected = new Set(selectedPosts);
-    if (newSelected.has(postId)) {
-      newSelected.delete(postId);
-    } else {
-      newSelected.add(postId);
-    }
-    setSelectedPosts(newSelected);
-  };
+  const handleBulkDelete = async (selectedPosts: Article[]) => {
+    const confirmed = await showConfirmDialog({
+      title: 'Delete Posts',
+      message: `Are you sure you want to delete ${selectedPosts.length} posts? This action cannot be undone.`,
+      confirmText: 'Delete All',
+      cancelText: 'Cancel',
+      type: 'error',
+    });
 
-  const handleSelectAll = () => {
-    if (selectedPosts.size === filteredPosts.length) {
-      setSelectedPosts(new Set());
-    } else {
-      setSelectedPosts(new Set(filteredPosts.map(post => post.id)));
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedPosts.size === 0) return;
-
-    if (confirm(`Are you sure you want to delete ${selectedPosts.size} posts?`)) {
+    if (confirmed) {
       try {
-        const response = await apiService.bulkDeletePosts(Array.from(selectedPosts));
+        const postIds = selectedPosts.map(post => post.id);
+        const response = await apiService.bulkDeletePosts(postIds);
         if (response.success) {
-          const deletedCount = selectedPosts.size;
-          setPosts(posts.filter(post => !selectedPosts.has(post.id)));
-          setSelectedPosts(new Set());
+          // Reload data to reflect changes
+          loadPosts();
 
-          // Show success notification
           showNotification({
             type: 'success',
             title: 'Posts Deleted',
-            message: `${deletedCount} post${deletedCount > 1 ? 's' : ''} deleted successfully.`,
+            message: `${selectedPosts.length} post${selectedPosts.length > 1 ? 's' : ''} deleted successfully.`,
           });
         } else {
           throw new Error(response.error || 'Failed to delete posts');
@@ -169,6 +166,93 @@ const PostManagement: React.FC = () => {
         setError(err instanceof Error ? err.message : 'Failed to delete posts');
       }
     }
+  };
+
+  // Table configuration
+  const columns: TableColumn<Article>[] = useMemo(() => [
+    {
+      key: 'title',
+      title: 'Title',
+      sortable: true,
+      render: (_, record) => (
+        <div className="post-title-cell">
+          <h3 className="md-typescale-title-medium">{record.title}</h3>
+          <p className="md-typescale-body-small">{record.excerpt}</p>
+          {record.featured && (
+            <md-assist-chip class="featured-chip">
+              <md-icon slot="icon">star</md-icon>
+              Featured
+            </md-assist-chip>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      title: 'Category',
+      sortable: true,
+      render: (value) => (
+        <md-assist-chip>{value}</md-assist-chip>
+      ),
+    },
+    {
+      key: 'publishDate',
+      title: 'Date',
+      sortable: true,
+      render: (value) => formatDate(value),
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      sortable: true,
+      render: (value) => (
+        <md-assist-chip class={`status-${value || 'draft'}`}>
+          {value === 'published' ? 'Published' :
+            value === 'draft' ? 'Draft' :
+              value === 'private' ? 'Private' : 'Draft'}
+        </md-assist-chip>
+      ),
+    },
+  ], []);
+
+  const actions: TableAction<Article>[] = useMemo(() => [
+    {
+      key: 'edit',
+      label: 'Edit',
+      icon: 'edit',
+      onClick: (record) => navigate(`/admin/posts/edit/${record.id}`),
+      color: 'primary',
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      icon: 'delete',
+      onClick: handleDeletePost,
+      color: 'error',
+    },
+  ], [navigate]);
+
+  const bulkActions: BulkAction<Article>[] = useMemo(() => [
+    {
+      key: 'delete',
+      label: 'Delete Selected',
+      icon: 'delete',
+      onClick: handleBulkDelete,
+      color: 'error',
+      confirmMessage: 'Are you sure you want to delete {count} posts?',
+    },
+  ], [handleBulkDelete]);
+
+  const handlePageChange = (page: number, pageSize: number) => {
+    setPagination(prev => ({
+      ...prev,
+      current: page,
+      pageSize: pageSize,
+    }));
+  };
+
+  const handleSort = (key: string, direction: 'asc' | 'desc' | null) => {
+    setSortState({ key, direction });
   };
 
   const formatDate = (dateString: string) => {
@@ -258,105 +342,37 @@ const PostManagement: React.FC = () => {
           </md-outlined-select>
         </div>
 
-        {/* Bulk Actions */}
-        {selectedPosts.size > 0 && (
-          <div className="bulk-actions">
-            <span className="md-typescale-body-medium">
-              {selectedPosts.size} post{selectedPosts.size > 1 ? 's' : ''} selected
-            </span>
-            <md-text-button onClick={handleBulkDelete}>
-              <md-icon slot="icon">delete</md-icon>
-              Delete Selected
-            </md-text-button>
-          </div>
-        )}
-
-        {/* Posts Table */}
-        <div className="posts-table-container">
-          <table className="posts-table">
-            <thead>
-              <tr>
-                <th>
-                  <md-checkbox
-                    checked={selectedPosts.size === filteredPosts.length && filteredPosts.length > 0}
-                    indeterminate={selectedPosts.size > 0 && selectedPosts.size < filteredPosts.length}
-                    onChange={handleSelectAll}
-                  ></md-checkbox>
-                </th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPosts.map((post) => (
-                <tr key={post.id} className={selectedPosts.has(post.id) ? 'selected' : ''}>
-                  <td>
-                    <md-checkbox
-                      checked={selectedPosts.has(post.id)}
-                      onChange={() => handleSelectPost(post.id)}
-                    ></md-checkbox>
-                  </td>
-                  <td>
-                    <div className="post-title-cell">
-                      <h3 className="md-typescale-title-medium">{post.title}</h3>
-                      <p className="md-typescale-body-small">{post.excerpt}</p>
-                      {post.featured && (
-                        <md-assist-chip class="featured-chip">
-                          <md-icon slot="icon">star</md-icon>
-                          Featured
-                        </md-assist-chip>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <md-assist-chip>{post.category}</md-assist-chip>
-                  </td>
-                  <td className="md-typescale-body-medium">
-                    {formatDate(post.publishDate)}
-                  </td>
-                  <td>
-                    <md-assist-chip class={`status-${post.status || 'draft'}`}>
-                      {post.status === 'published' ? 'Published' :
-                       post.status === 'draft' ? 'Draft' :
-                       post.status === 'private' ? 'Private' : 'Draft'}
-                    </md-assist-chip>
-                  </td>
-                  <td>
-                    <div className="post-actions">
-                      <md-icon-button onClick={() => handleEditPost(post.id)}>
-                        <md-icon>edit</md-icon>
-                      </md-icon-button>
-                      <md-icon-button onClick={() => handleDeletePost(post.id)}>
-                        <md-icon>delete</md-icon>
-                      </md-icon-button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredPosts.length === 0 && (
-          <div className="empty-state">
-            <md-icon class="empty-icon">article</md-icon>
-            <h3 className="md-typescale-headline-small">No posts found</h3>
-            <p className="md-typescale-body-medium">
-              {filters.search || filters.category
-                ? 'Try adjusting your filters'
-                : 'Create your first post to get started'}
-            </p>
-            {!filters.search && !filters.category && (
-              <md-filled-button onClick={handleCreatePost}>
-                <md-icon slot="icon">add</md-icon>
-                Create Post
-              </md-filled-button>
-            )}
-          </div>
-        )}
+        {/* Enhanced Data Table */}
+        <EnhancedDataTable
+          data={posts}
+          columns={columns}
+          actions={actions}
+          bulkActions={bulkActions}
+          loading={isLoading}
+          error={error || undefined}
+          selectable={true}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            pageSizeOptions: [10, 20, 50, 100],
+            onPageChange: handlePageChange,
+          }}
+          onSort={handleSort}
+          emptyState={{
+            icon: 'article',
+            title: 'No posts found',
+            description: filters.search || filters.category
+              ? 'Try adjusting your filters'
+              : 'Create your first post to get started',
+            action: !filters.search && !filters.category ? {
+              label: 'Create Post',
+              onClick: handleCreatePost,
+            } : undefined,
+          }}
+          className="posts-table"
+        />
       </div>
     </AdminLayout>
   );

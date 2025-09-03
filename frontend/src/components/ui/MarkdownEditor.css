@@ -1,0 +1,334 @@
+/* Markdown Editor Styles */
+
+.markdown-editor {
+  display: flex;
+  flex-direction: column;
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-large);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.markdown-editor.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  border-radius: 0;
+  border: none;
+}
+
+/* Toolbar */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--md-sys-color-surface-container-high);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-section md-icon-button {
+  --md-icon-button-size: 40px;
+  --md-icon-button-icon-size: 20px;
+  --md-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
+}
+
+.toolbar-section md-icon-button:hover {
+  --md-icon-button-icon-color: var(--md-sys-color-on-surface);
+}
+
+.mode-selector {
+  margin: 0 8px;
+}
+
+.mode-selector md-segmented-button {
+  --md-segmented-button-label-text-size: 12px;
+  --md-segmented-button-with-icon-icon-size: 16px;
+}
+
+/* Editor Content */
+.editor-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.editor-pane,
+.preview-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-pane.split-pane,
+.preview-pane.split-pane {
+  flex: 0 0 50%;
+}
+
+.editor-pane.split-pane {
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* Textarea */
+.editor-textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 20px;
+  resize: none;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.editor-textarea::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  font-style: italic;
+}
+
+.editor-textarea:focus {
+  outline: none;
+}
+
+.editor-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Preview Pane */
+.preview-pane {
+  background: var(--md-sys-color-surface);
+}
+
+.preview-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  font-family: var(--md-sys-typescale-body-large-font);
+  line-height: 1.7;
+}
+
+/* Custom scrollbar for preview */
+.preview-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-content::-webkit-scrollbar-track {
+  background: var(--md-sys-color-surface-container);
+}
+
+.preview-content::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline-variant);
+  border-radius: 4px;
+}
+
+.preview-content::-webkit-scrollbar-thumb:hover {
+  background: var(--md-sys-color-outline);
+}
+
+/* Status Bar */
+.editor-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--md-sys-color-surface-container-lowest);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  gap: 16px;
+}
+
+.status-info,
+.status-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.auto-save-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--md-sys-color-primary);
+}
+
+.auto-save-indicator md-icon {
+  font-size: 16px !important;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .editor-toolbar {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+  
+  .toolbar-section {
+    gap: 2px;
+  }
+  
+  .toolbar-section md-icon-button {
+    --md-icon-button-size: 36px;
+    --md-icon-button-icon-size: 18px;
+  }
+  
+  .editor-content {
+    flex-direction: column;
+  }
+  
+  .editor-pane.split-pane,
+  .preview-pane.split-pane {
+    flex: 1;
+  }
+  
+  .editor-pane.split-pane {
+    border-right: none;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+  
+  .editor-textarea,
+  .preview-content {
+    padding: 16px;
+  }
+  
+  .editor-textarea {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  .editor-status-bar {
+    padding: 6px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .status-info,
+  .status-actions {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mode-selector md-segmented-button {
+    --md-segmented-button-label-text-size: 10px;
+    --md-segmented-button-with-icon-icon-size: 14px;
+  }
+  
+  .editor-textarea {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .preview-content {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .markdown-editor {
+    border: 2px solid var(--md-sys-color-outline);
+  }
+  
+  .editor-toolbar {
+    border-bottom: 2px solid var(--md-sys-color-outline);
+  }
+  
+  .editor-pane.split-pane {
+    border-right: 2px solid var(--md-sys-color-outline);
+  }
+  
+  .editor-status-bar {
+    border-top: 2px solid var(--md-sys-color-outline);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .markdown-editor {
+    transition: none;
+  }
+  
+  .auto-save-indicator md-icon {
+    animation: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .markdown-editor {
+    border: none;
+    box-shadow: none;
+  }
+  
+  .editor-toolbar,
+  .editor-status-bar {
+    display: none;
+  }
+  
+  .editor-content {
+    display: block;
+  }
+  
+  .editor-pane {
+    display: none;
+  }
+  
+  .preview-pane {
+    display: block;
+    background: white;
+  }
+  
+  .preview-content {
+    padding: 0;
+    overflow: visible;
+  }
+}
+
+/* Focus styles for accessibility */
+.editor-textarea:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
+/* Selection styles */
+.editor-textarea::selection {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+/* Syntax highlighting hints (basic) */
+.editor-textarea {
+  /* This would be enhanced with a proper syntax highlighter */
+  font-variant-ligatures: common-ligatures;
+  font-feature-settings: "liga" 1, "calt" 1;
+}
