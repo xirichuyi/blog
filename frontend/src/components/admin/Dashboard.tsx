@@ -87,7 +87,6 @@ const Dashboard: React.FC = () => {
       value: stats?.totalPosts || 0,
       icon: 'article',
       color: 'primary',
-      trend: { value: 12, isPositive: true },
     },
     {
       title: 'Categories',
@@ -100,7 +99,6 @@ const Dashboard: React.FC = () => {
       value: stats?.totalViews || 0,
       icon: 'visibility',
       color: 'tertiary',
-      trend: { value: 8, isPositive: true },
     },
     {
       title: 'Recent Posts',
