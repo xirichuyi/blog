@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ThemeToggle.css';
 
-type Theme = 'light' | 'dark' | 'auto';
+type Theme = 'light' | 'dark';
 
 interface ThemeToggleProps {
   className?: string;
@@ -12,70 +12,40 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
   className = '',
   size = 'medium'
 }) => {
-  const [theme, setTheme] = useState<Theme>('auto');
-  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
     // Get saved theme from localStorage
     const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme && ['light', 'dark', 'auto'].includes(savedTheme)) {
+    if (savedTheme && ['light', 'dark'].includes(savedTheme)) {
       setTheme(savedTheme);
+    } else {
+      // Default to light theme if no saved preference
+      setTheme('light');
+      localStorage.setItem('theme', 'light');
     }
-
-    // Detect system theme
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setSystemTheme(mediaQuery.matches ? 'dark' : 'light');
-
-    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
-    };
-
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
-    return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
   }, []);
 
   useEffect(() => {
     // Apply theme to document
     const root = document.documentElement;
-    const effectiveTheme = theme === 'auto' ? systemTheme : theme;
-    
-    root.setAttribute('data-theme', effectiveTheme);
-    
+    root.setAttribute('data-theme', theme);
+
     // Save to localStorage
     localStorage.setItem('theme', theme);
-  }, [theme, systemTheme]);
+  }, [theme]);
 
   const handleThemeChange = () => {
-    const themes: Theme[] = ['light', 'dark', 'auto'];
-    const currentIndex = themes.indexOf(theme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    setTheme(themes[nextIndex]);
+    // Toggle between light and dark
+    setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   const getThemeIcon = () => {
-    switch (theme) {
-      case 'light':
-        return 'light_mode';
-      case 'dark':
-        return 'dark_mode';
-      case 'auto':
-        return 'brightness_auto';
-      default:
-        return 'brightness_auto';
-    }
+    return theme === 'light' ? 'light_mode' : 'dark_mode';
   };
 
   const getThemeLabel = () => {
-    switch (theme) {
-      case 'light':
-        return 'Light theme';
-      case 'dark':
-        return 'Dark theme';
-      case 'auto':
-        return 'Auto theme';
-      default:
-        return 'Auto theme';
-    }
+    return theme === 'light' ? 'Light theme' : 'Dark theme';
   };
 
   return (

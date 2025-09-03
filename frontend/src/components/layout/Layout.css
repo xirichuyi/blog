@@ -24,7 +24,7 @@
 }
 
 .layout-main {
-  background-color: #141314;
+  background-color: var(--md-sys-color-background);
   flex: 1;
   display: flex;
   flex-direction: column;

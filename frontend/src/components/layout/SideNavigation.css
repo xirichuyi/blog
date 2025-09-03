@@ -3,9 +3,9 @@
 .side-navigation {
   width: 72px;
   height: 100vh;
-  background: rgba(30, 30, 30, 0.95);
+  background: var(--md-sys-color-surface-container);
   backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid var(--md-sys-color-outline-variant);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -35,18 +35,18 @@
   transition: all var(--md-sys-motion-duration-short2)
     var(--md-sys-motion-easing-standard);
   position: relative;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .side-navigation-item:hover {
-  background: rgba(103, 80, 164, 0.12);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
   transform: scale(1.05);
 }
 
 .side-navigation-item.active {
-  background: rgba(103, 80, 164, 0.2);
-  color: #d0bcff;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .side-navigation-item.active::before {
@@ -57,7 +57,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 24px;
-  background: #d0bcff;
+  background: var(--md-sys-color-primary);
   border-radius: 2px;
 }
 
@@ -97,7 +97,7 @@
 
 .side-navigation-footer {
   padding: var(--md-sys-spacing-4) 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
 /* Responsive Design */

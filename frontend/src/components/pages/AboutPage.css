@@ -9,7 +9,7 @@
 /* Hero Section */
 .about-hero {
   padding: 4rem 2rem;
-  background: #141414;
+  background: var(--md-sys-color-surface);
   margin-bottom: 3rem;
   min-height: 70vh;
   display: flex;

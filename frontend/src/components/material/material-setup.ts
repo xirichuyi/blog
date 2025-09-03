@@ -99,30 +99,28 @@ export const loadMaterialIcons = () => {
 };
 
 // Theme Configuration Helper
-export const configureTheme = (isDark: boolean = false) => {
+export const configureTheme = (theme: 'light' | 'dark' = 'light') => {
   if (typeof document !== 'undefined') {
     const root = document.documentElement;
-    if (isDark) {
-      root.setAttribute('data-theme', 'dark');
-    } else {
-      root.setAttribute('data-theme', 'light');
-    }
+    root.setAttribute('data-theme', theme);
   }
 };
 
 // Initialize Material Design
 export const initializeMaterialDesign = () => {
   loadMaterialIcons();
-  
-  // Set up theme based on system preference
+
+  // Set up theme based on saved preference
   if (typeof window !== 'undefined') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    configureTheme(prefersDark);
-    
-    // Listen for theme changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      configureTheme(e.matches);
-    });
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+
+    if (savedTheme && ['light', 'dark'].includes(savedTheme)) {
+      configureTheme(savedTheme);
+    } else {
+      // Default to light theme
+      configureTheme('light');
+    }
   }
 };
 

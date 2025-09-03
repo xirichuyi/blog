@@ -114,8 +114,8 @@ const BlogHome: React.FC = () => {
     // 初始加载
     fetchServerStatus();
 
-    // 每30秒更新一次
-    const interval = setInterval(fetchServerStatus, 30000);
+    // 每5分钟更新一次 (300秒)
+    const interval = setInterval(fetchServerStatus, 300000);
 
     return () => clearInterval(interval);
   }, []);

@@ -3,7 +3,6 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
   color: var(--md-sys-color-on-background);
   background-color: var(--md-sys-color-background);
 
@@ -11,6 +10,20 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Set color-scheme based on data-theme attribute */
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Auto theme follows system preference */
+:root:not([data-theme]) {
+  color-scheme: light dark;
 }
 
 a {

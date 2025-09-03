@@ -83,6 +83,179 @@ body {
   color: var(--md-sys-color-on-background);
 }
 
+/* Force light theme styles for debugging */
+html[data-theme="light"] body,
+[data-theme="light"] body {
+  background-color: #fffbfe !important;
+  color: #1c1b1f !important;
+}
+
+html[data-theme="dark"] body,
+[data-theme="dark"] body {
+  background-color: #10090d !important;
+  color: #e6e0e9 !important;
+}
+
+/* Force text colors for all elements in light theme */
+html[data-theme="light"] *,
+[data-theme="light"] * {
+  color: inherit;
+}
+
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] h4,
+html[data-theme="light"] h5,
+html[data-theme="light"] h6,
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] h3,
+[data-theme="light"] h4,
+[data-theme="light"] h5,
+[data-theme="light"] h6 {
+  color: var(--md-sys-color-on-surface) !important;
+}
+
+html[data-theme="light"] p,
+html[data-theme="light"] span,
+html[data-theme="light"] div,
+[data-theme="light"] p,
+[data-theme="light"] span,
+[data-theme="light"] div {
+  color: inherit;
+}
+
+/* Force article card text colors in light theme */
+html[data-theme="light"] .secondary-article-title,
+html[data-theme="light"] .featured-article-title,
+[data-theme="light"] .secondary-article-title,
+[data-theme="light"] .featured-article-title {
+  color: var(--md-sys-color-on-surface) !important;
+}
+
+html[data-theme="light"] .secondary-article-description,
+html[data-theme="light"] .featured-article-description,
+[data-theme="light"] .secondary-article-description,
+[data-theme="light"] .featured-article-description {
+  color: var(--md-sys-color-on-surface-variant) !important;
+}
+
+html[data-theme="light"] .search-result-title,
+html[data-theme="light"] .search-result-excerpt,
+[data-theme="light"] .search-result-title,
+[data-theme="light"] .search-result-excerpt {
+  color: var(--md-sys-color-on-surface) !important;
+}
+
+/* Ultra-strong override for all white text in light theme */
+html[data-theme="light"] *[style*="color: white"],
+html[data-theme="light"] *[style*="color: #fff"],
+html[data-theme="light"] *[style*="color: #ffffff"],
+html[data-theme="light"] *[style*="color: rgba(255,255,255"],
+html[data-theme="light"] *[style*="color: rgba(255, 255, 255"],
+[data-theme="light"] *[style*="color: white"],
+[data-theme="light"] *[style*="color: #fff"],
+[data-theme="light"] *[style*="color: #ffffff"],
+[data-theme="light"] *[style*="color: rgba(255,255,255"],
+[data-theme="light"] *[style*="color: rgba(255, 255, 255"] {
+  color: var(--md-sys-color-on-surface) !important;
+}
+
+/* Force all article-related text to be dark in light theme */
+html[data-theme="light"] .blog-home *,
+html[data-theme="light"] .article-card *,
+html[data-theme="light"] .secondary-article-card *,
+[data-theme="light"] .blog-home *,
+[data-theme="light"] .article-card *,
+[data-theme="light"] .secondary-article-card * {
+  color: var(--md-sys-color-on-surface) !important;
+}
+
+/* Specific fixes for article card elements in light theme */
+html[data-theme="light"] .secondary-article-date,
+html[data-theme="light"] .secondary-fallback-content,
+html[data-theme="light"] .visual-placeholder,
+[data-theme="light"] .secondary-article-date,
+[data-theme="light"] .secondary-fallback-content,
+[data-theme="light"] .visual-placeholder {
+  color: var(--md-sys-color-on-surface-variant) !important;
+}
+
+/* Force black text for all article titles and content in light theme */
+html[data-theme="light"] .secondary-article-title,
+html[data-theme="light"] .secondary-article-description,
+html[data-theme="light"] .featured-article-title,
+html[data-theme="light"] .featured-article-description,
+[data-theme="light"] .secondary-article-title,
+[data-theme="light"] .secondary-article-description,
+[data-theme="light"] .featured-article-title,
+[data-theme="light"] .featured-article-description {
+  color: #1c1b1f !important;
+}
+
+/* Ultra-strong override for theme switching - Force all text colors */
+html[data-theme="light"] .blog-home .secondary-article-card h3,
+html[data-theme="light"] .blog-home .secondary-article-card p,
+html[data-theme="light"] .blog-home .secondary-article-card span,
+html[data-theme="light"] .blog-home .secondary-article-card div,
+html[data-theme="light"] .blog-home .featured-article-card h3,
+html[data-theme="light"] .blog-home .featured-article-card p,
+html[data-theme="light"] .blog-home .featured-article-card span,
+html[data-theme="light"] .blog-home .featured-article-card div,
+[data-theme="light"] .blog-home .secondary-article-card h3,
+[data-theme="light"] .blog-home .secondary-article-card p,
+[data-theme="light"] .blog-home .secondary-article-card span,
+[data-theme="light"] .blog-home .secondary-article-card div,
+[data-theme="light"] .blog-home .featured-article-card h3,
+[data-theme="light"] .blog-home .featured-article-card p,
+[data-theme="light"] .blog-home .featured-article-card span,
+[data-theme="light"] .blog-home .featured-article-card div {
+  color: #1c1b1f !important;
+}
+
+/* Force white text in dark theme */
+html[data-theme="dark"] .secondary-article-title,
+html[data-theme="dark"] .secondary-article-description,
+html[data-theme="dark"] .featured-article-title,
+html[data-theme="dark"] .featured-article-description,
+[data-theme="dark"] .secondary-article-title,
+[data-theme="dark"] .secondary-article-description,
+[data-theme="dark"] .featured-article-title,
+[data-theme="dark"] .featured-article-description {
+  color: #e6e1e5 !important;
+}
+
+/* Ultra-strong override for dark theme - Force all text colors to white */
+html[data-theme="dark"] .blog-home .secondary-article-card h3,
+html[data-theme="dark"] .blog-home .secondary-article-card p,
+html[data-theme="dark"] .blog-home .secondary-article-card span,
+html[data-theme="dark"] .blog-home .secondary-article-card div,
+html[data-theme="dark"] .blog-home .featured-article-card h3,
+html[data-theme="dark"] .blog-home .featured-article-card p,
+html[data-theme="dark"] .blog-home .featured-article-card span,
+html[data-theme="dark"] .blog-home .featured-article-card div,
+[data-theme="dark"] .blog-home .secondary-article-card h3,
+[data-theme="dark"] .blog-home .secondary-article-card p,
+[data-theme="dark"] .blog-home .secondary-article-card span,
+[data-theme="dark"] .blog-home .secondary-article-card div,
+[data-theme="dark"] .blog-home .featured-article-card h3,
+[data-theme="dark"] .blog-home .featured-article-card p,
+[data-theme="dark"] .blog-home .featured-article-card span,
+[data-theme="dark"] .blog-home .featured-article-card div {
+  color: #e6e1e5 !important;
+}
+
+/* Force all article-related text to be white in dark theme */
+html[data-theme="dark"] .blog-home *,
+html[data-theme="dark"] .article-card *,
+html[data-theme="dark"] .secondary-article-card *,
+[data-theme="dark"] .blog-home *,
+[data-theme="dark"] .article-card *,
+[data-theme="dark"] .secondary-article-card * {
+  color: #e6e1e5 !important;
+}
+
 #root {
   min-height: 100vh;
   display: flex;

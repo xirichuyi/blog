@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ThemeToggle from '../ui/ThemeToggle';
 import './SideNavigation.css';
 
 interface NavigationItem {
@@ -85,7 +86,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ className = '' }) => {
       <div className="side-navigation-footer">
         <div className="side-navigation-item">
           <div className="side-navigation-icon-container">
-            <md-icon className="side-navigation-icon">brightness_6</md-icon>
+            <ThemeToggle size="small" />
           </div>
           <span className="side-navigation-label">Theme</span>
         </div>

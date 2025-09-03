@@ -30,11 +30,11 @@
   font-family: "Google Sans", "Roboto", sans-serif;
   font-size: 3.5rem;
   font-weight: 500;
-  color: #e8eaed;
+  color: var(--md-sys-color-on-surface);
   margin: 0;
   letter-spacing: -0.02em;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #e8eaed 0%, #ffffff 100%);
+  background: linear-gradient(135deg, var(--md-sys-color-on-surface) 0%, var(--md-sys-color-primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -73,13 +73,13 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  background: #1c1b1d;
+  background: var(--md-sys-color-surface-container);
   border-radius: 16px;
   margin-top: 8px;
   max-height: 400px;
   overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--md-sys-elevation-level3);
+  border: 1px solid var(--md-sys-color-outline-variant);
   backdrop-filter: blur(20px);
 }
 
@@ -99,7 +99,7 @@
 }
 
 .search-loading-text {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.875rem;
 }
 
@@ -141,7 +141,7 @@
 }
 
 .search-result-title {
-  color: #e8eaed;
+  color: var(--md-sys-color-on-surface);
   font-weight: 500;
   font-size: 0.875rem;
   line-height: 1.25;
@@ -149,7 +149,7 @@
 }
 
 .search-result-excerpt {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.75rem;
   line-height: 1.2;
   display: -webkit-box;
@@ -160,11 +160,11 @@
 }
 
 .search-result-category {
-  color: #ccb6ff;
+  color: var(--md-sys-color-primary);
   font-size: 0.75rem;
   font-weight: 500;
   flex-shrink: 0;
-  background: rgba(204, 182, 255, 0.1);
+  background: var(--md-sys-color-primary-container);
   padding: 4px 8px;
   border-radius: 8px;
 }
@@ -240,7 +240,7 @@
 }
 
 .featured-article-card {
-  background: #1c1b1d;
+  background: var(--md-sys-color-surface-container);
   border-radius: 24px;
   min-height: 298px;
   display: grid;
@@ -252,7 +252,7 @@
 }
 
 .featured-article-card:hover {
-  background-color: #45455a;
+  background-color: var(--md-sys-color-surface-container-high);
 }
 
 /* Secondary Articles Section */
@@ -276,13 +276,13 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background: #1c1b1d;
+  background: var(--md-sys-color-surface-container);
 
   backdrop-filter: blur(8px);
 }
 
 .secondary-article-card:hover {
-  background-color: #45455a;
+  background-color: var(--md-sys-color-surface-container-high);
 }
 
 .secondary-article-image {
@@ -319,7 +319,7 @@
 
 .secondary-fallback-content {
   text-align: center;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--md-sys-color-on-surface-variant);
   padding: var(--md-sys-spacing-3);
 }
 
@@ -337,7 +337,7 @@
 }
 
 .visual-placeholder {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--md-sys-color-on-surface-variant);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -379,7 +379,7 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 1.3;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--md-sys-color-on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -389,7 +389,7 @@
   font-size: 20px;
   font-weight: 500;
   line-height: 1.3;
-  color: #ffffff;
+  color: var(--md-sys-color-on-surface);
   margin: 0 0 var(--md-sys-spacing-2) 0;
   letter-spacing: -0.25px;
 }
@@ -399,7 +399,7 @@
   font-size: 14px;
   font-weight: 400;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--md-sys-color-on-surface-variant);
   margin: 0;
   opacity: 0.9;
 }
@@ -550,7 +550,7 @@
   font-size: 32px;
   font-weight: 500;
   line-height: 1.2;
-  color: #ffffff;
+  color: var(--md-sys-color-on-surface);
   margin: 0 0 var(--md-sys-spacing-3) 0;
   letter-spacing: -0.5px;
 }
@@ -560,7 +560,7 @@
   font-size: 16px;
   font-weight: 400;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--md-sys-color-on-surface-variant);
   margin: var(--md-sys-spacing-2) 0 0 0;
 }
 
@@ -906,7 +906,7 @@
 
 /* Server Status Card Styles - 匹配BlogHome主题 */
 .server-status-card {
-  background: #1c1b1d;
+  background: var(--md-sys-color-surface-container);
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 20px;
@@ -914,9 +914,7 @@
   cursor: default;
 }
 
-.server-status-card:hover {
-  background-color: #45455a;
-}
+
 
 .server-status-header {
   display: flex;
@@ -937,7 +935,7 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 500;
-  color: #e8eaed;
+  color: var(--md-sys-color-on-surface);
 }
 
 .server-status-indicator {
@@ -973,7 +971,7 @@
 
 .metric-loading {
   text-align: center;
-  color: #9aa0a6;
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.875rem;
   padding: 1rem 0;
 }
@@ -1012,12 +1010,12 @@
   flex: 1;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #e8eaed;
+  color: var(--md-sys-color-on-surface);
 }
 
 .metric-value {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--md-sys-color-on-surface-variant);
   font-weight: 600;
 }
 
