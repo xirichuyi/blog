@@ -14,6 +14,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use config::Config;
 use database::Database;
+use handlers::health_handler;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -32,6 +33,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize database
     let database = Database::new(&config.database.url).await?;
     database.migrate().await?;
+
+    // Initialize health check metrics
+    health_handler::init_server_metrics();
 
     // Build application routes
     let app = routes::create_app(database.clone(), &config)

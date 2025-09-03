@@ -1068,6 +1068,11 @@ class ApiService {
     return this.request('/health');
   }
 
+  // Detailed Health Check
+  async detailedHealthCheck(): Promise<ApiResponse<any>> {
+    return this.request('/health/detailed');
+  }
+
   // Category Management APIs
   async createCategory(categoryData: { name: string; description?: string; icon?: string }): Promise<ApiResponse<Category>> {
     return this.request('/category/create', {

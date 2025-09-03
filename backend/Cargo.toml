@@ -87,6 +87,7 @@ thiserror = "1.0"
 slug = "0.1"
 regex = "1.10"
 num_cpus = "1.16"
+sysinfo = "0.30"
 
 # Performance monitoring
 metrics = "0.21"

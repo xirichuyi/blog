@@ -6,28 +6,51 @@ import AuthorCard from './AuthorCard';
 import { CustomButton } from '../ui/CustomButton';
 
 import { useData } from '../../contexts/DataContext';
+import { apiService } from '../../services/api';
 import type { Article } from '../../types';
 
-// 服务器状态接口
+// 服务器状态接口 - 匹配后端API结构
 interface ServerStatus {
-  memory: {
-    used: number;
-    total: number;
-    percentage: number;
+  status: string;
+  timestamp: string;
+  version: string;
+  uptime_seconds: number;
+  checks: {
+    database: {
+      status: string;
+      response_time_ms: number;
+      message: string;
+    };
+    memory: {
+      status: string;
+      response_time_ms: number;
+      message: string;
+      details: {
+        memory_usage_mb: number;
+        total_memory_mb: number;
+        usage_percent: number;
+      };
+    };
+    disk: {
+      status: string;
+      response_time_ms: number;
+      message: string;
+      details: {
+        usage_percent: number;
+        used_bytes: number;
+        total_bytes: number;
+      };
+    };
   };
-  cpu: {
-    usage: number;
+  metrics: {
+    memory_usage_mb: number;
+    cpu_usage_percent: number;
+    disk_usage_percent: number;
+    disk_used_bytes: number;
+    disk_total_bytes: number;
+    active_connections: number;
+    request_count: number;
   };
-  disk: {
-    used: number;
-    total: number;
-    percentage: number;
-  };
-  network: {
-    upload: number;
-    download: number;
-  };
-  uptime: number;
 }
 
 const BlogHome: React.FC = () => {
@@ -42,13 +65,8 @@ const BlogHome: React.FC = () => {
   const [allArticles, setAllArticles] = useState<Article[]>([]);
 
   // 服务器状态
-  const [serverStatus, setServerStatus] = useState<ServerStatus>({
-    memory: { used: 0, total: 0, percentage: 0 },
-    cpu: { usage: 0 },
-    disk: { used: 0, total: 0, percentage: 0 },
-    network: { upload: 0, download: 0 },
-    uptime: 0
-  });
+  const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
+  const [serverStatusLoading, setServerStatusLoading] = useState(true);
 
   // 加载文章数据
   useEffect(() => {
@@ -75,46 +93,29 @@ const BlogHome: React.FC = () => {
     }
   }, [fetchArticles, allArticles.length]);
 
-  // 模拟服务器状态数据
+  // 获取服务器状态数据
   useEffect(() => {
-    const updateServerStatus = () => {
-      // 模拟实时数据变化
-      const memoryUsed = 4.2 + Math.random() * 0.8; // 4.2-5.0 GB
-      const memoryTotal = 8;
-      const cpuUsage = 15 + Math.random() * 25; // 15-40%
-      const diskUsed = 45.6 + Math.random() * 2; // 45.6-47.6 GB
-      const diskTotal = 100;
-      const networkUp = Math.random() * 10; // 0-10 MB/s
-      const networkDown = Math.random() * 50; // 0-50 MB/s
-      const uptime = Date.now() - (7 * 24 * 60 * 60 * 1000); // 7 days ago
-
-      setServerStatus({
-        memory: {
-          used: memoryUsed,
-          total: memoryTotal,
-          percentage: (memoryUsed / memoryTotal) * 100
-        },
-        cpu: {
-          usage: cpuUsage
-        },
-        disk: {
-          used: diskUsed,
-          total: diskTotal,
-          percentage: (diskUsed / diskTotal) * 100
-        },
-        network: {
-          upload: networkUp,
-          download: networkDown
-        },
-        uptime: uptime
-      });
+    const fetchServerStatus = async () => {
+      try {
+        setServerStatusLoading(true);
+        const response = await apiService.detailedHealthCheck();
+        if (response.success && response.data) {
+          setServerStatus(response.data);
+        } else {
+          console.error('Failed to fetch server status:', response.error);
+        }
+      } catch (error) {
+        console.error('Error fetching server status:', error);
+      } finally {
+        setServerStatusLoading(false);
+      }
     };
 
     // 初始加载
-    updateServerStatus();
+    fetchServerStatus();
 
-    // 每5秒更新一次
-    const interval = setInterval(updateServerStatus, 5000);
+    // 每30秒更新一次
+    const interval = setInterval(fetchServerStatus, 30000);
 
     return () => clearInterval(interval);
   }, []);
@@ -559,51 +560,59 @@ const BlogHome: React.FC = () => {
               <md-icon className="server-status-icon">dns</md-icon>
               <h3 className="server-status-title">Server</h3>
               <div className="server-status-indicator">
-                <div className="status-dot status-online"></div>
-                <span className="status-text">Online</span>
+                <div className={`status-dot ${serverStatus?.status === 'healthy' ? 'status-online' : 'status-offline'}`}></div>
+                <span className={`status-text ${serverStatus?.status === 'healthy' ? '' : 'status-error'}`}>
+                  {serverStatus?.status === 'healthy' ? 'Online' : 'Offline'}
+                </span>
               </div>
             </div>
 
-            <div className="server-metrics">
-              {/* Memory Usage */}
-              <div className="metric-item">
-                <div className="metric-header">
-                  <md-icon className="metric-icon">memory</md-icon>
-                  <span className="metric-label">Memory</span>
-                  <span className="metric-value">{serverStatus.memory.percentage.toFixed(0)}%</span>
+            {serverStatus ? (
+              <div className="server-metrics">
+                {/* Memory Usage */}
+                <div className="metric-item">
+                  <div className="metric-header">
+                    <md-icon className="metric-icon">memory</md-icon>
+                    <span className="metric-label">Memory</span>
+                    <span className="metric-value">{serverStatus.checks.memory.details.usage_percent.toFixed(0)}%</span>
+                  </div>
+                  <md-linear-progress
+                    value={serverStatus.checks.memory.details.usage_percent / 100}
+                    className="memory-progress"
+                  ></md-linear-progress>
                 </div>
-                <md-linear-progress
-                  value={serverStatus.memory.percentage / 100}
-                  className="memory-progress"
-                ></md-linear-progress>
-              </div>
 
-              {/* CPU Usage */}
-              <div className="metric-item">
-                <div className="metric-header">
-                  <md-icon className="metric-icon">developer_board</md-icon>
-                  <span className="metric-label">CPU</span>
-                  <span className="metric-value">{serverStatus.cpu.usage.toFixed(0)}%</span>
+                {/* CPU Usage */}
+                <div className="metric-item">
+                  <div className="metric-header">
+                    <md-icon className="metric-icon">developer_board</md-icon>
+                    <span className="metric-label">CPU</span>
+                    <span className="metric-value">{serverStatus.metrics.cpu_usage_percent.toFixed(0)}%</span>
+                  </div>
+                  <md-linear-progress
+                    value={serverStatus.metrics.cpu_usage_percent / 100}
+                    className="cpu-progress"
+                  ></md-linear-progress>
                 </div>
-                <md-linear-progress
-                  value={serverStatus.cpu.usage / 100}
-                  className="cpu-progress"
-                ></md-linear-progress>
-              </div>
 
-              {/* Disk Usage */}
-              <div className="metric-item">
-                <div className="metric-header">
-                  <md-icon className="metric-icon">storage</md-icon>
-                  <span className="metric-label">Disk</span>
-                  <span className="metric-value">{serverStatus.disk.percentage.toFixed(0)}%</span>
+                {/* Disk Usage */}
+                <div className="metric-item">
+                  <div className="metric-header">
+                    <md-icon className="metric-icon">storage</md-icon>
+                    <span className="metric-label">Disk</span>
+                    <span className="metric-value">{serverStatus.checks.disk.details.usage_percent.toFixed(0)}%</span>
+                  </div>
+                  <md-linear-progress
+                    value={serverStatus.checks.disk.details.usage_percent / 100}
+                    className="disk-progress"
+                  ></md-linear-progress>
                 </div>
-                <md-linear-progress
-                  value={serverStatus.disk.percentage / 100}
-                  className="disk-progress"
-                ></md-linear-progress>
               </div>
-            </div>
+            ) : (
+              <div className="server-metrics">
+                <div className="metric-loading">Loading server status...</div>
+              </div>
+            )}
           </div>
         </div>
 

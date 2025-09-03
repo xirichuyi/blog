@@ -1,7 +1,8 @@
 use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
-    about_handler, category_handler, download_handler, music_handler, post_handler, tag_handler,
+    about_handler, category_handler, download_handler, health_handler, music_handler, post_handler,
+    tag_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use axum::{
@@ -36,6 +37,14 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
     };
     // Public routes (no authentication required)
     let public_routes = Router::new()
+        // Health check routes
+        .route("/api/health", get(health_handler::health_check))
+        .route(
+            "/api/health/detailed",
+            get(health_handler::detailed_health_check),
+        )
+        .route("/api/health/ready", get(health_handler::readiness_check))
+        .route("/api/health/live", get(health_handler::liveness_check))
         // Post public routes
         .route("/api/post/list", get(post_handler::list_posts))
         .route("/api/post/get/:id", get(post_handler::get_post))

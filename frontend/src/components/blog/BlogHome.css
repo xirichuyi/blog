@@ -957,10 +957,25 @@
   background-color: #4caf50;
 }
 
+.status-dot.status-offline {
+  background-color: #f44336;
+}
+
 .status-text {
   font-size: 0.75rem;
   color: #4caf50;
   font-weight: 500;
+}
+
+.status-text.status-error {
+  color: #f44336;
+}
+
+.metric-loading {
+  text-align: center;
+  color: #9aa0a6;
+  font-size: 0.875rem;
+  padding: 1rem 0;
 }
 
 @keyframes pulse {
