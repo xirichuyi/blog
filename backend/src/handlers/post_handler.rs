@@ -128,7 +128,11 @@ pub async fn upload_post_image(
 ) -> Result<Json<ApiResponse<FileUploadResponse>>, StatusCode> {
     let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?
+    {
         if let Some(file_name) = field.file_name() {
             // Validate file type
             if let Err(e) = file_handler.validate_file_type(file_name, IMAGE_TYPES) {
@@ -166,7 +170,11 @@ pub async fn update_post_cover(
     );
     let service = PostService::new(app_state.database, file_handler.clone());
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?
+    {
         if let Some(file_name) = field.file_name() {
             // Validate file type
             if let Err(e) = file_handler.validate_file_type(file_name, IMAGE_TYPES) {

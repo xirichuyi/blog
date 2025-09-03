@@ -11,14 +11,19 @@ pub struct AboutService {
 
 impl AboutService {
     pub fn new(database: Database, file_handler: FileHandler) -> Self {
-        Self { database, _file_handler: file_handler }
+        Self {
+            database,
+            _file_handler: file_handler,
+        }
     }
 
     pub async fn get(&self) -> Result<About> {
-        let about = sqlx::query_as::<_, About>("SELECT id, title, subtitle, content, photo_url, updated_at FROM about WHERE id = 1")
-            .fetch_optional(self.database.pool())
-            .await?
-            .unwrap();
+        let about = sqlx::query_as::<_, About>(
+            "SELECT id, title, subtitle, content, photo_url, updated_at FROM about WHERE id = 1",
+        )
+        .fetch_optional(self.database.pool())
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("About page not found"))?;
         Ok(about)
     }
 
@@ -40,6 +45,3 @@ impl AboutService {
         self.get().await
     }
 }
-
-
-

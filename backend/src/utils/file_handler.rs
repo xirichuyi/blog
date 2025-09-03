@@ -83,7 +83,19 @@ impl FileHandler {
     pub async fn delete_file(&self, file_url: &str) -> Result<()> {
         if file_url.starts_with("/uploads/") {
             let relative_path = &file_url[9..]; // Remove "/uploads/" prefix
-            let file_path = PathBuf::from(&self.upload_dir).join(relative_path);
+
+            // Prevent path traversal attacks
+            if relative_path.contains("..") || relative_path.contains("//") {
+                return Err(AppError::BadRequest("Invalid file path".to_string()));
+            }
+
+            let upload_dir = PathBuf::from(&self.upload_dir);
+            let file_path = upload_dir.join(relative_path);
+
+            // Ensure the file path is within the upload directory
+            if !file_path.starts_with(&upload_dir) {
+                return Err(AppError::BadRequest("Invalid file path".to_string()));
+            }
 
             if file_path.exists() {
                 fs::remove_file(file_path).await?;

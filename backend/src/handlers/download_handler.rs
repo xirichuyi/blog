@@ -28,7 +28,11 @@ pub async fn upload_file(
     );
     let service = DownloadService::new(database, file_handler.clone());
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?
+    {
         if let Some(file_name) = field.file_name() {
             // Validate file type
             if let Err(e) = file_handler.validate_file_type(file_name, DOCUMENT_TYPES) {
@@ -107,7 +111,7 @@ pub async fn download_file(
                             format!("attachment; filename=\"{}\"", download.file_name),
                         )
                         .body(body)
-                        .unwrap();
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
                     Ok(response)
                 }

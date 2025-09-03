@@ -24,6 +24,7 @@ pub struct JwtConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
+    pub host: String,
     pub port: u16,
 }
 
@@ -52,10 +53,23 @@ impl Config {
         let database_url =
             env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/blog.db".to_string());
 
-        let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| "your-secret-key".to_string());
+        let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
+            if cfg!(debug_assertions) {
+                "dev-jwt-secret-key-not-for-production".to_string()
+            } else {
+                panic!("JWT_SECRET environment variable is required in production")
+            }
+        });
 
-        let admin_token =
-            env::var("BLOG_ADMIN_TOKEN").unwrap_or_else(|_| "admin-token".to_string());
+        let admin_token = env::var("BLOG_ADMIN_TOKEN").unwrap_or_else(|_| {
+            if cfg!(debug_assertions) {
+                "dev-admin-token-not-for-production".to_string()
+            } else {
+                panic!("BLOG_ADMIN_TOKEN environment variable is required in production")
+            }
+        });
+
+        let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
 
         let port = env::var("PORT")
             .unwrap_or_else(|_| "3006".to_string())
@@ -68,9 +82,18 @@ impl Config {
             env::var("DEEPSEEK_API_URL").unwrap_or_else(|_| "https://api.deepseek.com".to_string());
 
         let cors_origins = env::var("CORS_ORIGINS")
-            .unwrap_or_else(|_| "http://localhost:3000".to_string())
+            .unwrap_or_else(|_| {
+                if cfg!(debug_assertions) {
+                    "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000".to_string()
+                } else {
+                    // Production should explicitly set CORS_ORIGINS
+                    tracing::warn!("CORS_ORIGINS not set in production, using restrictive defaults");
+                    "".to_string()
+                }
+            })
             .split(',')
             .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
             .collect();
 
         let upload_dir = env::var("UPLOAD_DIR").unwrap_or_else(|_| "uploads".to_string());
@@ -88,7 +111,7 @@ impl Config {
                 secret: jwt_secret,
                 admin_token,
             },
-            server: ServerConfig { port },
+            server: ServerConfig { host, port },
             ai: AiConfig {
                 deepseek_api_key,
                 deepseek_api_url,
