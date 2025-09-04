@@ -363,15 +363,13 @@ const CategoriesTagsManagement: React.FC = () => {
               active={activeTab === 'categories'}
               onClick={() => setActiveTab('categories')}
             >
-              <md-icon slot="icon">folder</md-icon>
-              Categories ({categories.length})
+              <md-icon slot="icon" style={{ fontSize: '40px', width: '40px', height: '40px', lineHeight: '40px' }}>folder</md-icon>
             </md-primary-tab>
             <md-primary-tab
               active={activeTab === 'tags'}
               onClick={() => setActiveTab('tags')}
             >
-              <md-icon slot="icon">label</md-icon>
-              Tags ({tags.length})
+              <md-icon slot="icon" style={{ fontSize: '40px', width: '40px', height: '40px', lineHeight: '40px' }}>label</md-icon>
             </md-primary-tab>
           </md-tabs>
         </div>
@@ -404,9 +402,6 @@ const CategoriesTagsManagement: React.FC = () => {
                           <p className="category-description md-typescale-body-medium">
                             {category.description || 'No description'}
                           </p>
-                          <span className="category-count md-typescale-body-small">
-                            {category.count || 0} articles
-                          </span>
                         </div>
                       </div>
                       <div className="category-actions">
@@ -450,9 +445,6 @@ const CategoriesTagsManagement: React.FC = () => {
                         <md-icon className="tag-icon">label</md-icon>
                         <div className="tag-info">
                           <h3 className="tag-name md-typescale-title-medium">{tag.name}</h3>
-                          <span className="tag-count md-typescale-body-small">
-                            {tag.count || 0} articles
-                          </span>
                         </div>
                       </div>
                       <div className="tag-actions">

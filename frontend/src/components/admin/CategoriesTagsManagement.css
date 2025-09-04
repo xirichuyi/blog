@@ -27,6 +27,42 @@
 
 .tab-navigation md-tabs {
   width: 100%;
+  height: 80px;
+}
+
+.tab-navigation md-primary-tab {
+  height: 80px;
+  min-height: 80px;
+  --md-icon-size: 32px;
+}
+
+.tab-navigation md-primary-tab md-icon[slot="icon"] {
+  font-size: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+}
+
+/* Alternative selector for Material Design icons */
+.tab-navigation md-primary-tab::part(icon) {
+  font-size: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+}
+
+/* Direct targeting of md-icon elements in tabs */
+md-primary-tab md-icon {
+  font-size: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+}
+
+/* More specific targeting */
+.tab-navigation md-primary-tab[slot] md-icon,
+.tab-navigation md-primary-tab md-icon[slot="icon"] {
+  font-size: 36px !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: inline-block !important;
 }
 
 .tab-navigation md-primary-tab {
@@ -144,13 +180,8 @@
 
 .category-description {
   color: var(--md-sys-color-on-surface-variant);
-  margin: 0 0 8px 0;
+  margin: 0;
   line-height: 1.4;
-}
-
-.category-count {
-  color: var(--md-sys-color-primary);
-  font-weight: 500;
 }
 
 .category-actions {
@@ -209,12 +240,7 @@
 
 .tag-name {
   color: var(--md-sys-color-on-surface);
-  margin: 0 0 4px 0;
-  font-weight: 500;
-}
-
-.tag-count {
-  color: var(--md-sys-color-secondary);
+  margin: 0;
   font-weight: 500;
 }
 
