@@ -117,6 +117,32 @@
   flex-shrink: 0;
 }
 
+.article-card-category md-icon {
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  overflow: visible !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.article-card-category::part(icon) {
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .article-card-meta {
   display: flex;
   align-items: center;

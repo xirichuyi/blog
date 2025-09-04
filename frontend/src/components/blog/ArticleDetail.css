@@ -2,7 +2,7 @@
 
 .article-detail {
   max-width: 1200px;
-  margin: var(--md-sys-spacing-8) auto 0;
+  margin: var(--md-sys-spacing-20) auto 0;
   display: grid;
   grid-template-columns: 1fr 280px;
   gap: var(--md-sys-spacing-8);
@@ -61,6 +61,33 @@
   --md-assist-chip-icon-color: var(--md-sys-color-on-primary-container);
 }
 
+.article-category md-icon {
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  overflow: visible !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.article-category::part(icon) {
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .article-date,
 .article-read-time {
   color: var(--md-sys-color-on-surface-variant);
@@ -103,7 +130,7 @@
 
 /* Article Content */
 .article-content {
-  margin: var(--md-sys-spacing-8) 0;
+  margin: calc(var(--md-sys-spacing-12)) 0 var(--md-sys-spacing-12);
 }
 
 .article-body {
@@ -329,6 +356,34 @@
     var(--md-sys-motion-easing-emphasized);
 }
 
+/* Override ArticleCard styles for related articles */
+.related-articles .article-card {
+  border: none !important;
+  box-shadow: none !important;
+  --md-elevated-card-container-elevation: 0 !important;
+  background: var(--md-sys-color-surface-container-low) !important;
+  backdrop-filter: none !important;
+}
+
+.related-articles .article-card:hover {
+  box-shadow: none !important;
+  --md-elevated-card-container-elevation: 0 !important;
+  border: none !important;
+  background: var(--md-sys-color-surface-container) !important;
+}
+
+.related-articles .article-card-featured {
+  border: none !important;
+}
+
+.related-articles .article-card-featured-badge {
+  box-shadow: none !important;
+}
+
+.related-articles .article-card-footer {
+  border-top: none !important;
+}
+
 /* Loading and Error States */
 .article-detail-loading,
 .article-detail-error {
@@ -380,6 +435,33 @@
   --md-assist-chip-container-color: var(--md-sys-color-secondary-container);
   --md-assist-chip-label-text-color: var(--md-sys-color-on-secondary-container);
   --md-assist-chip-icon-color: var(--md-sys-color-on-secondary-container);
+}
+
+.article-category md-icon {
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  overflow: visible !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.article-category::part(icon) {
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .article-date,
@@ -438,6 +520,7 @@
 
 /* Article Content */
 .article-content {
+  margin-top: calc(var(--md-sys-spacing-12) + 20px);
   margin-bottom: var(--md-sys-spacing-12);
 }
 
@@ -556,6 +639,34 @@
     var(--md-sys-motion-easing-emphasized);
 }
 
+/* Override ArticleCard styles for related articles */
+.related-articles .article-card {
+  border: none !important;
+  box-shadow: none !important;
+  --md-elevated-card-container-elevation: 0 !important;
+  background: var(--md-sys-color-surface-container-low) !important;
+  backdrop-filter: none !important;
+}
+
+.related-articles .article-card:hover {
+  box-shadow: none !important;
+  --md-elevated-card-container-elevation: 0 !important;
+  border: none !important;
+  background: var(--md-sys-color-surface-container) !important;
+}
+
+.related-articles .article-card-featured {
+  border: none !important;
+}
+
+.related-articles .article-card-featured-badge {
+  box-shadow: none !important;
+}
+
+.related-articles .article-card-footer {
+  border-top: none !important;
+}
+
 /* Animations */
 @keyframes articleSlideIn {
   from {
@@ -618,6 +729,10 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--md-sys-spacing-2);
+  }
+
+  .article-content {
+    margin: var(--md-sys-spacing-10) 0;
   }
 
   .article-body h2 {
