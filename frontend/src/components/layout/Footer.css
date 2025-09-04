@@ -6,7 +6,7 @@
     var(--md-sys-color-surface-container) 100%);
   border-top: 1px solid var(--md-sys-color-outline-variant);
   margin-top: auto;
-  padding: var(--md-sys-spacing-16) 0 var(--md-sys-spacing-8);
+  padding: var(--md-sys-spacing-8) 0 var(--md-sys-spacing-4);
   position: relative;
   overflow: hidden;
 }
@@ -35,8 +35,8 @@
 .footer-main {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: var(--md-sys-spacing-8);
-  margin-bottom: var(--md-sys-spacing-8);
+  gap: var(--md-sys-spacing-6);
+  margin-bottom: var(--md-sys-spacing-4);
 }
 
 /* Brand Section */
@@ -178,7 +178,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-top: var(--md-sys-spacing-6);
+  padding-top: var(--md-sys-spacing-3);
   border-top: 1px solid var(--md-sys-color-outline-variant);
   gap: var(--md-sys-spacing-4);
 }
@@ -201,7 +201,7 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .footer {
-    padding: var(--md-sys-spacing-8) 0 var(--md-sys-spacing-4);
+    padding: var(--md-sys-spacing-6) 0 var(--md-sys-spacing-3);
   }
 
   .footer-container {
@@ -210,8 +210,8 @@
 
   .footer-main {
     grid-template-columns: 1fr;
-    gap: var(--md-sys-spacing-8);
-    margin-bottom: var(--md-sys-spacing-8);
+    gap: var(--md-sys-spacing-4);
+    margin-bottom: var(--md-sys-spacing-3);
   }
 
   .footer-bottom {

@@ -3,17 +3,21 @@
 .author-card {
   --md-elevated-card-container-color: var(--md-sys-color-surface-container-low);
   --md-elevated-card-container-shape: 16px;
-  --md-elevated-card-container-elevation: 1;
+  --md-elevated-card-container-elevation: 0;
 
   width: 100%;
   margin-bottom: 24px;
   transition: all var(--md-sys-motion-duration-medium2)
     var(--md-sys-motion-easing-standard);
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .author-card:hover {
-  --md-elevated-card-container-elevation: 2;
+  --md-elevated-card-container-elevation: 0;
   transform: translateY(-2px);
+  box-shadow: none !important;
 }
 
 .author-card-content {
@@ -153,8 +157,8 @@
 
 /* 无障碍支持 */
 .author-card:focus-within {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
 }
 
 .social-button:focus-visible {
