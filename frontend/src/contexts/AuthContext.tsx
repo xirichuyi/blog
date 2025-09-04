@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const user: AdminUser = {
           id: '1',
           username: 'admin',
-          email: 'admin@cyrusblog.com',
+          email: 'admin@chuyi.blog',
           role: 'admin',
         };
 
@@ -186,7 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const user: AdminUser = {
         id: '1',
         username: 'admin',
-        email: 'admin@cyrusblog.com',
+        email: 'admin@chuyi.blog',
         role: 'admin',
       };
 

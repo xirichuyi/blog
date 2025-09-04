@@ -1,28 +1,33 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import BlogHome from '../components/blog/BlogHome';
-import ArticleDetail from '../components/blog/ArticleDetail';
-import CategoriesPage from '../components/blog/CategoriesPage';
-import TagsPage from '../components/blog/TagsPage';
-import ArticlesPage from '../components/blog/ArticlesPage';
-import SearchResultsPage from '../components/blog/SearchResultsPage';
-import AboutPage from '../components/pages/AboutPage';
-import ContactPage from '../components/pages/ContactPage';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
-import PerformanceTest from '../components/debug/PerformanceTest';
-import LoginPage from '../components/admin/LoginPage';
-import ProtectedRoute from '../components/admin/ProtectedRoute';
-import Dashboard from '../components/admin/Dashboard';
-import PostManagement from '../components/admin/PostManagement';
-import PostEditor from '../components/admin/PostEditor';
-import MusicManagement from '../components/admin/MusicManagement';
-import MusicUpload from '../components/admin/MusicUpload';
-import CategoriesTagsManagement from '../components/admin/CategoriesTagsManagement';
-import AboutManagement from '../components/admin/AboutManagement';
 import { AuthProvider } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { DataProvider } from '../contexts/DataContext';
+
+// Lazy load components for better performance
+const BlogHome = lazy(() => import('../components/blog/BlogHome'));
+const ArticleDetail = lazy(() => import('../components/blog/ArticleDetail'));
+const CategoriesPage = lazy(() => import('../components/blog/CategoriesPage'));
+const TagsPage = lazy(() => import('../components/blog/TagsPage'));
+const ArticlesPage = lazy(() => import('../components/blog/ArticlesPage'));
+const SearchResultsPage = lazy(() => import('../components/blog/SearchResultsPage'));
+const AboutPage = lazy(() => import('../components/pages/AboutPage'));
+const ContactPage = lazy(() => import('../components/pages/ContactPage'));
+const PerformanceTest = lazy(() => import('../components/debug/PerformanceTest'));
+
+// Admin components - lazy loaded
+const LoginPage = lazy(() => import('../components/admin/LoginPage'));
+const ProtectedRoute = lazy(() => import('../components/admin/ProtectedRoute'));
+const Dashboard = lazy(() => import('../components/admin/Dashboard'));
+const PostManagement = lazy(() => import('../components/admin/PostManagement'));
+const PostEditor = lazy(() => import('../components/admin/PostEditor'));
+const MusicManagement = lazy(() => import('../components/admin/MusicManagement'));
+const MusicUpload = lazy(() => import('../components/admin/MusicUpload'));
+const CategoriesTagsManagement = lazy(() => import('../components/admin/CategoriesTagsManagement'));
+const AboutManagement = lazy(() => import('../components/admin/AboutManagement'));
 import NotificationContainer from '../components/ui/NotificationContainer';
 import '../styles/page-placeholder.css';
 
@@ -81,109 +86,147 @@ const AppRouter: React.FC = () => {
               <Routes>
                 {/* Main Layout Routes */}
                 <Route path="/" element={
-                  <Layout title="Cyrus Blog - Modern Web Development & Design">
-                    <BlogHome />
+                  <Layout title="Chuyi的博客 - 现代化个人博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <BlogHome />
+                    </Suspense>
                   </Layout>
                 } />
 
                 <Route path="/articles" element={
-                  <Layout title="All Articles - Cyrus Blog">
-                    <ArticlesPage />
+                  <Layout title="所有文章 - Chuyi的博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <ArticlesPage />
+                    </Suspense>
                   </Layout>
                 } />
 
                 <Route path="/search" element={
-                  <Layout title="Search Results - Cyrus Blog">
-                    <SearchResultsPage />
+                  <Layout title="搜索结果 - Chuyi的博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <SearchResultsPage />
+                    </Suspense>
                   </Layout>
                 } />
 
                 <Route path="/article/:id" element={
-                  <Layout title="Article - Cyrus Blog">
-                    <ArticleDetailRoute />
+                  <Layout title="文章详情 - Chuyi的博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <ArticleDetailRoute />
+                    </Suspense>
                   </Layout>
                 } />
 
                 <Route path="/categories" element={
-                  <Layout title="Categories - Cyrus Blog">
-                    <CategoriesPage />
+                  <Layout title="分类 - Chuyi的博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <CategoriesPage />
+                    </Suspense>
                   </Layout>
                 } />
 
                 <Route path="/tags" element={
-                  <Layout title="Tags - Cyrus Blog">
-                    <TagsPage />
+                  <Layout title="标签 - Chuyi的博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <TagsPage />
+                    </Suspense>
                   </Layout>
                 } />
 
                 <Route path="/about" element={
-                  <Layout title="About - Cyrus Blog">
-                    <AboutPage />
+                  <Layout title="关于我 - Chuyi的博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <AboutPage />
+                    </Suspense>
                   </Layout>
                 } />
 
                 <Route path="/contact" element={
-                  <Layout title="Contact - Cyrus Blog">
-                    <ContactPage />
+                  <Layout title="联系我 - Chuyi的博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <ContactPage />
+                    </Suspense>
                   </Layout>
                 } />
 
                 {/* Debug Routes */}
                 <Route path="/debug/performance" element={
-                  <Layout title="Performance Test - Cyrus Blog">
-                    <PerformanceTest />
+                  <Layout title="性能测试 - Chuyi的博客">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <PerformanceTest />
+                    </Suspense>
                   </Layout>
                 } />
 
                 {/* Admin Routes */}
-                <Route path="/admin/login" element={<LoginPage />} />
+                <Route path="/admin/login" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <LoginPage />
+                  </Suspense>
+                } />
 
                 <Route path="/admin/dashboard" element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProtectedRoute>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  </Suspense>
                 } />
 
                 <Route path="/admin/posts" element={
-                  <ProtectedRoute>
-                    <AdminPosts />
-                  </ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProtectedRoute>
+                      <AdminPosts />
+                    </ProtectedRoute>
+                  </Suspense>
                 } />
 
                 <Route path="/admin/posts/new" element={
-                  <ProtectedRoute>
-                    <PostEditor />
-                  </ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProtectedRoute>
+                      <PostEditor />
+                    </ProtectedRoute>
+                  </Suspense>
                 } />
 
                 <Route path="/admin/posts/edit/:id" element={
-                  <ProtectedRoute>
-                    <PostEditor />
-                  </ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProtectedRoute>
+                      <PostEditor />
+                    </ProtectedRoute>
+                  </Suspense>
                 } />
 
                 <Route path="/admin/music" element={
-                  <ProtectedRoute>
-                    <AdminMusic />
-                  </ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProtectedRoute>
+                      <AdminMusic />
+                    </ProtectedRoute>
+                  </Suspense>
                 } />
 
                 <Route path="/admin/music/upload" element={
-                  <ProtectedRoute>
-                    <MusicUpload />
-                  </ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProtectedRoute>
+                      <MusicUpload />
+                    </ProtectedRoute>
+                  </Suspense>
                 } />
 
                 <Route path="/admin/categories-tags" element={
-                  <ProtectedRoute>
-                    <AdminCategoriesTags />
-                  </ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProtectedRoute>
+                      <AdminCategoriesTags />
+                    </ProtectedRoute>
+                  </Suspense>
                 } />
 
                 <Route path="/admin/about" element={
-                  <ProtectedRoute>
-                    <AboutManagement />
-                  </ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProtectedRoute>
+                      <AboutManagement />
+                    </ProtectedRoute>
+                  </Suspense>
                 } />
 
                 {/* Redirect admin root to dashboard */}

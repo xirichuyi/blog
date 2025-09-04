@@ -5,8 +5,8 @@ import './AboutPage.css';
 
 
 const AboutPage: React.FC = () => {
-  const [title, setTitle] = useState<string>('Hi, I\'m chuyi');
-  const [subtitle, setSubtitle] = useState<string>('Full-Stack Developer & Tech Enthusiast');
+  const [title, setTitle] = useState<string>('你好，我是 Chuyi');
+  const [subtitle, setSubtitle] = useState<string>('全栈开发者 & 技术爱好者');
   const [content, setContent] = useState<string>('');
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);

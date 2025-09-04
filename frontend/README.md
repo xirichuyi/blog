@@ -1,6 +1,6 @@
-# React + TypeScript + Vite
+# Chuyi的博客 前端
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+基于 React、TypeScript 和 Material Design 3 构建的现代化、响应式个人博客系统。
 
 Currently, two official plugins are available:
 

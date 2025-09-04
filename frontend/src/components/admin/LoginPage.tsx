@@ -74,9 +74,9 @@ const LoginPage: React.FC = () => {
         <div className="login-card">
           <div className="login-header">
             <md-icon class="login-icon">admin_panel_settings</md-icon>
-            <h1 className="md-typescale-headline-medium">Admin Login</h1>
+            <h1 className="md-typescale-headline-medium">管理员登录</h1>
             <p className="md-typescale-body-medium">
-              Sign in to access the admin dashboard
+              登录以访问 Chuyi的博客 管理后台
             </p>
           </div>
 
@@ -157,7 +157,7 @@ const LoginPage: React.FC = () => {
 
           <div className="login-footer">
             <p className="md-typescale-body-small">
-              Please enter your admin credentials
+              请输入管理员凭据
             </p>
           </div>
         </div>

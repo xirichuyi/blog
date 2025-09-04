@@ -1,6 +1,7 @@
 import React from 'react';
 import { apiService } from '../../services/api';
 import type { Article } from '../../types/blog';
+import LazyImage from '../ui/LazyImage';
 import './ArticleCard.css';
 
 interface ArticleCardProps extends Article {
@@ -59,11 +60,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
       >
         {imageUrl && (
           <div className="article-card-media-simplified">
-            <img
+            <LazyImage
               src={apiService.getImageUrl(imageUrl)}
               alt={title}
               className="article-card-image"
-              loading="lazy"
             />
           </div>
         )}
@@ -118,11 +118,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     >
       {imageUrl && (
         <div className="article-card-media">
-          <img
+          <LazyImage
             src={apiService.getImageUrl(imageUrl)}
             alt={title}
             className="article-card-image"
-            loading="lazy"
           />
           {featured && (
             <div className="article-card-featured-badge">

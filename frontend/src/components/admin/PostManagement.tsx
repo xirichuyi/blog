@@ -90,7 +90,7 @@ const PostManagement: React.FC = () => {
         setPosts(response.data);
         setPagination(prev => ({
           ...prev,
-          total: response.total || response.data.length,
+          total: response.total || response.data?.length || 0,
         }));
       } else {
         throw new Error(response.error || 'Failed to load posts');

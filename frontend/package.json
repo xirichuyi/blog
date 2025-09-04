@@ -1,12 +1,13 @@
 {
-  "name": "front",
+  "name": "chuyi-blog-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --mode production",
     "build-force": "vite build --force",
+    "build-debug": "vite build --mode production --debug",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -44,9 +45,9 @@
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "description": "Chuyi的博客 - 现代化个人博客系统，基于React和Material Design 3构建",
   "main": "eslint.config.js",
   "keywords": [],
-  "author": "",
+  "author": "Chuyi",
   "license": "ISC"
 }
