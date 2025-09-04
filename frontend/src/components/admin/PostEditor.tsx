@@ -603,7 +603,7 @@ const PostEditor: React.FC = () => {
                 {formData.coverUrl ? (
                   <div className="cover-preview">
                     <img
-                      src={apiService.getImageUrl(formData.coverUrl)}
+                      src={formData.coverUrl}
                       alt="Cover preview"
                       className="cover-image"
                     />
