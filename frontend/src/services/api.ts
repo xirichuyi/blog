@@ -1115,14 +1115,23 @@ class ApiService {
       });
 
       const data = await response.json();
+      console.log('File upload response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
 
+      // Handle different response structures
+      let extractedData;
+      if (data.data) {
+        extractedData = data.data;
+      } else {
+        extractedData = data;
+      }
+
       return {
         success: true,
-        data: data.data, // Extract the actual data from the response
+        data: extractedData,
       };
     } catch (error) {
       console.error('File upload failed:', error);
@@ -1147,14 +1156,35 @@ class ApiService {
       });
 
       const data = await response.json();
+      console.log('Cover upload response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
 
+      console.log('Extracted data:', data.data);
+
+      // Handle different response structures
+      let extractedData;
+      if (data.data && (data.data.file_url || data.data.cover_url)) {
+        // Normalize the field name to file_url
+        extractedData = {
+          ...data.data,
+          file_url: data.data.file_url || data.data.cover_url
+        };
+      } else if (data.file_url || data.cover_url) {
+        extractedData = {
+          ...data,
+          file_url: data.file_url || data.cover_url
+        };
+      } else {
+        console.error('Unexpected response structure:', data);
+        throw new Error('Invalid response structure: missing file_url or cover_url');
+      }
+
       return {
         success: true,
-        data: data.data, // Extract the actual data from the response
+        data: extractedData,
       };
     } catch (error) {
       console.error('Cover upload failed:', error);
@@ -1178,14 +1208,26 @@ class ApiService {
       });
 
       const data = await response.json();
+      console.log('Post image upload response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
 
+      // Handle different response structures
+      let extractedData;
+      if (data.data && data.data.file_url) {
+        extractedData = data.data;
+      } else if (data.file_url) {
+        extractedData = data;
+      } else {
+        console.error('Unexpected response structure:', data);
+        throw new Error('Invalid response structure: missing file_url');
+      }
+
       return {
         success: true,
-        data: data.data, // Extract the actual data from the response
+        data: extractedData,
       };
     } catch (error) {
       console.error('Image upload failed:', error);

@@ -60,6 +60,11 @@ const PostEditor: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Debug: Monitor cover URL changes
+  useEffect(() => {
+    console.log('Cover URL changed:', formData.coverUrl);
+  }, [formData.coverUrl]);
+
   // Helper function to extract image URLs from markdown content
   const extractImagesFromContent = (content: string): string[] => {
     const imageRegex = /!\[.*?\]\((.*?)\)/g;
@@ -264,14 +269,22 @@ const PostEditor: React.FC = () => {
       setIsUploadingCover(true);
 
       const result = await apiService.uploadPostCover(file, isEditing && id ? id : undefined);
+      console.log('Cover upload result:', result);
 
       if (result.success && result.data?.file_url) {
         const fullCoverUrl = apiService.getImageUrl(result.data.file_url);
+        // Add timestamp to avoid browser cache issues
+        const cacheBustedUrl = `${fullCoverUrl}?t=${Date.now()}`;
 
-        setFormData(prev => ({
-          ...prev,
-          coverUrl: fullCoverUrl,
-        }));
+        console.log('Updating cover URL:', cacheBustedUrl);
+        setFormData(prev => {
+          const newFormData = {
+            ...prev,
+            coverUrl: cacheBustedUrl,
+          };
+          console.log('New form data:', newFormData);
+          return newFormData;
+        });
 
         showNotification({
           type: 'success',
@@ -603,6 +616,7 @@ const PostEditor: React.FC = () => {
                 {formData.coverUrl ? (
                   <div className="cover-preview">
                     <img
+                      key={formData.coverUrl} // Force re-render when URL changes
                       src={formData.coverUrl}
                       alt="Cover preview"
                       className="cover-image"
@@ -658,6 +672,8 @@ const PostEditor: React.FC = () => {
                     if (file) {
                       handleCoverUpload(file);
                     }
+                    // Reset input to allow selecting the same file again
+                    e.target.value = '';
                   }}
                   style={{ display: 'none' }}
                 />
