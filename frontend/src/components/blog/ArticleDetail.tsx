@@ -294,6 +294,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
                   {...relatedArticle}
                   onClick={handleArticleClick}
                   className="related-article-card"
+                  simplified={true}
                 />
               ))}
             </div>

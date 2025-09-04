@@ -347,41 +347,13 @@
 
 .related-articles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--md-sys-spacing-6);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--md-sys-spacing-4);
 }
 
 .related-article-card {
   animation: relatedCardSlideIn var(--md-sys-motion-duration-medium3)
     var(--md-sys-motion-easing-emphasized);
-}
-
-/* Override ArticleCard styles for related articles */
-.related-articles .article-card {
-  border: none !important;
-  box-shadow: none !important;
-  --md-elevated-card-container-elevation: 0 !important;
-  background: var(--md-sys-color-surface-container-low) !important;
-  backdrop-filter: none !important;
-}
-
-.related-articles .article-card:hover {
-  box-shadow: none !important;
-  --md-elevated-card-container-elevation: 0 !important;
-  border: none !important;
-  background: var(--md-sys-color-surface-container) !important;
-}
-
-.related-articles .article-card-featured {
-  border: none !important;
-}
-
-.related-articles .article-card-featured-badge {
-  box-shadow: none !important;
-}
-
-.related-articles .article-card-footer {
-  border-top: none !important;
 }
 
 /* Loading and Error States */
@@ -616,56 +588,7 @@
   min-width: 180px;
 }
 
-/* Related Articles */
-.related-articles {
-  border-top: 1px solid var(--md-sys-color-outline-variant);
-  padding-top: var(--md-sys-spacing-8);
-}
 
-.related-articles-title {
-  margin: 0 0 var(--md-sys-spacing-6);
-  color: var(--md-sys-color-on-surface);
-  font-weight: 500;
-}
-
-.related-articles-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--md-sys-spacing-6);
-}
-
-.related-article-card {
-  animation: relatedCardSlideIn var(--md-sys-motion-duration-medium3)
-    var(--md-sys-motion-easing-emphasized);
-}
-
-/* Override ArticleCard styles for related articles */
-.related-articles .article-card {
-  border: none !important;
-  box-shadow: none !important;
-  --md-elevated-card-container-elevation: 0 !important;
-  background: var(--md-sys-color-surface-container-low) !important;
-  backdrop-filter: none !important;
-}
-
-.related-articles .article-card:hover {
-  box-shadow: none !important;
-  --md-elevated-card-container-elevation: 0 !important;
-  border: none !important;
-  background: var(--md-sys-color-surface-container) !important;
-}
-
-.related-articles .article-card-featured {
-  border: none !important;
-}
-
-.related-articles .article-card-featured-badge {
-  box-shadow: none !important;
-}
-
-.related-articles .article-card-footer {
-  border-top: none !important;
-}
 
 /* Animations */
 @keyframes articleSlideIn {

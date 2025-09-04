@@ -6,6 +6,7 @@ import './ArticleCard.css';
 interface ArticleCardProps extends Article {
   onClick?: (id: string) => void;
   className?: string;
+  simplified?: boolean; // Add simplified prop for related articles
 }
 
 const ArticleCard: React.FC<ArticleCardProps> = ({
@@ -20,7 +21,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
   imageUrl,
   featured = false,
   onClick,
-  className = ""
+  className = "",
+  simplified = false
 }) => {
   const handleClick = () => {
     if (onClick) {
@@ -44,6 +46,67 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     });
   };
 
+  // Simplified version for related articles
+  if (simplified) {
+    return (
+      <md-elevated-card
+        className={`article-card article-card-simplified ${className}`}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="article"
+        aria-label={`Article: ${title}`}
+      >
+        {imageUrl && (
+          <div className="article-card-media-simplified">
+            <img
+              src={apiService.getImageUrl(imageUrl)}
+              alt={title}
+              className="article-card-image"
+              loading="lazy"
+            />
+          </div>
+        )}
+
+        <div className="article-card-content-simplified">
+          <div className="article-card-header-simplified">
+            <md-assist-chip className="article-card-category-simplified">
+              {category}
+            </md-assist-chip>
+            <div className="article-card-meta-simplified">
+              <span className="article-card-date md-typescale-body-small">
+                {formatDate(publishDate)}
+              </span>
+              <span className="article-card-read-time md-typescale-body-small">
+                {readTime} min read
+              </span>
+            </div>
+          </div>
+
+          <h3 className="article-card-title-simplified md-typescale-title-medium">
+            {title}
+          </h3>
+
+          <div className="article-card-footer-simplified">
+            <div className="article-card-author-simplified">
+              <md-icon className="article-card-author-icon">person</md-icon>
+              <span className="article-card-author-name md-typescale-body-small">
+                {author}
+              </span>
+            </div>
+            <md-icon-button
+              className="article-card-action-simplified"
+              aria-label="Read article"
+            >
+              <md-icon>arrow_forward</md-icon>
+            </md-icon-button>
+          </div>
+        </div>
+      </md-elevated-card>
+    );
+  }
+
+  // Full version for main article listings
   return (
     <md-elevated-card
       className={`article-card ${featured ? 'article-card-featured' : ''} ${className}`}
@@ -100,7 +163,6 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
             <md-filter-chip
               key={index}
               className="article-card-tag"
-              disabled
             >
               {tag}
             </md-filter-chip>
