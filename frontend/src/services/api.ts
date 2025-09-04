@@ -381,8 +381,8 @@ class ApiService {
             tags: tags,
             featured: false,
             status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
-            imageUrl: post.cover_url ? `${API_BASE_URL}${post.cover_url}` : undefined,
-            coverImage: post.cover_url ? `${API_BASE_URL}${post.cover_url}` : undefined
+            imageUrl: post.cover_url ? this.getImageUrl(post.cover_url) : undefined,
+            coverImage: post.cover_url ? this.getImageUrl(post.cover_url) : undefined
           };
         });
 
@@ -484,8 +484,8 @@ class ApiService {
             tags: tags,
             featured: false,
             status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
-            imageUrl: post.cover_url ? `${API_BASE_URL}${post.cover_url}` : undefined,
-            coverImage: post.cover_url ? `${API_BASE_URL}${post.cover_url}` : undefined
+            imageUrl: post.cover_url ? this.getImageUrl(post.cover_url) : undefined,
+            coverImage: post.cover_url ? this.getImageUrl(post.cover_url) : undefined
           };
           return { success: true, data: article };
         }
@@ -551,8 +551,8 @@ class ApiService {
         tags: post.tags || [],
         featured: post.featured || false,
         status: post.status || 'draft',
-        imageUrl: backendPost.cover_url ? `${API_BASE_URL}${backendPost.cover_url}` : undefined,
-        coverImage: backendPost.cover_url ? `${API_BASE_URL}${backendPost.cover_url}` : undefined
+        imageUrl: backendPost.cover_url ? this.getImageUrl(backendPost.cover_url) : undefined,
+        coverImage: backendPost.cover_url ? this.getImageUrl(backendPost.cover_url) : undefined
       };
       return { success: true, data: article };
     } catch (error) {
@@ -621,8 +621,8 @@ class ApiService {
         tags: post.tags || [],
         featured: post.featured || false,
         status: post.status || 'draft',
-        imageUrl: backendPost.cover_url ? `${API_BASE_URL}${backendPost.cover_url}` : undefined,
-        coverImage: backendPost.cover_url ? `${API_BASE_URL}${backendPost.cover_url}` : undefined
+        imageUrl: backendPost.cover_url ? this.getImageUrl(backendPost.cover_url) : undefined,
+        coverImage: backendPost.cover_url ? this.getImageUrl(backendPost.cover_url) : undefined
       };
       return { success: true, data: article };
     } catch (error) {

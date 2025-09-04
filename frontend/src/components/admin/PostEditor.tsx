@@ -6,6 +6,8 @@ import { apiService } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useData } from '../../contexts/DataContext';
 import MarkdownRenderer from '../ui/MarkdownRenderer';
+import CoverUpload from '../ui/CoverUpload';
+import { useKeyboardShortcuts, createCommonShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 import AdminLayout from './AdminLayout';
 import './PostEditor.css';
@@ -43,27 +45,29 @@ const PostEditor: React.FC = () => {
     images: [],
   });
 
-  const [tagInput, setTagInput] = useState('');
-  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
 
   // Image upload states
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const coverInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  // Drag and drop states
+  // Drag and drop states for content area
   const [isDragOver, setIsDragOver] = useState(false);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Debug: Monitor cover URL changes
-  useEffect(() => {
-    console.log('Cover URL changed:', formData.coverUrl);
-  }, [formData.coverUrl]);
+  // Handle cover URL changes
+  const handleCoverChange = (url: string | null) => {
+    setFormData(prev => ({
+      ...prev,
+      coverUrl: url || ''
+    }));
+  };
+
+
 
   // Helper function to extract image URLs from markdown content
   const extractImagesFromContent = (content: string): string[] => {
@@ -146,10 +150,7 @@ const PostEditor: React.FC = () => {
     }
   }, [isEditing, id]);
 
-  // Debug: Monitor isUploadingImage state
-  useEffect(() => {
-    console.log('isUploadingImage state changed:', isUploadingImage);
-  }, [isUploadingImage]);
+
 
 
 
@@ -181,7 +182,7 @@ const PostEditor: React.FC = () => {
           category: categoryId,
           tags: post.tags,
           featured: post.featured || false,
-          status: post.status || 'draft',
+          status: (post.status === 'published' ? 'published' : 'draft') as 'draft' | 'published',
           coverUrl: post.coverImage || post.imageUrl || '',
           images: contentImages,
         });
@@ -202,15 +203,12 @@ const PostEditor: React.FC = () => {
     }));
   };
 
-  const handleAddTag = (tagName?: string) => {
-    const tag = (tagName || tagInput.trim());
-    if (tag && !formData.tags.includes(tag)) {
+  const handleAddTag = (tagName: string) => {
+    if (tagName && !formData.tags.includes(tagName)) {
       setFormData(prev => ({
         ...prev,
-        tags: [...prev.tags, tag],
+        tags: [...prev.tags, tagName],
       }));
-      setTagInput('');
-      setShowTagSuggestions(false);
     }
   };
 
@@ -225,117 +223,16 @@ const PostEditor: React.FC = () => {
     }));
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddTag();
-    }
-  };
 
-  const getAvailableTags = () => {
-    return availableTags.filter(tag =>
-      !formData.tags.includes(tag.name) &&
-      tag.name.toLowerCase().includes(tagInput.toLowerCase())
-    );
-  };
 
-  // Image upload functions
-  const handleCoverUpload = async (file: File) => {
-    if (!file) return;
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      showNotification({
-        type: 'error',
-        title: 'Invalid File Type',
-        message: 'Please select a valid image file (JPG, PNG, WebP, GIF)',
-      });
-      return;
-    }
 
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      showNotification({
-        type: 'error',
-        title: 'File Too Large',
-        message: 'Image size must be less than 10MB',
-      });
-      return;
-    }
-
-    try {
-      setIsUploadingCover(true);
-
-      const result = await apiService.uploadPostCover(file, isEditing && id ? id : undefined);
-      console.log('Cover upload result:', result);
-
-      if (result.success && result.data?.file_url) {
-        const fullCoverUrl = apiService.getImageUrl(result.data.file_url);
-        // Add timestamp to avoid browser cache issues
-        const cacheBustedUrl = `${fullCoverUrl}?t=${Date.now()}`;
-
-        console.log('Updating cover URL:', cacheBustedUrl);
-        setFormData(prev => {
-          const newFormData = {
-            ...prev,
-            coverUrl: cacheBustedUrl,
-          };
-          console.log('New form data:', newFormData);
-          return newFormData;
-        });
-
-        showNotification({
-          type: 'success',
-          title: isEditing ? 'Cover Updated' : 'Cover Uploaded',
-          message: isEditing
-            ? 'Post cover has been updated successfully'
-            : 'Cover image has been uploaded successfully',
-        });
-      } else {
-        throw new Error(result.error || 'Failed to upload cover');
-      }
-    } catch (error) {
-      console.error('Cover upload failed:', error);
-      showNotification({
-        type: 'error',
-        title: 'Upload Failed',
-        message: error instanceof Error ? error.message : 'Failed to upload cover image',
-      });
-    } finally {
-      setIsUploadingCover(false);
-    }
-  };
-
+  // Content image upload function (simplified)
   const handleContentImageUpload = async (file: File): Promise<string | null> => {
     if (!file) return null;
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      showNotification({
-        type: 'error',
-        title: 'Invalid File Type',
-        message: 'Please select a valid image file (JPG, PNG, WebP, GIF)',
-      });
-      return null;
-    }
-
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      showNotification({
-        type: 'error',
-        title: 'File Too Large',
-        message: 'Image size must be less than 10MB',
-      });
-      return null;
-    }
-
     try {
       setIsUploadingImage(true);
-
       const result = await apiService.uploadPostImage(file);
 
       if (result.success && result.data?.file_url) {
@@ -344,7 +241,6 @@ const PostEditor: React.FC = () => {
           title: 'Image Uploaded',
           message: 'Image has been uploaded successfully',
         });
-
         return apiService.getImageUrl(result.data.file_url);
       } else {
         throw new Error(result.error || 'Failed to upload image');
@@ -361,6 +257,8 @@ const PostEditor: React.FC = () => {
       setIsUploadingImage(false);
     }
   };
+
+
 
   // Handle drag and drop events for content area
   const handleContentDragOver = (e: React.DragEvent) => {
@@ -452,10 +350,7 @@ const PostEditor: React.FC = () => {
       !isSaving;
   };
 
-  const handleTagInputChange = (value: string) => {
-    setTagInput(value);
-    setShowTagSuggestions(value.length > 0);
-  };
+
 
   const handleSave = async (status: 'draft' | 'published') => {
     try {
@@ -473,6 +368,7 @@ const PostEditor: React.FC = () => {
         tags: formData.tags,
         featured: formData.featured,
         status,
+        coverImage: formData.coverUrl, // Use coverImage field name expected by API
         author: 'Admin', // This should come from auth context
         publishDate: status === 'published' ? new Date().toISOString() : undefined,
         readTime: Math.ceil((formData.content || '').split(' ').length / 200), // Estimate reading time
@@ -510,9 +406,73 @@ const PostEditor: React.FC = () => {
     }
   };
 
+  // Keyboard shortcuts
+  const shortcuts = createCommonShortcuts({
+    save: () => handleSave('draft'),
+    publish: () => handleSave('published'),
+    cancel: handleCancel,
+    preview: () => setPreviewMode(!previewMode)
+  });
+
+  useKeyboardShortcuts(shortcuts, { enabled: !isSaving });
+
+  // Simple title without complex breadcrumbs
+  const pageTitle = isEditing ? 'Edit Post' : 'New Post';
+
+  // Prepare header actions
+  const headerActions = (
+    <div className="editor-actions">
+      <md-text-button onClick={handleCancel}>
+        Cancel
+      </md-text-button>
+
+      <md-outlined-button
+        onClick={() => handleSave('draft')}
+
+      >
+        {isSaving ? (
+          <>
+            <md-circular-progress
+              indeterminate
+              slot="icon"
+              style={{ width: '18px', height: '18px' }}
+            ></md-circular-progress>
+            Saving...
+          </>
+        ) : (
+          <>
+            <md-icon slot="icon">save</md-icon>
+            Save Draft
+          </>
+        )}
+      </md-outlined-button>
+
+      <md-filled-button
+        onClick={() => handleSave('published')}
+
+      >
+        {isSaving ? (
+          <>
+            <md-circular-progress
+              indeterminate
+              slot="icon"
+              style={{ width: '18px', height: '18px' }}
+            ></md-circular-progress>
+            Publishing...
+          </>
+        ) : (
+          <>
+            <md-icon slot="icon">publish</md-icon>
+            Publish
+          </>
+        )}
+      </md-filled-button>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <AdminLayout title={isEditing ? 'Edit Post' : 'New Post'}>
+      <AdminLayout title={pageTitle}>
         <div className="post-editor-loading">
           <md-circular-progress indeterminate></md-circular-progress>
           <p className="md-typescale-body-medium">Loading post...</p>
@@ -522,7 +482,10 @@ const PostEditor: React.FC = () => {
   }
 
   return (
-    <AdminLayout title={isEditing ? 'Edit Post' : 'New Post'}>
+    <AdminLayout
+      title={pageTitle}
+      actions={headerActions}
+    >
       <div className="post-editor">
         {error && (
           <div className="post-editor-error">
@@ -530,61 +493,6 @@ const PostEditor: React.FC = () => {
             <span>{error}</span>
           </div>
         )}
-
-        {/* Header */}
-        <div className="post-editor-header">
-          <div className="editor-title">
-            <h1 className="md-typescale-display-small">
-              {isEditing ? 'Edit Post' : 'Create New Post'}
-            </h1>
-          </div>
-
-          <div className="editor-actions">
-            <md-text-button onClick={handleCancel}>
-              Cancel
-            </md-text-button>
-
-            <md-outlined-button
-              onClick={() => handleSave('draft')}
-            >
-              {isSaving ? (
-                <>
-                  <md-circular-progress
-                    indeterminate
-                    slot="icon"
-                    style={{ width: '18px', height: '18px' }}
-                  ></md-circular-progress>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <md-icon slot="icon">save</md-icon>
-                  Save Draft
-                </>
-              )}
-            </md-outlined-button>
-
-            <md-filled-button
-              onClick={() => handleSave('published')}
-            >
-              {isSaving ? (
-                <>
-                  <md-circular-progress
-                    indeterminate
-                    slot="icon"
-                    style={{ width: '18px', height: '18px' }}
-                  ></md-circular-progress>
-                  Publishing...
-                </>
-              ) : (
-                <>
-                  <md-icon slot="icon">publish</md-icon>
-                  Publish
-                </>
-              )}
-            </md-filled-button>
-          </div>
-        </div>
 
         {/* Form */}
         <div className="post-editor-form">
@@ -612,72 +520,14 @@ const PostEditor: React.FC = () => {
             {/* Cover Image Upload */}
             <div className="cover-upload-section">
               <label className="md-typescale-body-large">Cover Image</label>
-              <div className="cover-upload-container">
-                {formData.coverUrl ? (
-                  <div className="cover-preview">
-                    <img
-                      key={formData.coverUrl} // Force re-render when URL changes
-                      src={formData.coverUrl}
-                      alt="Cover preview"
-                      className="cover-image"
-                    />
-                    <div className="cover-overlay">
-                      <md-icon-button
-                        onClick={() => coverInputRef.current?.click()}
-                      >
-                        <md-icon>edit</md-icon>
-                      </md-icon-button>
-                      <md-icon-button
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, coverUrl: '' }));
-                          showNotification({ type: 'success', title: 'Cover Removed' });
-                        }}
-
-                      >
-                        <md-icon>delete</md-icon>
-                      </md-icon-button>
-                    </div>
-                    {isUploadingCover && (
-                      <div className="upload-progress">
-                        <md-circular-progress indeterminate></md-circular-progress>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    className="cover-upload-area"
-                    onClick={() => coverInputRef.current?.click()}
-                  >
-                    {isUploadingCover ? (
-                      <div className="upload-progress">
-                        <md-circular-progress indeterminate></md-circular-progress>
-                        <p className="md-typescale-body-medium">Uploading cover...</p>
-                      </div>
-                    ) : (
-                      <>
-                        <md-icon class="upload-icon">cloud_upload</md-icon>
-                        <p className="md-typescale-body-large">Upload Cover Image</p>
-                        <p className="md-typescale-body-small">Click to select or drag and drop</p>
-                        <p className="md-typescale-body-small">Supported: JPG, PNG, WebP, GIF (Max 10MB)</p>
-                      </>
-                    )}
-                  </div>
-                )}
-                <input
-                  ref={coverInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleCoverUpload(file);
-                    }
-                    // Reset input to allow selecting the same file again
-                    e.target.value = '';
-                  }}
-                  style={{ display: 'none' }}
-                />
-              </div>
+              <CoverUpload
+                value={formData.coverUrl}
+                onChange={handleCoverChange}
+                placeholder="Upload Cover Image"
+                maxSize={10}
+                supportPaste={true}
+                supportDragDrop={true}
+              />
             </div>
           </div>
 
@@ -793,57 +643,45 @@ const PostEditor: React.FC = () => {
               </div>
             </div>
 
-            {/* Tags */}
+            {/* Tags - Simplified */}
             <div className="tags-section">
               <div className="tags-input-container">
-                <div className="tags-input">
-                  <md-outlined-text-field
-                    label="Add tags"
-                    value={tagInput}
-                    onInput={(e: any) => handleTagInputChange(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    class="tag-input-field"
-                    placeholder="Type to search existing tags or add new ones"
-                  >
-                    <md-icon-button slot="trailing-icon" onClick={() => handleAddTag()}>
-                      <md-icon>add</md-icon>
-                    </md-icon-button>
-                  </md-outlined-text-field>
-                </div>
 
-                {/* Available Tags Suggestions */}
-                {showTagSuggestions && getAvailableTags().length > 0 && (
-                  <div className="tag-suggestions">
-                    <div className="suggestions-header">Available tags:</div>
-                    <div className="suggestions-list">
-                      {getAvailableTags().map(tag => (
-                        <md-assist-chip
-                          key={tag.id}
-                          label={tag.name}
-                          onClick={() => handleSelectExistingTag(tag.name)}
-                          class="suggestion-chip"
-                        >
-                          <md-icon slot="icon">add</md-icon>
-                          {tag.name}
-                        </md-assist-chip>
+                {/* Current Tags */}
+                {formData.tags.length > 0 && (
+                  <div className="current-tags">
+                    <div className="tags-list">
+                      {formData.tags.map((tag, index) => (
+                        <div key={index} className="current-tag-wrapper">
+                          <md-assist-chip className="tag-chip current-tag-chip">
+                            {tag}
+                          </md-assist-chip>
+                          <button
+                            className="remove-tag-btn"
+                            onClick={() => handleRemoveTag(tag)}
+                            title={`Remove ${tag} tag`}
+                          >
+                            ×
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Show all available tags when input is empty */}
-                {!showTagSuggestions && availableTags.length > 0 && (
-                  <div className="all-tags">
-                    <div className="suggestions-header">Available tags (click to add):</div>
+                {/* Quick Add Popular Tags */}
+                {availableTags.length > 0 && (
+                  <div className="popular-tags">
+                    <div className="suggestions-header">Popular tags:</div>
                     <div className="suggestions-list">
                       {availableTags
                         .filter(tag => !formData.tags.includes(tag.name))
+                        .slice(0, 8) // Show only first 8 popular tags
                         .map(tag => (
                           <md-assist-chip
                             key={tag.id}
-                            label={tag.name}
+                            className="available-chip"
                             onClick={() => handleSelectExistingTag(tag.name)}
-                            class="available-chip"
                           >
                             <md-icon slot="icon">add</md-icon>
                             {tag.name}
@@ -853,29 +691,6 @@ const PostEditor: React.FC = () => {
                   </div>
                 )}
               </div>
-
-              {/* Current Tags */}
-              {formData.tags.length > 0 && (
-                <div className="current-tags">
-                  <div className="suggestions-header">Current tags:</div>
-                  <div className="tags-list">
-                    {formData.tags.map((tag, index) => (
-                      <div key={index} className="current-tag-wrapper">
-                        <md-assist-chip class="tag-chip current-tag-chip">
-                          {tag}
-                        </md-assist-chip>
-                        <button
-                          className="remove-tag-btn"
-                          onClick={() => handleRemoveTag(tag)}
-                          title={`Remove ${tag} tag`}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

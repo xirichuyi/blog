@@ -37,30 +37,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize health check metrics
     health_handler::init_server_metrics();
 
-    // Configure CORS with specific origins
-    let cors_origins: Result<Vec<_>, _> = config
-        .cors
-        .origins
-        .iter()
-        .map(|origin| origin.parse())
-        .collect();
+    // Configure CORS - Allow all origins in development
+    let cors = if cfg!(debug_assertions) {
+        // Development mode - allow all origins
+        CorsLayer::permissive()
+    } else {
+        // Production mode - use specific origins
+        let cors_origins: Result<Vec<_>, _> = config
+            .cors
+            .origins
+            .iter()
+            .map(|origin| origin.parse())
+            .collect();
 
-    let cors_origins =
-        cors_origins.map_err(|e| format!("Invalid CORS origin configuration: {}", e))?;
+        let cors_origins =
+            cors_origins.map_err(|e| format!("Invalid CORS origin configuration: {}", e))?;
 
-    let cors = CorsLayer::new()
-        .allow_origin(cors_origins)
-        .allow_methods([
-            axum::http::Method::GET,
-            axum::http::Method::POST,
-            axum::http::Method::PUT,
-            axum::http::Method::DELETE,
-            axum::http::Method::OPTIONS,
-        ])
-        .allow_headers([
-            axum::http::header::CONTENT_TYPE,
-            axum::http::header::AUTHORIZATION,
-        ]);
+        CorsLayer::new()
+            .allow_origin(cors_origins)
+            .allow_methods([
+                axum::http::Method::GET,
+                axum::http::Method::POST,
+                axum::http::Method::PUT,
+                axum::http::Method::DELETE,
+                axum::http::Method::OPTIONS,
+            ])
+            .allow_headers([
+                axum::http::header::CONTENT_TYPE,
+                axum::http::header::AUTHORIZATION,
+            ])
+    };
 
     // Build application routes
     let app = routes::create_app(database.clone(), &config)

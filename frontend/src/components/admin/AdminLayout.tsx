@@ -3,11 +3,15 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import ShortcutsHelp from '../ui/ShortcutsHelp';
+import { createCommonShortcuts } from '../../hooks/useKeyboardShortcuts';
 import './AdminLayout.css';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
   title?: string;
+  breadcrumbs?: { label: string; path?: string }[];
+  actions?: React.ReactNode;
 }
 
 interface NavigationItem {
@@ -45,7 +49,12 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
-const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin Dashboard' }) => {
+const AdminLayout: React.FC<AdminLayoutProps> = ({
+  children,
+  title = 'Admin Dashboard',
+  breadcrumbs = [],
+  actions
+}) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -75,26 +84,63 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title = 'Admin Dash
       <header className="admin-header">
         <div className="admin-header-content">
           <div className="admin-header-start">
-            <md-icon-button onClick={toggleSidebar} class="sidebar-toggle">
+            <md-icon-button onClick={toggleSidebar} className="sidebar-toggle">
               <md-icon>menu</md-icon>
             </md-icon-button>
-            <h1 className="admin-title md-typescale-headline-small">{title}</h1>
+            <div className="header-title-section">
+              {breadcrumbs.length > 0 && (
+                <nav className="breadcrumbs">
+                  {breadcrumbs.map((crumb, index) => (
+                    <span key={index} className="breadcrumb-item">
+                      {crumb.path ? (
+                        <button
+                          className="breadcrumb-link"
+                          onClick={() => navigate(crumb.path!)}
+                        >
+                          {crumb.label}
+                        </button>
+                      ) : (
+                        <span className="breadcrumb-current">{crumb.label}</span>
+                      )}
+                      {index < breadcrumbs.length - 1 && (
+                        <md-icon className="breadcrumb-separator">chevron_right</md-icon>
+                      )}
+                    </span>
+                  ))}
+                </nav>
+              )}
+              <h1 className="admin-title md-typescale-headline-small">{title}</h1>
+            </div>
           </div>
 
           <div className="admin-header-end">
-            <md-icon-button class="header-action">
+            {actions && (
+              <div className="header-actions">
+                {actions}
+              </div>
+            )}
+
+            <ShortcutsHelp
+              shortcuts={createCommonShortcuts({
+                newItem: () => navigate('/admin/posts/new'),
+                search: () => { }, // Could implement global search
+                refresh: () => window.location.reload()
+              })}
+            />
+
+            <md-icon-button className="header-action">
               <md-icon>notifications</md-icon>
             </md-icon-button>
 
             <div className="user-menu">
-              <md-icon-button class="user-avatar">
+              <md-icon-button className="user-avatar">
                 <md-icon>account_circle</md-icon>
               </md-icon-button>
               <div className="user-info">
                 <span className="user-name md-typescale-body-medium">{user?.username}</span>
                 <span className="user-role md-typescale-body-small">{user?.role}</span>
               </div>
-              <md-icon-button onClick={handleLogout} class="logout-button">
+              <md-icon-button onClick={handleLogout} className="logout-button">
                 <md-icon>logout</md-icon>
               </md-icon-button>
             </div>

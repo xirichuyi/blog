@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { apiService } from '../../services/api';
 import './EnhancedFileUpload.css';
 
@@ -22,6 +22,12 @@ interface EnhancedFileUploadProps {
   disabled?: boolean;
   dragAndDrop?: boolean;
   showPreview?: boolean;
+  // New props for enhanced functionality
+  mode?: 'default' | 'cover' | 'inline'; // Different upload modes
+  existingUrl?: string; // For editing existing files
+  onUrlChange?: (url: string | null) => void; // Callback for URL changes
+  placeholder?: string; // Custom placeholder text
+  supportPaste?: boolean; // Enable paste functionality
 }
 
 const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
@@ -34,14 +40,64 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
   className = '',
   disabled = false,
   dragAndDrop = true,
-  showPreview = true
+  showPreview = true,
+  mode = 'default',
+  existingUrl,
+  onUrlChange,
+  placeholder,
+  supportPaste = true
 }) => {
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(existingUrl || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Generate unique ID for files
   const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  // Update current URL when existingUrl changes
+  useEffect(() => {
+    setCurrentUrl(existingUrl || null);
+  }, [existingUrl]);
+
+  // Handle paste events
+  useEffect(() => {
+    if (!supportPaste || disabled) return;
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      // Only handle paste if the container is focused or contains the active element
+      if (!containerRef.current?.contains(document.activeElement)) return;
+
+      const clipboardData = e.clipboardData;
+      if (!clipboardData) return;
+
+      // Check for files in clipboard
+      const files = Array.from(clipboardData.files);
+      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFileSelect(imageFiles);
+        return;
+      }
+
+      // Check for image data in clipboard (e.g., from screenshots)
+      const items = Array.from(clipboardData.items);
+      const imageItems = items.filter(item => item.type.startsWith('image/'));
+
+      if (imageItems.length > 0) {
+        e.preventDefault();
+        const imageFiles = await Promise.all(
+          imageItems.map(item => item.getAsFile()).filter(Boolean)
+        );
+        handleFileSelect(imageFiles);
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [supportPaste, disabled]);
 
   // Validate file
   const validateFile = (file: File): string | null => {
@@ -123,21 +179,30 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
       clearInterval(progressInterval);
 
       if (response.success && response.data) {
+        const uploadedUrl = response.data.url || response.data.file_url;
+
         setFiles(prev => prev.map(f =>
           f.id === uploadFile.id
             ? {
               ...f,
               status: 'success',
               progress: 100,
-              url: response.data.url
+              url: uploadedUrl
             }
             : f
         ));
 
+        // For cover mode, update current URL immediately
+        if (mode === 'cover' && !multiple) {
+          const fullUrl = uploadedUrl.startsWith('http') ? uploadedUrl : apiService.getImageUrl(uploadedUrl);
+          setCurrentUrl(fullUrl);
+          onUrlChange?.(fullUrl);
+        }
+
         // Check if all files are uploaded
         const updatedFiles = files.map(f =>
           f.id === uploadFile.id
-            ? { ...f, status: 'success' as const, url: response.data.url }
+            ? { ...f, status: 'success' as const, url: uploadedUrl }
             : f
         );
 
@@ -167,6 +232,13 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
   // Remove file
   const removeFile = (fileId: string) => {
     setFiles(prev => prev.filter(f => f.id !== fileId));
+  };
+
+  // Remove current URL (for cover mode)
+  const removeCurrentUrl = () => {
+    setCurrentUrl(null);
+    onUrlChange?.(null);
+    setFiles([]); // Clear any pending uploads
   };
 
   // Retry upload
@@ -230,9 +302,81 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  return (
-    <div className={`enhanced-file-upload ${className}`}>
-      {/* Hidden file input */}
+  // Render cover mode
+  const renderCoverMode = () => (
+    <div className={`enhanced-file-upload cover-mode ${className}`} ref={containerRef}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept}
+        onChange={handleInputChange}
+        style={{ display: 'none' }}
+        disabled={disabled}
+      />
+
+      {currentUrl ? (
+        <div className="cover-preview">
+          <img src={currentUrl} alt="Cover preview" className="cover-image" />
+          <div className="cover-overlay">
+            <md-icon-button onClick={openFileDialog} title="Change cover">
+              <md-icon>edit</md-icon>
+            </md-icon-button>
+            <md-icon-button onClick={removeCurrentUrl} title="Remove cover">
+              <md-icon>delete</md-icon>
+            </md-icon-button>
+          </div>
+          {files.some(f => f.status === 'uploading') && (
+            <div className="upload-progress-overlay">
+              <md-circular-progress indeterminate></md-circular-progress>
+              <span>Uploading...</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div
+          className={`cover-upload-zone ${isDragOver ? 'drag-over' : ''} ${disabled ? 'disabled' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={openFileDialog}
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && openFileDialog()}
+        >
+          {files.some(f => f.status === 'uploading') ? (
+            <div className="upload-progress-content">
+              <md-circular-progress indeterminate></md-circular-progress>
+              <p className="md-typescale-body-medium">Uploading cover...</p>
+            </div>
+          ) : (
+            <div className="upload-content">
+              <md-icon class="upload-icon">cloud_upload</md-icon>
+              <h3 className="md-typescale-title-medium">
+                {placeholder || 'Upload Cover Image'}
+              </h3>
+              <p className="md-typescale-body-medium">
+                {dragAndDrop ? 'Drag & drop, click to browse' : 'Click to select'}
+                {supportPaste ? ', or paste from clipboard' : ''}
+              </p>
+              <p className="md-typescale-body-small">
+                {accept === 'image/*' ? 'Images only' : `Accepted: ${accept}`} • Max {maxSize}MB
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {files.some(f => f.status === 'error') && (
+        <div className="upload-error">
+          <md-icon>error</md-icon>
+          <span>{files.find(f => f.status === 'error')?.error}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  // Render default mode
+  const renderDefaultMode = () => (
+    <div className={`enhanced-file-upload ${className}`} ref={containerRef}>
       <input
         ref={fileInputRef}
         type="file"
@@ -243,29 +387,31 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
         disabled={disabled}
       />
 
-      {/* Drop zone */}
       <div
         className={`upload-dropzone ${isDragOver ? 'drag-over' : ''} ${disabled ? 'disabled' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={openFileDialog}
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && openFileDialog()}
       >
         <div className="dropzone-content">
           <md-icon class="upload-icon">cloud_upload</md-icon>
           <h3 className="md-typescale-title-medium">
-            {dragAndDrop ? 'Drop files here or click to browse' : 'Click to select files'}
+            {placeholder || (dragAndDrop ? 'Drop files here or click to browse' : 'Click to select files')}
           </h3>
           <p className="md-typescale-body-medium upload-info">
             {accept === 'image/*' ? 'Images only' : `Accepted: ${accept}`} •
             Max {maxSize}MB •
             {multiple ? `Up to ${maxFiles} files` : 'Single file'}
+            {supportPaste ? ' • Paste supported' : ''}
           </p>
         </div>
       </div>
 
-      {/* File list */}
-      {files.length > 0 && (
+      {/* File list for default mode */}
+      {files.length > 0 && mode === 'default' && (
         <div className="upload-files-list">
           {files.map((uploadFile) => (
             <div key={uploadFile.id} className={`upload-file-item ${uploadFile.status}`}>
@@ -337,6 +483,9 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
       )}
     </div>
   );
+
+  // Return appropriate mode
+  return mode === 'cover' ? renderCoverMode() : renderDefaultMode();
 };
 
 export default EnhancedFileUpload;
