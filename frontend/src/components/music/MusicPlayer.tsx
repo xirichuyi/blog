@@ -29,7 +29,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   // Update audio element when track changes
   useEffect(() => {
     if (audioRef.current && track) {
-      audioRef.current.src = track.fileUrl;
+      audioRef.current.src = track.file_url;
       audioRef.current.load();
     }
   }, [track]);
@@ -117,8 +117,8 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       <div className="player-content">
         {/* Track Info */}
         <div className="track-info">
-          {track.coverUrl ? (
-            <img src={track.coverUrl} alt={track.title} className="track-cover" />
+          {track.cover_url ? (
+            <img src={track.cover_url} alt={track.title} className="track-cover" />
           ) : (
             <div className="track-cover default">
               <md-icon>music_note</md-icon>
@@ -137,11 +137,11 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
               <md-icon>skip_previous</md-icon>
             </md-icon-button>
           )}
-          
+
           <md-icon-button onClick={onPlayPause} class="play-button">
             <md-icon>{isPlaying ? 'pause' : 'play_arrow'}</md-icon>
           </md-icon-button>
-          
+
           {onNext && (
             <md-icon-button onClick={onNext}>
               <md-icon>skip_next</md-icon>

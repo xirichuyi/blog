@@ -99,8 +99,8 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
 
   // Upload single file
   const uploadFile = async (uploadFile: UploadFile) => {
-    setFiles(prev => prev.map(f => 
-      f.id === uploadFile.id 
+    setFiles(prev => prev.map(f =>
+      f.id === uploadFile.id
         ? { ...f, status: 'uploading', progress: 0 }
         : f
     ));
@@ -111,31 +111,31 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
 
       // Simulate progress for better UX
       const progressInterval = setInterval(() => {
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === uploadFile.id && f.progress < 90
             ? { ...f, progress: f.progress + Math.random() * 20 }
             : f
         ));
       }, 200);
 
-      const response = await apiService.uploadFile(formData);
+      const response = await apiService.uploadFile(uploadFile.file, 'image');
 
       clearInterval(progressInterval);
 
       if (response.success && response.data) {
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === uploadFile.id
-            ? { 
-                ...f, 
-                status: 'success', 
-                progress: 100, 
-                url: response.data.url 
-              }
+            ? {
+              ...f,
+              status: 'success',
+              progress: 100,
+              url: response.data.url
+            }
             : f
         ));
 
         // Check if all files are uploaded
-        const updatedFiles = files.map(f => 
+        const updatedFiles = files.map(f =>
           f.id === uploadFile.id
             ? { ...f, status: 'success' as const, url: response.data.url }
             : f
@@ -153,8 +153,8 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-      
-      setFiles(prev => prev.map(f => 
+
+      setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
           ? { ...f, status: 'error', error: errorMessage }
           : f
@@ -193,7 +193,7 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
+
     if (!disabled && dragAndDrop) {
       handleFileSelect(e.dataTransfer.files);
     }
@@ -257,8 +257,8 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
             {dragAndDrop ? 'Drop files here or click to browse' : 'Click to select files'}
           </h3>
           <p className="md-typescale-body-medium upload-info">
-            {accept === 'image/*' ? 'Images only' : `Accepted: ${accept}`} • 
-            Max {maxSize}MB • 
+            {accept === 'image/*' ? 'Images only' : `Accepted: ${accept}`} •
+            Max {maxSize}MB •
             {multiple ? `Up to ${maxFiles} files` : 'Single file'}
           </p>
         </div>
@@ -273,8 +273,8 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
               {showPreview && (
                 <div className="file-preview">
                   {getFilePreview(uploadFile.file) ? (
-                    <img 
-                      src={getFilePreview(uploadFile.file)!} 
+                    <img
+                      src={getFilePreview(uploadFile.file)!}
                       alt={uploadFile.file.name}
                       onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
                     />
@@ -302,7 +302,7 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
               {/* Progress bar */}
               {uploadFile.status === 'uploading' && (
                 <div className="file-progress">
-                  <md-linear-progress 
+                  <md-linear-progress
                     value={uploadFile.progress / 100}
                   ></md-linear-progress>
                   <span className="progress-text md-typescale-body-small">
@@ -317,14 +317,14 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
                   <md-icon class="status-icon success">check_circle</md-icon>
                 )}
                 {uploadFile.status === 'error' && (
-                  <md-icon-button 
+                  <md-icon-button
                     onClick={() => retryUpload(uploadFile.id)}
                     title="Retry upload"
                   >
                     <md-icon>refresh</md-icon>
                   </md-icon-button>
                 )}
-                <md-icon-button 
+                <md-icon-button
                   onClick={() => removeFile(uploadFile.id)}
                   title="Remove file"
                 >

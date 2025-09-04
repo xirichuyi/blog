@@ -54,7 +54,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
               {children}
             </pre>
           ),
-          code: ({ inline, children, ...props }) => {
+          code: ({ children, ...props }: any) => {
+            const inline = props.inline;
             if (inline) {
               return <code className="inline-code" {...props}>{children}</code>;
             }

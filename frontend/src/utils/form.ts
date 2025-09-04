@@ -61,8 +61,8 @@ export function canSubmitForm(
   isSubmitting: boolean = false
 ): boolean {
   if (isSubmitting) return false;
-  
-  return requiredFields.every(field => 
+
+  return requiredFields.every(field =>
     formData[field] && formData[field].trim().length > 0
   );
 }
@@ -75,7 +75,7 @@ export function resetFormData<T extends Record<string, string>>(
 ): T {
   const resetData = {} as T;
   for (const key in initialData) {
-    resetData[key] = '' as T[keyof T];
+    (resetData as any)[key] = '';
   }
   return resetData;
 }
@@ -149,7 +149,7 @@ export class FormStateManager<T extends Record<string, string>> {
   }
 
   setField(field: keyof T, value: string): void {
-    this.data[field] = value;
+    (this.data as any)[field] = value;
     this.touched[field] = true;
   }
 

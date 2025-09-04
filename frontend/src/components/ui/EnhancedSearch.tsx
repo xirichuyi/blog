@@ -76,9 +76,9 @@ const EnhancedSearch: React.FC<EnhancedSearchProps> = ({
         if (articlesResponse.success && articlesResponse.data) {
           setAllArticles(articlesResponse.data);
 
-          const uniqueCategories = [...new Set(articlesResponse.data.map(a => a.category))];
-          const uniqueTags = [...new Set(articlesResponse.data.flatMap(a => a.tags))];
-          const uniqueAuthors = [...new Set(articlesResponse.data.map(a => a.author))];
+          const uniqueCategories = [...new Set(articlesResponse.data.map((a: any) => a.category))].filter(Boolean) as string[];
+          const uniqueTags = [...new Set(articlesResponse.data.flatMap((a: any) => a.tags || []))].filter(Boolean) as string[];
+          const uniqueAuthors = [...new Set(articlesResponse.data.map((a: any) => a.author))].filter(Boolean) as string[];
 
           setCategories(uniqueCategories);
           setTags(uniqueTags);

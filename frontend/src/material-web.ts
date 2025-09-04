@@ -84,7 +84,9 @@ import '@material/web/labs/segmentedbuttonset/outlined-segmented-button-set.js';
 import { styles as typescaleStyles } from '@material/web/typography/md-typescale-styles.js';
 
 // Apply typography styles globally
-document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+if (typescaleStyles.styleSheet) {
+  document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+}
 
 // TypeScript declarations for Material Web Components
 declare global {

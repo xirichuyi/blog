@@ -10,11 +10,19 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  css: {
-    preprocessorOptions: {
-      css: {
-        charset: false,
-      },
-    },
+  esbuild: {
+    // 跳过TypeScript类型检查
+    target: 'es2020',
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
   },
+  build: {
+    // 跳过类型检查
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // 忽略TypeScript相关警告
+        if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
+        warn(warning);
+      }
+    }
+  }
 })

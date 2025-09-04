@@ -17,8 +17,10 @@ export class SmartCacheManager {
   private cache = new Map<string, CacheEntry<any>>();
   private accessOrder = new Map<string, number>(); // For LRU eviction
   private accessCounter = 0;
-  
-  constructor(private options: CacheOptions = {}) {
+
+  private options: CacheOptions;
+
+  constructor(options: CacheOptions = {}) {
     this.options = {
       ttl: 5 * 60 * 1000, // 5 minutes default
       maxSize: 100,
@@ -48,7 +50,7 @@ export class SmartCacheManager {
   // Get cache entry
   get<T>(key: string): T | null {
     const entry = this.cache.get(key) as CacheEntry<T> | undefined;
-    
+
     if (!entry) {
       return null;
     }
@@ -86,7 +88,7 @@ export class SmartCacheManager {
     if (entry && this.options.onEvict) {
       this.options.onEvict(key, entry);
     }
-    
+
     this.accessOrder.delete(key);
     return this.cache.delete(key);
   }
@@ -98,7 +100,7 @@ export class SmartCacheManager {
         this.options.onEvict(key, entry);
       }
     }
-    
+
     this.cache.clear();
     this.accessOrder.clear();
     this.accessCounter = 0;
@@ -161,7 +163,7 @@ export class SmartCacheManager {
   // Invalidate entries by pattern
   invalidatePattern(pattern: RegExp): number {
     let invalidatedCount = 0;
-    
+
     for (const key of this.cache.keys()) {
       if (pattern.test(key)) {
         this.delete(key);
@@ -200,18 +202,18 @@ export const globalCache = new SmartCacheManager({
 
 // Cache key generators
 export const CacheKeys = {
-  articles: (page?: number, pageSize?: number, status?: string) => 
+  articles: (page?: number, pageSize?: number, status?: string) =>
     `articles:${page || 1}:${pageSize || 12}:${status || 'published'}`,
-  
+
   article: (id: string) => `article:${id}`,
-  
+
   articlesByCategory: (categoryId: string) => `articles:category:${categoryId}`,
-  
+
   articlesByTag: (tagName: string) => `articles:tag:${tagName}`,
-  
+
   categories: () => 'categories',
-  
+
   tags: () => 'tags',
-  
+
   relatedArticles: (articleId: string) => `related:${articleId}`
 };

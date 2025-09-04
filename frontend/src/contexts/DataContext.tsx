@@ -164,7 +164,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           setArticles(response.data);
 
           // Cache individual articles
-          response.data.forEach(article => {
+          response.data.forEach((article: any) => {
             articleCache.current.set(article.id, {
               article,
               timestamp: Date.now()
@@ -232,7 +232,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           setArticles(response.data);
 
           // Cache individual articles
-          response.data.forEach(article => {
+          response.data.forEach((article: any) => {
             articleCache.current.set(article.id, {
               article,
               timestamp: Date.now()
@@ -268,7 +268,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           setArticles(response.data);
 
           // Cache individual articles
-          response.data.forEach(article => {
+          response.data.forEach((article: any) => {
             articleCache.current.set(article.id, {
               article,
               timestamp: Date.now()

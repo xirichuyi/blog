@@ -1,6 +1,7 @@
 // Notification Context for showing success/error messages
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 
 export interface Notification {
   id: string;
@@ -37,7 +38,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     setNotifications(prev => [...prev, newNotification]);
 
     // Auto remove after duration
-    if (newNotification.duration > 0) {
+    if (newNotification.duration && newNotification.duration > 0) {
       setTimeout(() => {
         removeNotification(id);
       }, newNotification.duration);

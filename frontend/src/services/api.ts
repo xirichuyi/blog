@@ -5,7 +5,7 @@ import { storageService } from './storage';
 import { globalCache, CacheKeys } from '../utils/cacheManager';
 
 // API Configuration
-const API_BASE_URL =  'http://127.0.0.1:3007';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://172.245.148.234:3007';
 const API_PREFIX = '/api';
 
 // Backend response typing helpers

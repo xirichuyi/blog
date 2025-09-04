@@ -30,7 +30,9 @@ import { styles as typescaleStyles } from '@material/web/typography/md-typescale
 
 // Apply typography styles to document
 if (typeof document !== 'undefined') {
-  document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+  if (typescaleStyles.styleSheet) {
+    document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+  }
 }
 
 // Material Web Component Type Declarations for TypeScript

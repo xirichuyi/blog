@@ -1,6 +1,7 @@
 // Authentication Context for managing auth state
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import type { AuthState, AuthContextType, LoginCredentials, AdminUser } from '../types';
 import { apiService } from '../services/api';
 
@@ -144,15 +145,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.success && response.data?.success && response.data.token && response.data.user) {
         const { token, user } = response.data;
-        
+
         // Store token in localStorage
         localStorage.setItem('admin_token', token);
-        
+
         dispatch({
           type: 'LOGIN_SUCCESS',
           payload: { user, token },
         });
-        
+
         return true;
       } else {
         const errorMessage = response.data?.message || response.error || 'Login failed';
@@ -173,7 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuth = useCallback(async (): Promise<boolean> => {
     const token = localStorage.getItem('admin_token');
-    
+
     if (!token) {
       dispatch({ type: 'CHECK_AUTH_FAILURE' });
       return false;
@@ -193,7 +194,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         type: 'CHECK_AUTH_SUCCESS',
         payload: { user, token },
       });
-      
+
       return true;
     } catch (error) {
       localStorage.removeItem('admin_token');
