@@ -71,7 +71,7 @@ const BlogHome: React.FC = () => {
   // 加载文章数据
   useEffect(() => {
     if (articles.length === 0 && !isLoading) {
-      fetchArticles(1, 7); // 首页显示前7篇文章
+      fetchArticles(1, 7); // 首页显示前7篇文章 (已优化)
     }
   }, [articles.length, isLoading, fetchArticles]);
 

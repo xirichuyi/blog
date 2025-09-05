@@ -1,6 +1,8 @@
 use crate::database::repositories::TagRepository;
 use crate::database::{repositories::PostRepository, Database};
-use crate::models::{CreatePostRequest, Post, PostListQuery, PostWithTags, UpdatePostRequest};
+use crate::models::{
+    CreatePostRequest, Post, PostListQuery, PostWithDetails, PostWithTags, UpdatePostRequest,
+};
 use crate::utils::error::{AppError, Result};
 use crate::utils::FileHandler;
 
@@ -46,6 +48,13 @@ impl PostService {
 
     pub async fn list_posts(&self, query: PostListQuery) -> Result<(Vec<Post>, i64)> {
         PostRepository::list(self.database.pool(), query).await
+    }
+
+    pub async fn list_posts_with_details(
+        &self,
+        query: PostListQuery,
+    ) -> Result<(Vec<PostWithDetails>, i64)> {
+        PostRepository::list_with_details(self.database.pool(), query).await
     }
 
     pub async fn update_post(&self, id: i64, request: UpdatePostRequest) -> Result<Option<Post>> {

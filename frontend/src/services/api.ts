@@ -318,7 +318,7 @@ class ApiService {
   }
 
   // Blog Management APIs
-  async getPosts(params?: { status?: string; search?: string; category?: string; page?: number; page_size?: number }): Promise<ApiResponse<Article[]>> {
+  async getPosts(params?: { status?: string; search?: string; category?: string; tag_id?: number; page?: number; page_size?: number }): Promise<ApiResponse<Article[]>> {
     try {
       const queryParams = new URLSearchParams();
 
@@ -336,38 +336,32 @@ class ApiService {
       if (params?.category) {
         queryParams.append('category_id', params.category);
       }
+      if (params?.search) {
+        queryParams.append('search', params.search);
+      }
+      if (params?.tag_id) {
+        queryParams.append('tag_id', params.tag_id.toString());
+      }
 
-      const url = `/post/list${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      const response = await this.request<BackendListResponse<BackendPost>>(url);
+      // Use the optimized endpoint that includes tags and category names
+      const url = `/post/list_with_details${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+      interface BackendPostWithDetails {
+        post: BackendPost;
+        tags: Array<{ id: number; name: string; created_at: string; updated_at: string }>;
+        category_name?: string;
+      }
+
+      const response = await this.request<BackendListResponse<BackendPostWithDetails>>(url);
 
       if (response.success && response.data) {
-        // 使用缓存获取categories，避免重复请求
-        const cacheKey = CacheKeys.categories();
-        const categoryMap: Map<string, string> = this.getCachedData<Map<string, string>>(cacheKey) ?? new Map<string, string>();
+        // Transform backend response to frontend format - no need for additional API calls!
+        const backendData: BackendListResponse<BackendPostWithDetails> = response.data as BackendListResponse<BackendPostWithDetails>;
 
-        // 完全避免在getPosts中调用getPublicCategories，防止循环调用
-        // 分类数据应该由DataContext统一管理
-        if (categoryMap.size === 0) {
-          // 先尝试从全局缓存获取
-          const cachedCategories = this.getCachedData<Category[]>('public_categories');
-          if (cachedCategories && cachedCategories.length > 0) {
-            cachedCategories.forEach((cat: Category) => {
-              categoryMap.set(cat.id, cat.name);
-            });
-            this.setCachedData(cacheKey, categoryMap);
-          }
-          // 如果缓存中没有分类数据，使用默认值，不再发起请求
-        }
-
-        // Transform backend response to frontend format
-        const backendData: BackendListResponse<BackendPost> = response.data as BackendListResponse<BackendPost>;
-        const postIds = (backendData.data || []).map((post) => post.id.toString());
-
-        // 批量获取所有文章的tags，避免N+1查询
-        const tagsMap = await this.getBatchPostTags(postIds);
-
-        const articles: Article[] = (backendData.data || []).map((post) => {
-          const tags = tagsMap.get(post.id.toString()) || [];
+        const articles: Article[] = (backendData.data || []).map((postWithDetails) => {
+          const post = postWithDetails.post;
+          const tags = postWithDetails.tags.map(tag => tag.name);
+          const category = postWithDetails.category_name || 'Uncategorized';
 
           return {
             id: post.id.toString(),
@@ -377,7 +371,7 @@ class ApiService {
             author: 'chuyi',
             publishDate: post.created_at,
             readTime: Math.ceil(post.content.length / 1000),
-            category: post.category_id ? (categoryMap.get(post.category_id.toString()) || 'Uncategorized') : 'Uncategorized',
+            category: category,
             tags: tags,
             featured: false,
             status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
@@ -395,7 +389,10 @@ class ApiService {
         };
       }
 
-      return response;
+      return {
+        success: false,
+        error: 'Failed to fetch posts with details',
+      };
     } catch (error) {
       return {
         success: false,
@@ -798,41 +795,23 @@ class ApiService {
     }
   }
 
-  // Get articles by tag
+  // Get articles by tag - now using backend filtering
   async getPostsByTag(tagId: string): Promise<ApiResponse<Article[]>> {
     try {
-      // 使用缓存获取标签数据，避免重复请求
-      const cachedTags = this.getCachedData<Tag[]>('public_tags');
-      let targetTag: Tag | undefined;
-
-      if (cachedTags && cachedTags.length > 0) {
-        targetTag = cachedTags.find((tag: Tag) => tag.id === tagId);
-      } else {
-        // 如果缓存中没有标签数据，直接使用标签ID作为名称
-        // 这是一个临时解决方案，避免循环调用
-        targetTag = { id: tagId, name: tagId, count: 0 };
-      }
-
-      if (!targetTag) {
+      // Convert tagId to number for backend API
+      const tagIdNum = parseInt(tagId);
+      if (isNaN(tagIdNum)) {
         return {
           success: false,
-          error: 'Tag not found',
+          error: 'Invalid tag ID',
         };
       }
 
-      // Since backend doesn't support tag filtering in getPosts,
-      // we need to get all posts and filter by tag name on frontend
-      const postsResponse = await this.getPosts({ page_size: 1000 });
-      if (!postsResponse.success || !postsResponse.data) {
-        return postsResponse;
-      }
-
-      // Filter posts that have the specified tag name
-      const filteredPosts = postsResponse.data.filter((post: Article) =>
-        post.tags.some((tagName: string) => tagName === targetTag!.name)
-      );
-
-      return { success: true, data: filteredPosts };
+      // Use the optimized backend endpoint with tag filtering
+      return this.getPosts({
+        tag_id: tagIdNum,
+        page_size: 1000
+      });
     } catch (error) {
       return {
         success: false,

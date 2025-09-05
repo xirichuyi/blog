@@ -141,12 +141,21 @@ pub struct PostWithTags {
     pub tags: Vec<super::tag::Tag>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct PostWithDetails {
+    pub post: Post,
+    pub tags: Vec<super::tag::Tag>,
+    pub category_name: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct PostListQuery {
     pub page: Option<u32>,
     pub page_size: Option<u32>,
     pub category_id: Option<i64>,
     pub status: Option<PostStatus>,
+    pub search: Option<String>,
+    pub tag_id: Option<i64>,
 }
 
 impl Default for PostListQuery {
@@ -156,6 +165,8 @@ impl Default for PostListQuery {
             page_size: Some(10),
             category_id: None,
             status: None,
+            search: None,
+            tag_id: None,
         }
     }
 }

@@ -78,6 +78,34 @@ pub async fn list_posts(
     }
 }
 
+pub async fn list_posts_with_details(
+    State(app_state): State<AppState>,
+    Query(query): Query<PostListQuery>,
+) -> Result<Json<ApiListResponse<crate::models::PostWithDetails>>, StatusCode> {
+    let file_handler = FileHandler::new(
+        app_state.config.storage.upload_dir,
+        app_state.config.storage.max_file_size,
+    );
+    let service = PostService::new(app_state.database, file_handler);
+
+    match service.list_posts_with_details(query.clone()).await {
+        Ok((posts, total)) => {
+            let page = query.page.unwrap_or(1);
+            let page_size = query.page_size.unwrap_or(10);
+            Ok(Json(ApiListResponse::success(
+                posts, total, page, page_size,
+            )))
+        }
+        Err(e) => {
+            tracing::error!("Failed to list posts with details: {}", e);
+            Ok(Json(ApiListResponse::error(
+                500,
+                "Failed to list posts with details",
+            )))
+        }
+    }
+}
+
 pub async fn update_post(
     State(app_state): State<AppState>,
     Path(id): Path<i64>,

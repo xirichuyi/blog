@@ -47,6 +47,10 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route("/api/health/live", get(health_handler::liveness_check))
         // Post public routes
         .route("/api/post/list", get(post_handler::list_posts))
+        .route(
+            "/api/post/list_with_details",
+            get(post_handler::list_posts_with_details),
+        )
         .route("/api/post/get/:id", get(post_handler::get_post))
         // Music public routes
         .route("/api/music/list", get(music_handler::list_music))
