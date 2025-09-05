@@ -75,22 +75,27 @@ const BlogHome: React.FC = () => {
     }
   }, [articles.length, isLoading, fetchArticles]);
 
-  // 加载所有文章用于搜索
+  // 紧急性能优化：延迟加载搜索数据
   useEffect(() => {
-    const loadAllArticles = async () => {
-      try {
-        const result = await fetchArticles(1, 1000); // 加载所有文章用于搜索
-        if (result) {
-          setAllArticles(result.articles);
+    // 延迟加载搜索数据，优先渲染主要内容
+    const timer = setTimeout(() => {
+      const loadSearchArticles = async () => {
+        try {
+          const result = await fetchArticles(1, 10); // 大幅减少初始加载量
+          if (result && result.articles) {
+            setAllArticles(result.articles);
+          }
+        } catch (err) {
+          console.warn('Failed to load articles for search:', err);
         }
-      } catch (err) {
-        console.error('Failed to load articles for search:', err);
-      }
-    };
+      };
 
-    if (allArticles.length === 0) {
-      loadAllArticles();
-    }
+      if (allArticles.length === 0) {
+        loadSearchArticles();
+      }
+    }, 2000); // 延迟2秒，让主要内容先渲染
+
+    return () => clearTimeout(timer);
   }, [fetchArticles, allArticles.length]);
 
   // 获取服务器状态数据

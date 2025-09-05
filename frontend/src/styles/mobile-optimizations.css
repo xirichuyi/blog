@@ -1,0 +1,259 @@
+/* Mobile Optimizations - Touch-friendly interactions and mobile-specific styles */
+
+/* Touch-friendly button sizes */
+@media (max-width: 767px) {
+  /* Ensure all interactive elements meet minimum touch target size */
+  button,
+  [role="button"],
+  .clickable,
+  md-icon-button,
+  md-button,
+  md-filled-button,
+  md-outlined-button,
+  md-text-button {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+
+  /* Improve tap targets for links */
+  a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+
+  /* Mobile-optimized form elements */
+  input,
+  textarea,
+  select,
+  md-outlined-text-field,
+  md-filled-text-field {
+    min-height: 48px;
+    font-size: 16px; /* Prevent zoom on iOS */
+    touch-action: manipulation;
+  }
+
+  /* Mobile-friendly card interactions */
+  .article-card,
+  .music-card,
+  .radio-card {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Improve scroll performance */
+  .layout-content,
+  .blog-sidebar,
+  .navigation-content {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Mobile-optimized spacing */
+  .mobile-spacing {
+    padding: var(--md-sys-spacing-3);
+    margin: var(--md-sys-spacing-2) 0;
+  }
+
+  /* Mobile-friendly text sizes */
+  .mobile-text-small {
+    font-size: var(--md-sys-typescale-body-small-size);
+    line-height: var(--md-sys-typescale-body-small-line-height);
+  }
+
+  .mobile-text-medium {
+    font-size: var(--md-sys-typescale-body-medium-size);
+    line-height: var(--md-sys-typescale-body-medium-line-height);
+  }
+
+  .mobile-text-large {
+    font-size: var(--md-sys-typescale-body-large-size);
+    line-height: var(--md-sys-typescale-body-large-line-height);
+  }
+
+  /* Mobile-optimized grid layouts */
+  .mobile-grid-1 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--md-sys-spacing-4);
+  }
+
+  .mobile-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--md-sys-spacing-3);
+  }
+
+  /* Mobile-friendly image handling */
+  img {
+    max-width: 100%;
+    height: auto;
+    object-fit: cover;
+  }
+
+  /* Mobile-optimized search */
+  .search-container {
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100% !important;
+    min-width: auto !important;
+  }
+
+  /* Mobile-friendly navigation */
+  .mobile-nav-item {
+    padding: var(--md-sys-spacing-3) var(--md-sys-spacing-4);
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-3);
+  }
+
+  /* Mobile-optimized modals and dialogs */
+  .mobile-modal {
+    margin: var(--md-sys-spacing-2);
+    max-height: calc(100vh - var(--md-sys-spacing-4));
+    border-radius: var(--md-sys-shape-corner-large);
+  }
+
+  /* Mobile-friendly tables */
+  .mobile-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Mobile-optimized animations - reduce motion for better performance */
+  .mobile-animation-reduced {
+    animation-duration: 0.2s;
+    transition-duration: 0.2s;
+  }
+}
+
+/* Small mobile optimizations (< 480px) */
+@media (max-width: 479px) {
+  /* Even more compact spacing */
+  .mobile-spacing {
+    padding: var(--md-sys-spacing-2);
+    margin: var(--md-sys-spacing-1) 0;
+  }
+
+  /* Smaller text for very small screens */
+  .mobile-text-small {
+    font-size: var(--md-sys-typescale-label-large-size);
+  }
+
+  /* Single column layout for very small screens */
+  .mobile-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Compact navigation items */
+  .mobile-nav-item {
+    padding: var(--md-sys-spacing-2) var(--md-sys-spacing-3);
+    min-height: 48px;
+  }
+
+  /* Full-width modals on very small screens */
+  .mobile-modal {
+    margin: 0;
+    border-radius: 0;
+    max-height: 100vh;
+  }
+}
+
+/* Tablet optimizations (768px - 1199px) */
+@media (min-width: 768px) and (max-width: 1199px) {
+  /* Tablet-friendly touch targets */
+  button,
+  [role="button"],
+  .clickable {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Tablet-optimized grid layouts */
+  .tablet-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--md-sys-spacing-5);
+  }
+
+  .tablet-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--md-sys-spacing-4);
+  }
+
+  /* Tablet-friendly spacing */
+  .tablet-spacing {
+    padding: var(--md-sys-spacing-4);
+    margin: var(--md-sys-spacing-3) 0;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 767px) and (orientation: landscape) {
+  /* Reduce vertical spacing in landscape */
+  .mobile-spacing {
+    padding: var(--md-sys-spacing-2) var(--md-sys-spacing-3);
+  }
+
+  /* Compact header in landscape */
+  .top-app-bar {
+    height: 48px;
+  }
+
+  /* Optimize content area in landscape */
+  .layout-content {
+    padding-top: var(--md-sys-spacing-2);
+  }
+}
+
+/* High DPI mobile optimizations */
+@media (max-width: 767px) and (-webkit-min-device-pixel-ratio: 2) {
+  /* Sharper icons on high DPI screens */
+  md-icon,
+  .material-icons {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Optimize image rendering */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Dark mode mobile optimizations */
+@media (max-width: 767px) and (prefers-color-scheme: dark) {
+  /* Reduce brightness for mobile dark mode */
+  .mobile-dark-optimized {
+    filter: brightness(0.9);
+  }
+
+  /* Improve contrast for mobile dark mode */
+  .mobile-text-contrast {
+    color: var(--md-sys-color-on-surface);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Accessibility improvements for mobile */
+@media (max-width: 767px) {
+  /* Larger focus indicators on mobile */
+  *:focus {
+    outline: 3px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+  }
+
+  /* Better contrast for mobile */
+  .mobile-high-contrast {
+    color: var(--md-sys-color-on-surface);
+    background-color: var(--md-sys-color-surface);
+  }
+}
