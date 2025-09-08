@@ -29,7 +29,7 @@ impl PostService {
     }
 
     pub async fn get_post_detail(&self, id: i64) -> Result<Option<Post>> {
-        PostRepository::get_by_id(self.database.pool(), id).await
+        PostRepository::get_by_id_with_complete_info(self.database.pool(), id).await
     }
 
     // 为了保持向后兼容性，保留这个方法但标记为已弃用
@@ -47,7 +47,7 @@ impl PostService {
     }
 
     pub async fn list_posts(&self, query: PostListQuery) -> Result<(Vec<Post>, i64)> {
-        PostRepository::list(self.database.pool(), query).await
+        PostRepository::list_with_complete_info(self.database.pool(), query).await
     }
 
     pub async fn list_posts_with_details(

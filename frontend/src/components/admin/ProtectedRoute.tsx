@@ -1,8 +1,9 @@
 // Protected Route Component for Admin Pages
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { preloadAdminComponents } from '../../utils/adminPreload';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -26,6 +27,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
+
+  // Preload related admin components based on current path
+  useEffect(() => {
+    preloadAdminComponents(location.pathname);
+  }, [location.pathname]);
 
   // Render protected content
   return <>{children}</>;

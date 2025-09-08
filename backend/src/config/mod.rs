@@ -26,6 +26,7 @@ pub struct JwtConfig {
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
+    pub use_tls: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,6 +77,11 @@ impl Config {
             .parse::<u16>()
             .unwrap_or(3006);
 
+        let use_tls = env::var("USE_TLS")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false);
+
         let deepseek_api_key = env::var("DEEPSEEK_API_KEY").unwrap_or_else(|_| "".to_string());
 
         let deepseek_api_url =
@@ -111,7 +117,11 @@ impl Config {
                 secret: jwt_secret,
                 admin_token,
             },
-            server: ServerConfig { host, port },
+            server: ServerConfig {
+                host,
+                port,
+                use_tls,
+            },
             ai: AiConfig {
                 deepseek_api_key,
                 deepseek_api_url,

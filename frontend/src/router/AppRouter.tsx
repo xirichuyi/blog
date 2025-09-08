@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import RoutePreloader from '../components/ui/RoutePreloader';
 import Layout from '../components/layout/Layout';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
@@ -18,16 +19,20 @@ const AboutPage = lazy(() => import('../components/pages/AboutPage'));
 const ContactPage = lazy(() => import('../components/pages/ContactPage'));
 const PerformanceTest = lazy(() => import('../components/debug/PerformanceTest'));
 
-// Admin components - lazy loaded
+// Admin components - lazy loaded with more granular code splitting
 const LoginPage = lazy(() => import('../components/admin/LoginPage'));
 const ProtectedRoute = lazy(() => import('../components/admin/ProtectedRoute'));
-const Dashboard = lazy(() => import('../components/admin/Dashboard'));
-const PostManagement = lazy(() => import('../components/admin/PostManagement'));
-const PostEditor = lazy(() => import('../components/admin/PostEditor'));
-const MusicManagement = lazy(() => import('../components/admin/MusicManagement'));
-const MusicUpload = lazy(() => import('../components/admin/MusicUpload'));
-const CategoriesTagsManagement = lazy(() => import('../components/admin/CategoriesTagsManagement'));
-const AboutManagement = lazy(() => import('../components/admin/AboutManagement'));
+
+// Import pre-defined lazy admin components
+import {
+  LazyDashboard,
+  LazyPostManagement,
+  LazyPostEditor,
+  LazyMusicManagement,
+  LazyMusicUpload,
+  LazyCategoriesTagsManagement,
+  LazyAboutManagement
+} from '../components/admin/LazyAdminComponent';
 import NotificationContainer from '../components/ui/NotificationContainer';
 import '../styles/page-placeholder.css';
 
@@ -67,14 +72,14 @@ const ArticleDetailRoute: React.FC = () => {
   );
 };
 
-// Admin placeholder components (keeping for other routes)
-const AdminDashboard: React.FC = () => <Dashboard />;
+// Admin placeholder components with lazy loading
+const AdminDashboard: React.FC = () => <LazyDashboard />;
 
-const AdminPosts: React.FC = () => <PostManagement />;
+const AdminPosts: React.FC = () => <LazyPostManagement />;
 
-const AdminMusic: React.FC = () => <MusicManagement />;
+const AdminMusic: React.FC = () => <LazyMusicManagement />;
 
-const AdminCategoriesTags: React.FC = () => <CategoriesTagsManagement />;
+const AdminCategoriesTags: React.FC = () => <LazyCategoriesTagsManagement />;
 
 const AppRouter: React.FC = () => {
   return (
@@ -83,6 +88,7 @@ const AppRouter: React.FC = () => {
         <NotificationProvider>
           <DataProvider>
             <ErrorBoundary>
+              <RoutePreloader />
               <Routes>
                 {/* Main Layout Routes */}
                 <Route path="/" element={
@@ -184,7 +190,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/admin/posts/new" element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <ProtectedRoute>
-                      <PostEditor />
+                      <LazyPostEditor />
                     </ProtectedRoute>
                   </Suspense>
                 } />
@@ -192,7 +198,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/admin/posts/edit/:id" element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <ProtectedRoute>
-                      <PostEditor />
+                      <LazyPostEditor />
                     </ProtectedRoute>
                   </Suspense>
                 } />
@@ -208,7 +214,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/admin/music/upload" element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <ProtectedRoute>
-                      <MusicUpload />
+                      <LazyMusicUpload />
                     </ProtectedRoute>
                   </Suspense>
                 } />
@@ -224,7 +230,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/admin/about" element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <ProtectedRoute>
-                      <AboutManagement />
+                      <LazyAboutManagement />
                     </ProtectedRoute>
                   </Suspense>
                 } />

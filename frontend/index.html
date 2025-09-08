@@ -6,10 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chuyi的博客 - 现代化个人博客</title>
 
-    <!-- 紧急性能优化：预连接和DNS预取 -->
+    <!-- 性能优化：预连接、DNS预取和资源预加载 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="http://172.245.148.234:3007" />
+    
+    <!-- 预加载关键JS和CSS -->
+    <link rel="modulepreload" href="/src/main.tsx" as="script" />
+    <link rel="preload" href="/src/App.css" as="style" />
+    
+    <!-- 预加载首屏图片 -->
+    <link rel="preload" href="/images/placeholder.jpg" as="image" type="image/jpeg" fetchpriority="high" />
+    
+    <!-- 预加载字体 -->
+    <link rel="preload" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" as="font" type="font/woff2" crossorigin />
 
     <!-- 内联关键CSS -->
     <style>

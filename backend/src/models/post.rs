@@ -7,9 +7,13 @@ pub struct Post {
     pub title: String,
     pub cover_url: Option<String>,
     pub content: String,
+    pub category_name: Option<String>,
     pub category_id: Option<i64>,
     pub status: i32,
     pub post_images: Option<String>, // JSON array of image URLs
+    #[serde(default)]
+    #[sqlx(skip)]
+    pub tags: Vec<super::tag::Tag>, // 文章标签列表
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
