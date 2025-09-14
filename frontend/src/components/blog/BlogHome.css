@@ -265,7 +265,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  grid-auto-rows: 360px; /* 调整总高度，图片200px + 内容160px */
+  grid-auto-rows: 500px; /* 调整总高度，图片200px + 内容160px */
 }
 
 .secondary-article-card {
@@ -277,6 +277,7 @@
   position: relative;
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
+  height: 500px;
 
   backdrop-filter: blur(8px);
 }
@@ -286,7 +287,7 @@
 }
 
 .secondary-article-image {
-  height: 200px; /* 减少图片高度，给文字内容更多空间 */
+  height: 298px; /* 减少图片高度，给文字内容更多空间 */
   display: flex;
   align-items: center;
   justify-content: center;
