@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import AdminLayout from '../../../components/admin/AdminLayout';
+import AdminLayout from '../../../components/adminLayout/AdminLayout';
 import { apiService } from '../../../services/api';
 import { useNotification } from '../../../contexts/NotificationContext';
 

@@ -6,7 +6,6 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 import { AuthProvider } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
-import { DataProvider } from '../contexts/DataContext';
 
 // Lazy load components for better performance
 const Home = lazy(() => import('../pages/Home'));
@@ -80,139 +79,137 @@ const AppRouter: React.FC = () => {
     <BrowserRouter>
       <AuthProvider>
         <NotificationProvider>
-          <DataProvider>
-            <ErrorBoundary>
-              <RoutePreloader />
-              <Routes>
-                {/* Main Layout Routes */}
-                <Route path="/" element={
-                  <Layout title="Chuyi的博客 - 现代化个人博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <Home />
-                    </Suspense>
-                  </Layout>
-                } />
-
-                <Route path="/articles" element={
-                  <Layout title="所有文章 - Chuyi的博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <Articles />
-                    </Suspense>
-                  </Layout>
-                } />
-
-                <Route path="/search" element={
-                  <Layout title="搜索结果 - Chuyi的博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      {/* <SearchResults /> TODO: add search results page */}
-                    </Suspense>
-                  </Layout>
-                } />
-
-                <Route path="/article/:id" element={
-                  <Layout title="文章详情 - Chuyi的博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <ArticleDetailRoute />
-                    </Suspense>
-                  </Layout>
-                } />
-
-
-
-
-
-                <Route path="/about" element={
-                  <Layout title="关于我 - Chuyi的博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <About />
-                    </Suspense>
-                  </Layout>
-                } />
-
-                <Route path="/contact" element={
-                  <Layout title="联系我 - Chuyi的博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <Contact />
-                    </Suspense>
-                  </Layout>
-                } />
-
-
-                {/* Admin Routes */}
-                <Route path="/admin/login" element={
+          <ErrorBoundary>
+            <RoutePreloader />
+            <Routes>
+              {/* Main Layout Routes */}
+              <Route path="/" element={
+                <Layout title="Chuyi的博客 - 现代化个人博客">
                   <Suspense fallback={<LoadingSpinner />}>
-                    <AdminLogin />
+                    <Home />
                   </Suspense>
-                } />
+                </Layout>
+              } />
 
-                <Route path="/admin/dashboard" element={
+              <Route path="/articles" element={
+                <Layout title="所有文章 - Chuyi的博客">
                   <Suspense fallback={<LoadingSpinner />}>
-                    <ProtectedRoute>
-                      <AdminDashboard />
-                    </ProtectedRoute>
+                    <Articles />
                   </Suspense>
-                } />
+                </Layout>
+              } />
 
-                <Route path="/admin/posts" element={
+              <Route path="/search" element={
+                <Layout title="搜索结果 - Chuyi的博客">
                   <Suspense fallback={<LoadingSpinner />}>
-                    <ProtectedRoute>
-                      <AdminPosts />
-                    </ProtectedRoute>
+                    {/* <SearchResults /> TODO: add search results page */}
                   </Suspense>
-                } />
+                </Layout>
+              } />
 
-                <Route path="/admin/posts/new" element={
+              <Route path="/article/:id" element={
+                <Layout title="文章详情 - Chuyi的博客">
                   <Suspense fallback={<LoadingSpinner />}>
-                    <ProtectedRoute>
-                      <LazyPostEditor />
-                    </ProtectedRoute>
+                    <ArticleDetailRoute />
                   </Suspense>
-                } />
+                </Layout>
+              } />
 
-                <Route path="/admin/posts/edit/:id" element={
+
+
+
+
+              <Route path="/about" element={
+                <Layout title="关于我 - Chuyi的博客">
                   <Suspense fallback={<LoadingSpinner />}>
-                    <ProtectedRoute>
-                      <LazyPostEditor />
-                    </ProtectedRoute>
+                    <About />
                   </Suspense>
-                } />
+                </Layout>
+              } />
 
-
-
-
-
-                <Route path="/admin/categories-tags" element={
+              <Route path="/contact" element={
+                <Layout title="联系我 - Chuyi的博客">
                   <Suspense fallback={<LoadingSpinner />}>
-                    <ProtectedRoute>
-                      <AdminCategoriesTags />
-                    </ProtectedRoute>
+                    <Contact />
                   </Suspense>
-                } />
+                </Layout>
+              } />
 
-                <Route path="/admin/about" element={
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <ProtectedRoute>
-                      <LazyAboutManagement />
-                    </ProtectedRoute>
-                  </Suspense>
-                } />
 
-                {/* Redirect admin root to dashboard */}
-                <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminLogin />
+                </Suspense>
+              } />
 
-                {/* Redirect old paths */}
-                <Route path="/home" element={<Navigate to="/" replace />} />
+              <Route path="/admin/dashboard" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
 
-                {/* 404 Page */}
-                <Route path="*" element={
-                  <Layout title="Page Not Found - Cyrus Blog">
-                    <NotFoundPage />
-                  </Layout>
-                } />
-              </Routes>
-              <NotificationContainer />
-            </ErrorBoundary>
-          </DataProvider>
+              <Route path="/admin/posts" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProtectedRoute>
+                    <AdminPosts />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+
+              <Route path="/admin/posts/new" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProtectedRoute>
+                    <LazyPostEditor />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+
+              <Route path="/admin/posts/edit/:id" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProtectedRoute>
+                    <LazyPostEditor />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+
+
+
+
+
+              <Route path="/admin/categories-tags" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProtectedRoute>
+                    <AdminCategoriesTags />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+
+              <Route path="/admin/about" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProtectedRoute>
+                    <LazyAboutManagement />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+
+              {/* Redirect admin root to dashboard */}
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+
+              {/* Redirect old paths */}
+              <Route path="/home" element={<Navigate to="/" replace />} />
+
+              {/* 404 Page */}
+              <Route path="*" element={
+                <Layout title="Page Not Found - Cyrus Blog">
+                  <NotFoundPage />
+                </Layout>
+              } />
+            </Routes>
+            <NotificationContainer />
+          </ErrorBoundary>
         </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>

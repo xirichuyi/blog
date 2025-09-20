@@ -4,8 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../../services/api'
 import { useNotification } from '../../../contexts/NotificationContext';
-import { useData } from '../../../contexts/DataContext';
-import type { Article } from '../../../services/types';
+import type { Article, Category } from '../../../services/types';
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
 import ErrorMessage from '../../../components/ui/ErrorMessage';
 import EnhancedDataTable from '../../../components/ui/EnhancedDataTable';
@@ -50,9 +49,22 @@ const PostManagement: React.FC = () => {
   });
   const navigate = useNavigate();
   const { showNotification } = useNotification();
-  const { categories } = useData();
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Load categories
+  const loadCategories = async () => {
+    try {
+      const response = await apiService.getCategories();
+      if (response.success && response.data) {
+        setCategories(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
 
   useEffect(() => {
+    loadCategories();
     loadPosts();
   }, [pagination.current, pagination.pageSize, filters, sortState]);
 

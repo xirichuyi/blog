@@ -1,15 +1,25 @@
 // 通用表单Hook
 import { useState, useCallback, useMemo } from 'react';
-import {
-  validateForm,
-  createInputHandler,
-  FormDataTransformers
-} from '../utils';
-import type {
-  ValidationRule,
-  FormValidationResult,
-  MDCInputEvent
-} from '../utils';
+// Removed utility imports to simplify architecture
+// import {
+//   validateForm,
+//   createInputHandler,
+//   FormDataTransformers
+// } from '../utils';
+// Removed utility type imports to simplify architecture
+interface ValidationRule {
+  required?: boolean;
+  message?: string;
+}
+
+interface FormValidationResult {
+  isValid: boolean;
+  errors: Record<string, string>;
+}
+
+interface MDCInputEvent {
+  target: { value: string };
+}
 
 export interface UseFormOptions<T extends Record<string, string>> {
   initialData: T;
@@ -23,12 +33,12 @@ export interface UseFormReturn<T extends Record<string, string>> {
   // 数据
   formData: T;
   errors: Record<keyof T, string[]>;
-  
+
   // 状态
   isSubmitting: boolean;
   isValid: boolean;
   isDirty: boolean;
-  
+
   // 方法
   setField: (field: keyof T, value: string) => void;
   getInputHandler: (field: keyof T) => (event: MDCInputEvent) => void;
@@ -36,7 +46,7 @@ export interface UseFormReturn<T extends Record<string, string>> {
   reset: () => void;
   clearErrors: (field?: keyof T) => void;
   validate: () => FormValidationResult;
-  
+
   // 工具方法
   canSubmit: boolean;
   getFieldError: (field: keyof T) => string | undefined;
@@ -51,7 +61,7 @@ export function useForm<T extends Record<string, string>>(
     validationRules = {} as Partial<Record<keyof T, ValidationRule[]>>,
     onSubmit,
     onError,
-    transformOnSubmit = FormDataTransformers.trimStrings
+    transformOnSubmit = (data: T) => data // Default no transformation
   } = options;
 
   // 状态
@@ -78,7 +88,7 @@ export function useForm<T extends Record<string, string>>(
     if (Object.keys(validationRules).length === 0) {
       return { isValid: true, errors: {} };
     }
-    
+
     return validateForm(formData, validationRules);
   }, [formData, validationRules]);
 
@@ -111,7 +121,7 @@ export function useForm<T extends Record<string, string>>(
   const setField = useCallback((field: keyof T, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setIsDirty(true);
-    
+
     // 清除该字段的错误
     setErrors(prev => {
       const newErrors = { ...prev };
@@ -131,7 +141,7 @@ export function useForm<T extends Record<string, string>>(
   // 处理提交
   const handleSubmit = useCallback(async (event: React.FormEvent) => {
     event.preventDefault();
-    
+
     if (isSubmitting || !onSubmit) return;
 
     // 验证表单
@@ -182,12 +192,12 @@ export function useForm<T extends Record<string, string>>(
     // 数据
     formData,
     errors,
-    
+
     // 状态
     isSubmitting,
     isValid,
     isDirty,
-    
+
     // 方法
     setField,
     getInputHandler,
@@ -195,7 +205,7 @@ export function useForm<T extends Record<string, string>>(
     reset,
     clearErrors,
     validate,
-    
+
     // 工具方法
     canSubmit,
     getFieldError,

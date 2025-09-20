@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './style.css';
 // import RadioCard from '../../components/music/RadioCard';
 import AuthorCard from './components/AuthorCard';
 import { CustomButton } from '../../components/ui/CustomButton';
 
-import { useData } from '../../contexts/DataContext';
+// import { useData } from '../../contexts/DataContext';
 import { apiService } from '../../services/api'
 import type { Article } from '../../services/types';
 
@@ -55,7 +55,11 @@ interface ServerStatus {
 
 const Home: React.FC = () => {
     const navigate = useNavigate();
-    const { articles, isLoading, error, fetchArticles } = useData();
+
+    // Data states
+    const [articles, setArticles] = useState<Article[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // 搜索状态
     const [searchQuery, setSearchQuery] = useState('');
@@ -69,21 +73,45 @@ const Home: React.FC = () => {
     const [serverStatusLoading, setServerStatusLoading] = useState(true);
 
     // 加载文章数据
-    useEffect(() => {
-        if (articles.length === 0 && !isLoading) {
-            fetchArticles(1, 7); // 首页显示前7篇文章 (已优化)
-        }
-    }, [articles.length, isLoading, fetchArticles]);
+    const loadArticles = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
 
-    // 紧急性能优化：延迟加载搜索数据
+            const response = await apiService.getArticles({
+                page: 1,
+                page_size: 7,
+                status: 'published'
+            });
+
+            if (response.success && response.data) {
+                setArticles(response.data);
+            }
+        } catch (error) {
+            console.error('Error loading articles:', error);
+            setError(error instanceof Error ? error.message : 'Failed to load articles');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
-        // 延迟加载搜索数据，优先渲染主要内容
+        loadArticles();
+    }, [loadArticles]);
+
+    // 延迟加载搜索数据
+    useEffect(() => {
         const timer = setTimeout(() => {
             const loadSearchArticles = async () => {
                 try {
-                    const result = await fetchArticles(1, 10); // 大幅减少初始加载量
-                    if (result && Array.isArray(result)) {
-                        setAllArticles(result);
+                    const response = await apiService.getArticles({
+                        page: 1,
+                        page_size: 20, // 为搜索加载更多文章
+                        status: 'published'
+                    });
+
+                    if (response.success && response.data) {
+                        setAllArticles(response.data);
                     }
                 } catch (err) {
                     console.warn('Failed to load articles for search:', err);
@@ -96,7 +124,7 @@ const Home: React.FC = () => {
         }, 2000); // 延迟2秒，让主要内容先渲染
 
         return () => clearTimeout(timer);
-    }, [fetchArticles, allArticles.length]);
+    }, [allArticles.length]);
 
     // 获取服务器状态数据
     useEffect(() => {

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '../../../contexts/DataContext';
-import { apiService } from '../../services/api'
-import type { Article } from '../../../services/types/blog';
-import ArticleCard from '../../../components/blog/ArticleCard';
+import { apiService } from '../../../services/api'
+import type { Article } from '../../../services/types';
+// import ArticleCard from '../../../components/blog/ArticleCard'; // Temporarily commented
 import MarkdownRenderer from '../../../components/ui/MarkdownRenderer';
 import './ArticleDetail.css';
 
@@ -13,7 +12,6 @@ interface ArticleDetailProps {
 
 const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
     const navigate = useNavigate();
-    const { fetchArticleById, articles } = useData();
     const [article, setArticle] = useState<Article | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -27,15 +25,24 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
             setError(null);
 
             try {
-                const fetchedArticle = await fetchArticleById(articleId);
+                const response = await apiService.getArticle(articleId);
+                const fetchedArticle = response.success ? response.data : null;
                 if (fetchedArticle) {
                     setArticle(fetchedArticle);
 
-                    // Find related articles (same category, excluding current article)
-                    const related = articles
-                        .filter((a: Article) => a.id !== articleId && a.category === fetchedArticle.category)
-                        .slice(0, 3);
-                    setRelatedArticles(related);
+                    // Load related articles (same category, excluding current article)
+                    if (fetchedArticle.category_id) {
+                        const relatedResponse = await apiService.getArticles({
+                            category: fetchedArticle.category_id,
+                            status: 'published'
+                        });
+                        if (relatedResponse.success && relatedResponse.data) {
+                            const related = relatedResponse.data
+                                .filter((a: Article) => a.id !== articleId && a.status === 'published')
+                                .slice(0, 3);
+                            setRelatedArticles(related);
+                        }
+                    }
                 } else {
                     setError('Article not found');
                 }
@@ -48,7 +55,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
         };
 
         loadArticle();
-    }, [articleId, fetchArticleById, articles]);
+    }, [articleId]);
 
     // Extract headings from markdown content for table of contents
     const extractHeadings = useCallback((content: string) => {

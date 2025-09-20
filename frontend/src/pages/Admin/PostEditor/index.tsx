@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiService } from '../../services/api'
+import { apiService } from '../../../services/api'
 import { useNotification } from '../../../contexts/NotificationContext';
-import { useData } from '../../../contexts/DataContext';
 import MarkdownRenderer from '../../../components/ui/MarkdownRenderer';
 import CoverUpload from '../../../components/ui/CoverUpload';
 import { useKeyboardShortcuts, createCommonShortcuts } from '../../../hooks/useKeyboardShortcuts';
 
-import AdminLayout from '../../../components/admin/AdminLayout';
+import AdminLayout from '../../../components/adminLayout/AdminLayout';
 import './style.css';
 
 interface PostFormData {
@@ -30,7 +29,11 @@ const PostEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
-  const { categories, tags: availableTags } = useData();
+
+  // Data states
+  const [categories, setCategories] = useState([]);
+  const [availableTags, setAvailableTags] = useState([]);
+
   const isEditing = id !== 'new';
 
   const [formData, setFormData] = useState<PostFormData>({

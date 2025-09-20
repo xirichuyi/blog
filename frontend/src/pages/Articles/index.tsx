@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '../../contexts/DataContext';
 import { apiService } from '../../services/api'
-import type { Article } from '../../services/types';
+import type { Article, Category, Tag, PaginationInfo } from '../../services/types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 
@@ -13,22 +12,17 @@ const ARTICLES_PER_PAGE = 12;
 
 const Articles: React.FC = () => {
     const navigate = useNavigate();
-    const {
-        categories,
-        tags,
-        articles: contextArticles,
-        isLoading,
-        articlesLoading,
-        error,
-        articlesError,
-        fetchArticles,
-        fetchArticlesByCategory,
-        fetchArticlesByTag
-    } = useData();
 
-    // Local article states for filtered results
+    // Data states
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [tags, setTags] = useState<Tag[]>([]);
     const [articles, setArticles] = useState<Article[]>([]);
     const [totalArticles, setTotalArticles] = useState(0);
+
+    // Loading states
+    const [isLoading, setIsLoading] = useState(true);
+    const [articlesLoading, setArticlesLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Active filter state - only one filter can be active at a time
     const [activeFilter, setActiveFilter] = useState<{ type: 'category' | 'tag' | null, id: string | null }>({
@@ -42,41 +36,93 @@ const Articles: React.FC = () => {
     // Load articles based on current filter
     const loadArticles = useCallback(async (page: number = 1) => {
         try {
-            let result;
+            setArticlesLoading(true);
+            setError(null);
 
             if (activeFilter.type === 'category' && activeFilter.id !== 'all' && activeFilter.id) {
                 // Load articles by category
-                const categoryArticles = await fetchArticlesByCategory(activeFilter.id);
-                // For category filtering, we get all articles and handle pagination locally
-                const startIndex = (page - 1) * ARTICLES_PER_PAGE;
-                const endIndex = startIndex + ARTICLES_PER_PAGE;
-                setArticles(categoryArticles.slice(startIndex, endIndex));
-                setTotalArticles(categoryArticles.length);
+                const response = await apiService.getArticles({
+                    category: activeFilter.id,
+                    status: 'published'
+                });
+                if (response.success && response.data) {
+                    const categoryArticles = response.data;
+                    // Handle pagination locally for category filtering
+                    const startIndex = (page - 1) * ARTICLES_PER_PAGE;
+                    const endIndex = startIndex + ARTICLES_PER_PAGE;
+                    setArticles(categoryArticles.slice(startIndex, endIndex));
+                    setTotalArticles(categoryArticles.length);
+                }
             } else if (activeFilter.type === 'tag' && activeFilter.id) {
                 // Load articles by tag
-                const tagArticles = await fetchArticlesByTag(activeFilter.id);
-                // For tag filtering, we get all articles and handle pagination locally
-                const startIndex = (page - 1) * ARTICLES_PER_PAGE;
-                const endIndex = startIndex + ARTICLES_PER_PAGE;
-                setArticles(tagArticles.slice(startIndex, endIndex));
-                setTotalArticles(tagArticles.length);
+                const response = await apiService.getArticles({
+                    tag_id: Number(activeFilter.id),
+                    status: 'published'
+                });
+                if (response.success && response.data) {
+                    const tagArticles = response.data;
+                    // Handle pagination locally for tag filtering
+                    const startIndex = (page - 1) * ARTICLES_PER_PAGE;
+                    const endIndex = startIndex + ARTICLES_PER_PAGE;
+                    setArticles(tagArticles.slice(startIndex, endIndex));
+                    setTotalArticles(tagArticles.length);
+                }
             } else {
                 // Load all articles with server-side pagination
-                result = await fetchArticles(page, ARTICLES_PER_PAGE);
-                if (result) {
-                    setArticles(result.articles);
-                    setTotalArticles(result.total);
+                const response = await apiService.getArticles({
+                    page,
+                    page_size: ARTICLES_PER_PAGE,
+                    status: 'published'
+                });
+                if (response.success && response.data) {
+                    setArticles(response.data);
+                    setTotalArticles(response.total || response.data.length);
                 }
             }
         } catch (error) {
             console.error('Error loading articles:', error);
+            setError(error instanceof Error ? error.message : 'Failed to load articles');
+        } finally {
+            setArticlesLoading(false);
         }
-    }, [activeFilter, fetchArticles, fetchArticlesByCategory, fetchArticlesByTag]);
+    }, [activeFilter]);
+
+    // Load basic data (categories and tags)
+    const loadBasicData = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const [categoriesResponse, tagsResponse] = await Promise.all([
+                apiService.getCategories(),
+                apiService.getTags()
+            ]);
+
+            if (categoriesResponse.success && categoriesResponse.data) {
+                setCategories(categoriesResponse.data);
+            }
+            if (tagsResponse.success && tagsResponse.data) {
+                setTags(tagsResponse.data);
+            }
+        } catch (error) {
+            console.error('Error loading basic data:', error);
+            setError(error instanceof Error ? error.message : 'Failed to load data');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    // Load basic data on mount
+    useEffect(() => {
+        loadBasicData();
+    }, [loadBasicData]);
 
     // Load initial articles and when filter changes
     useEffect(() => {
-        loadArticles(currentPage);
-    }, [loadArticles, currentPage]);
+        if (!isLoading) { // Only load articles after basic data is loaded
+            loadArticles(currentPage);
+        }
+    }, [loadArticles, currentPage, isLoading]);
 
     // Reset to page 1 when filter changes
     useEffect(() => {
@@ -159,10 +205,10 @@ const Articles: React.FC = () => {
     }
 
     // Show error state
-    if (error || articlesError) {
+    if (error) {
         return (
             <div className="articles-page">
-                <ErrorMessage message={error || articlesError || 'Failed to load articles'} />
+                <ErrorMessage message={error || 'Failed to load articles'} />
             </div>
         );
     }
@@ -186,15 +232,17 @@ const Articles: React.FC = () => {
                         <md-filter-chip
                             selected={activeFilter.type === 'category' && activeFilter.id === 'all'}
                             onClick={() => handleCategoryFilter('all')}
-                            label="All"
-                        ></md-filter-chip>
+                        >
+                            All
+                        </md-filter-chip>
                         {categories.map((category) => (
                             <md-filter-chip
                                 key={category.id}
                                 selected={activeFilter.type === 'category' && activeFilter.id === category.id}
                                 onClick={() => handleCategoryFilter(category.id)}
-                                label={category.name}
-                            ></md-filter-chip>
+                            >
+                                {category.name}
+                            </md-filter-chip>
                         ))}
                     </div>
                 </div>
@@ -208,8 +256,9 @@ const Articles: React.FC = () => {
                                 key={tag.id}
                                 selected={activeFilter.type === 'tag' && activeFilter.id === tag.id}
                                 onClick={() => handleTagFilter(tag.id)}
-                                label={tag.name}
-                            ></md-filter-chip>
+                            >
+                                {tag.name}
+                            </md-filter-chip>
                         ))}
                     </div>
                 </div>
@@ -316,9 +365,9 @@ const Articles: React.FC = () => {
                     </div>
                     <div className="pagination-controls">
                         <md-icon-button
-                            disabled={!hasPrevPage}
-                            onClick={() => setCurrentPage(currentPage - 1)}
+                            onClick={() => !hasPrevPage || setCurrentPage(currentPage - 1)}
                             aria-label="Previous page"
+                            style={{ opacity: !hasPrevPage ? 0.5 : 1, pointerEvents: !hasPrevPage ? 'none' : 'auto' }}
                         >
                             <md-icon>chevron_left</md-icon>
                         </md-icon-button>
@@ -334,9 +383,9 @@ const Articles: React.FC = () => {
                         ))}
 
                         <md-icon-button
-                            disabled={!hasNextPage}
-                            onClick={() => setCurrentPage(currentPage + 1)}
+                            onClick={() => !hasNextPage || setCurrentPage(currentPage + 1)}
                             aria-label="Next page"
+                            style={{ opacity: !hasNextPage ? 0.5 : 1, pointerEvents: !hasNextPage ? 'none' : 'auto' }}
                         >
                             <md-icon>chevron_right</md-icon>
                         </md-icon-button>

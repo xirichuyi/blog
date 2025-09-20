@@ -144,6 +144,10 @@ class ApiService {
     }
 
     // ========== 标签相关 ==========
+    async getTags() {
+        return this.tags.getPublicTags();
+    }
+
     async getPublicTags() {
         return this.tags.getPublicTags();
     }
