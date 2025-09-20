@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import type { AuthState, AuthContextType, LoginCredentials, AdminUser } from '../types';
-import { apiService } from '../services/api';
+import type { AuthState, AuthContextType, LoginCredentials, AdminUser } from '../services/types';
+import { apiService } from '../services/api'
 
 // Initial state
 const initialState: AuthState = {

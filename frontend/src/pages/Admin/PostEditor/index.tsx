@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiService } from '../../../services/api';
+import { apiService } from '../../services/api'
 import { useNotification } from '../../../contexts/NotificationContext';
 import { useData } from '../../../contexts/DataContext';
 import MarkdownRenderer from '../../../components/ui/MarkdownRenderer';

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../../contexts/DataContext';
-import { apiService } from '../../../services/api';
-import type { Article } from '../../../types/blog';
+import { apiService } from '../../services/api'
+import type { Article } from '../../../services/types/blog';
 import ArticleCard from '../../../components/blog/ArticleCard';
 import MarkdownRenderer from '../../../components/ui/MarkdownRenderer';
 import './ArticleDetail.css';

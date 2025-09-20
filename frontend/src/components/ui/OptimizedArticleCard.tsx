@@ -3,7 +3,7 @@
 import React, { memo, useCallback } from 'react';
 import OptimizedImage from './OptimizedImage';
 import { useIntersectionObserver } from '../../utils/performanceUtils';
-import type { Article } from '../../types';
+import type { Article } from '../../services/types';
 import './OptimizedArticleCard.css';
 
 interface OptimizedArticleCardProps {

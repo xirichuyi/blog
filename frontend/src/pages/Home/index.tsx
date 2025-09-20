@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './style.css';
-import RadioCard from '../../components/music/RadioCard';
+// import RadioCard from '../../components/music/RadioCard';
 import AuthorCard from './components/AuthorCard';
 import { CustomButton } from '../../components/ui/CustomButton';
 
 import { useData } from '../../contexts/DataContext';
-import { apiService } from '../../services/api';
-import type { Article } from '../../types';
+import { apiService } from '../../services/api'
+import type { Article } from '../../services/types';
 
 // 服务器状态接口 - 匹配后端API结构
 interface ServerStatus {

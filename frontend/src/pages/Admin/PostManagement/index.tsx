@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../../../services/api';
+import { apiService } from '../../../services/api'
 import { useNotification } from '../../../contexts/NotificationContext';
 import { useData } from '../../../contexts/DataContext';
-import type { Article } from '../../../types';
-import AdminLayout from '../../../components/admin/AdminLayout';
+import type { Article } from '../../../services/types';
+import AdminLayout from '../../../components/adminLayout/AdminLayout';
 import ErrorMessage from '../../../components/ui/ErrorMessage';
 import EnhancedDataTable from '../../../components/ui/EnhancedDataTable';
 import type { TableColumn, TableAction, BulkAction } from '../../../components/ui/EnhancedDataTable';

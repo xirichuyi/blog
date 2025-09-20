@@ -1,0 +1,109 @@
+/* Protected Route Styles - Material Design 3 */
+
+.protected-route-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.loading-text {
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+}
+
+.protected-route-unauthorized {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: var(--md-sys-color-surface);
+}
+
+.unauthorized-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 480px;
+  gap: 1.5rem;
+}
+
+.unauthorized-icon {
+  font-size: 4rem;
+  color: var(--md-sys-color-error);
+  margin-bottom: 0.5rem;
+}
+
+.unauthorized-content h2 {
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
+}
+
+.unauthorized-content p {
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.unauthorized-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .protected-route-unauthorized {
+    padding: 1rem;
+  }
+  
+  .unauthorized-content {
+    gap: 1rem;
+  }
+  
+  .unauthorized-icon {
+    font-size: 3rem;
+  }
+  
+  .unauthorized-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .unauthorized-actions md-filled-button,
+  .unauthorized-actions md-outlined-button {
+    width: 100%;
+  }
+}
+
+/* Animation for loading state */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.protected-route-loading,
+.unauthorized-content {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Focus states for accessibility */
+.unauthorized-actions md-filled-button:focus-visible,
+.unauthorized-actions md-outlined-button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}

@@ -21,7 +21,7 @@ const Contact = lazy(() => import('../pages/Contact'));
 // Admin components - lazy loaded with more granular code splitting
 const AdminLogin = lazy(() => import('../pages/Admin/Login'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard'));
-const ProtectedRoute = lazy(() => import('../components/admin/ProtectedRoute'));
+const ProtectedRoute = lazy(() => import('../pages/Admin/ProtectedRoute'));
 
 // Lazy load admin components directly
 const LazyPostManagement = lazy(() => import('../pages/Admin/PostManagement'));

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNotification } from '../../../contexts/NotificationContext';
 import AdminLayout from '../../../components/admin/AdminLayout';
-import { apiService } from '../../../services/api';
+import { apiService } from '../../services/api'
 import './style.css';
 
 interface Category {

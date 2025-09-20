@@ -1,188 +1,207 @@
-/**
- * Utility for preloading resources based on the current route
- * This helps improve performance by loading critical assets before they're needed
- */
+// Resource preloading utilities for better performance
 
-interface PreloadOptions {
-    as: 'script' | 'style' | 'image' | 'font' | 'fetch';
-    type?: string;
-    crossOrigin?: boolean;
-    fetchPriority?: 'high' | 'low' | 'auto';
+import { apiService } from '../services/api';
+import { globalCache } from './cacheManager';
+
+// Preload critical resources for the application
+export async function initPreloading(): Promise<void> {
+    try {
+        // Preload critical data in parallel
+        await Promise.allSettled([
+            preloadCategories(),
+            preloadTags(),
+            preloadRecentArticles(),
+        ]);
+    } catch (error) {
+        console.warn('Failed to preload some resources:', error);
+    }
 }
 
-/**
- * Preload a resource with a specified priority
- * @param url Resource URL to preload
- * @param options Preload options
- */
-export const preloadResource = (url: string, options: PreloadOptions): void => {
-    // Skip if the resource is already preloaded or loaded
-    const existingLinks = document.querySelectorAll(`link[href="${url}"]`);
-    if (existingLinks.length > 0) return;
-
-    const link = document.createElement('link');
-    link.rel = options.as === 'script' ? 'modulepreload' : 'preload';
-    link.href = url;
-    link.as = options.as;
-
-    if (options.type) {
-        link.type = options.type;
+// Preload categories
+async function preloadCategories(): Promise<void> {
+    try {
+        const response = await apiService.getPublicCategories();
+        if (response.success && response.data) {
+            globalCache.set('public_categories', response.data, 10 * 60 * 1000); // 10 minutes
+        }
+    } catch (error) {
+        console.warn('Failed to preload categories:', error);
     }
-
-    if (options.crossOrigin) {
-        link.crossOrigin = 'anonymous';
-    }
-
-    if (options.fetchPriority) {
-        link.setAttribute('fetchpriority', options.fetchPriority);
-    }
-
-    document.head.appendChild(link);
-};
-
-/**
- * Prefetch a resource (lower priority than preload)
- * @param url Resource URL to prefetch
- */
-export const prefetchResource = (url: string): void => {
-    // Skip if the resource is already prefetched or loaded
-    const existingLinks = document.querySelectorAll(`link[href="${url}"]`);
-    if (existingLinks.length > 0) return;
-
-    const link = document.createElement('link');
-    link.rel = 'prefetch';
-    link.href = url;
-    document.head.appendChild(link);
-};
-
-/**
- * Preconnect to a domain to establish early connection
- * @param url Domain URL to preconnect to
- * @param crossOrigin Whether to include crossorigin attribute
- */
-export const preconnect = (url: string, crossOrigin = false): void => {
-    const existingLinks = document.querySelectorAll(`link[href="${url}"]`);
-    if (existingLinks.length > 0) return;
-
-    const link = document.createElement('link');
-    link.rel = 'preconnect';
-    link.href = url;
-
-    if (crossOrigin) {
-        link.crossOrigin = 'anonymous';
-    }
-
-    document.head.appendChild(link);
-};
-
-// Route-based preloading strategies
-interface RouteResources {
-    [key: string]: {
-        preload: Array<{ url: string, options: PreloadOptions }>;
-        prefetch: Array<string>;
-    };
 }
 
-// Define critical resources for each route
-const routeResources: RouteResources = {
-    // Home page resources
-    '/': {
-        preload: [
-            {
-                url: '/assets/blog-DtFIdPV9.css',
-                options: { as: 'style' }
-            },
-            {
-                url: '/assets/blog-DNxQE78E.js',
-                options: { as: 'script' }
-            }
-        ],
-        prefetch: [
-            '/assets/index-Cr_CckH0.css',
-            '/assets/index-QTv9X-bu.js'
-        ]
-    },
-    // Admin page resources
-    '/admin': {
-        preload: [
-            {
-                url: '/assets/admin-6CHzR_PM.css',
-                options: { as: 'style' }
-            },
-            {
-                url: '/assets/admin-CrARhWOK.js',
-                options: { as: 'script' }
-            }
-        ],
-        prefetch: []
-    },
-    // Blog post page resources
-    '/post': {
-        preload: [
-            {
-                url: '/assets/blog-DtFIdPV9.css',
-                options: { as: 'style' }
-            },
-            {
-                url: '/assets/blog-DNxQE78E.js',
-                options: { as: 'script' }
-            }
-        ],
-        prefetch: []
+// Preload tags
+async function preloadTags(): Promise<void> {
+    try {
+        const response = await apiService.getPublicTags();
+        if (response.success && response.data) {
+            globalCache.set('public_tags', response.data, 10 * 60 * 1000); // 10 minutes
+        }
+    } catch (error) {
+        console.warn('Failed to preload tags:', error);
     }
-};
+}
 
-/**
- * Preload resources based on the current route
- * @param currentPath Current route path
- */
-export const preloadRouteResources = (currentPath: string): void => {
-    // Find the matching route pattern
-    const routePattern = Object.keys(routeResources).find(pattern =>
-        currentPath === pattern || currentPath.startsWith(pattern + '/')
-    );
+// Preload recent articles for home page
+async function preloadRecentArticles(): Promise<void> {
+    try {
+        const response = await apiService.getArticles({
+            page: 1,
+            page_size: 6,
+            status: 'published'
+        });
+        if (response.success && response.data) {
+            globalCache.set('recent_articles', response.data, 5 * 60 * 1000); // 5 minutes
+        }
+    } catch (error) {
+        console.warn('Failed to preload recent articles:', error);
+    }
+}
 
-    if (!routePattern || !routeResources[routePattern]) return;
+// Preload resources based on route
+export async function preloadRouteResources(route: string): Promise<void> {
+    try {
+        switch (route) {
+            case '/':
+            case '/home':
+                await Promise.allSettled([
+                    preloadRecentArticles(),
+                    preloadCategories(),
+                ]);
+                break;
 
-    const resources = routeResources[routePattern];
+            case '/articles':
+                await Promise.allSettled([
+                    preloadArticles(),
+                    preloadCategories(),
+                    preloadTags(),
+                ]);
+                break;
 
-    // Preload high priority resources
-    resources.preload.forEach(resource => {
-        preloadResource(resource.url, resource.options);
+            case '/admin':
+            case '/admin/dashboard':
+                await preloadAdminData();
+                break;
+
+            default:
+                // For dynamic routes like /article/:id, preload based on pattern
+                if (route.startsWith('/article/')) {
+                    await preloadRecentArticles();
+                }
+                break;
+        }
+    } catch (error) {
+        console.warn(`Failed to preload resources for route ${route}:`, error);
+    }
+}
+
+// Preload articles for articles page
+async function preloadArticles(): Promise<void> {
+    try {
+        const response = await apiService.getArticles({
+            page: 1,
+            page_size: 12,
+            status: 'published'
+        });
+        if (response.success && response.data) {
+            globalCache.set('articles_page_1', response.data, 3 * 60 * 1000); // 3 minutes
+        }
+    } catch (error) {
+        console.warn('Failed to preload articles:', error);
+    }
+}
+
+// Preload admin dashboard data
+async function preloadAdminData(): Promise<void> {
+    try {
+        await Promise.allSettled([
+            preloadDashboardStats(),
+            preloadAdminArticles(),
+        ]);
+    } catch (error) {
+        console.warn('Failed to preload admin data:', error);
+    }
+}
+
+// Preload dashboard statistics
+async function preloadDashboardStats(): Promise<void> {
+    try {
+        const response = await apiService.getDashboardStats();
+        if (response.success && response.data) {
+            globalCache.set('dashboard_stats', response.data, 2 * 60 * 1000); // 2 minutes
+        }
+    } catch (error) {
+        console.warn('Failed to preload dashboard stats:', error);
+    }
+}
+
+// Preload admin articles (including drafts)
+async function preloadAdminArticles(): Promise<void> {
+    try {
+        const response = await apiService.getPosts({
+            page: 1,
+            page_size: 10
+        });
+        if (response.success && response.data) {
+            globalCache.set('admin_articles', response.data, 2 * 60 * 1000); // 2 minutes
+        }
+    } catch (error) {
+        console.warn('Failed to preload admin articles:', error);
+    }
+}
+
+// Preload critical CSS and fonts
+export function preloadCriticalAssets(): void {
+    // Preload critical fonts
+    const criticalFonts = [
+        '/assets/fonts/roboto-regular.woff2',
+        '/assets/fonts/roboto-medium.woff2',
+    ];
+
+    criticalFonts.forEach(fontUrl => {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'font';
+        link.type = 'font/woff2';
+        link.crossOrigin = 'anonymous';
+        link.href = fontUrl;
+        document.head.appendChild(link);
     });
 
-    // Prefetch lower priority resources
-    resources.prefetch.forEach(url => {
-        prefetchResource(url);
+    // Preload critical images
+    const criticalImages = [
+        '/assets/images/hero-bg.webp',
+        '/assets/images/default-avatar.webp',
+    ];
+
+    criticalImages.forEach(imageUrl => {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = imageUrl;
+        document.head.appendChild(link);
     });
-};
+}
 
-/**
- * Initialize preloading for the current route
- */
-export const initPreloading = (): void => {
-    // Preload resources for the initial route
-    preloadRouteResources(window.location.pathname);
+// Background preloading for better UX
+export function startBackgroundPreloading(): void {
+    // Wait for page to be fully loaded before background preloading
+    if (document.readyState === 'complete') {
+        backgroundPreload();
+    } else {
+        window.addEventListener('load', backgroundPreload);
+    }
+}
 
-    // Set up navigation observer to preload resources on route changes
-    const observer = new MutationObserver(() => {
-        preloadRouteResources(window.location.pathname);
-    });
-
-    // Start observing the document body for changes that might indicate route changes
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // Clean up observer on page unload
-    window.addEventListener('unload', () => {
-        observer.disconnect();
-    });
-};
-
-export default {
-    preloadResource,
-    prefetchResource,
-    preconnect,
-    preloadRouteResources,
-    initPreloading
-};
-
+function backgroundPreload(): void {
+    // Use requestIdleCallback for non-critical preloading
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+            initPreloading();
+        });
+    } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+            initPreloading();
+        }, 2000);
+    }
+}

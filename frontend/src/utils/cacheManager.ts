@@ -1,219 +1,160 @@
-// Smart cache manager for API responses and data management
+// Global Cache Manager for API responses and application data
 
-export interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-  ttl: number;
-  key: string;
+export interface CacheItem<T> {
+    data: T;
+    timestamp: number;
+    ttl: number; // Time to live in milliseconds
 }
 
-export interface CacheOptions {
-  ttl?: number; // Time to live in milliseconds
-  maxSize?: number; // Maximum number of entries
-  onEvict?: (key: string, entry: CacheEntry<any>) => void;
-}
+export class GlobalCache {
+    private cache: Map<string, CacheItem<any>> = new Map();
+    private defaultTTL: number = 5 * 60 * 1000; // 5 minutes default
 
-export class SmartCacheManager {
-  private cache = new Map<string, CacheEntry<any>>();
-  private accessOrder = new Map<string, number>(); // For LRU eviction
-  private accessCounter = 0;
-
-  private options: CacheOptions;
-
-  constructor(options: CacheOptions = {}) {
-    this.options = {
-      ttl: 5 * 60 * 1000, // 5 minutes default
-      maxSize: 100,
-      ...options
-    };
-  }
-
-  // Set cache entry
-  set<T>(key: string, data: T, customTtl?: number): void {
-    const ttl = customTtl || this.options.ttl!;
-    const entry: CacheEntry<T> = {
-      data,
-      timestamp: Date.now(),
-      ttl,
-      key
-    };
-
-    // Check if we need to evict entries
-    if (this.cache.size >= this.options.maxSize!) {
-      this.evictLRU();
+    constructor(defaultTTL?: number) {
+        if (defaultTTL) {
+            this.defaultTTL = defaultTTL;
+        }
     }
 
-    this.cache.set(key, entry);
-    this.accessOrder.set(key, ++this.accessCounter);
-  }
-
-  // Get cache entry
-  get<T>(key: string): T | null {
-    const entry = this.cache.get(key) as CacheEntry<T> | undefined;
-
-    if (!entry) {
-      return null;
+    // Set cache with optional TTL
+    set<T>(key: string, data: T, ttl?: number): void {
+        const item: CacheItem<T> = {
+            data,
+            timestamp: Date.now(),
+            ttl: ttl || this.defaultTTL,
+        };
+        this.cache.set(key, item);
     }
 
-    // Check if entry has expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
-      this.delete(key);
-      return null;
+    // Get cache item if not expired
+    get<T>(key: string): T | null {
+        const item = this.cache.get(key);
+        if (!item) {
+            return null;
+        }
+
+        // Check if expired
+        if (Date.now() - item.timestamp > item.ttl) {
+            this.cache.delete(key);
+            return null;
+        }
+
+        return item.data as T;
     }
 
-    // Update access order for LRU
-    this.accessOrder.set(key, ++this.accessCounter);
-    return entry.data;
-  }
-
-  // Check if key exists and is valid
-  has(key: string): boolean {
-    const entry = this.cache.get(key);
-    if (!entry) {
-      return false;
+    // Delete specific cache item
+    delete(key: string): boolean {
+        return this.cache.delete(key);
     }
 
-    // Check if expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
-      this.delete(key);
-      return false;
+    // Clear all cache
+    clear(): void {
+        this.cache.clear();
     }
 
-    return true;
-  }
-
-  // Delete cache entry
-  delete(key: string): boolean {
-    const entry = this.cache.get(key);
-    if (entry && this.options.onEvict) {
-      this.options.onEvict(key, entry);
+    // Clean expired items
+    cleanExpired(): void {
+        const now = Date.now();
+        for (const [key, item] of this.cache.entries()) {
+            if (now - item.timestamp > item.ttl) {
+                this.cache.delete(key);
+            }
+        }
     }
 
-    this.accessOrder.delete(key);
-    return this.cache.delete(key);
-  }
-
-  // Clear all cache
-  clear(): void {
-    if (this.options.onEvict) {
-      for (const [key, entry] of this.cache) {
-        this.options.onEvict(key, entry);
-      }
+    // Invalidate cache by pattern (RegExp)
+    invalidatePattern(pattern: RegExp): void {
+        for (const key of this.cache.keys()) {
+            if (pattern.test(key)) {
+                this.cache.delete(key);
+            }
+        }
     }
 
-    this.cache.clear();
-    this.accessOrder.clear();
-    this.accessCounter = 0;
-  }
+    // Get cache statistics
+    getStats(): {
+        size: number;
+        keys: string[];
+        expired: number;
+    } {
+        const now = Date.now();
+        let expired = 0;
+        const keys = Array.from(this.cache.keys());
 
-  // Evict least recently used entry
-  private evictLRU(): void {
-    let oldestKey = '';
-    let oldestAccess = Infinity;
+        for (const item of this.cache.values()) {
+            if (now - item.timestamp > item.ttl) {
+                expired++;
+            }
+        }
 
-    for (const [key, accessTime] of this.accessOrder) {
-      if (accessTime < oldestAccess) {
-        oldestAccess = accessTime;
-        oldestKey = key;
-      }
+        return {
+            size: this.cache.size,
+            keys,
+            expired,
+        };
     }
 
-    if (oldestKey) {
-      this.delete(oldestKey);
+    // Check if key exists and is not expired
+    has(key: string): boolean {
+        const item = this.cache.get(key);
+        if (!item) {
+            return false;
+        }
+
+        // Check if expired
+        if (Date.now() - item.timestamp > item.ttl) {
+            this.cache.delete(key);
+            return false;
+        }
+
+        return true;
     }
-  }
-
-  // Clean expired entries
-  cleanExpired(): number {
-    let cleanedCount = 0;
-    const now = Date.now();
-
-    for (const [key, entry] of this.cache) {
-      if (now - entry.timestamp > entry.ttl) {
-        this.delete(key);
-        cleanedCount++;
-      }
-    }
-
-    return cleanedCount;
-  }
-
-  // Get cache statistics
-  getStats(): {
-    size: number;
-    maxSize: number;
-    hitRate: number;
-    entries: Array<{ key: string; age: number; ttl: number }>;
-  } {
-    const now = Date.now();
-    const entries = Array.from(this.cache.entries()).map(([key, entry]) => ({
-      key,
-      age: now - entry.timestamp,
-      ttl: entry.ttl
-    }));
-
-    return {
-      size: this.cache.size,
-      maxSize: this.options.maxSize!,
-      hitRate: 0, // Would need hit/miss tracking for accurate calculation
-      entries
-    };
-  }
-
-  // Invalidate entries by pattern
-  invalidatePattern(pattern: RegExp): number {
-    let invalidatedCount = 0;
-
-    for (const key of this.cache.keys()) {
-      if (pattern.test(key)) {
-        this.delete(key);
-        invalidatedCount++;
-      }
-    }
-
-    return invalidatedCount;
-  }
-
-  // Refresh entry TTL
-  refresh(key: string, customTtl?: number): boolean {
-    const entry = this.cache.get(key);
-    if (!entry) {
-      return false;
-    }
-
-    entry.timestamp = Date.now();
-    if (customTtl !== undefined) {
-      entry.ttl = customTtl;
-    }
-
-    this.accessOrder.set(key, ++this.accessCounter);
-    return true;
-  }
 }
 
 // Global cache instance
-export const globalCache = new SmartCacheManager({
-  ttl: 5 * 60 * 1000, // 5 minutes
-  maxSize: 200,
-  onEvict: (key, entry) => {
-    console.debug(`Cache evicted: ${key} (age: ${Date.now() - entry.timestamp}ms)`);
-  }
-});
+export const globalCache = new GlobalCache();
 
-// Cache key generators
+// Cache keys constants
 export const CacheKeys = {
-  articles: (page?: number, pageSize?: number, status?: string) =>
-    `articles:${page || 1}:${pageSize || 12}:${status || 'published'}`,
+    ARTICLES: 'articles',
+    CATEGORIES: 'categories',
+    TAGS: 'tags',
+    MUSIC_TRACKS: 'music_tracks',
+    DASHBOARD_STATS: 'dashboard_stats',
+    SERVER_STATUS: 'server_status',
+    USER_PROFILE: 'user_profile',
+} as const;
 
-  article: (id: string) => `article:${id}`,
+// Helper function to generate cache key with parameters
+export function generateCacheKey(base: string, params?: Record<string, any>): string {
+    if (!params) {
+        return base;
+    }
 
-  articlesByCategory: (categoryId: string) => `articles:category:${categoryId}`,
+    const sortedParams = Object.keys(params)
+        .sort()
+        .map(key => `${key}=${params[key]}`)
+        .join('&');
 
-  articlesByTag: (tagName: string) => `articles:tag:${tagName}`,
+    return `${base}:${sortedParams}`;
+}
 
-  categories: () => 'categories',
+// Cache decorator for async functions
+export function cached<T extends (...args: any[]) => Promise<any>>(
+    fn: T,
+    keyGenerator: (...args: Parameters<T>) => string,
+    ttl?: number
+): T {
+    return (async (...args: Parameters<T>) => {
+        const key = keyGenerator(...args);
+        const cached = globalCache.get(key);
 
-  tags: () => 'tags',
+        if (cached !== null) {
+            return cached;
+        }
 
-  relatedArticles: (articleId: string) => `related:${articleId}`
-};
+        const result = await fn(...args);
+        globalCache.set(key, result, ttl);
+        return result;
+    }) as T;
+}

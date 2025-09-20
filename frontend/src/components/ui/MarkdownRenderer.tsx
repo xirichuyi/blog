@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { apiService } from '../../services/api';
+import { apiService } from '../../services/api'
 import './MarkdownRenderer.css';
 
 interface MarkdownRendererProps {

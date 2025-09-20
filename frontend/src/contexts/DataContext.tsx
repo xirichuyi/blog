@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { apiService } from '../services/api';
-import type { Category, Tag, Article, PaginationInfo } from '../types';
+import { apiService } from '../services/api'
+import type { Category, Tag, Article, PaginationInfo } from '../services/types';
 
 interface DataContextType {
   // Basic data

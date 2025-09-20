@@ -1,6 +1,6 @@
 // Local Storage Service for simulating backend data persistence
 
-import type { Article, MusicTrack } from '../types';
+import type { Article, MusicTrack } from './types';
 
 const STORAGE_KEYS = {
   POSTS: 'blog_posts',
@@ -117,13 +117,13 @@ class StorageService {
   savePost(post: Article): Article {
     const posts = this.getPosts();
     const existingIndex = posts.findIndex(p => p.id === post.id);
-    
+
     if (existingIndex >= 0) {
       posts[existingIndex] = post;
     } else {
       posts.push(post);
     }
-    
+
     localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(posts));
     return post;
   }
@@ -131,24 +131,24 @@ class StorageService {
   deletePost(id: string): boolean {
     const posts = this.getPosts();
     const filteredPosts = posts.filter(post => post.id !== id);
-    
+
     if (filteredPosts.length !== posts.length) {
       localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(filteredPosts));
       return true;
     }
-    
+
     return false;
   }
 
   deletePosts(ids: string[]): boolean {
     const posts = this.getPosts();
     const filteredPosts = posts.filter(post => !ids.includes(post.id));
-    
+
     if (filteredPosts.length !== posts.length) {
       localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(filteredPosts));
       return true;
     }
-    
+
     return false;
   }
 
@@ -167,13 +167,13 @@ class StorageService {
   saveMusicTrack(track: MusicTrack): MusicTrack {
     const tracks = this.getMusicTracks();
     const existingIndex = tracks.findIndex(t => t.id === track.id);
-    
+
     if (existingIndex >= 0) {
       tracks[existingIndex] = track;
     } else {
       tracks.push(track);
     }
-    
+
     localStorage.setItem(STORAGE_KEYS.MUSIC, JSON.stringify(tracks));
     return track;
   }
@@ -181,24 +181,24 @@ class StorageService {
   deleteMusicTrack(id: string): boolean {
     const tracks = this.getMusicTracks();
     const filteredTracks = tracks.filter(track => track.id !== id);
-    
+
     if (filteredTracks.length !== tracks.length) {
       localStorage.setItem(STORAGE_KEYS.MUSIC, JSON.stringify(filteredTracks));
       return true;
     }
-    
+
     return false;
   }
 
   deleteMusicTracks(ids: string[]): boolean {
     const tracks = this.getMusicTracks();
     const filteredTracks = tracks.filter(track => !ids.includes(track.id));
-    
+
     if (filteredTracks.length !== tracks.length) {
       localStorage.setItem(STORAGE_KEYS.MUSIC, JSON.stringify(filteredTracks));
       return true;
     }
-    
+
     return false;
   }
 

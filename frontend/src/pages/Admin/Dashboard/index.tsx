@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../../../services/api';
-import type { DashboardStats } from '../../../types';
-import AdminLayout from '../../../components/admin/AdminLayout';
+import { apiService } from '../../../services/api'
+import type { DashboardStats } from '../../../services/types';
+import AdminLayout from '../../../components/adminLayout/AdminLayout'
 import './style.css';
 
 interface StatCard {
@@ -55,17 +55,18 @@ const Dashboard: React.FC = () => {
                 ]);
 
                 const calculatedStats: DashboardStats = {
-                    totalPosts: postsResponse.success && postsResponse.data ? postsResponse.data.total : 0,
-                    totalCategories: categoriesResponse.success && categoriesResponse.data ? categoriesResponse.data.length : 0,
-                    totalTags: tagsResponse.success && tagsResponse.data ? tagsResponse.data.length : 0,
-                    totalViews: 0, // Can't calculate without view tracking
-                    recentPosts: postsResponse.success && postsResponse.data ? postsResponse.data.posts.slice(0, 5) : [],
-                    popularPosts: [], // Can't calculate without view tracking
-                    systemInfo: {
-                        version: '1.0.0',
+                    total_music: 0,
+                    total_posts: postsResponse.success && postsResponse.data ? postsResponse.data.total : 0,
+                    total_categories: categoriesResponse.success && categoriesResponse.data ? categoriesResponse.data.length : 0,
+                    total_tags: tagsResponse.success && tagsResponse.data ? tagsResponse.data.length : 0,
+                    // total_views: 0, // Can't calculate without view tracking
+                    recent_posts: postsResponse.success && postsResponse.data ? postsResponse.data.posts.slice(0, 5) : [],
+                    // popularPosts: [], // Can't calculate without view tracking
+                    system_info: {
+                        // version: '1.0.0',
                         uptime: '0 days',
-                        memoryUsage: 'N/A',
-                        diskUsage: 'N/A'
+                        memory_usage: 'N/A',
+                        disk_usage: 'N/A'
                     }
                 };
 
@@ -85,31 +86,31 @@ const Dashboard: React.FC = () => {
         return [
             {
                 title: 'Total Posts',
-                value: stats.totalPosts,
+                value: stats.total_posts,
                 icon: 'article',
                 color: 'var(--md-sys-color-primary)',
-                trend: stats.totalPosts > 0 ? { value: 12, isPositive: true } : undefined
+                trend: stats.total_posts > 0 ? { value: 12, isPositive: true } : undefined
             },
             {
                 title: 'Categories',
-                value: stats.totalCategories,
+                value: stats.total_categories,
                 icon: 'folder',
                 color: 'var(--md-sys-color-secondary)',
-                trend: stats.totalCategories > 0 ? { value: 5, isPositive: true } : undefined
+                trend: stats.total_categories > 0 ? { value: 5, isPositive: true } : undefined
             },
             {
                 title: 'Tags',
-                value: stats.totalTags,
+                value: stats.total_tags,
                 icon: 'label',
                 color: 'var(--md-sys-color-tertiary)',
-                trend: stats.totalTags > 0 ? { value: 8, isPositive: true } : undefined
+                trend: stats.total_tags > 0 ? { value: 8, isPositive: true } : undefined
             },
             {
                 title: 'Total Views',
-                value: stats.totalViews || 'N/A',
+                value: stats.total_views || 'N/A',
                 icon: 'visibility',
                 color: 'var(--md-sys-color-error)',
-                trend: stats.totalViews > 0 ? { value: 15, isPositive: true } : undefined
+                trend: stats.total_views > 0 ? { value: 15, isPositive: true } : undefined
             }
         ];
     };
@@ -236,7 +237,7 @@ const Dashboard: React.FC = () => {
                 </section>
 
                 {/* Recent Posts */}
-                {stats && stats.recentPosts && stats.recentPosts.length > 0 && (
+                {stats && stats.recent_posts && stats.recent_posts.length > 0 && (
                     <section className="dashboard-recent">
                         <div className="section-header">
                             <h2 className="section-title">Recent Posts</h2>
@@ -246,7 +247,7 @@ const Dashboard: React.FC = () => {
                             </md-text-button>
                         </div>
                         <div className="recent-posts">
-                            {stats.recentPosts.slice(0, 5).map((post) => (
+                            {stats.recent_posts.slice(0, 5).map((post) => (
                                 <div key={post.id} className="recent-post-item">
                                     <div className="recent-post-content">
                                         <h4 className="recent-post-title">{post.title}</h4>
@@ -270,29 +271,29 @@ const Dashboard: React.FC = () => {
                 )}
 
                 {/* System Info */}
-                {stats && stats.systemInfo && (
+                {stats && stats.system_info && (
                     <section className="dashboard-system">
                         <h2 className="section-title">System Information</h2>
                         <div className="system-info">
                             <div className="system-info-item">
                                 <md-icon className="system-icon">info</md-icon>
                                 <span className="system-label">Version:</span>
-                                <span className="system-value">{stats.systemInfo.version}</span>
+                                {/* <span className="system-value">{stats.system_info.version}</span> */}
                             </div>
                             <div className="system-info-item">
                                 <md-icon className="system-icon">schedule</md-icon>
                                 <span className="system-label">Uptime:</span>
-                                <span className="system-value">{stats.systemInfo.uptime}</span>
+                                <span className="system-value">{stats.system_info.uptime}</span>
                             </div>
                             <div className="system-info-item">
                                 <md-icon className="system-icon">memory</md-icon>
                                 <span className="system-label">Memory:</span>
-                                <span className="system-value">{stats.systemInfo.memoryUsage}</span>
+                                <span className="system-value">{stats.system_info.memory_usage}</span>
                             </div>
                             <div className="system-info-item">
                                 <md-icon className="system-icon">storage</md-icon>
                                 <span className="system-label">Disk:</span>
-                                <span className="system-value">{stats.systemInfo.diskUsage}</span>
+                                <span className="system-value">{stats.system_info.disk_usage}</span>
                             </div>
                         </div>
                     </section>

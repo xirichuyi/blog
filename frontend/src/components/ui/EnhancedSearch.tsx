@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../../services/api';
-import type { Article } from '../../types';
+import { apiService } from '../../services/api'
+import type { Article } from '../../services/types';
 import './EnhancedSearch.css';
 
 interface SearchSuggestion {
