@@ -72,7 +72,7 @@ const EnhancedSearch: React.FC<EnhancedSearchProps> = ({
   useEffect(() => {
     const loadData = async () => {
       try {
-        const articlesResponse = await apiService.getPosts({ page_size: 1000 });
+        const articlesResponse = await apiService.getPosts({ page_size: 12 });
         if (articlesResponse.success && articlesResponse.data) {
           setAllArticles(articlesResponse.data);
 

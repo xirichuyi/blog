@@ -771,7 +771,7 @@ class ApiService {
   async getPostsByCategory(categoryId: string): Promise<ApiResponse<Article[]>> {
     try {
       if (categoryId === 'all') {
-        return this.getPosts({ page_size: 1000 });
+        return this.getPosts({ page_size: 12 });
       }
 
       // Use the backend's category filtering by passing category_id as a number
@@ -785,7 +785,7 @@ class ApiService {
 
       return this.getPosts({
         category: categoryId,
-        page_size: 1000
+        page_size: 12
       });
     } catch (error) {
       return {
@@ -808,9 +808,10 @@ class ApiService {
       }
 
       // Use the optimized backend endpoint with tag filtering
+      // Use reasonable page size for better performance
       return this.getPosts({
         tag_id: tagIdNum,
-        page_size: 1000
+        page_size: 12
       });
     } catch (error) {
       return {

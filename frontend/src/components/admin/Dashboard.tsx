@@ -52,7 +52,7 @@ const Dashboard: React.FC = () => {
 
         // Get posts, categories and calculate basic stats
         const [postsResponse, categoriesResponse] = await Promise.all([
-          apiService.getPosts({ page: 1, page_size: 1000 }),
+          apiService.getPosts({ page: 1, page_size: 12 }),
           apiService.getPublicCategories()
         ]);
 
