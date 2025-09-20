@@ -9,30 +9,25 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import { DataProvider } from '../contexts/DataContext';
 
 // Lazy load components for better performance
-const BlogHome = lazy(() => import('../components/blog/BlogHome'));
-const ArticleDetail = lazy(() => import('../components/blog/ArticleDetail'));
-const CategoriesPage = lazy(() => import('../components/blog/CategoriesPage'));
-const TagsPage = lazy(() => import('../components/blog/TagsPage'));
-const ArticlesPage = lazy(() => import('../components/blog/ArticlesPage'));
-const SearchResultsPage = lazy(() => import('../components/blog/SearchResultsPage'));
-const AboutPage = lazy(() => import('../components/pages/AboutPage'));
-const ContactPage = lazy(() => import('../components/pages/ContactPage'));
-const PerformanceTest = lazy(() => import('../components/debug/PerformanceTest'));
+const Home = lazy(() => import('../pages/Home'));
+const ArticleDetail = lazy(() => import('../pages/Articles/components/ArticleDetail'));
+// const CategoriesPage = lazy(() => import('../components/blog/CategoriesPage'));
+// const TagsPage = lazy(() => import('../components/blog/TagsPage'));
+const Articles = lazy(() => import('../pages/Articles'));
+// const SearchResultsPage = lazy(() => import('../components/blog/SearchResultsPage'));
+const About = lazy(() => import('../pages/About'));
+const Contact = lazy(() => import('../pages/Contact'));
 
 // Admin components - lazy loaded with more granular code splitting
-const LoginPage = lazy(() => import('../components/admin/LoginPage'));
+const AdminLogin = lazy(() => import('../pages/Admin/Login'));
+const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard'));
 const ProtectedRoute = lazy(() => import('../components/admin/ProtectedRoute'));
 
-// Import pre-defined lazy admin components
-import {
-  LazyDashboard,
-  LazyPostManagement,
-  LazyPostEditor,
-  LazyMusicManagement,
-  LazyMusicUpload,
-  LazyCategoriesTagsManagement,
-  LazyAboutManagement
-} from '../components/admin/LazyAdminComponent';
+// Lazy load admin components directly
+const LazyPostManagement = lazy(() => import('../pages/Admin/PostManagement'));
+const LazyPostEditor = lazy(() => import('../pages/Admin/PostEditor'));
+const LazyCategoriesTagsManagement = lazy(() => import('../pages/Admin/CategoriesTags'));
+const LazyAboutManagement = lazy(() => import('../pages/Admin/About'));
 import NotificationContainer from '../components/ui/NotificationContainer';
 import '../styles/page-placeholder.css';
 
@@ -73,11 +68,10 @@ const ArticleDetailRoute: React.FC = () => {
 };
 
 // Admin placeholder components with lazy loading
-const AdminDashboard: React.FC = () => <LazyDashboard />;
 
 const AdminPosts: React.FC = () => <LazyPostManagement />;
 
-const AdminMusic: React.FC = () => <LazyMusicManagement />;
+// const AdminMusic: React.FC = () => <LazyMusicManagement />;
 
 const AdminCategoriesTags: React.FC = () => <LazyCategoriesTagsManagement />;
 
@@ -94,7 +88,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/" element={
                   <Layout title="Chuyi的博客 - 现代化个人博客">
                     <Suspense fallback={<LoadingSpinner />}>
-                      <BlogHome />
+                      <Home />
                     </Suspense>
                   </Layout>
                 } />
@@ -102,7 +96,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/articles" element={
                   <Layout title="所有文章 - Chuyi的博客">
                     <Suspense fallback={<LoadingSpinner />}>
-                      <ArticlesPage />
+                      <Articles />
                     </Suspense>
                   </Layout>
                 } />
@@ -110,7 +104,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/search" element={
                   <Layout title="搜索结果 - Chuyi的博客">
                     <Suspense fallback={<LoadingSpinner />}>
-                      <SearchResultsPage />
+                      {/* <SearchResults /> TODO: add search results page */}
                     </Suspense>
                   </Layout>
                 } />
@@ -123,26 +117,14 @@ const AppRouter: React.FC = () => {
                   </Layout>
                 } />
 
-                <Route path="/categories" element={
-                  <Layout title="分类 - Chuyi的博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <CategoriesPage />
-                    </Suspense>
-                  </Layout>
-                } />
 
-                <Route path="/tags" element={
-                  <Layout title="标签 - Chuyi的博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <TagsPage />
-                    </Suspense>
-                  </Layout>
-                } />
+
+
 
                 <Route path="/about" element={
                   <Layout title="关于我 - Chuyi的博客">
                     <Suspense fallback={<LoadingSpinner />}>
-                      <AboutPage />
+                      <About />
                     </Suspense>
                   </Layout>
                 } />
@@ -150,24 +132,16 @@ const AppRouter: React.FC = () => {
                 <Route path="/contact" element={
                   <Layout title="联系我 - Chuyi的博客">
                     <Suspense fallback={<LoadingSpinner />}>
-                      <ContactPage />
+                      <Contact />
                     </Suspense>
                   </Layout>
                 } />
 
-                {/* Debug Routes */}
-                <Route path="/debug/performance" element={
-                  <Layout title="性能测试 - Chuyi的博客">
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <PerformanceTest />
-                    </Suspense>
-                  </Layout>
-                } />
 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={
                   <Suspense fallback={<LoadingSpinner />}>
-                    <LoginPage />
+                    <AdminLogin />
                   </Suspense>
                 } />
 
@@ -203,21 +177,9 @@ const AppRouter: React.FC = () => {
                   </Suspense>
                 } />
 
-                <Route path="/admin/music" element={
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <ProtectedRoute>
-                      <AdminMusic />
-                    </ProtectedRoute>
-                  </Suspense>
-                } />
 
-                <Route path="/admin/music/upload" element={
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <ProtectedRoute>
-                      <LazyMusicUpload />
-                    </ProtectedRoute>
-                  </Suspense>
-                } />
+
+
 
                 <Route path="/admin/categories-tags" element={
                   <Suspense fallback={<LoadingSpinner />}>

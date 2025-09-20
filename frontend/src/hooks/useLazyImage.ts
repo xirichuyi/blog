@@ -63,7 +63,7 @@ export const useLazyImage = ({
     if (!isInView || !src || isLoaded) return;
 
     const img = new Image();
-    
+
     img.onload = () => {
       setCurrentSrc(src);
       setIsLoaded(true);
@@ -122,16 +122,17 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
   return (
     <img
-      ref={imgRef}
-      src={currentSrc}
-      alt={alt}
-      className={`lazy-image ${isLoaded ? 'loaded' : 'loading'} ${error ? 'error' : ''} ${className}`}
-      {...props}
-      style={{
-        transition: 'opacity 0.3s ease-in-out',
-        opacity: isLoaded ? 1 : 0.7,
+      ref= { imgRef }
+  src = { currentSrc }
+  alt = { alt }
+  className = {`lazy-image ${isLoaded ? 'loaded' : 'loading'} ${error ? 'error' : ''} ${className}`
+}
+{...props }
+style = {{
+  transition: 'opacity 0.3s ease-in-out',
+    opacity: isLoaded ? 1 : 0.7,
         ...props.style
-      }}
+}}
     />
   );
 };
