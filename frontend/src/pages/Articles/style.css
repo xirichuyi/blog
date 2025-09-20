@@ -107,6 +107,12 @@
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 2rem;
   margin-bottom: 3rem;
+  min-height: 600px; /* 防止布局抖动 */
+  transition: opacity 0.2s ease;
+}
+
+.articles-grid--loading {
+  opacity: 0.8;
 }
 
 .article-card {
@@ -380,6 +386,84 @@
   }
 }
 
+/* 骨架屏样式 */
+.article-card--skeleton {
+  background: var(--md-sys-color-surface-container-lowest);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  height: fit-content;
+  animation: pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.article-image--skeleton {
+  height: 200px;
+  background: var(--md-sys-color-surface-variant);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line {
+  background: var(--md-sys-color-surface-variant);
+  border-radius: 4px;
+  height: 1rem;
+  margin-bottom: 0.5rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.skeleton-line--category {
+  width: 80px;
+  height: 1.5rem;
+  border-radius: 12px;
+  display: inline-block;
+  margin-right: 1rem;
+}
+
+.skeleton-line--date {
+  width: 100px;
+  height: 0.875rem;
+  display: inline-block;
+}
+
+.skeleton-line--title {
+  height: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.skeleton-line--short {
+  width: 70%;
+}
+
+.skeleton-line--excerpt {
+  height: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+/* 动画效果 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Filter chips 防抖动样式 */
+.filter-chips md-filter-chip {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.filter-chips md-filter-chip:hover {
+  transform: translateY(-1px);
+}
+
+.filter-chips md-filter-chip[selected] {
+  transform: scale(1.02);
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   .article-card {
@@ -395,6 +479,24 @@
   }
 
   .article-card:hover .article-image img {
+    transform: none;
+  }
+
+  .article-card--skeleton,
+  .skeleton-line {
+    animation: none;
+  }
+
+  .articles-grid {
+    transition: none;
+  }
+
+  .filter-chips md-filter-chip {
+    transition: none;
+  }
+
+  .filter-chips md-filter-chip:hover,
+  .filter-chips md-filter-chip[selected] {
     transform: none;
   }
 }

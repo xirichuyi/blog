@@ -4,6 +4,8 @@ import { apiService } from '../../services/api'
 import type { Article, Category, Tag, PaginationInfo } from '../../services/types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ErrorMessage from '../../components/ui/ErrorMessage';
+import { useDebouncedClick } from '../../hooks/useDebounce';
+import { globalOperationLock } from '../../utils/smoothTransitions';
 
 import './style.css';
 
@@ -133,15 +135,27 @@ const Articles: React.FC = () => {
         }
     }, [activeFilter]);
 
-    // Handle category filter
-    const handleCategoryFilter = (categoryId: string) => {
-        setActiveFilter({ type: 'category', id: categoryId });
-    };
+    // Handle category filter with debounce to prevent rapid clicking
+    const handleCategoryFilterInternal = useCallback(async (categoryId: string) => {
+        // 使用操作锁防止快速连续点击
+        await globalOperationLock.withLock('category-filter', async () => {
+            // 添加短暂延迟，让用户看到点击反馈
+            await new Promise(resolve => setTimeout(resolve, 100));
+            setActiveFilter({ type: 'category', id: categoryId });
+        });
+    }, []);
 
-    // Handle tag filter
-    const handleTagFilter = (tagId: string) => {
-        setActiveFilter({ type: 'tag', id: tagId });
-    };
+    const [handleCategoryFilter, isCategoryProcessing] = useDebouncedClick(handleCategoryFilterInternal, 200);
+
+    // Handle tag filter with debounce
+    const handleTagFilterInternal = useCallback(async (tagId: string) => {
+        await globalOperationLock.withLock('tag-filter', async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            setActiveFilter({ type: 'tag', id: tagId });
+        });
+    }, []);
+
+    const [handleTagFilter, isTagProcessing] = useDebouncedClick(handleTagFilterInternal, 200);
 
     // Handle article click
     const handleArticleClick = (articleId: string) => {
@@ -192,8 +206,8 @@ const Articles: React.FC = () => {
         });
     };
 
-    // Show loading state
-    if (isLoading || articlesLoading) {
+    // Show loading state - 只在初始加载时显示全屏加载
+    if (isLoading) {
         return (
             <div className="articles-page">
                 <div className="articles-loading">
@@ -283,8 +297,27 @@ const Articles: React.FC = () => {
             </div>
 
             {/* Articles Grid */}
-            <div className="articles-grid">
-                {articles.length === 0 ? (
+            <div className={`articles-grid ${articlesLoading ? 'articles-grid--loading' : ''}`}>
+                {articlesLoading ? (
+                    // 显示骨架屏而不是完全隐藏内容
+                    <>
+                        {Array.from({ length: 6 }, (_, index) => (
+                            <div key={`skeleton-${index}`} className="article-card article-card--skeleton">
+                                <div className="article-image article-image--skeleton"></div>
+                                <div className="article-content">
+                                    <div className="article-meta">
+                                        <div className="skeleton-line skeleton-line--category"></div>
+                                        <div className="skeleton-line skeleton-line--date"></div>
+                                    </div>
+                                    <div className="skeleton-line skeleton-line--title"></div>
+                                    <div className="skeleton-line skeleton-line--title skeleton-line--short"></div>
+                                    <div className="skeleton-line skeleton-line--excerpt"></div>
+                                    <div className="skeleton-line skeleton-line--excerpt skeleton-line--short"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </>
+                ) : articles.length === 0 ? (
                     <div className="no-articles">
                         <md-icon className="no-articles-icon">article</md-icon>
                         <h3>No articles found</h3>
