@@ -64,6 +64,18 @@
 
 .filter-chips md-filter-chip {
   --md-filter-chip-container-shape: 16px;
+  /* 固定高度和最小宽度，防止跳动 */
+  min-height: 32px;
+  min-width: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 确保所有状态下的视觉一致性 */
+  --md-filter-chip-selected-container-color: var(--md-sys-color-primary-container);
+  --md-filter-chip-selected-label-text-color: var(--md-sys-color-on-primary-container);
+  --md-filter-chip-unselected-container-color: var(--md-sys-color-surface-container-low);
+  --md-filter-chip-unselected-label-text-color: var(--md-sys-color-on-surface-variant);
+  --md-filter-chip-unselected-outline-color: var(--md-sys-color-outline);
 }
 
 /* Active Filter */
@@ -108,11 +120,47 @@
   gap: 2rem;
   margin-bottom: 3rem;
   min-height: 600px; /* 防止布局抖动 */
-  transition: opacity 0.2s ease;
+  position: relative;
+  transition: opacity 0.3s ease;
 }
 
 .articles-grid--loading {
   opacity: 0.8;
+}
+
+.articles-grid--transitioning {
+  overflow: hidden; /* 防止过渡期间的滚动条闪动 */
+}
+
+/* 文章内容容器 */
+.articles-content {
+  display: contents; /* 让子元素直接参与grid布局 */
+}
+
+.articles-content--fade-in {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* 过渡期间的旧文章（淡出） */
+.articles-transition-out {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
+  z-index: 1;
+}
+
+.article-card--fade-out {
+  animation: fadeOutDown 0.3s ease-in forwards;
+}
+
+.article-card--fade-in {
+  animation: fadeInUp 0.4s ease-out forwards;
+  animation-delay: 0.1s;
+  opacity: 0;
 }
 
 .article-card {
@@ -123,6 +171,38 @@
   cursor: pointer;
   border: 1px solid var(--md-sys-color-outline-variant);
   height: fit-content;
+}
+
+/* 隐藏的文章卡片 - 保持布局空间但不显示内容 */
+.article-card--hidden {
+  background: transparent;
+  border: none;
+  cursor: default;
+  pointer-events: none;
+  min-height: 300px; /* 保持最小高度维持布局 */
+}
+
+/* 可见的文章卡片 */
+.article-card--visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* 文章卡片淡入动画 */
+.article-card--visible {
+  animation: articleFadeIn 0.3s ease-out;
+}
+
+@keyframes articleFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .article-card:hover {
@@ -450,18 +530,72 @@
   }
 }
 
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOutDown {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
 /* Filter chips 防抖动样式 */
 .filter-chips md-filter-chip {
   transition: all 0.2s ease;
   cursor: pointer;
+  /* 防止布局变化 */
+  box-sizing: border-box;
 }
 
 .filter-chips md-filter-chip:hover {
   transform: translateY(-1px);
+  /* 保持尺寸不变 */
+  min-height: 32px;
+  min-width: 48px;
 }
 
 .filter-chips md-filter-chip[selected] {
-  transform: scale(1.02);
+  /* 移除缩放效果，只改变颜色 */
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* All 按钮特殊样式 */
+.filter-chip-all {
+  --md-filter-chip-selected-container-color: var(--md-sys-color-secondary-container) !important;
+  --md-filter-chip-selected-label-text-color: var(--md-sys-color-on-secondary-container) !important;
+  font-weight: 500;
+}
+
+/* 确保选中状态的视觉反馈稳定 */
+.filter-chips md-filter-chip[selected="true"] {
+  border: 2px solid transparent; /* 防止边框变化 */
+}
+
+.filter-chips md-filter-chip:not([selected]) {
+  border: 1px solid var(--md-sys-color-outline-variant);
 }
 
 /* Reduced Motion */
@@ -498,5 +632,23 @@
   .filter-chips md-filter-chip:hover,
   .filter-chips md-filter-chip[selected] {
     transform: none;
+  }
+
+  .filter-chips md-filter-chip[selected="true"],
+  .filter-chips md-filter-chip:not([selected]) {
+    border-width: 1px; /* 保持一致的边框 */
+  }
+
+  /* 禁用过渡动画 */
+  .articles-grid {
+    transition: none;
+  }
+
+  .articles-content--fade-in,
+  .article-card--fade-out,
+  .article-card--fade-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

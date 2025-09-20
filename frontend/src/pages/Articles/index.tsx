@@ -4,7 +4,6 @@ import { apiService } from '../../services/api'
 import type { Article, Category, Tag, PaginationInfo } from '../../services/types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ErrorMessage from '../../components/ui/ErrorMessage';
-import { useDebouncedClick } from '../../hooks/useDebounce';
 import { globalOperationLock } from '../../utils/smoothTransitions';
 
 import './style.css';
@@ -21,6 +20,9 @@ const Articles: React.FC = () => {
     const [articles, setArticles] = useState<Article[]>([]);
     const [totalArticles, setTotalArticles] = useState(0);
 
+    // 固定的文章槽位数量，避免DOM重新创建
+    const FIXED_ARTICLE_SLOTS = 12;
+
     // Loading states
     const [isLoading, setIsLoading] = useState(true);
     const [articlesLoading, setArticlesLoading] = useState(false);
@@ -28,23 +30,30 @@ const Articles: React.FC = () => {
 
     // Active filter state - only one filter can be active at a time
     const [activeFilter, setActiveFilter] = useState<{ type: 'category' | 'tag' | null, id: string | null }>({
-        type: 'category',
-        id: 'all'
+        type: null,
+        id: null
     });
+
+    // Filter operation state - 防止重复点击和请求
+    const [isFilterOperating, setIsFilterOperating] = useState(false);
+
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
 
     // Load articles based on current filter
-    const loadArticles = useCallback(async (page: number = 1) => {
+    const loadArticles = useCallback(async (page: number = 1, filter?: { type: 'category' | 'tag' | null, id: string | null }) => {
         try {
             setArticlesLoading(true);
             setError(null);
 
-            if (activeFilter.type === 'category' && activeFilter.id !== 'all' && activeFilter.id) {
+            // 使用传入的filter或当前的activeFilter
+            const currentFilter = filter || activeFilter;
+
+            if (currentFilter.type === 'category' && currentFilter.id !== 'all' && currentFilter.id) {
                 // Load articles by category
                 const response = await apiService.getArticles({
-                    category: activeFilter.id,
+                    category: currentFilter.id,
                     status: 'published'
                 });
                 if (response.success && response.data) {
@@ -55,10 +64,10 @@ const Articles: React.FC = () => {
                     setArticles(categoryArticles.slice(startIndex, endIndex));
                     setTotalArticles(categoryArticles.length);
                 }
-            } else if (activeFilter.type === 'tag' && activeFilter.id) {
+            } else if (currentFilter.type === 'tag' && currentFilter.id) {
                 // Load articles by tag
                 const response = await apiService.getArticles({
-                    tag_id: Number(activeFilter.id),
+                    tag_id: Number(currentFilter.id),
                     status: 'published'
                 });
                 if (response.success && response.data) {
@@ -87,7 +96,7 @@ const Articles: React.FC = () => {
         } finally {
             setArticlesLoading(false);
         }
-    }, [activeFilter]);
+    }, []);
 
     // Load basic data (categories and tags)
     const loadBasicData = useCallback(async () => {
@@ -126,36 +135,70 @@ const Articles: React.FC = () => {
         }
     }, [loadArticles, currentPage, isLoading]);
 
-    // Reset to page 1 when filter changes
+    // 当页码变化时重新加载文章（但筛选变化时不依赖这个effect）
     useEffect(() => {
-        if (currentPage !== 1) {
-            setCurrentPage(1);
-        } else {
-            loadArticles(1);
+        if (!isLoading && currentPage !== 1) {
+            loadArticles(currentPage, activeFilter);
         }
-    }, [activeFilter]);
+    }, [currentPage, loadArticles, isLoading, activeFilter]);
 
-    // Handle category filter with debounce to prevent rapid clicking
-    const handleCategoryFilterInternal = useCallback(async (categoryId: string) => {
-        // 使用操作锁防止快速连续点击
-        await globalOperationLock.withLock('category-filter', async () => {
-            // 添加短暂延迟，让用户看到点击反馈
-            await new Promise(resolve => setTimeout(resolve, 100));
-            setActiveFilter({ type: 'category', id: categoryId });
-        });
-    }, []);
+    // Handle category filter with state management
+    const handleCategoryFilter = useCallback(async (categoryId: string) => {
+        // 如果正在操作中，直接返回
+        if (isFilterOperating) return;
 
-    const [handleCategoryFilter, isCategoryProcessing] = useDebouncedClick(handleCategoryFilterInternal, 200);
+        setIsFilterOperating(true);
+        try {
+            // 使用操作锁防止快速连续点击
+            await globalOperationLock.withLock('category-filter', async () => {
+                const newFilter = { type: 'category' as const, id: categoryId };
+                setActiveFilter(newFilter);
+                setCurrentPage(1); // 重置页码
+                // 直接调用loadArticles，避免useEffect的延迟
+                await loadArticles(1, newFilter);
+            });
+        } finally {
+            // 延迟重置操作状态，确保用户能看到视觉反馈
+            setTimeout(() => setIsFilterOperating(false), 300);
+        }
+    }, [isFilterOperating, loadArticles]);
 
-    // Handle tag filter with debounce
-    const handleTagFilterInternal = useCallback(async (tagId: string) => {
-        await globalOperationLock.withLock('tag-filter', async () => {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            setActiveFilter({ type: 'tag', id: tagId });
-        });
-    }, []);
+    // Handle tag filter with state management
+    const handleTagFilter = useCallback(async (tagId: string) => {
+        // 如果正在操作中，直接返回
+        if (isFilterOperating) return;
 
-    const [handleTagFilter, isTagProcessing] = useDebouncedClick(handleTagFilterInternal, 200);
+        setIsFilterOperating(true);
+        try {
+            await globalOperationLock.withLock('tag-filter', async () => {
+                const newFilter = { type: 'tag' as const, id: tagId };
+                setActiveFilter(newFilter);
+                setCurrentPage(1); // 重置页码
+                // 直接调用loadArticles，避免useEffect的延迟
+                await loadArticles(1, newFilter);
+            });
+        } finally {
+            setTimeout(() => setIsFilterOperating(false), 300);
+        }
+    }, [isFilterOperating, loadArticles]);
+
+    // Handle reset filter (All Tags click)
+    const handleResetFilter = useCallback(async () => {
+        if (isFilterOperating) return;
+
+        setIsFilterOperating(true);
+        try {
+            await globalOperationLock.withLock('reset-filter', async () => {
+                const newFilter = { type: null, id: null };
+                setActiveFilter(newFilter);
+                setCurrentPage(1); // 重置页码
+                // 直接调用loadArticles，避免useEffect的延迟
+                await loadArticles(1, newFilter);
+            });
+        } finally {
+            setTimeout(() => setIsFilterOperating(false), 300);
+        }
+    }, [isFilterOperating, loadArticles]);
 
     // Handle article click
     const handleArticleClick = (articleId: string) => {
@@ -185,17 +228,6 @@ const Articles: React.FC = () => {
         return pages;
     };
 
-    // Get active filter display name
-    const getActiveFilterName = () => {
-        if (activeFilter.type === 'category' && activeFilter.id !== 'all') {
-            const category = categories.find(c => c.id === activeFilter.id);
-            return category ? category.name : 'Unknown Category';
-        } else if (activeFilter.type === 'tag' && activeFilter.id) {
-            const tag = tags.find(t => t.id === activeFilter.id);
-            return tag ? tag.name : 'Unknown Tag';
-        }
-        return 'All Articles';
-    };
 
     // Format date
     const formatDate = (dateString: string) => {
@@ -205,6 +237,112 @@ const Articles: React.FC = () => {
             day: 'numeric'
         });
     };
+
+    // 创建固定的文章槽位，避免DOM重新创建
+    const articleSlots = useMemo(() => {
+        const slots = [];
+        for (let i = 0; i < FIXED_ARTICLE_SLOTS; i++) {
+            const article = articles[i];
+            const isVisible = Boolean(article);
+            const isLoading = articlesLoading && !article;
+
+            slots.push({
+                index: i,
+                article: article || null,
+                isVisible,
+                isLoading,
+                key: `article-slot-${i}` // 固定的key，不会变化
+            });
+        }
+        return slots;
+    }, [articles, articlesLoading]);
+
+    // 文章槽位组件 - 复用DOM，只更新内容
+    const ArticleSlot = React.memo(({ slot }: { slot: any }) => {
+        const { article, isVisible, isLoading } = slot;
+
+        if (isLoading) {
+            return (
+                <div className="article-card article-card--skeleton">
+                    <div className="article-image article-image--skeleton"></div>
+                    <div className="article-content">
+                        <div className="article-meta">
+                            <div className="skeleton-line skeleton-line--category"></div>
+                            <div className="skeleton-line skeleton-line--date"></div>
+                        </div>
+                        <div className="skeleton-line skeleton-line--title"></div>
+                        <div className="skeleton-line skeleton-line--title skeleton-line--short"></div>
+                        <div className="skeleton-line skeleton-line--excerpt"></div>
+                        <div className="skeleton-line skeleton-line--excerpt skeleton-line--short"></div>
+                    </div>
+                </div>
+            );
+        }
+
+        if (!isVisible || !article) {
+            return <div className="article-card article-card--hidden" style={{ visibility: 'hidden' }}></div>;
+        }
+
+        return (
+            <article
+                className="article-card article-card--visible"
+                onClick={() => handleArticleClick(article.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleArticleClick(article.id);
+                    }
+                }}
+            >
+                {/* Article Image */}
+                <div className="article-image">
+                    {article.coverImage || article.imageUrl ? (
+                        <img
+                            src={article.coverImage || article.imageUrl}
+                            alt={article.title}
+                            loading="lazy"
+                            onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                    parent.classList.add('no-image');
+                                }
+                            }}
+                        />
+                    ) : (
+                        <div className="article-placeholder">
+                            <md-icon>article</md-icon>
+                        </div>
+                    )}
+                </div>
+
+                {/* Article Content */}
+                <div className="article-content">
+                    <div className="article-meta">
+                        <span className="article-category">{article.category}</span>
+                        <span className="article-date">{formatDate(article.publishDate)}</span>
+                    </div>
+                    <h2 className="article-title">{article.title}</h2>
+                    <p className="article-excerpt">
+                        {article.excerpt || article.content?.substring(0, 150) + '...' || ''}
+                    </p>
+                    <div className="article-tags">
+                        {article.tags.slice(0, 3).map((tag, index) => (
+                            <span key={index} className="article-tag">
+                                {tag}
+                            </span>
+                        ))}
+                        {article.tags.length > 3 && (
+                            <span className="article-tag-more">+{article.tags.length - 3} more</span>
+                        )}
+                    </div>
+                </div>
+            </article>
+        );
+    });
 
     // Show loading state - 只在初始加载时显示全屏加载
     if (isLoading) {
@@ -243,17 +381,16 @@ const Articles: React.FC = () => {
                 <div className="filter-section">
                     <h3 className="filter-title">Categories</h3>
                     <div className="filter-chips">
-                        <md-filter-chip
-                            selected={activeFilter.type === 'category' && activeFilter.id === 'all'}
-                            onClick={() => handleCategoryFilter('all')}
-                        >
-                            All
-                        </md-filter-chip>
                         {categories.map((category) => (
                             <md-filter-chip
                                 key={category.id}
-                                selected={activeFilter.type === 'category' && activeFilter.id === category.id}
+                                {...(activeFilter.type === 'category' && activeFilter.id === category.id ? { selected: true } : {})}
                                 onClick={() => handleCategoryFilter(category.id)}
+                                style={{
+                                    opacity: isFilterOperating ? 0.6 : 1,
+                                    pointerEvents: isFilterOperating ? 'none' : 'auto',
+                                    cursor: isFilterOperating ? 'not-allowed' : 'pointer'
+                                }}
                             >
                                 {category.name}
                             </md-filter-chip>
@@ -265,11 +402,29 @@ const Articles: React.FC = () => {
                 <div className="filter-section">
                     <h3 className="filter-title">Tags</h3>
                     <div className="filter-chips">
+                        {/* 添加 All Tags 选项 */}
+                        <md-filter-chip
+                            {...(activeFilter.type !== 'tag' ? { selected: true } : {})}
+                            onClick={() => handleResetFilter()}
+                            className="filter-chip-all"
+                            style={{
+                                opacity: isFilterOperating ? 0.6 : 1,
+                                pointerEvents: isFilterOperating ? 'none' : 'auto',
+                                cursor: isFilterOperating ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            All Tags
+                        </md-filter-chip>
                         {tags.slice(0, 10).map((tag) => (
                             <md-filter-chip
                                 key={tag.id}
-                                selected={activeFilter.type === 'tag' && activeFilter.id === tag.id}
+                                {...(activeFilter.type === 'tag' && activeFilter.id === tag.id ? { selected: true } : {})}
                                 onClick={() => handleTagFilter(tag.id)}
+                                style={{
+                                    opacity: isFilterOperating ? 0.6 : 1,
+                                    pointerEvents: isFilterOperating ? 'none' : 'auto',
+                                    cursor: isFilterOperating ? 'not-allowed' : 'pointer'
+                                }}
                             >
                                 {tag.name}
                             </md-filter-chip>
@@ -278,112 +433,21 @@ const Articles: React.FC = () => {
                 </div>
             </div>
 
-            {/* Active Filter Display */}
-            <div className="active-filter">
-                <div className="active-filter-content">
-                    <span className="active-filter-label">Showing:</span>
-                    <span className="active-filter-name">{getActiveFilterName()}</span>
-                    <span className="active-filter-count">({totalArticles} articles)</span>
-                    {activeFilter.id !== 'all' && (
-                        <md-text-button
-                            onClick={() => setActiveFilter({ type: 'category', id: 'all' })}
-                            className="clear-filter-btn"
-                        >
-                            <md-icon slot="icon">clear</md-icon>
-                            Clear Filter
-                        </md-text-button>
-                    )}
-                </div>
-            </div>
 
-            {/* Articles Grid */}
-            <div className={`articles-grid ${articlesLoading ? 'articles-grid--loading' : ''}`}>
-                {articlesLoading ? (
-                    // 显示骨架屏而不是完全隐藏内容
-                    <>
-                        {Array.from({ length: 6 }, (_, index) => (
-                            <div key={`skeleton-${index}`} className="article-card article-card--skeleton">
-                                <div className="article-image article-image--skeleton"></div>
-                                <div className="article-content">
-                                    <div className="article-meta">
-                                        <div className="skeleton-line skeleton-line--category"></div>
-                                        <div className="skeleton-line skeleton-line--date"></div>
-                                    </div>
-                                    <div className="skeleton-line skeleton-line--title"></div>
-                                    <div className="skeleton-line skeleton-line--title skeleton-line--short"></div>
-                                    <div className="skeleton-line skeleton-line--excerpt"></div>
-                                    <div className="skeleton-line skeleton-line--excerpt skeleton-line--short"></div>
-                                </div>
-                            </div>
-                        ))}
-                    </>
-                ) : articles.length === 0 ? (
-                    <div className="no-articles">
+            {/* Articles Grid - 使用固定槽位避免DOM重新创建 */}
+            <div className="articles-grid">
+                {/* 固定的文章槽位，使用for循环和固定key */}
+                {articleSlots.map((slot) => (
+                    <ArticleSlot key={slot.key} slot={slot} />
+                ))}
+
+                {/* 无文章提示 - 只在没有任何文章且不是加载状态时显示 */}
+                {!articlesLoading && articles.length === 0 && (
+                    <div className="no-articles" style={{ gridColumn: '1 / -1' }}>
                         <md-icon className="no-articles-icon">article</md-icon>
                         <h3>No articles found</h3>
                         <p>Try adjusting your filters or check back later for new content.</p>
                     </div>
-                ) : (
-                    articles.map((article) => (
-                        <article
-                            key={article.id}
-                            className="article-card"
-                            onClick={() => handleArticleClick(article.id)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    handleArticleClick(article.id);
-                                }
-                            }}
-                        >
-                            {/* Article Image */}
-                            <div className="article-image">
-                                {article.coverImage || article.imageUrl ? (
-                                    <img
-                                        src={article.coverImage || article.imageUrl}
-                                        alt={article.title}
-                                        loading="lazy"
-                                        onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                            const parent = target.parentElement;
-                                            if (parent) {
-                                                parent.classList.add('no-image');
-                                            }
-                                        }}
-                                    />
-                                ) : (
-                                    <div className="article-placeholder">
-                                        <md-icon>article</md-icon>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Article Content */}
-                            <div className="article-content">
-                                <div className="article-meta">
-                                    <span className="article-category">{article.category}</span>
-                                    <span className="article-date">{formatDate(article.publishDate)}</span>
-                                </div>
-                                <h2 className="article-title">{article.title}</h2>
-                                <p className="article-excerpt">
-                                    {article.excerpt || article.content?.substring(0, 150) + '...' || ''}
-                                </p>
-                                <div className="article-tags">
-                                    {article.tags.slice(0, 3).map((tag, index) => (
-                                        <span key={index} className="article-tag">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                    {article.tags.length > 3 && (
-                                        <span className="article-tag-more">+{article.tags.length - 3} more</span>
-                                    )}
-                                </div>
-                            </div>
-                        </article>
-                    ))
                 )}
             </div>
 
