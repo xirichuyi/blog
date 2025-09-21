@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './style.css';
 import AuthorCard from './components/AuthorCard';
 import { CustomButton } from '../../components/ui/CustomButton';
+import ArticleCard from '../../components/ui/ArticleCard';
 import { apiService } from '../../services/api';
 import type { Article } from '../../services/types';
 
@@ -495,69 +496,18 @@ const Home: React.FC = () => {
           {/* 次要文章网格 */}
           <div className="blog-secondary-grid">
             {secondaryArticles.slice(0, 4).map((article) => (
-              <div
+              <ArticleCard
                 key={article.id}
-                className="secondary-article-card"
-                onClick={() => handleArticleClick(article.id)}
-                style={{ cursor: 'pointer' }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleArticleClick(article.id);
-                  }
-                }}
-              >
-                <div className="secondary-article-image">
-                  {article.coverImage ? (
-                    <img
-                      src={article.coverImage}
-                      alt={article.title}
-                      className="secondary-article-img"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          parent.style.background = article.gradient;
-                          parent.innerHTML = `
-                            <div class="secondary-fallback-content">
-                              <div class="fallback-icon">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                  <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                  <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                              </div>
-                            </div>
-                          `;
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="secondary-article-fallback" style={{ background: article.gradient }}>
-                      <div className="secondary-fallback-content">
-                        <div className="fallback-icon">
-                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="secondary-article-content">
-                  <div className="secondary-article-meta">
-                    <span className="secondary-article-tag">{article.tag}</span>
-                    <span className="secondary-article-date">{article.date}</span>
-                  </div>
-                  <h3 className="secondary-article-title">{article.title}</h3>
-                  <p className="secondary-article-description">{article.description}</p>
-                </div>
-              </div>
+                id={article.id}
+                title={article.title}
+                description={article.description}
+                date={article.date}
+                tag={article.tag}
+                coverImage={article.coverImage}
+                gradient={article.gradient}
+                onClick={handleArticleClick}
+                variant="default"
+              />
             ))}
           </div>
         </section>

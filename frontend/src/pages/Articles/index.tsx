@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import type { Article, Category, Tag } from '../../services/types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ErrorMessage from '../../components/ui/ErrorMessage';
+import ArticleCard from '../../components/ui/ArticleCard';
 
 import './style.css';
 
@@ -468,77 +469,23 @@ const Articles: React.FC = () => {
         };
     }, [state.totalArticles, state.currentPage]);
 
-    // 文章卡片组件
-    const ArticleCard = React.memo(({ article, index }: { article: Article; index: number }) => {
-        const gradient = getGradientForIndex(index);
+    // 转换文章数据为ArticleCard格式
+    const convertArticleToCardFormat = useCallback((article: Article, index: number) => {
+        return {
+            id: article.id,
+            title: article.title,
+            description: article.excerpt || article.content?.substring(0, 120) + '...' || '',
+            date: formatDate(article.publishDate || (article as any).created_at),
+            tag: article.category || 'Article',
+            coverImage: article.coverImage || article.imageUrl,
+            gradient: getGradientForIndex(index)
+        };
+    }, [formatDate, getGradientForIndex]);
 
-        return (
-            <div
-                className={`article-card ${state.isContentReady ? 'article-card--visible' : 'article-card--hidden'}`}
-                style={{
-                    animationDelay: state.isContentReady ? `${index * ANIMATION_DELAY_BASE}ms` : '0ms'
-                }}
-                onClick={() => navigate(`/article/${article.id}`)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        navigate(`/article/${article.id}`);
-                    }
-                }}
-            >
-                <div className="article-image">
-                    {article.coverImage || article.imageUrl ? (
-                        <img
-                            src={article.coverImage || article.imageUrl}
-                            alt={article.title}
-                            onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                    parent.style.background = gradient;
-                                    parent.innerHTML = `
-                    <div class="article-fallback">
-                      <div class="fallback-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </div>
-                    </div>
-                  `;
-                                }
-                            }}
-                        />
-                    ) : (
-                        <div className="article-fallback" style={{ background: gradient }}>
-                            <div className="fallback-icon">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="article-content">
-                    <div className="article-meta">
-                        <span className="article-category">{article.category || 'Article'}</span>
-                        <span className="article-date">{formatDate(article.publishDate || (article as any).created_at)}</span>
-                    </div>
-                    <h3 className="article-title">{article.title}</h3>
-                    <p className="article-excerpt">
-                        {article.excerpt || article.content?.substring(0, 120) + '...' || ''}
-                    </p>
-                </div>
-            </div>
-        );
-    });
+    // 文章点击处理
+    const handleArticleClick = useCallback((articleId: string) => {
+        navigate(`/article/${articleId}`);
+    }, [navigate]);
 
     // ===================================================================
     // C区 - 渲染：纯声明式渲染
@@ -643,9 +590,27 @@ const Articles: React.FC = () => {
                     {/* Articles Grid */}
                     <div className={`articles-grid ${state.isContentReady ? 'grid--visible' : 'grid--hidden'}`}>
                         {state.articles.length > 0 ? (
-                            state.articles.map((article, index) => (
-                                <ArticleCard key={article.id} article={article} index={index} />
-                            ))
+                            state.articles.map((article, index) => {
+                                const cardData = convertArticleToCardFormat(article, index);
+                                return (
+                                    <ArticleCard
+                                        key={article.id}
+                                        id={cardData.id}
+                                        title={cardData.title}
+                                        description={cardData.description}
+                                        date={cardData.date}
+                                        tag={cardData.tag}
+                                        coverImage={cardData.coverImage}
+                                        gradient={cardData.gradient}
+                                        onClick={handleArticleClick}
+                                        variant="compact"
+                                        className={`${state.isContentReady ? 'article-card--visible' : 'article-card--hidden'}`}
+                                        style={{
+                                            animationDelay: state.isContentReady ? `${index * ANIMATION_DELAY_BASE}ms` : '0ms'
+                                        }}
+                                    />
+                                );
+                            })
                         ) : (
                             <div className="no-articles">
                                 <md-icon className="no-articles-icon">article</md-icon>
