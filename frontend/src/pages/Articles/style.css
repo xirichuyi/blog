@@ -1,9 +1,19 @@
-/* Articles Page Styles - 完全重构版本 */
+/* Articles Page Styles - 侧边栏布局版本 */
 .articles-page {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 2rem 1rem;
   min-height: calc(100vh - 200px);
+}
+
+/* ===========================================
+   LAYOUT 主要布局
+   =========================================== */
+.articles-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1.25rem;
+  align-items: start;
 }
 
 /* ===========================================
@@ -48,32 +58,36 @@
 }
 
 /* ===========================================
-   FILTERS 样式和动画
+   SIDEBAR 样式和动画
    =========================================== */
-.articles-filters {
-  background: var(--md-sys-color-surface-container-lowest);
-  border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  border: 1px solid var(--md-sys-color-outline-variant);
+.articles-sidebar {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  border: none;
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateX(-20px);
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transition-delay: 0.1s;
+  position: sticky;
+  top: 2rem;
+  height: fit-content;
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
 }
 
-.articles-filters.filters--visible {
+.articles-sidebar.sidebar--visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(0);
 }
 
-.articles-filters.filters--hidden {
+.articles-sidebar.sidebar--hidden {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateX(-20px);
 }
 
 .filter-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .filter-section:last-child {
@@ -82,45 +96,79 @@
 
 .filter-title {
   color: var(--md-sys-color-on-surface);
-  font-size: 1.1rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.filter-chips {
+.filter-options {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.5rem;
 }
 
-.filter-chips md-filter-chip {
-  --md-filter-chip-container-shape: 16px;
-  min-height: 32px;
-  min-width: 48px;
-  display: inline-flex;
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  color: var(--md-sys-color-on-surface-variant);
+  min-height: 40px;
+}
+
+.filter-option:hover:not([disabled]) {
+  background: var(--md-sys-color-surface-container);
+  transform: translateX(2px);
+}
+
+.filter-option--selected {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: 500;
+}
+
+.filter-option--selected md-icon {
+  color: var(--md-sys-color-primary);
+}
+
+.filter-option md-icon {
+  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  --md-filter-chip-selected-container-color: var(--md-sys-color-primary-container);
-  --md-filter-chip-selected-label-text-color: var(--md-sys-color-on-primary-container);
-  --md-filter-chip-unselected-container-color: var(--md-sys-color-surface-container-low);
-  --md-filter-chip-unselected-label-text-color: var(--md-sys-color-on-surface-variant);
-  --md-filter-chip-unselected-outline-color: var(--md-sys-color-outline);
+  line-height: 1;
 }
 
-.filter-chips md-filter-chip:hover:not([disabled]) {
-  transform: translateY(-1px);
+.filter-option span {
+  flex: 1;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.filter-chips md-filter-chip[disabled] {
+.filter-option[disabled] {
   opacity: 0.6;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
-.filter-chip-all {
-  --md-filter-chip-selected-container-color: var(--md-sys-color-secondary-container) !important;
-  --md-filter-chip-selected-label-text-color: var(--md-sys-color-on-secondary-container) !important;
-  font-weight: 500;
+/* ===========================================
+   MAIN CONTENT 主内容区域
+   =========================================== */
+.articles-main {
+  min-height: 600px;
 }
 
 /* ===========================================
@@ -156,7 +204,7 @@
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid var(--md-sys-color-outline-variant);
+  border: none;
   height: fit-content;
   opacity: 0;
   transform: translateY(40px) scale(0.95);
@@ -269,6 +317,7 @@
   margin-bottom: 0.75rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -279,6 +328,7 @@
   margin-bottom: 1rem;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -409,6 +459,17 @@
 /* ===========================================
    RESPONSIVE DESIGN
    =========================================== */
+@media (max-width: 1024px) {
+  .articles-layout {
+    grid-template-columns: 180px 1fr;
+    gap: 1rem;
+  }
+
+  .articles-sidebar {
+    padding: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .articles-page {
     padding: 1rem 0.5rem;
@@ -418,8 +479,17 @@
     font-size: 2.5rem;
   }
 
-  .articles-filters {
-    padding: 1.5rem;
+  .articles-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .articles-sidebar {
+    position: static;
+    max-height: none;
+    transform: translateX(0) !important;
+    opacity: 1 !important;
+    margin-bottom: 1rem;
   }
 
   .articles-grid {
@@ -427,8 +497,13 @@
     gap: 1.5rem;
   }
 
-  .filter-chips {
-    gap: 0.75rem;
+  .filter-options {
+    gap: 0.5rem;
+  }
+
+  .filter-option {
+    padding: 0.5rem 0.75rem;
+    min-height: 36px;
   }
 
   .pagination-controls {
@@ -459,9 +534,8 @@
     gap: 1rem;
   }
 
-  .articles-filters {
-    padding: 1rem;
-    margin-bottom: 1.5rem;
+  .articles-sidebar {
+    padding: 0;
   }
 
   .filter-section {
@@ -495,7 +569,7 @@
    =========================================== */
 @media (prefers-reduced-motion: reduce) {
   .articles-header,
-  .articles-filters,
+  .articles-sidebar,
   .articles-grid,
   .articles-pagination,
   .article-card {
@@ -510,7 +584,7 @@
   }
 
   .articles-header.header--visible,
-  .articles-filters.filters--visible,
+  .articles-sidebar.sidebar--visible,
   .articles-grid.grid--visible,
   .articles-pagination.pagination--visible {
     opacity: 1 !important;
@@ -529,11 +603,11 @@
     transform: none !important;
   }
 
-  .filter-chips md-filter-chip {
+  .filter-option {
     transition: none !important;
   }
 
-  .filter-chips md-filter-chip:hover {
+  .filter-option:hover {
     transform: none !important;
   }
 

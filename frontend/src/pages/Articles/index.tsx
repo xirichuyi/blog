@@ -50,16 +50,16 @@ const initialState: AppState = {
 };
 
 const Articles: React.FC = () => {
-  // ===================================================================
-  // A区 - 数据与状态：所有Hooks调用都放在最上面
-  // ===================================================================
-  
-  const navigate = useNavigate();
-  const [state, setState] = useState<AppState>(initialState);
-  const animationTimeoutRef = useRef<NodeJS.Timeout>();
-  const mountedRef = useRef(true);
+    // ===================================================================
+    // A区 - 数据与状态：所有Hooks调用都放在最上面
+    // ===================================================================
 
-  // 安全的状态更新函数
+    const navigate = useNavigate();
+    const [state, setState] = useState<AppState>(initialState);
+    const animationTimeoutRef = useRef<NodeJS.Timeout>();
+    const mountedRef = useRef(true);
+
+    // 安全的状态更新函数
     const safeSetState = useCallback((updater: Partial<AppState> | ((prev: AppState) => Partial<AppState>)) => {
         if (!mountedRef.current) return;
 
@@ -168,13 +168,13 @@ const Articles: React.FC = () => {
                 isContentReady: true
             });
         }
-  }, [loadData, safeSetState]);
+    }, [loadData, safeSetState]);
 
-  // ===================================================================
-  // B区 - 核心逻辑：所有事件处理函数和业务逻辑
-  // ===================================================================
+    // ===================================================================
+    // B区 - 核心逻辑：所有事件处理函数和业务逻辑
+    // ===================================================================
 
-  // 处理筛选操作
+    // 处理筛选操作
     const handleFilter = useCallback(async (
         type: 'category' | 'tag' | null,
         id: string | null
@@ -285,6 +285,136 @@ const Articles: React.FC = () => {
         });
     }, []);
 
+    // 获取分类图标
+    const getCategoryIcon = useCallback((categoryName: string): string => {
+        const categoryIcons: Record<string, string> = {
+            'Web': 'web',
+            'web': 'web',
+            'linuxDo攻略': 'terminal',
+            'linux': 'terminal',
+            'linuxdo': 'terminal',
+            '个人乱谈': 'chat',
+            '个人': 'person',
+            '作品集': 'work',
+            '作品': 'work',
+            '教程': 'school',
+            'tutorial': 'school',
+            'tech': 'code',
+            'technology': 'code',
+            'programming': 'code',
+            'frontend': 'web',
+            'backend': 'dns',
+            'database': 'storage',
+            'mobile': 'phone_android',
+            'design': 'palette',
+            'ai': 'smart_toy',
+            'machine learning': 'psychology',
+            'data': 'analytics',
+            'security': 'security',
+            'devops': 'settings',
+            'cloud': 'cloud',
+            'javascript': 'code',
+            'react': 'code',
+            'vue': 'code',
+            'angular': 'code',
+            'node': 'code',
+            'python': 'code',
+            'java': 'code',
+            'golang': 'code',
+            'rust': 'code',
+            'php': 'code'
+        };
+
+        const lowerName = categoryName.toLowerCase();
+        return categoryIcons[lowerName] || categoryIcons[categoryName] || 'folder';
+    }, []);
+
+    // 获取标签图标
+    const getTagIcon = useCallback((tagName: string): string => {
+        const tagIcons: Record<string, string> = {
+            'Go': 'code',
+            'go': 'code',
+            'python': 'code',
+            'Python': 'code',
+            'Rust': 'memory',
+            'rust': 'memory',
+            '前端': 'web',
+            'frontend': 'web',
+            '杂七杂八': 'category',
+            '爬虫': 'bug_report',
+            'crawler': 'bug_report',
+            'javascript': 'code',
+            'js': 'code',
+            'typescript': 'code',
+            'ts': 'code',
+            'react': 'code',
+            'vue': 'code',
+            'angular': 'code',
+            'node': 'code',
+            'nodejs': 'code',
+            'express': 'code',
+            'fastapi': 'speed',
+            'django': 'code',
+            'flask': 'code',
+            'database': 'storage',
+            'sql': 'storage',
+            'mongodb': 'storage',
+            'redis': 'storage',
+            'docker': 'inventory',
+            'kubernetes': 'inventory',
+            'aws': 'cloud',
+            'azure': 'cloud',
+            'gcp': 'cloud',
+            'linux': 'terminal',
+            'ubuntu': 'terminal',
+            'centos': 'terminal',
+            'nginx': 'dns',
+            'apache': 'dns',
+            'git': 'source',
+            'github': 'source',
+            'gitlab': 'source',
+            'ci/cd': 'sync',
+            'testing': 'bug_report',
+            'security': 'security',
+            'performance': 'speed',
+            'optimization': 'tune',
+            'api': 'api',
+            'rest': 'api',
+            'graphql': 'api',
+            'microservices': 'account_tree',
+            'architecture': 'account_tree',
+            'design pattern': 'pattern',
+            'algorithm': 'psychology',
+            'data structure': 'psychology',
+            'machine learning': 'smart_toy',
+            'ai': 'smart_toy',
+            'blockchain': 'link',
+            'crypto': 'lock',
+            'mobile': 'phone_android',
+            'ios': 'phone_iphone',
+            'android': 'phone_android',
+            'flutter': 'phone_android',
+            'react native': 'phone_android',
+            'ui': 'palette',
+            'ux': 'palette',
+            'design': 'palette',
+            'css': 'palette',
+            'sass': 'palette',
+            'less': 'palette',
+            'tailwind': 'palette',
+            'bootstrap': 'palette',
+            'webpack': 'build',
+            'vite': 'build',
+            'rollup': 'build',
+            'babel': 'build',
+            'eslint': 'build',
+            'prettier': 'build'
+        };
+
+        const lowerName = tagName.toLowerCase();
+        return tagIcons[lowerName] || tagIcons[tagName] || 'label';
+    }, []);
+
     // 分页计算
     const paginationInfo = useMemo(() => {
         const totalPages = Math.ceil(state.totalArticles / ARTICLES_PER_PAGE);
@@ -385,14 +515,14 @@ const Articles: React.FC = () => {
                 </div>
             </div>
         );
-  });
+    });
 
-  // ===================================================================
-  // C区 - 渲染：纯声明式渲染
-  // ===================================================================
+    // ===================================================================
+    // C区 - 渲染：纯声明式渲染
+    // ===================================================================
 
-  // 卫语句：加载状态
-  if (!state.isDataLoaded) {
+    // 卫语句：加载状态
+    if (!state.isDataLoaded) {
         return (
             <div className="articles-page">
                 <div className="articles-loading">
@@ -401,20 +531,20 @@ const Articles: React.FC = () => {
                 </div>
             </div>
         );
-  }
+    }
 
-  // 卫语句：错误状态
-  if (state.error) {
+    // 卫语句：错误状态
+    if (state.error) {
         return (
             <div className="articles-page">
                 <ErrorMessage message={state.error} />
             </div>
         );
-  }
+    }
 
-  // 主要渲染
-  return (
-    <div className="articles-page">
+    // 主要渲染
+    return (
+        <div className="articles-page">
             {/* Header */}
             <div className={`articles-header ${state.isContentReady ? 'header--visible' : 'header--hidden'}`}>
                 <h1 className="articles-title">Articles</h1>
@@ -423,126 +553,133 @@ const Articles: React.FC = () => {
                 </p>
             </div>
 
-            {/* Filters */}
-            <div className={`articles-filters ${state.isContentReady ? 'filters--visible' : 'filters--hidden'}`}>
-                {/* Category Filters */}
-                <div className="filter-section">
-                    <h3 className="filter-title">Categories</h3>
-                    <div className="filter-chips">
-                        {state.categories.map((category) => (
-                            <md-filter-chip
-                                key={category.id}
-                                selected={state.activeFilter.type === 'category' && state.activeFilter.id === category.id}
-                                onClick={() => handleFilter('category', category.id)}
+            <div className="articles-layout">
+                {/* Sidebar Filters */}
+                <aside className={`articles-sidebar ${state.isContentReady ? 'sidebar--visible' : 'sidebar--hidden'}`}>
+                    {/* Category Filters */}
+                    <div className="filter-section">
+                        <h3 className="filter-title">Categories</h3>
+                        <div className="filter-options">
+                            <div
+                                className={`filter-option ${state.activeFilter.type !== 'category' ? 'filter-option--selected' : ''}`}
+                                onClick={() => handleFilter(null, null)}
                                 style={{
                                     opacity: !state.isContentReady ? 0.6 : 1,
                                     pointerEvents: !state.isContentReady ? 'none' : 'auto',
                                     cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
                                 }}
                             >
-                                {category.name}
-                            </md-filter-chip>
-                        ))}
+                                <md-icon>select_all</md-icon>
+                                <span>All Articles ({state.totalArticles})</span>
+                            </div>
+                            {state.categories.map((category) => (
+                                <div
+                                    key={category.id}
+                                    className={`filter-option ${state.activeFilter.type === 'category' && state.activeFilter.id === category.id ? 'filter-option--selected' : ''}`}
+                                    onClick={() => handleFilter('category', category.id)}
+                                    style={{
+                                        opacity: !state.isContentReady ? 0.6 : 1,
+                                        pointerEvents: !state.isContentReady ? 'none' : 'auto',
+                                        cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    <md-icon>{getCategoryIcon(category.name)}</md-icon>
+                                    <span>{category.name} ({category.count || 0})</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
 
-                {/* Tag Filters */}
-                <div className="filter-section">
-                    <h3 className="filter-title">Tags</h3>
-                    <div className="filter-chips">
-                        <md-filter-chip
-                            selected={state.activeFilter.type !== 'tag'}
-                            onClick={() => handleFilter(null, null)}
-                            className="filter-chip-all"
-                            style={{
-                                opacity: !state.isContentReady ? 0.6 : 1,
-                                pointerEvents: !state.isContentReady ? 'none' : 'auto',
-                                cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
-                            }}
-                        >
-                            All Tags
-                        </md-filter-chip>
-                        {state.tags.slice(0, 10).map((tag) => (
-                            <md-filter-chip
-                                key={tag.id}
-                                selected={state.activeFilter.type === 'tag' && state.activeFilter.id === tag.id}
-                                onClick={() => handleFilter('tag', tag.id)}
-                                style={{
-                                    opacity: !state.isContentReady ? 0.6 : 1,
-                                    pointerEvents: !state.isContentReady ? 'none' : 'auto',
-                                    cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
-                                }}
-                            >
-                                {tag.name}
-                            </md-filter-chip>
-                        ))}
+                    {/* Tag Filters */}
+                    <div className="filter-section">
+                        <h3 className="filter-title">Tags</h3>
+                        <div className="filter-options">
+                            {state.tags.slice(0, 10).map((tag) => (
+                                <div
+                                    key={tag.id}
+                                    className={`filter-option ${state.activeFilter.type === 'tag' && state.activeFilter.id === tag.id ? 'filter-option--selected' : ''}`}
+                                    onClick={() => handleFilter('tag', tag.id)}
+                                    style={{
+                                        opacity: !state.isContentReady ? 0.6 : 1,
+                                        pointerEvents: !state.isContentReady ? 'none' : 'auto',
+                                        cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    <md-icon>{getTagIcon(tag.name)}</md-icon>
+                                    <span>{tag.name} ({tag.count || 0})</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                </aside>
+
+                {/* Main Content */}
+                <main className="articles-main">
+                    {/* Articles Grid */}
+                    <div className={`articles-grid ${state.isContentReady ? 'grid--visible' : 'grid--hidden'}`}>
+                        {state.articles.length > 0 ? (
+                            state.articles.map((article, index) => (
+                                <ArticleCard key={article.id} article={article} index={index} />
+                            ))
+                        ) : (
+                            <div className="no-articles">
+                                <md-icon className="no-articles-icon">article</md-icon>
+                                <h3>No articles found</h3>
+                                <p>Try adjusting your filters or check back later for new content.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Pagination */}
+                    {paginationInfo.totalPages > 1 && (
+                        <div className={`articles-pagination ${state.isContentReady ? 'pagination--visible' : 'pagination--hidden'}`}>
+                            <div className="pagination-info">
+                                <span>
+                                    Showing {((state.currentPage - 1) * ARTICLES_PER_PAGE) + 1} to{' '}
+                                    {Math.min(state.currentPage * ARTICLES_PER_PAGE, state.totalArticles)} of {state.totalArticles} articles
+                                </span>
+                            </div>
+                            <div className="pagination-controls">
+                                <md-icon-button
+                                    onClick={() => handlePageChange(state.currentPage - 1)}
+                                    aria-label="Previous page"
+                                    style={{
+                                        opacity: !paginationInfo.hasPrevPage || !state.isContentReady ? 0.5 : 1,
+                                        pointerEvents: !paginationInfo.hasPrevPage || !state.isContentReady ? 'none' : 'auto'
+                                    }}
+                                >
+                                    <md-icon>chevron_left</md-icon>
+                                </md-icon-button>
+
+                                {paginationInfo.pageNumbers.map((pageNum) => (
+                                    <md-text-button
+                                        key={pageNum}
+                                        className={state.currentPage === pageNum ? 'current-page' : ''}
+                                        onClick={() => handlePageChange(pageNum)}
+                                        style={{
+                                            opacity: !state.isContentReady ? 0.6 : 1,
+                                            pointerEvents: !state.isContentReady ? 'none' : 'auto'
+                                        }}
+                                    >
+                                        {pageNum}
+                                    </md-text-button>
+                                ))}
+
+                                <md-icon-button
+                                    onClick={() => handlePageChange(state.currentPage + 1)}
+                                    aria-label="Next page"
+                                    style={{
+                                        opacity: !paginationInfo.hasNextPage || !state.isContentReady ? 0.5 : 1,
+                                        pointerEvents: !paginationInfo.hasNextPage || !state.isContentReady ? 'none' : 'auto'
+                                    }}
+                                >
+                                    <md-icon>chevron_right</md-icon>
+                                </md-icon-button>
+                            </div>
+                        </div>
+                    )}
+                </main>
             </div>
-
-            {/* Articles Grid */}
-            <div className={`articles-grid ${state.isContentReady ? 'grid--visible' : 'grid--hidden'}`}>
-                {state.articles.length > 0 ? (
-                    state.articles.map((article, index) => (
-                        <ArticleCard key={article.id} article={article} index={index} />
-                    ))
-                ) : (
-                    <div className="no-articles">
-                        <md-icon className="no-articles-icon">article</md-icon>
-                        <h3>No articles found</h3>
-                        <p>Try adjusting your filters or check back later for new content.</p>
-                    </div>
-                )}
-            </div>
-
-            {/* Pagination */}
-            {paginationInfo.totalPages > 1 && (
-                <div className={`articles-pagination ${state.isContentReady ? 'pagination--visible' : 'pagination--hidden'}`}>
-                    <div className="pagination-info">
-                        <span>
-                            Showing {((state.currentPage - 1) * ARTICLES_PER_PAGE) + 1} to{' '}
-                            {Math.min(state.currentPage * ARTICLES_PER_PAGE, state.totalArticles)} of {state.totalArticles} articles
-                        </span>
-                    </div>
-                    <div className="pagination-controls">
-                        <md-icon-button
-                            onClick={() => handlePageChange(state.currentPage - 1)}
-                            aria-label="Previous page"
-                            style={{
-                                opacity: !paginationInfo.hasPrevPage || !state.isContentReady ? 0.5 : 1,
-                                pointerEvents: !paginationInfo.hasPrevPage || !state.isContentReady ? 'none' : 'auto'
-                            }}
-                        >
-                            <md-icon>chevron_left</md-icon>
-                        </md-icon-button>
-
-                        {paginationInfo.pageNumbers.map((pageNum) => (
-                            <md-text-button
-                                key={pageNum}
-                                className={state.currentPage === pageNum ? 'current-page' : ''}
-                                onClick={() => handlePageChange(pageNum)}
-                                style={{
-                                    opacity: !state.isContentReady ? 0.6 : 1,
-                                    pointerEvents: !state.isContentReady ? 'none' : 'auto'
-                                }}
-                            >
-                                {pageNum}
-                            </md-text-button>
-                        ))}
-
-                        <md-icon-button
-                            onClick={() => handlePageChange(state.currentPage + 1)}
-                            aria-label="Next page"
-                            style={{
-                                opacity: !paginationInfo.hasNextPage || !state.isContentReady ? 0.5 : 1,
-                                pointerEvents: !paginationInfo.hasNextPage || !state.isContentReady ? 'none' : 'auto'
-                            }}
-                        >
-                            <md-icon>chevron_right</md-icon>
-                        </md-icon-button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
