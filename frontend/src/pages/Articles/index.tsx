@@ -128,21 +128,44 @@ const Articles: React.FC = () => {
         try {
             safeSetState({ error: null });
 
-            // 并行加载基础数据
-            const [categoriesResponse, tagsResponse] = await Promise.all([
+            // 并行加载基础数据和所有文章总数
+            const [categoriesResponse, tagsResponse, allArticlesResponse] = await Promise.all([
                 apiService.getCategories(),
-                apiService.getTags()
+                apiService.getTags(),
+                apiService.getArticles({ status: 'published' }) // 获取所有文章来计算总数
             ]);
 
-            // 加载文章数据
-            const { articles, total } = await loadData(1);
+            // 加载第一页文章数据
+            const { articles } = await loadData(1);
+
+            // 计算总文章数
+            const totalArticles = allArticlesResponse.success ?
+                (allArticlesResponse.total || allArticlesResponse.data?.length || 0) : 0;
+
+            // 处理分类和标签数据，确保包含文章计数
+            const allArticles = allArticlesResponse.success ? allArticlesResponse.data || [] : [];
+            const processedCategories = categoriesResponse.success ?
+                (categoriesResponse.data || []).map(category => ({
+                    ...category,
+                    count: category.count || allArticles.filter(article => article.category === category.name || article.category === category.id).length
+                })) : [];
+
+            const processedTags = tagsResponse.success ?
+                (tagsResponse.data || []).map(tag => ({
+                    ...tag,
+                    count: tag.count || allArticles.filter(article =>
+                        article.tags?.some((articleTag: any) =>
+                            articleTag.id === tag.id || articleTag.name === tag.name
+                        )
+                    ).length
+                })) : [];
 
             // 更新状态 - 数据已加载但内容未准备好显示
             safeSetState({
-                categories: categoriesResponse.success ? categoriesResponse.data || [] : [],
-                tags: tagsResponse.success ? tagsResponse.data || [] : [],
+                categories: processedCategories,
+                tags: processedTags,
                 articles,
-                totalArticles: total,
+                totalArticles,
                 isDataLoaded: true,
                 isContentReady: false // 关键：数据加载完成但内容还未准备好显示
             });
@@ -561,7 +584,7 @@ const Articles: React.FC = () => {
                         <h3 className="filter-title">Categories</h3>
                         <div className="filter-options">
                             <div
-                                className={`filter-option ${state.activeFilter.type !== 'category' ? 'filter-option--selected' : ''}`}
+                                className={`filter-option ${state.activeFilter.type === null ? 'filter-option--selected' : ''}`}
                                 onClick={() => handleFilter(null, null)}
                                 style={{
                                     opacity: !state.isContentReady ? 0.6 : 1,
@@ -569,24 +592,26 @@ const Articles: React.FC = () => {
                                     cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
                                 }}
                             >
-                                <md-icon>select_all</md-icon>
+                                <md-icon>folder</md-icon>
                                 <span>All Articles ({state.totalArticles})</span>
                             </div>
-                            {state.categories.map((category) => (
-                                <div
-                                    key={category.id}
-                                    className={`filter-option ${state.activeFilter.type === 'category' && state.activeFilter.id === category.id ? 'filter-option--selected' : ''}`}
-                                    onClick={() => handleFilter('category', category.id)}
-                                    style={{
-                                        opacity: !state.isContentReady ? 0.6 : 1,
-                                        pointerEvents: !state.isContentReady ? 'none' : 'auto',
-                                        cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
-                                    }}
-                                >
-                                    <md-icon>{getCategoryIcon(category.name)}</md-icon>
-                                    <span>{category.name} ({category.count || 0})</span>
-                                </div>
-                            ))}
+                            {state.categories
+                                .filter(category => category.name !== 'All Articles')
+                                .map((category) => (
+                                    <div
+                                        key={category.id}
+                                        className={`filter-option ${state.activeFilter.type === 'category' && state.activeFilter.id === category.id ? 'filter-option--selected' : ''}`}
+                                        onClick={() => handleFilter('category', category.id)}
+                                        style={{
+                                            opacity: !state.isContentReady ? 0.6 : 1,
+                                            pointerEvents: !state.isContentReady ? 'none' : 'auto',
+                                            cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
+                                        }}
+                                    >
+                                        <md-icon>{getCategoryIcon(category.name)}</md-icon>
+                                        <span>{category.name} ({category.count || 0})</span>
+                                    </div>
+                                ))}
                         </div>
                     </div>
 
