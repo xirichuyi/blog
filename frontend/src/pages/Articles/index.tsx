@@ -55,6 +55,7 @@ const Articles: React.FC = () => {
 
     const navigate = useNavigate();
     const [state, setState] = useState<AppState>(initialState);
+    const [isTransitioning, setIsTransitioning] = useState(false);
     const animationTimeoutRef = useRef<NodeJS.Timeout>();
     const mountedRef = useRef(true);
 
@@ -187,19 +188,26 @@ const Articles: React.FC = () => {
         id: string | null
     ) => {
         try {
+            // 开始过渡动画
+            setIsTransitioning(true);
+
             const newFilter = { type, id };
             const { articles, total } = await loadData(1, newFilter);
 
-            // 直接更新数据，简单重新渲染
-            safeSetState({
-                articles,
-                totalArticles: total,
-                activeFilter: newFilter,
-                currentPage: 1
-            });
+            // 延迟更新数据以配合动画
+            setTimeout(() => {
+                safeSetState({
+                    articles,
+                    totalArticles: total,
+                    activeFilter: newFilter,
+                    currentPage: 1
+                });
+                setIsTransitioning(false);
+            }, 300);
 
         } catch (error) {
             console.error('Error filtering articles:', error);
+            setIsTransitioning(false);
             safeSetState({
                 error: error instanceof Error ? error.message : 'Failed to filter articles'
             });
@@ -211,17 +219,24 @@ const Articles: React.FC = () => {
         if (page === state.currentPage) return;
 
         try {
+            // 开始过渡动画
+            setIsTransitioning(true);
+
             const { articles, total } = await loadData(page);
 
-            // 直接更新数据，简单重新渲染
-            safeSetState({
-                articles,
-                totalArticles: total,
-                currentPage: page
-            });
+            // 延迟更新数据以配合动画
+            setTimeout(() => {
+                safeSetState({
+                    articles,
+                    totalArticles: total,
+                    currentPage: page
+                });
+                setIsTransitioning(false);
+            }, 300);
 
         } catch (error) {
             console.error('Error changing page:', error);
+            setIsTransitioning(false);
             safeSetState({
                 error: error instanceof Error ? error.message : 'Failed to load page'
             });
@@ -488,17 +503,23 @@ const Articles: React.FC = () => {
                             <div
                                 className={`filter-option ${state.activeFilter.type === null ? 'filter-option--selected' : ''}`}
                                 onClick={() => handleFilter(null, null)}
+                                style={{
+                                    '--filter-animation-delay': '0s'
+                                } as React.CSSProperties}
                             >
                                 <md-icon>folder</md-icon>
                                 <span>All Articles ({state.totalArticles})</span>
                             </div>
                             {state.categories
                                 .filter(category => category.name !== 'All Articles')
-                                .map((category) => (
+                                .map((category, index) => (
                                     <div
                                         key={category.id}
                                         className={`filter-option ${state.activeFilter.type === 'category' && state.activeFilter.id === category.id ? 'filter-option--selected' : ''}`}
                                         onClick={() => handleFilter('category', category.id)}
+                                        style={{
+                                            '--filter-animation-delay': `${(index + 1) * 0.05}s`
+                                        } as React.CSSProperties}
                                     >
                                         <md-icon>{getCategoryIcon(category.name)}</md-icon>
                                         <span>{category.name} ({category.count || 0})</span>
@@ -511,11 +532,14 @@ const Articles: React.FC = () => {
                     <div className="filter-section">
                         <h3 className="filter-title">Tags</h3>
                         <div className="filter-options">
-                            {state.tags.slice(0, 10).map((tag) => (
+                            {state.tags.slice(0, 10).map((tag, index) => (
                                 <div
                                     key={tag.id}
                                     className={`filter-option ${state.activeFilter.type === 'tag' && state.activeFilter.id === tag.id ? 'filter-option--selected' : ''}`}
                                     onClick={() => handleFilter('tag', tag.id)}
+                                    style={{
+                                        '--filter-animation-delay': `${index * 0.05}s`
+                                    } as React.CSSProperties}
                                 >
                                     <md-icon>{getTagIcon(tag.name)}</md-icon>
                                     <span>{tag.name} ({tag.count || 0})</span>
@@ -528,23 +552,30 @@ const Articles: React.FC = () => {
                 {/* Main Content */}
                 <main className="articles-main">
                     {/* Articles Grid */}
-                    <div className="articles-grid">
+                    <div className={`articles-grid ${isTransitioning ? 'articles-grid--transitioning' : ''}`}>
                         {state.articles.length > 0 ? (
                             state.articles.map((article, index) => {
                                 const cardData = convertArticleToCardFormat(article, index);
                                 return (
-                                    <ArticleCard
+                                    <div
                                         key={article.id}
-                                        id={cardData.id}
-                                        title={cardData.title}
-                                        description={cardData.description}
-                                        date={cardData.date}
-                                        tag={cardData.tag}
-                                        coverImage={cardData.coverImage}
-                                        gradient={cardData.gradient}
-                                        onClick={handleArticleClick}
-                                        variant="default"
-                                    />
+                                        className="article-card-wrapper"
+                                        style={{
+                                            '--animation-delay': `${index * 0.1 + 0.3}s`
+                                        } as React.CSSProperties}
+                                    >
+                                        <ArticleCard
+                                            id={cardData.id}
+                                            title={cardData.title}
+                                            description={cardData.description}
+                                            date={cardData.date}
+                                            tag={cardData.tag}
+                                            coverImage={cardData.coverImage}
+                                            gradient={cardData.gradient}
+                                            onClick={handleArticleClick}
+                                            variant="default"
+                                        />
+                                    </div>
                                 );
                             })
                         ) : (

@@ -37,7 +37,7 @@ const AuthorCard: React.FC<AuthorCardProps> = ({ className = '' }) => {
     };
 
     return (
-        <md-elevated-card className={`author-card ${className}`}>
+        <div className={`author-card ${className}`}>
             <div className="author-card-content">
                 {/* 头像和基本信息 */}
                 <div className="author-header">
@@ -123,7 +123,7 @@ const AuthorCard: React.FC<AuthorCardProps> = ({ className = '' }) => {
 
 
             </div>
-        </md-elevated-card>
+        </div>
     );
 };
 
