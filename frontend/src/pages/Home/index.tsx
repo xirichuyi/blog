@@ -64,6 +64,9 @@ const Home: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 动画状态
+  const [isContentReady, setIsContentReady] = useState(false);
+
   // 搜索相关状态
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Article[]>([]);
@@ -89,6 +92,11 @@ const Home: React.FC = () => {
 
       if (response.success && response.data) {
         setArticles(response.data);
+
+        // 延迟显示内容，实现苹果风格的加载动画
+        setTimeout(() => {
+          setIsContentReady(true);
+        }, 200);
       }
     } catch (error) {
       logger.error('Error loading articles:', error);
@@ -116,6 +124,7 @@ const Home: React.FC = () => {
       setShowSearchResults(false);
       setServerStatus(null);
       setServerStatusLoading(false);
+      setIsContentReady(false);
 
       // 重新加载数据
       loadArticles();
@@ -370,7 +379,7 @@ const Home: React.FC = () => {
     <div className="blog-home">
       <div className="blog-main-content">
         {/* 页面标题和搜索 */}
-        <div className="section-header">
+        <div className={`section-header ${isContentReady ? 'header--visible' : 'header--hidden'}`}>
           <h2 className="section-title">Featured</h2>
           <div className="search-container" style={{ position: 'relative' }}>
             <md-outlined-text-field
@@ -464,15 +473,18 @@ const Home: React.FC = () => {
         </div>
 
         {/* 主要内容网格 */}
-        <section className="blog-featured-section">
+        <section className={`blog-featured-section ${isContentReady ? 'featured--visible' : 'featured--hidden'}`}>
           <div className="blog-featured-grid">
             {/* 特色文章 */}
-            {featuredArticles.map((article) => (
+            {featuredArticles.map((article, index) => (
               <div
                 key={article.id}
-                className="featured-article-card"
+                className={`featured-article-card ${isContentReady ? 'featured-card--visible' : 'featured-card--hidden'}`}
                 onClick={() => handleArticleClick(article.id)}
-                style={{ cursor: 'pointer' }}
+                style={{
+                  cursor: 'pointer',
+                  animationDelay: isContentReady ? `${index * 100}ms` : '0ms'
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -522,8 +534,8 @@ const Home: React.FC = () => {
           </div>
 
           {/* 次要文章网格 */}
-          <div className="blog-secondary-grid">
-            {secondaryArticles.slice(0, 4).map((article) => (
+          <div className={`blog-secondary-grid ${isContentReady ? 'secondary--visible' : 'secondary--hidden'}`}>
+            {secondaryArticles.slice(0, 4).map((article, index) => (
               <ArticleCard
                 key={article.id}
                 id={article.id}
@@ -535,13 +547,17 @@ const Home: React.FC = () => {
                 gradient={article.gradient}
                 onClick={handleArticleClick}
                 variant="default"
+                className={`${isContentReady ? 'secondary-card--visible' : 'secondary-card--hidden'}`}
+                style={{
+                  animationDelay: isContentReady ? `${(index + 1) * 100}ms` : '0ms'
+                }}
               />
             ))}
           </div>
         </section>
 
         {/* 查看更多按钮 */}
-        <div className="see-more-section">
+        <div className={`see-more-section ${isContentReady ? 'see-more--visible' : 'see-more--hidden'}`}>
           <CustomButton
             variant="filled"
             size="large"
@@ -554,12 +570,16 @@ const Home: React.FC = () => {
       </div>
 
       {/* 右侧边栏 */}
-      <aside className="blog-sidebar">
-        <div className="sidebar-section">
+      <aside className={`blog-sidebar ${isContentReady ? 'sidebar--visible' : 'sidebar--hidden'}`}>
+        <div className={`sidebar-section ${isContentReady ? 'sidebar-item--visible' : 'sidebar-item--hidden'}`} style={{
+          animationDelay: isContentReady ? '400ms' : '0ms'
+        }}>
           <AuthorCard />
         </div>
 
-        <div className="sidebar-section">
+        <div className={`sidebar-section ${isContentReady ? 'sidebar-item--visible' : 'sidebar-item--hidden'}`} style={{
+          animationDelay: isContentReady ? '500ms' : '0ms'
+        }}>
           <div className="server-status-card">
             <div className="server-status-header">
               <md-icon className="server-status-icon">dns</md-icon>

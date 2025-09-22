@@ -23,7 +23,6 @@ interface AppState {
 
     // UI状态
     isDataLoaded: boolean;
-    isContentReady: boolean;
     error: string | null;
 
     // 筛选状态
@@ -41,7 +40,6 @@ const initialState: AppState = {
     tags: [],
     totalArticles: 0,
     isDataLoaded: false,
-    isContentReady: false,
     error: null,
     activeFilter: {
         type: null,
@@ -161,35 +159,20 @@ const Articles: React.FC = () => {
                     ).length
                 })) : [];
 
-            // 更新状态 - 数据已加载但内容未准备好显示
+            // 直接更新状态，简单渲染
             safeSetState({
                 categories: processedCategories,
                 tags: processedTags,
                 articles,
                 totalArticles,
-                isDataLoaded: true,
-                isContentReady: false // 关键：数据加载完成但内容还未准备好显示
+                isDataLoaded: true
             });
-
-            // 延迟显示内容，确保DOM完全渲染
-            if (animationTimeoutRef.current) {
-                clearTimeout(animationTimeoutRef.current);
-            }
-
-            animationTimeoutRef.current = setTimeout(() => {
-                if (mountedRef.current) {
-                    safeSetState({
-                        isContentReady: true
-                    });
-                }
-            }, CONTENT_SHOW_DELAY);
 
         } catch (error) {
             console.error('Error initializing data:', error);
             safeSetState({
                 error: error instanceof Error ? error.message : 'Failed to load data',
-                isDataLoaded: true,
-                isContentReady: true
+                isDataLoaded: true
             });
         }
     }, [loadData, safeSetState]);
@@ -203,17 +186,11 @@ const Articles: React.FC = () => {
         type: 'category' | 'tag' | null,
         id: string | null
     ) => {
-        if (!state.isContentReady) return; // 简化：只在内容未准备好时阻止操作
-
         try {
-            safeSetState({
-                isContentReady: false // 隐藏当前内容
-            });
-
             const newFilter = { type, id };
             const { articles, total } = await loadData(1, newFilter);
 
-            // 更新数据
+            // 直接更新数据，简单重新渲染
             safeSetState({
                 articles,
                 totalArticles: total,
@@ -221,57 +198,35 @@ const Articles: React.FC = () => {
                 currentPage: 1
             });
 
-            // 延迟显示新内容
-            setTimeout(() => {
-                if (mountedRef.current) {
-                    safeSetState({
-                        isContentReady: true
-                    });
-                }
-            }, 150); // 稍短的延迟用于筛选
-
         } catch (error) {
             console.error('Error filtering articles:', error);
             safeSetState({
-                error: error instanceof Error ? error.message : 'Failed to filter articles',
-                isContentReady: true
+                error: error instanceof Error ? error.message : 'Failed to filter articles'
             });
         }
-    }, [state.isContentReady, loadData, safeSetState]);
+    }, [loadData, safeSetState]);
 
     // 处理分页
     const handlePageChange = useCallback(async (page: number) => {
-        if (!state.isContentReady || page === state.currentPage) return;
+        if (page === state.currentPage) return;
 
         try {
-            safeSetState({
-                isContentReady: false
-            });
-
             const { articles, total } = await loadData(page);
 
+            // 直接更新数据，简单重新渲染
             safeSetState({
                 articles,
                 totalArticles: total,
                 currentPage: page
             });
 
-            setTimeout(() => {
-                if (mountedRef.current) {
-                    safeSetState({
-                        isContentReady: true
-                    });
-                }
-            }, 150);
-
         } catch (error) {
             console.error('Error changing page:', error);
             safeSetState({
-                error: error instanceof Error ? error.message : 'Failed to load page',
-                isContentReady: true
+                error: error instanceof Error ? error.message : 'Failed to load page'
             });
         }
-    }, [state.isContentReady, state.currentPage, loadData, safeSetState]);
+    }, [state.currentPage, loadData, safeSetState]);
 
     // 组件挂载时初始化
     useEffect(() => {
@@ -516,7 +471,7 @@ const Articles: React.FC = () => {
     return (
         <div className="articles-page">
             {/* Header */}
-            <div className={`articles-header ${state.isContentReady ? 'header--visible' : 'header--hidden'}`}>
+            <div className="articles-header">
                 <h1 className="articles-title">Articles</h1>
                 <p className="articles-subtitle">
                     Discover insights, tutorials, and thoughts on web development and technology
@@ -525,7 +480,7 @@ const Articles: React.FC = () => {
 
             <div className="articles-layout">
                 {/* Sidebar Filters */}
-                <aside className={`articles-sidebar ${state.isContentReady ? 'sidebar--visible' : 'sidebar--hidden'}`}>
+                <aside className="articles-sidebar">
                     {/* Category Filters */}
                     <div className="filter-section">
                         <h3 className="filter-title">Categories</h3>
@@ -533,11 +488,6 @@ const Articles: React.FC = () => {
                             <div
                                 className={`filter-option ${state.activeFilter.type === null ? 'filter-option--selected' : ''}`}
                                 onClick={() => handleFilter(null, null)}
-                                style={{
-                                    opacity: !state.isContentReady ? 0.6 : 1,
-                                    pointerEvents: !state.isContentReady ? 'none' : 'auto',
-                                    cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
-                                }}
                             >
                                 <md-icon>folder</md-icon>
                                 <span>All Articles ({state.totalArticles})</span>
@@ -549,11 +499,6 @@ const Articles: React.FC = () => {
                                         key={category.id}
                                         className={`filter-option ${state.activeFilter.type === 'category' && state.activeFilter.id === category.id ? 'filter-option--selected' : ''}`}
                                         onClick={() => handleFilter('category', category.id)}
-                                        style={{
-                                            opacity: !state.isContentReady ? 0.6 : 1,
-                                            pointerEvents: !state.isContentReady ? 'none' : 'auto',
-                                            cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
-                                        }}
                                     >
                                         <md-icon>{getCategoryIcon(category.name)}</md-icon>
                                         <span>{category.name} ({category.count || 0})</span>
@@ -571,11 +516,6 @@ const Articles: React.FC = () => {
                                     key={tag.id}
                                     className={`filter-option ${state.activeFilter.type === 'tag' && state.activeFilter.id === tag.id ? 'filter-option--selected' : ''}`}
                                     onClick={() => handleFilter('tag', tag.id)}
-                                    style={{
-                                        opacity: !state.isContentReady ? 0.6 : 1,
-                                        pointerEvents: !state.isContentReady ? 'none' : 'auto',
-                                        cursor: !state.isContentReady ? 'not-allowed' : 'pointer'
-                                    }}
                                 >
                                     <md-icon>{getTagIcon(tag.name)}</md-icon>
                                     <span>{tag.name} ({tag.count || 0})</span>
@@ -588,7 +528,7 @@ const Articles: React.FC = () => {
                 {/* Main Content */}
                 <main className="articles-main">
                     {/* Articles Grid */}
-                    <div className={`articles-grid ${state.isContentReady ? 'grid--visible' : 'grid--hidden'}`}>
+                    <div className="articles-grid">
                         {state.articles.length > 0 ? (
                             state.articles.map((article, index) => {
                                 const cardData = convertArticleToCardFormat(article, index);
@@ -603,11 +543,7 @@ const Articles: React.FC = () => {
                                         coverImage={cardData.coverImage}
                                         gradient={cardData.gradient}
                                         onClick={handleArticleClick}
-                                        variant="compact"
-                                        className={`${state.isContentReady ? 'article-card--visible' : 'article-card--hidden'}`}
-                                        style={{
-                                            animationDelay: state.isContentReady ? `${index * ANIMATION_DELAY_BASE}ms` : '0ms'
-                                        }}
+                                        variant="default"
                                     />
                                 );
                             })
@@ -622,7 +558,7 @@ const Articles: React.FC = () => {
 
                     {/* Pagination */}
                     {paginationInfo.totalPages > 1 && (
-                        <div className={`articles-pagination ${state.isContentReady ? 'pagination--visible' : 'pagination--hidden'}`}>
+                        <div className="articles-pagination">
                             <div className="pagination-info">
                                 <span>
                                     Showing {((state.currentPage - 1) * ARTICLES_PER_PAGE) + 1} to{' '}
@@ -634,8 +570,8 @@ const Articles: React.FC = () => {
                                     onClick={() => handlePageChange(state.currentPage - 1)}
                                     aria-label="Previous page"
                                     style={{
-                                        opacity: !paginationInfo.hasPrevPage || !state.isContentReady ? 0.5 : 1,
-                                        pointerEvents: !paginationInfo.hasPrevPage || !state.isContentReady ? 'none' : 'auto'
+                                        opacity: !paginationInfo.hasPrevPage ? 0.5 : 1,
+                                        pointerEvents: !paginationInfo.hasPrevPage ? 'none' : 'auto'
                                     }}
                                 >
                                     <md-icon>chevron_left</md-icon>
@@ -646,10 +582,6 @@ const Articles: React.FC = () => {
                                         key={pageNum}
                                         className={state.currentPage === pageNum ? 'current-page' : ''}
                                         onClick={() => handlePageChange(pageNum)}
-                                        style={{
-                                            opacity: !state.isContentReady ? 0.6 : 1,
-                                            pointerEvents: !state.isContentReady ? 'none' : 'auto'
-                                        }}
                                     >
                                         {pageNum}
                                     </md-text-button>
@@ -659,8 +591,8 @@ const Articles: React.FC = () => {
                                     onClick={() => handlePageChange(state.currentPage + 1)}
                                     aria-label="Next page"
                                     style={{
-                                        opacity: !paginationInfo.hasNextPage || !state.isContentReady ? 0.5 : 1,
-                                        pointerEvents: !paginationInfo.hasNextPage || !state.isContentReady ? 'none' : 'auto'
+                                        opacity: !paginationInfo.hasNextPage ? 0.5 : 1,
+                                        pointerEvents: !paginationInfo.hasNextPage ? 'none' : 'auto'
                                     }}
                                 >
                                     <md-icon>chevron_right</md-icon>

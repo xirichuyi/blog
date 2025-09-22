@@ -17,24 +17,11 @@
 }
 
 /* ===========================================
-   HEADER 样式和动画
+   HEADER 样式
    =========================================== */
 .articles-header {
   text-align: center;
   margin-bottom: 3rem;
-  opacity: 0;
-  transform: translateY(-20px);
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.articles-header.header--visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.articles-header.header--hidden {
-  opacity: 0;
-  transform: translateY(-20px);
 }
 
 .articles-title {
@@ -58,32 +45,18 @@
 }
 
 /* ===========================================
-   SIDEBAR 样式和动画
+   SIDEBAR 样式
    =========================================== */
 .articles-sidebar {
   background: transparent;
   border-radius: 0;
   padding: 0;
   border: none;
-  opacity: 0;
-  transform: translateX(-20px);
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  transition-delay: 0.1s;
   position: sticky;
   top: 2rem;
   height: fit-content;
   max-height: calc(100vh - 4rem);
   overflow-y: auto;
-}
-
-.articles-sidebar.sidebar--visible {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.articles-sidebar.sidebar--hidden {
-  opacity: 0;
-  transform: translateX(-20px);
 }
 
 .filter-section {
@@ -172,7 +145,7 @@
 }
 
 /* ===========================================
-   ARTICLES GRID 样式和动画
+   ARTICLES GRID 样式
    =========================================== */
 .articles-grid {
   display: grid;
@@ -180,69 +153,9 @@
   gap: 2rem;
   margin-bottom: 3rem;
   min-height: 600px;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  transition-delay: 0.2s;
 }
 
-.articles-grid.grid--visible {
-  opacity: 1;
-  transform: translateY(0);
-}
 
-.articles-grid.grid--hidden {
-  opacity: 0;
-  transform: translateY(30px);
-}
-
-/* ===========================================
-   ARTICLE CARD 样式和动画
-   =========================================== */
-.article-card {
-  background: var(--md-sys-color-surface-container-lowest);
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  border: none;
-  height: fit-content;
-  opacity: 0;
-  transform: translateY(40px) scale(0.95);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.article-card--visible {
-  animation: articleSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  /* 确保动画结束后保持最终状态，避免跳动 */
-  animation-fill-mode: forwards;
-}
-
-.article-card--hidden {
-  opacity: 0;
-  transform: translateY(40px) scale(0.95);
-}
-
-@keyframes articleSlideIn {
-  0% {
-    opacity: 0;
-    transform: translateY(40px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.article-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: var(--md-sys-elevation-level3);
-  background: var(--md-sys-color-surface-container-low);
-}
-
-.article-card:focus {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
-}
 
 /* ===========================================
    ARTICLE IMAGE 样式
@@ -261,9 +174,6 @@
   transition: transform 0.3s ease;
 }
 
-.article-card:hover .article-image img {
-  transform: scale(1.05);
-}
 
 .article-fallback {
   width: 100%;
@@ -357,7 +267,7 @@
 }
 
 /* ===========================================
-   PAGINATION 样式和动画
+   PAGINATION 样式
    =========================================== */
 .articles-pagination {
   display: flex;
@@ -366,20 +276,6 @@
   gap: 1rem;
   padding: 2rem 0;
   border-top: 1px solid var(--md-sys-color-outline-variant);
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  transition-delay: 0.3s;
-}
-
-.articles-pagination.pagination--visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.articles-pagination.pagination--hidden {
-  opacity: 0;
-  transform: translateY(20px);
 }
 
 .pagination-info {
@@ -555,9 +451,6 @@
    HIGH CONTRAST MODE
    =========================================== */
 @media (prefers-contrast: high) {
-  .article-card {
-    border: 2px solid var(--md-sys-color-outline);
-  }
 
   .articles-filters {
     border: 2px solid var(--md-sys-color-outline);
@@ -568,39 +461,8 @@
    REDUCED MOTION
    =========================================== */
 @media (prefers-reduced-motion: reduce) {
-  .articles-header,
-  .articles-sidebar,
-  .articles-grid,
-  .articles-pagination,
-  .article-card {
-    transition: none !important;
-    animation: none !important;
-  }
-
-  .article-card--visible,
-  .article-card--hidden {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-
-  .articles-header.header--visible,
-  .articles-sidebar.sidebar--visible,
-  .articles-grid.grid--visible,
-  .articles-pagination.pagination--visible {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-
-  .article-card:hover {
-    transform: none !important;
-  }
-
   .article-image img {
     transition: none !important;
-  }
-
-  .article-card:hover .article-image img {
-    transform: none !important;
   }
 
   .filter-option {

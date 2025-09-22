@@ -226,3 +226,16 @@
     font-size: 12px;
   }
 }
+
+/* 减少运动首选项支持 - 防止与页面动画冲突 */
+@media (prefers-reduced-motion: reduce) {
+  .article-card {
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .article-card:hover {
+    transform: none;
+    background-color: var(--md-sys-color-surface-container-highest);
+    box-shadow: var(--md-sys-elevation-level1);
+  }
+}

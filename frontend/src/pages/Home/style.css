@@ -1063,3 +1063,161 @@
     display: none; /* Hide on mobile to save space */
   }
 }
+
+/* ===========================================
+   LOADING ANIMATIONS (Apple-style)
+   =========================================== */
+
+/* Header Animation */
+.section-header {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.section-header.header--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Featured Section Animation */
+.blog-featured-section {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: 0.2s;
+}
+
+.blog-featured-section.featured--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Featured Card Animation */
+.featured-card--visible {
+  animation: featuredSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.featured-card--hidden {
+  opacity: 0;
+  transform: translateY(40px) scale(0.95);
+}
+
+@keyframes featuredSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Secondary Grid Animation */
+.blog-secondary-grid {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: 0.3s;
+}
+
+.blog-secondary-grid.secondary--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Secondary Card Animation */
+.secondary-card--visible {
+  animation: secondarySlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.secondary-card--hidden {
+  opacity: 0;
+  transform: translateY(30px) scale(0.96);
+}
+
+@keyframes secondarySlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* See More Button Animation */
+.see-more-section {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: 0.5s;
+}
+
+.see-more-section.see-more--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Sidebar Animation */
+.blog-sidebar {
+  opacity: 0;
+  transform: translateX(30px);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: 0.3s;
+}
+
+.blog-sidebar.sidebar--visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Sidebar Items Animation */
+.sidebar-item--visible {
+  animation: sidebarSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sidebar-item--hidden {
+  opacity: 0;
+  transform: translateX(20px) scale(0.97);
+}
+
+@keyframes sidebarSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(20px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .section-header,
+  .blog-featured-section,
+  .blog-secondary-grid,
+  .see-more-section,
+  .blog-sidebar {
+    transition: opacity 0.3s ease;
+    transform: none !important;
+  }
+  
+  .featured-card--visible,
+  .secondary-card--visible,
+  .sidebar-item--visible {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  
+  .featured-card--hidden,
+  .secondary-card--hidden,
+  .sidebar-item--hidden {
+    opacity: 0.7;
+    transform: none !important;
+  }
+}
