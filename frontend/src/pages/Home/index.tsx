@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './style.css';
 import AuthorCard from './components/AuthorCard';
 import { CustomButton } from '../../components/ui/CustomButton';
 import ArticleCard from '../../components/ui/ArticleCard';
 import { apiService } from '../../services/api';
 import type { Article } from '../../services/types';
+import { logger } from '../../utils/logger';
 
 // 服务器状态接口
 interface ServerStatus {
@@ -56,6 +57,7 @@ const Home: React.FC = () => {
   // A区 - 数据与状态：所有Hooks调用都放在最上面
   // ===================================================================
   const navigate = useNavigate();
+  const location = useLocation();
 
   // 主要数据状态
   const [articles, setArticles] = useState<Article[]>([]);
@@ -89,7 +91,7 @@ const Home: React.FC = () => {
         setArticles(response.data);
       }
     } catch (error) {
-      console.error('Error loading articles:', error);
+      logger.error('Error loading articles:', error);
       setError(error instanceof Error ? error.message : 'Failed to load articles');
     } finally {
       setIsLoading(false);
@@ -100,6 +102,25 @@ const Home: React.FC = () => {
   useEffect(() => {
     loadArticles();
   }, [loadArticles]);
+
+  // 监听路由变化，每次进入Home页面都重新加载数据（不保留组件状态）
+  useEffect(() => {
+    if (location.pathname === '/') {
+      // 重置所有状态
+      setArticles([]);
+      setAllArticles([]);
+      setIsLoading(true);
+      setError(null);
+      setSearchQuery('');
+      setSearchResults([]);
+      setShowSearchResults(false);
+      setServerStatus(null);
+      setServerStatusLoading(false);
+
+      // 重新加载数据
+      loadArticles();
+    }
+  }, [location.pathname, loadArticles]);
 
   // 延迟加载搜索数据
   useEffect(() => {
@@ -116,7 +137,7 @@ const Home: React.FC = () => {
             setAllArticles(response.data);
           }
         } catch (err) {
-          console.warn('Failed to load articles for search:', err);
+          logger.warn('Failed to load articles for search:', err);
         }
       };
 
@@ -137,10 +158,10 @@ const Home: React.FC = () => {
         if (response.success && response.data) {
           setServerStatus(response.data as unknown as ServerStatus);
         } else {
-          console.error('Failed to fetch server status:', response.error);
+          logger.error('Failed to fetch server status:', response.error);
         }
       } catch (error) {
-        console.error('Error fetching server status:', error);
+        logger.error('Error fetching server status:', error);
       } finally {
         setServerStatusLoading(false);
       }
@@ -206,14 +227,14 @@ const Home: React.FC = () => {
       results.sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
       setSearchResults(results.slice(0, 5));
     } catch (err) {
-      console.error('Search error:', err);
+      logger.error('Search error:', err);
     } finally {
       setIsSearching(false);
     }
   }, [allArticles]);
 
   // 搜索输入处理
-  const handleSearchInput = useCallback((e: any) => {
+  const handleSearchInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   }, []);
 
@@ -224,9 +245,20 @@ const Home: React.FC = () => {
     }
   }, [searchQuery]);
 
-  // 搜索失焦处理
+  // 搜索失焦处理 - 使用ref存储timer以便清理
+  const searchBlurTimerRef = React.useRef<NodeJS.Timeout>();
+
+  // 组件卸载时清理timer - 必须在所有条件语句之前声明
+  useEffect(() => {
+    return () => {
+      if (searchBlurTimerRef.current) {
+        clearTimeout(searchBlurTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSearchBlur = useCallback(() => {
-    setTimeout(() => setShowSearchResults(false), 200);
+    searchBlurTimerRef.current = setTimeout(() => setShowSearchResults(false), 200);
   }, []);
 
   // 清空搜索
@@ -241,19 +273,21 @@ const Home: React.FC = () => {
     navigate('/articles');
   }, [navigate]);
 
+  // 渐变色数组 - 使用useMemo避免重复创建
+  const gradients = useMemo(() => [
+    "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)",
+    "linear-gradient(135deg, #B8C5D1 0%, #D6E3F0 100%)",
+    "linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%)",
+    "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)",
+    "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)",
+    "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
+    "linear-gradient(135deg, #FCE4EC 0%, #F8BBD9 100%)"
+  ], []);
+
   // 渐变色生成
   const getGradientForIndex = useCallback((index: number): string => {
-    const gradients = [
-      "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)",
-      "linear-gradient(135deg, #B8C5D1 0%, #D6E3F0 100%)",
-      "linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%)",
-      "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)",
-      "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)",
-      "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
-      "linear-gradient(135deg, #FCE4EC 0%, #F8BBD9 100%)"
-    ];
     return gradients[index % gradients.length];
-  }, []);
+  }, [gradients]);
 
   // 文章数据转换
   const convertArticleToDisplayFormat = useCallback((article: Article, index: number) => {
@@ -271,6 +305,16 @@ const Home: React.FC = () => {
       coverImage: article.coverImage || article.imageUrl
     };
   }, [getGradientForIndex]);
+
+  // 数据准备 - 使用useMemo避免不必要的重复计算（必须在条件渲染之前）
+  const displayArticles = useMemo(() =>
+    articles.slice(0, 7).map((article, index) =>
+      convertArticleToDisplayFormat(article, index)
+    ), [articles, convertArticleToDisplayFormat]
+  );
+
+  const featuredArticles = useMemo(() => displayArticles.slice(0, 1), [displayArticles]);
+  const secondaryArticles = useMemo(() => displayArticles.slice(1, 7), [displayArticles]);
 
   // ===================================================================
   // C区 - 渲染：纯声明式渲染
@@ -320,12 +364,6 @@ const Home: React.FC = () => {
     );
   }
 
-  // 数据准备
-  const displayArticles = articles.slice(0, 7).map((article, index) =>
-    convertArticleToDisplayFormat(article, index)
-  );
-  const featuredArticles = displayArticles.slice(0, 1);
-  const secondaryArticles = displayArticles.slice(1, 7);
 
   // 主要渲染
   return (
@@ -372,7 +410,7 @@ const Home: React.FC = () => {
               }}>
                 {isSearching ? (
                   <div style={{ padding: '16px', textAlign: 'center' }}>
-                    <md-circular-progress indeterminate style={{ '--md-circular-progress-size': '24px' } as any}></md-circular-progress>
+                    <md-circular-progress indeterminate style={{ '--md-circular-progress-size': '24px' } as React.CSSProperties}></md-circular-progress>
                     <div style={{ marginTop: '8px', color: 'var(--md-sys-color-on-surface-variant)' }}>
                       Searching...
                     </div>
@@ -453,20 +491,10 @@ const Home: React.FC = () => {
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          parent.style.background = article.gradient;
-                          parent.innerHTML = `
-                            <div class="featured-fallback-content">
-                              <div class="fallback-icon">
-                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
-                                  <path d="M14.828 14.828a4 4 0 0 1-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                              </div>
-                              <p class="fallback-text">${article.title}</p>
-                            </div>
-                          `;
-                        }
+                        // XSS fix: Don't use innerHTML, update the article state instead
+                        setArticles(prev => prev.map(a =>
+                          a.id === article.id ? { ...a, coverImage: null } : a
+                        ));
                       }}
                     />
                   ) : (

@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
 import { HeroUIProvider } from '@heroui/react'
+import { logger } from './utils/logger'
 // import { initPreloading } from './utils/preloadResources'
 // import { initAdminPreloading } from './utils/adminPreload'
 
@@ -30,10 +31,10 @@ const initializeTheme = () => {
     localStorage.removeItem('theme');
     localStorage.setItem('theme', 'light');
     root.setAttribute('data-theme', 'light');
-    console.log('Theme initialized to light (default)');
+    logger.info('Theme initialized to light (default)');
   } else {
     root.setAttribute('data-theme', savedTheme);
-    console.log('Theme set to:', savedTheme);
+    logger.info('Theme set to:', savedTheme);
   }
 
   // Force a style recalculation

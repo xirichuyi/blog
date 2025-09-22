@@ -4,7 +4,8 @@ import { globalCache } from '../../utils/cacheManager';
 import type { ApiResponse } from '../types';
 
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://172.245.148.234:3007';
+// Use environment variable for API URL, fallback to local development server
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3007';
 export const API_PREFIX = '/api';
 
 export class BaseApiService {
@@ -156,7 +157,7 @@ export class BaseApiService {
                 data,
             };
         } catch (error) {
-            console.error('API request failed:', error);
+            // Error logging handled by caller
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Unknown error occurred',

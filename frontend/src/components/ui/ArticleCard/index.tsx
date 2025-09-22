@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './style.css';
 
 export interface ArticleCardProps {
@@ -28,6 +28,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     variant = 'default',
     style = {}
 }) => {
+    const [imageError, setImageError] = useState(false);
+
     const handleClick = () => {
         onClick(id);
     };
@@ -40,23 +42,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     };
 
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-        const target = e.target as HTMLImageElement;
-        target.style.display = 'none';
-        const parent = target.parentElement;
-        if (parent) {
-            parent.style.background = gradient;
-            parent.innerHTML = `
-        <div class="article-fallback-content">
-          <div class="fallback-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </div>
-      `;
-        }
+        // XSS fix: Use state instead of innerHTML
+        setImageError(true);
     };
 
     return (
@@ -69,7 +56,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
             onKeyDown={handleKeyDown}
         >
             <div className="article-card-image">
-                {coverImage ? (
+                {coverImage && !imageError ? (
                     <img
                         src={coverImage}
                         alt={title}

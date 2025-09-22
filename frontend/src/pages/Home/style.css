@@ -95,7 +95,7 @@
 
 .search-spinner {
   --md-circular-progress-size: 24px;
-  --md-circular-progress-active-indicator-color: #ccb6ff;
+  --md-circular-progress-active-indicator-color: var(--md-sys-color-primary);
 }
 
 .search-loading-text {
@@ -123,11 +123,11 @@
 }
 
 .search-result-item:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--md-sys-color-primary-hover);
 }
 
 .search-result-icon {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--md-sys-color-on-surface-variant);
   flex-shrink: 0;
 }
 
@@ -181,11 +181,11 @@
 
 .search-no-results-icon {
   font-size: 48px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--md-sys-color-outline);
 }
 
 .search-no-results-text {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.875rem;
 }
 
@@ -211,12 +211,12 @@
 }
 
 .see-more-button {
-  --md-elevated-button-container-color: #a855f7;
-  --md-elevated-button-label-text-color: #1f1f1f;
+  --md-elevated-button-container-color: var(--md-sys-color-primary);
+  --md-elevated-button-label-text-color: var(--md-sys-color-on-primary);
   --md-elevated-button-container-shape: 20px;
-  --md-elevated-button-hover-state-layer-color: rgba(31, 31, 31, 0.08);
-  --md-elevated-button-pressed-state-layer-color: rgba(31, 31, 31, 0.12);
-  --md-elevated-button-icon-color: #1f1f1f;
+  --md-elevated-button-hover-state-layer-color: var(--md-sys-color-primary-hover);
+  --md-elevated-button-pressed-state-layer-color: var(--md-sys-color-primary-pressed);
+  --md-elevated-button-icon-color: var(--md-sys-color-on-primary);
   --md-elevated-button-container-elevation: 1;
   --md-elevated-button-hover-container-elevation: 2;
   --md-elevated-button-pressed-container-elevation: 1;
@@ -369,8 +369,8 @@
   font-size: 11px;
   font-weight: 500;
   line-height: 1.3;
-  color: #6750a4;
-  background: rgba(103, 80, 164, 0.12);
+  color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-alpha-12);
   padding: 4px 8px;
   border-radius: 12px;
   text-transform: uppercase;
@@ -448,7 +448,7 @@
 
 .featured-fallback-content {
   text-align: center;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--md-sys-color-on-surface);
   padding: var(--md-sys-spacing-4);
 }
 
@@ -653,7 +653,7 @@
 }
 
 .more-article-card:hover {
-  background-color: #45455a;
+  background-color: var(--md-sys-color-surface-container);
 }
 
 .more-article-visual {
@@ -667,7 +667,7 @@
 .more-article-icon {
   width: 32px;
   height: 32px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--md-sys-color-on-surface-variant);
   opacity: 0.8;
 }
 
