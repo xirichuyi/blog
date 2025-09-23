@@ -32,9 +32,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
                     setArticle(fetchedArticle);
 
                     // Load related articles (same category, excluding current article)
-                    if (fetchedArticle.category_id) {
+                    if (fetchedArticle.category) {
                         const relatedResponse = await apiService.getArticles({
-                            category: fetchedArticle.category_id,
+                            category: fetchedArticle.category,
                             status: 'published'
                         });
                         if (relatedResponse.success && relatedResponse.data) {
@@ -67,24 +67,38 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
         while ((match = headingRegex.exec(content)) !== null) {
             const level = match[1].length;
             const title = match[2].trim();
-            const id = title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            // Use the same ID generation logic as MarkdownRenderer
+            const id = title.toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                .replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
             headings.push({ level, title, id });
         }
 
         return headings;
     }, []);
 
-    // Scroll to heading
+    // Scroll to heading with improved targeting
     const scrollToHeading = useCallback((headingId: string) => {
         const element = document.getElementById(headingId);
         if (element) {
             setIsScrollingToHeading(true);
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
             setActiveHeading(headingId);
+            
+            // Calculate offset to account for fixed elements
+            const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+            const offsetPosition = elementPosition - 80; // 80px offset from top
+            
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
 
             setTimeout(() => {
                 setIsScrollingToHeading(false);
-            }, 1000);
+            }, 1500);
+        } else {
+            console.warn(`Element with id "${headingId}" not found`);
         }
     }, []);
 
@@ -97,16 +111,34 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
         const handleScroll = () => {
             if (!ticking) {
                 requestAnimationFrame(() => {
-                    // Handle active heading detection
+                    // Handle active heading detection with improved accuracy
                     const headings = document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
                     let currentHeading = '';
+                    let closestHeading = null;
+                    let closestDistance = Infinity;
 
                     headings.forEach((heading) => {
                         const rect = heading.getBoundingClientRect();
-                        if (rect.top <= 100) {
-                            currentHeading = heading.id;
+                        const distance = Math.abs(rect.top - 120); // 120px offset from top
+                        
+                        // If heading is visible and closer to our target position
+                        if (rect.top <= 200 && distance < closestDistance) {
+                            closestDistance = distance;
+                            closestHeading = heading.id;
                         }
                     });
+
+                    // Fallback: if no heading is close enough, use the last visible one
+                    if (!closestHeading) {
+                        headings.forEach((heading) => {
+                            const rect = heading.getBoundingClientRect();
+                            if (rect.top <= 120) {
+                                currentHeading = heading.id;
+                            }
+                        });
+                    } else {
+                        currentHeading = closestHeading;
+                    }
 
                     if (currentHeading !== activeHeading) {
                         setActiveHeading(currentHeading);
@@ -276,11 +308,14 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
                         <h2 className="related-title">Related Articles</h2>
                         <div className="related-grid">
                             {relatedArticles.map((relatedArticle) => (
-                                <ArticleCard
+                                <div
                                     key={relatedArticle.id}
-                                    article={relatedArticle}
+                                    className="related-article-item"
                                     onClick={() => navigate(`/article/${relatedArticle.id}`)}
-                                />
+                                >
+                                    <h3>{relatedArticle.title}</h3>
+                                    <p>{relatedArticle.excerpt}</p>
+                                </div>
                             ))}
                         </div>
                     </section>

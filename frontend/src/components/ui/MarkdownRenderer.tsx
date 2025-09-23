@@ -43,6 +43,33 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
               : '';
             return <h3 id={id} {...props}>{children}</h3>;
           },
+          h4: ({ children, ...props }) => {
+            const id = typeof children === 'string'
+              ? children.toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
+              : '';
+            return <h4 id={id} {...props}>{children}</h4>;
+          },
+          h5: ({ children, ...props }) => {
+            const id = typeof children === 'string'
+              ? children.toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
+              : '';
+            return <h5 id={id} {...props}>{children}</h5>;
+          },
+          h6: ({ children, ...props }) => {
+            const id = typeof children === 'string'
+              ? children.toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
+                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
+              : '';
+            return <h6 id={id} {...props}>{children}</h6>;
+          },
           // Custom image renderer to handle relative URLs
           img: ({ src, alt, ...props }) => {
             const imageSrc = src ? apiService.getImageUrl(src) : '';
