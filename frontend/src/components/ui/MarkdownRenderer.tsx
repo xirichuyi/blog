@@ -1,6 +1,9 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeSlug from 'rehype-slug';
+import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import GithubSlugger from 'github-slugger';
 import { apiService } from '../../services/api'
 import './MarkdownRenderer.css';
 
@@ -14,62 +17,17 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
     <div className={`markdown-renderer ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[
+          rehypeSlug, // 自动生成标题ID
+          [rehypeAutolinkHeadings, {
+            behavior: 'wrap', // 将整个标题包装为链接
+            properties: {
+              className: 'heading-link',
+              style: 'text-decoration: none; border-bottom: none;' // 禁用默认下划线
+            }
+          }]
+        ]}
         components={{
-          // Custom heading renderer to add IDs for navigation
-          h1: ({ children, ...props }) => {
-            const id = typeof children === 'string'
-              ? children.toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
-              : '';
-            return <h1 id={id} {...props}>{children}</h1>;
-          },
-          h2: ({ children, ...props }) => {
-            const id = typeof children === 'string'
-              ? children.toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
-              : '';
-            return <h2 id={id} {...props}>{children}</h2>;
-          },
-          h3: ({ children, ...props }) => {
-            const id = typeof children === 'string'
-              ? children.toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
-              : '';
-            return <h3 id={id} {...props}>{children}</h3>;
-          },
-          h4: ({ children, ...props }) => {
-            const id = typeof children === 'string'
-              ? children.toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
-              : '';
-            return <h4 id={id} {...props}>{children}</h4>;
-          },
-          h5: ({ children, ...props }) => {
-            const id = typeof children === 'string'
-              ? children.toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
-              : '';
-            return <h5 id={id} {...props}>{children}</h5>;
-          },
-          h6: ({ children, ...props }) => {
-            const id = typeof children === 'string'
-              ? children.toLowerCase()
-                .replace(/\s+/g, '-')
-                .replace(/[^\u4e00-\u9fff\w-]/g, '') // Keep Chinese characters, ASCII letters, numbers, underscores, and hyphens
-                .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
-              : '';
-            return <h6 id={id} {...props}>{children}</h6>;
-          },
           // Custom image renderer to handle relative URLs
           img: ({ src, alt, ...props }) => {
             const imageSrc = src ? apiService.getImageUrl(src) : '';
@@ -119,6 +77,16 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
       </ReactMarkdown>
     </div>
   );
+};
+
+// 导出标题ID生成函数，供其他组件使用（与rehype-slug保持一致）
+// 使用与rehype-slug相同的github-slugger算法
+const slugger = new GithubSlugger();
+
+export const generateHeadingId = (text: string): string => {
+  // 重置slugger状态以确保一致性
+  slugger.reset();
+  return slugger.slug(text);
 };
 
 export default MarkdownRenderer;

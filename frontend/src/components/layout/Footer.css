@@ -1,250 +1,84 @@
-/* Footer Styles - Google Material Design Style */
+/* Footer Styles - Minimized Design */
 
 .footer {
-  background: linear-gradient(135deg,
-    var(--md-sys-color-surface-container-low) 0%,
-    var(--md-sys-color-surface-container) 100%);
+  background: var(--md-sys-color-surface-container-low);
   border-top: 1px solid var(--md-sys-color-outline-variant);
   margin-top: auto;
-  padding: var(--md-sys-spacing-8) 0 var(--md-sys-spacing-4);
+  padding: 1rem 0;
   position: relative;
-  overflow: hidden;
-}
-
-.footer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    var(--md-sys-color-primary) 50%,
-    transparent 100%);
-  opacity: 0.3;
 }
 
 .footer-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 var(--md-sys-spacing-6);
+  padding: 0 1.5rem;
 }
 
-/* Main Footer Content */
-.footer-main {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--md-sys-spacing-6);
-  margin-bottom: var(--md-sys-spacing-4);
-}
-
-/* Brand Section */
-.footer-brand {
+.footer-content {
   display: flex;
-  flex-direction: column;
-  gap: var(--md-sys-spacing-4);
-}
-
-.footer-logo {
-  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--md-sys-spacing-3);
-  margin-bottom: var(--md-sys-spacing-2);
+  gap: 1rem;
+  min-height: 2.5rem;
 }
 
-.footer-logo-icon {
-  font-family: "Material Symbols Outlined";
-  font-size: 32px;
-  color: var(--md-sys-color-primary);
-  font-weight: 400;
-}
-
-.footer-logo-text {
-  font-family: var(--md-sys-typescale-headline-small-font);
-  font-size: var(--md-sys-typescale-headline-small-size);
-  font-weight: var(--md-sys-typescale-headline-small-weight);
-  color: var(--md-sys-color-on-surface);
-}
-
-.footer-description {
-  font-family: var(--md-sys-typescale-body-medium-font);
-  font-size: var(--md-sys-typescale-body-medium-size);
+.footer-copyright {
+  font-family: var(--md-sys-typescale-body-small-font, inherit);
+  font-size: 0.875rem;
   color: var(--md-sys-color-on-surface-variant);
   margin: 0;
-  line-height: 1.5;
-  max-width: 280px;
 }
 
 .footer-social {
   display: flex;
-  gap: var(--md-sys-spacing-3);
-  margin-top: var(--md-sys-spacing-3);
-  justify-content: flex-start;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 .footer-social-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container-low);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface-variant);
   text-decoration: none;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   border: 1px solid var(--md-sys-color-outline-variant);
-  position: relative;
-  overflow: hidden;
-}
-
-.footer-social-link::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--md-sys-color-primary);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 0;
-}
-
-.footer-social-link:hover::before {
-  opacity: 0.12;
 }
 
 .footer-social-link:hover {
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
   border-color: var(--md-sys-color-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
 }
 
 .footer-social-link .material-symbols-outlined {
-  font-size: 22px;
-  position: relative;
-  z-index: 1;
+  font-size: 18px;
 }
-
-/* Links Sections */
-.footer-links {
-  display: flex;
-  flex-direction: column;
-  gap: var(--md-sys-spacing-4);
-}
-
-.footer-links-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--md-sys-spacing-4);
-}
-
-.footer-links-title {
-  font-family: var(--md-sys-typescale-title-medium-font);
-  font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: var(--md-sys-typescale-title-medium-weight);
-  color: var(--md-sys-color-on-surface);
-  margin: 0;
-}
-
-.footer-links-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--md-sys-spacing-3);
-}
-
-.footer-link {
-  font-family: var(--md-sys-typescale-body-medium-font);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  color: var(--md-sys-color-on-surface-variant);
-  text-decoration: none;
-  transition: color 0.2s ease;
-  padding: var(--md-sys-spacing-1) 0;
-}
-
-.footer-link:hover {
-  color: var(--md-sys-color-primary);
-}
-
-/* Footer Bottom */
-.footer-bottom {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding-top: var(--md-sys-spacing-3);
-  border-top: 1px solid var(--md-sys-color-outline-variant);
-  gap: var(--md-sys-spacing-4);
-}
-
-.footer-bottom-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--md-sys-spacing-2);
-}
-
-.footer-copyright {
-  font-family: var(--md-sys-typescale-body-small-font);
-  font-size: var(--md-sys-typescale-body-small-size);
-  color: var(--md-sys-color-on-surface-variant);
-}
-
-
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .footer {
-    padding: var(--md-sys-spacing-6) 0 var(--md-sys-spacing-3);
-  }
-
-  .footer-container {
-    padding: 0 var(--md-sys-spacing-4);
-  }
-
-  .footer-main {
-    grid-template-columns: 1fr;
-    gap: var(--md-sys-spacing-4);
-    margin-bottom: var(--md-sys-spacing-3);
-  }
-
-  .footer-bottom {
+  .footer-content {
     flex-direction: column;
-    align-items: center;
-    gap: var(--md-sys-spacing-4);
+    gap: 0.75rem;
+    text-align: center;
   }
-
-  .footer-bottom-left {
-    width: 100%;
-    align-items: center;
+  
+  .footer-social {
+    justify-content: center;
   }
 }
 
 @media (max-width: 480px) {
-  .footer-social {
-    justify-content: center;
-    gap: var(--md-sys-spacing-4);
+  .footer-container {
+    padding: 0 1rem;
   }
-
-  .footer-social-link {
-    width: 48px;
-    height: 48px;
-  }
-
-  .footer-social-link .material-symbols-outlined {
-    font-size: 24px;
-  }
-}
-
-/* Dark Theme Adjustments */
-@media (prefers-color-scheme: dark) {
-  .footer {
-    background: var(--md-sys-color-surface-container-lowest);
+  
+  .footer-copyright {
+    font-size: 0.8125rem;
   }
 }

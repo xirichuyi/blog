@@ -8,3 +8,6 @@
 - 项目使用统一的base URL，所有API接口都在这个base URL上扩展。必须避免硬编码问题，确保生产环境部署时API对接正常。所有API调用都应该通过统一的API服务进行，不能直接硬编码URL。
 - 文章卡片在白天模式下文字颜色问题：已尝试修复硬编码的白色文字颜色，但问题仍然存在。可能需要检查内联样式、Material Design组件的默认样式、或者CSS优先级问题。
 - 用户纠正：不应该创建新的方法名，应该直接修改现有的list_posts方法让它返回完整信息（包含category_name和tags）。客户端访问时应该自然地得到这些数据，不需要特殊的方法名。已修正为直接在原有方法中返回完整数据。
+- 用户要求按照 index.tsx 的 ABC 架构来写代码，避免代码混杂。ABC 架构规范：A区 - 数据与状态（所有 Hooks 调用都放在最上面），B区 - 核心逻辑（所有事件处理函数和业务逻辑），C区 - 渲染（纯声明式渲染，包括卫语句和主要渲染）。已成功将 ArticleDetail.tsx 重构为符合此架构的代码结构。
+- 用户反馈目录点击功能有时无法正常工作。已通过重构解决：1.使用标准rehype-slug和rehype-autolink-headings插件替代手动ID生成；2.安装github-slugger确保ID生成算法完全一致；3.简化ArticleDetail组件，使用统一的generateHeadingId函数；4.移除所有重复的标题ID生成逻辑。现在目录和内容使用相同算法生成ID，确保点击功能正常工作。
+- 用户发现目录导航问题：extractHeadings函数使用正则表达式错误提取了非标题内容到目录中，导致点击无法跳转。已修复：1.安装markdown-it专业解析器；2.重写extractHeadings函数使用markdown-it的token解析，只提取heading_open类型的真正标题；3.确保与MarkdownRenderer使用相同的generateHeadingId函数。现在目录只显示真正的标题，点击导航功能正常。

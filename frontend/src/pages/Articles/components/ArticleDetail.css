@@ -134,7 +134,7 @@
   overflow: hidden;
   margin-bottom: 3rem;
   max-width: 100%;
-  height: 400px;
+  height: 600px; /* 增加高度到600px，让图片更加突出 */
 }
 
 .article-image img {
@@ -150,12 +150,34 @@
   left: 80px; /* After main navigation */
   top: 0;
   width: 280px;
-  height: calc(100vh - 4px); /* Slightly shorter than full screen height */
+  height: calc(100vh); /* Slightly shorter than full screen height */
   background: var(--md-sys-color-surface-container-lowest);
   border-right: 1px solid var(--md-sys-color-outline-variant);
   padding: 2rem 1.5rem;
   overflow-y: auto;
   z-index: 100;
+  
+  /* 优化滚动体验 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+}
+
+/* 自定义滚动条样式 (WebKit) */
+.article-toc-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.article-toc-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.article-toc-sidebar::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline-variant);
+  border-radius: 3px;
+}
+
+.article-toc-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--md-sys-color-outline);
 }
 
 .toc-sticky {
@@ -167,6 +189,7 @@
   color: var(--md-sys-color-on-surface);
   font-size: 0.875rem;
   font-weight: 500;
+  margin-top: 2rem; /* Add top margin for better spacing from screen top */
   margin-bottom: 1.5rem;
   letter-spacing: 0.1px;
   text-transform: uppercase;
@@ -340,6 +363,7 @@
 /* Article Footer */
 .article-footer {
   margin-top: 4rem;
+  margin-bottom: 3rem; /* Add bottom margin for better spacing */
   padding-top: 3rem;
   width: 100%;
   max-width: 700px;
