@@ -40,7 +40,7 @@ const PerformanceOptimizer: React.FC = () => {
       const optimizeLayout = () => {
         // 批量DOM操作
         document.documentElement.style.setProperty('--optimize-rendering', 'true');
-        
+
         // 启用硬件加速
         const criticalElements = document.querySelectorAll('.article-card, .search-results, .navigation');
         criticalElements.forEach(el => {
@@ -102,7 +102,7 @@ const PerformanceOptimizer: React.FC = () => {
       preloadCriticalResources();
       preconnectDomains();
       optimizeCriticalPath();
-      
+
       // 延迟执行非关键优化
       setTimeout(() => {
         optimizeImages();

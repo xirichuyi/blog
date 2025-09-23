@@ -18,6 +18,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
     const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
     const [activeHeading, setActiveHeading] = useState<string>('');
     const [isScrollingToHeading, setIsScrollingToHeading] = useState(false);
+    const [tocBottomOffset, setTocBottomOffset] = useState<number>(0);
 
     useEffect(() => {
         const loadArticle = async () => {
@@ -87,27 +88,59 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
         }
     }, []);
 
-    // Handle scroll to update active heading
+    // Handle scroll to update active heading and TOC position
     useEffect(() => {
         if (!article || isScrollingToHeading) return;
 
+        let ticking = false;
+
         const handleScroll = () => {
-            const headings = document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
-            let currentHeading = '';
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    // Handle active heading detection
+                    const headings = document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
+                    let currentHeading = '';
 
-            headings.forEach((heading) => {
-                const rect = heading.getBoundingClientRect();
-                if (rect.top <= 100) {
-                    currentHeading = heading.id;
-                }
-            });
+                    headings.forEach((heading) => {
+                        const rect = heading.getBoundingClientRect();
+                        if (rect.top <= 100) {
+                            currentHeading = heading.id;
+                        }
+                    });
 
-            if (currentHeading !== activeHeading) {
-                setActiveHeading(currentHeading);
+                    if (currentHeading !== activeHeading) {
+                        setActiveHeading(currentHeading);
+                    }
+
+                    // Handle TOC positioning - only move up when near bottom
+                    const windowHeight = window.innerHeight;
+                    const documentHeight = document.documentElement.scrollHeight;
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    const scrollBottom = scrollTop + windowHeight;
+
+                    // Check distance from bottom (within 300px of footer)
+                    const distanceFromBottom = documentHeight - scrollBottom;
+
+                    if (distanceFromBottom <= 300) {
+                        // Calculate how much to move TOC up from its normal position
+                        const offset = Math.max(0, 300 - distanceFromBottom);
+                        setTocBottomOffset(offset);
+                    } else {
+                        setTocBottomOffset(0);
+                    }
+
+                    ticking = false;
+                });
+                ticking = true;
             }
         };
 
-        window.addEventListener('scroll', handleScroll);
+        // Add passive listener for better performance
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        // Initial call to set active heading and position
+        handleScroll();
+
         return () => window.removeEventListener('scroll', handleScroll);
     }, [article, activeHeading, isScrollingToHeading]);
 
@@ -160,18 +193,36 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
 
     return (
         <div className="article-detail">
+            {/* Table of Contents Sidebar */}
+            {headings.length > 0 && (
+                <aside
+                    className="article-toc-sidebar"
+                    style={{
+                        transform: `translateY(-${tocBottomOffset}px)`,
+                        transition: 'transform 0.3s ease-out'
+                    }}
+                >
+                    <div className="toc-sticky">
+                        <h3 className="toc-title">Table of Contents</h3>
+                        <nav className="toc-nav">
+                            {headings.map((heading, index) => (
+                                <button
+                                    key={index}
+                                    className={`toc-item toc-level-${heading.level} ${activeHeading === heading.id ? 'active' : ''
+                                        }`}
+                                    onClick={() => scrollToHeading(heading.id)}
+                                >
+                                    {heading.title}
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+                </aside>
+            )}
+
             <div className="article-detail-container">
                 {/* Article Header */}
                 <header className="article-header">
-                    <div className="article-breadcrumb">
-                        <md-text-button onClick={() => navigate('/articles')}>
-                            <md-icon slot="icon">arrow_back</md-icon>
-                            Articles
-                        </md-text-button>
-                        <md-icon className="breadcrumb-separator">chevron_right</md-icon>
-                        <span className="current-article">{article.title}</span>
-                    </div>
-
                     <div className="article-meta">
                         <span className="article-category">{article.category}</span>
                         <span className="article-date">{formatDate(article.publishDate)}</span>
@@ -204,34 +255,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
                     )}
                 </header>
 
-                {/* Main Content */}
-                <div className="article-main">
-                    {/* Table of Contents */}
-                    {headings.length > 0 && (
-                        <aside className="article-toc">
-                            <div className="toc-sticky">
-                                <h3 className="toc-title">Table of Contents</h3>
-                                <nav className="toc-nav">
-                                    {headings.map((heading, index) => (
-                                        <button
-                                            key={index}
-                                            className={`toc-item toc-level-${heading.level} ${activeHeading === heading.id ? 'active' : ''
-                                                }`}
-                                            onClick={() => scrollToHeading(heading.id)}
-                                        >
-                                            {heading.title}
-                                        </button>
-                                    ))}
-                                </nav>
-                            </div>
-                        </aside>
-                    )}
-
-                    {/* Article Content */}
-                    <div className="article-content">
-                        <MarkdownRenderer content={article.content} />
-                    </div>
-                </div>
+                {/* Article Content */}
+                <main className="article-content">
+                    <MarkdownRenderer content={article.content} />
+                </main>
 
                 {/* Article Footer */}
                 <footer className="article-footer">
