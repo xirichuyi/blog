@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
@@ -11,6 +11,54 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
 }
+
+// 自定义图片组件
+const MarkdownImage: React.FC<{ src?: string; alt?: string;[key: string]: any }> = ({ src, alt, ...props }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true);
+    setImageError(false);
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    setImageLoaded(true);
+    setImageError(true);
+  }, []);
+
+  const imageSrc = src ? apiService.getImageUrl(src) : '';
+
+  if (!imageSrc) return null;
+
+  return (
+    <div className={`markdown-image-container ${!imageLoaded ? 'loading' : ''} ${imageError ? 'error' : ''}`}>
+      {!imageLoaded && !imageError && (
+        <div className="markdown-image-placeholder">
+          <md-circular-progress indeterminate></md-circular-progress>
+          <span>Loading image...</span>
+        </div>
+      )}
+      {imageError && (
+        <div className="markdown-image-error">
+          <md-icon>broken_image</md-icon>
+          <span>Failed to load image</span>
+        </div>
+      )}
+      <img
+        src={imageSrc}
+        alt={alt}
+        onLoad={handleImageLoad}
+        onError={handleImageError}
+        style={{
+          opacity: imageLoaded && !imageError ? 1 : 0,
+          transition: 'opacity 0.3s ease-in-out'
+        }}
+        {...props}
+      />
+    </div>
+  );
+};
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = '' }) => {
   return (
@@ -28,11 +76,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
           }]
         ]}
         components={{
-          // Custom image renderer to handle relative URLs
-          img: ({ src, alt, ...props }) => {
-            const imageSrc = src ? apiService.getImageUrl(src) : '';
-            return <img src={imageSrc} alt={alt} {...props} />;
-          },
+          // Custom image renderer to handle relative URLs and loading states
+          img: MarkdownImage,
           // Custom code block renderer
           pre: ({ children, ...props }) => (
             <pre className="code-block" {...props}>

@@ -109,7 +109,52 @@
 }
 
 /* Images */
-.markdown-renderer img {
+.markdown-renderer .markdown-image-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  margin: 16px 0;
+  border-radius: 8px;
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.markdown-renderer .markdown-image-container img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: var(--md-sys-elevation-level1);
+  display: block;
+}
+
+.markdown-renderer .markdown-image-placeholder,
+.markdown-renderer .markdown-image-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--md-sys-color-on-surface-variant);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  font-size: 0.875rem;
+}
+
+.markdown-renderer .markdown-image-error {
+  color: var(--md-sys-color-error);
+}
+
+.markdown-renderer .markdown-image-error md-icon {
+  font-size: 32px;
+  opacity: 0.7;
+}
+
+/* 保持向后兼容的img样式 */
+.markdown-renderer img:not(.markdown-image-container img) {
   max-width: 100%;
   height: auto;
   border-radius: 8px;

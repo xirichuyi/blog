@@ -535,7 +535,7 @@ const Home: React.FC = () => {
 
           {/* 次要文章网格 */}
           <div className={`blog-secondary-grid ${isContentReady ? 'secondary--visible' : 'secondary--hidden'}`}>
-            {secondaryArticles.slice(0, 4).map((article, index) => (
+            {secondaryArticles.slice(0, 6).map((article, index) => (
               <ArticleCard
                 key={article.id}
                 id={article.id}

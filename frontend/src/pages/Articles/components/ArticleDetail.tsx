@@ -23,7 +23,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
     const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
     const [tocBottomOffset, setTocBottomOffset] = useState<number>(0);
     const [activeHeading, setActiveHeading] = useState<string>(''); // 只用于点击高亮，不自动跟随
+    const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+    const [imageError, setImageError] = useState<boolean>(false);
     const mountedRef = useRef(true);
+    const imageRef = useRef<HTMLImageElement>(null);
 
     // 安全的状态更新函数
     const safeSetState = useCallback((updater: (prev: any) => any, setter: (value: any) => void) => {
@@ -59,6 +62,12 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
             mountedRef.current = false;
         };
     }, [articleId]);
+
+    // 重置图片加载状态当文章改变时
+    useEffect(() => {
+        setImageLoaded(false);
+        setImageError(false);
+    }, [article?.id]);
 
     // ===================================================================
     // B区 - 核心逻辑：所有事件处理函数和业务逻辑
@@ -182,6 +191,20 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
         navigate('/articles');
     }, [navigate]);
 
+    // 处理图片加载完成
+    const handleImageLoad = useCallback(() => {
+        if (!mountedRef.current) return;
+        setImageLoaded(true);
+        setImageError(false);
+    }, []);
+
+    // 处理图片加载错误
+    const handleImageError = useCallback(() => {
+        if (!mountedRef.current) return;
+        setImageLoaded(true);
+        setImageError(true);
+    }, []);
+
     // 计算衍生数据
     const headings = useMemo(() => {
         return article ? extractHeadings(article.content) : [];
@@ -284,11 +307,29 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
 
                     {/* Article Image */}
                     {(article.coverImage || article.imageUrl) && (
-                        <div className="article-image">
+                        <div className={`article-image ${!imageLoaded ? 'loading' : ''} ${imageError ? 'error' : ''}`}>
+                            {!imageLoaded && !imageError && (
+                                <div className="image-placeholder">
+                                    <md-circular-progress indeterminate></md-circular-progress>
+                                    <span>Loading image...</span>
+                                </div>
+                            )}
+                            {imageError && (
+                                <div className="image-error">
+                                    <md-icon>broken_image</md-icon>
+                                    <span>Failed to load image</span>
+                                </div>
+                            )}
                             <img
+                                ref={imageRef}
                                 src={article.coverImage || article.imageUrl}
                                 alt={article.title}
-                                loading="lazy"
+                                onLoad={handleImageLoad}
+                                onError={handleImageError}
+                                style={{
+                                    opacity: imageLoaded && !imageError ? 1 : 0,
+                                    transition: 'opacity 0.3s ease-in-out'
+                                }}
                             />
                         </div>
                     )}

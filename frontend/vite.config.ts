@@ -22,6 +22,26 @@ export default defineConfig({
       verbose: true,
     }),
   ],
+  optimizeDeps: {
+    // 预构建依赖项
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'framer-motion',
+      'lucide-react',
+      'react-markdown',
+      'remark-gfm',
+      'rehype-slug',
+      'rehype-autolink-headings'
+    ],
+    // 排除有问题的依赖项
+    exclude: [
+      '@material/web'
+    ],
+    // 强制预构建
+    force: true
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
