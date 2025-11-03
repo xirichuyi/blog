@@ -148,10 +148,41 @@ const PostEditor: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isEditing && id) {
-      loadPost(id);
-    }
+    // Load categories and tags when component mounts
+    const initializeData = async () => {
+      await loadCategoriesAndTags();
+
+      if (isEditing && id) {
+        loadPost(id);
+      }
+    };
+
+    initializeData();
   }, [isEditing, id]);
+
+  // Load categories and tags data
+  const loadCategoriesAndTags = async () => {
+    try {
+      // Load categories
+      const categoriesResponse = await apiService.getCategories();
+      if (categoriesResponse.success && categoriesResponse.data) {
+        setCategories(categoriesResponse.data);
+      }
+
+      // Load tags
+      const tagsResponse = await apiService.getTags();
+      if (tagsResponse.success && tagsResponse.data) {
+        setAvailableTags(tagsResponse.data);
+      }
+    } catch (error) {
+      console.error('Failed to load categories and tags:', error);
+      showNotification({
+        type: 'error',
+        title: 'Loading Error',
+        message: 'Failed to load categories and tags data',
+      });
+    }
+  };
 
 
 
@@ -168,11 +199,14 @@ const PostEditor: React.FC = () => {
       if (response.success && response.data) {
         const post = response.data;
 
-        // Find the category name by matching with available categories
+        // Find the category ID by matching with available categories
+        // If categories are not loaded yet, this will be empty and can be set later
         let categoryId = '';
-        const matchingCategory = categories.find(cat => cat.name === post.category);
-        if (matchingCategory) {
-          categoryId = matchingCategory.id;
+        if (categories.length > 0 && post.category) {
+          const matchingCategory = categories.find(cat => cat.name === post.category);
+          if (matchingCategory) {
+            categoryId = matchingCategory.id;
+          }
         }
 
         // Extract images from content
@@ -183,7 +217,7 @@ const PostEditor: React.FC = () => {
           excerpt: post.excerpt,
           content: post.content || '',
           category: categoryId,
-          tags: post.tags,
+          tags: post.tags || [],
           featured: post.featured || false,
           status: (post.status === 'published' ? 'published' : 'draft') as 'draft' | 'published',
           coverUrl: post.coverImage || post.imageUrl || '',
