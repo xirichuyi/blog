@@ -1,10 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    <link rel="shortcut icon" href="/logo.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chuyi的博客 - 现代化个人博客</title>
+    
+    <!-- 基础SEO Meta标签 -->
+    <meta name="description" content="欢迎来到Chuyi的个人博客，分享技术文章、生活感悟和创意思考。探索编程、设计、科技等多元化内容。" />
+    <meta name="keywords" content="博客,技术,编程,设计,科技,Chuyi,个人博客,前端开发,全栈开发" />
+    <meta name="author" content="Chuyi" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://blog.chuyi.uk" />
 
     <!-- 性能优化：预连接、DNS预取和资源预加载 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
@@ -62,7 +70,39 @@
     <link rel="preload" href="https://fonts.googleapis.com/icon?family=Material+Icons" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"></noscript>
 
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/site.webmanifest" />
+    
     <!-- 完全移除Material Symbols，减少3.75MB的字体加载 -->
+    
+    <!-- 结构化数据 - 网站信息 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Chuyi的博客",
+      "url": "https://blog.chuyi.uk",
+      "description": "欢迎来到Chuyi的个人博客，分享技术文章、生活感悟和创意思考。",
+      "author": {
+        "@type": "Person",
+        "name": "Chuyi",
+        "url": "https://blog.chuyi.uk/about"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Chuyi的博客",
+        "url": "https://blog.chuyi.uk"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://blog.chuyi.uk/search?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

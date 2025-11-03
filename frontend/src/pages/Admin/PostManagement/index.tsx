@@ -191,7 +191,7 @@ const PostManagement: React.FC = () => {
           <h3 className="md-typescale-title-medium">{record.title}</h3>
           <p className="md-typescale-body-small">{record.excerpt}</p>
           {record.featured && (
-            <md-assist-chip class="featured-chip">
+            <md-assist-chip className="featured-chip">
               <md-icon slot="icon">star</md-icon>
               Featured
             </md-assist-chip>
@@ -218,7 +218,7 @@ const PostManagement: React.FC = () => {
       title: 'Status',
       sortable: true,
       render: (value) => (
-        <md-assist-chip class={`status-${value || 'draft'}`}>
+        <md-assist-chip className={`status-${value || 'draft'}`}>
           {value === 'published' ? 'Published' :
             value === 'draft' ? 'Draft' :
               value === 'private' ? 'Private' : 'Draft'}
@@ -323,7 +323,7 @@ const PostManagement: React.FC = () => {
             label="Search posts..."
             value={filters.search}
             onInput={(e: any) => setFilters({ ...filters, search: e.target.value })}
-            class="search-field"
+            className="search-field"
           >
             <md-icon slot="leading-icon">search</md-icon>
           </md-outlined-text-field>

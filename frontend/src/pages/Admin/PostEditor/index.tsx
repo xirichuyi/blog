@@ -542,7 +542,7 @@ const PostEditor: React.FC = () => {
               value={formData.title}
               onInput={(e: any) => handleInputChange('title', e.target.value)}
               required
-              class="title-field"
+              className="title-field"
             ></md-outlined-text-field>
 
             <md-outlined-text-field
@@ -551,7 +551,7 @@ const PostEditor: React.FC = () => {
               onInput={(e: any) => handleInputChange('excerpt', e.target.value)}
               type="textarea"
               rows={3}
-              class="excerpt-field"
+              className="excerpt-field"
             ></md-outlined-text-field>
 
             {/* Cover Image Upload */}
@@ -606,7 +606,7 @@ const PostEditor: React.FC = () => {
 
                 <md-outlined-button
                   onClick={() => setPreviewMode(!previewMode)}
-                  class={previewMode ? 'active' : ''}
+                  className={previewMode ? 'active' : ''}
                 >
                   <md-icon slot="icon">{previewMode ? 'edit' : 'preview'}</md-icon>
                   {previewMode ? 'Edit' : 'Preview'}
@@ -643,7 +643,7 @@ const PostEditor: React.FC = () => {
                 {isDragOver && (
                   <div className="drag-overlay">
                     <div className="drag-overlay-content">
-                      <md-icon class="drag-icon">image</md-icon>
+                      <md-icon className="drag-icon">image</md-icon>
                       <p className="md-typescale-body-large">Drop images here to upload</p>
                       <p className="md-typescale-body-medium">Images will be uploaded and inserted as markdown</p>
                     </div>

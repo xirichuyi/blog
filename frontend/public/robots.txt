@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://blog.chuyi.uk/sitemap.xml
+
+# Disallow admin pages
+Disallow: /admin/
+Disallow: /admin/*
+
+# Allow important pages
+Allow: /
+Allow: /articles
+Allow: /article/*
+Allow: /about
+Allow: /contact
+
+
+# Crawl delay (optional, adjust as needed)
+Crawl-delay: 1
+
+

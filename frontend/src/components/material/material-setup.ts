@@ -35,45 +35,7 @@ if (typeof document !== 'undefined') {
   }
 }
 
-// Material Web Component Type Declarations for TypeScript
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      // Buttons
-      'md-filled-button': any;
-      'md-outlined-button': any;
-      'md-text-button': any;
-      'md-elevated-button': any;
-
-      // Cards
-      'md-elevated-card': any;
-      'md-outlined-card': any;
-
-      // Chips
-      'md-assist-chip': any;
-      'md-filter-chip': any;
-
-      // Divider
-      'md-divider': any;
-
-      // Icon
-      'md-icon': any;
-
-      // Icon Button
-      'md-icon-button': any;
-
-      // List
-      'md-list': any;
-      'md-list-item': any;
-
-      // Progress
-      'md-circular-progress': any;
-
-      // Text Field
-      'md-outlined-text-field': any;
-    }
-  }
-}
+// Note: TypeScript declarations are centralized in services/types/material-web.d.ts
 
 // Material Icons Setup
 export const loadMaterialIcons = () => {

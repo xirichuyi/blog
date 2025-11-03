@@ -1,0 +1,51 @@
+{
+    "name": "Chuyi的博客",
+    "short_name": "Chuyi Blog",
+    "description": "欢迎来到Chuyi的个人博客，分享技术文章、生活感悟和创意思考。",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#fafafa",
+    "theme_color": "#6366f1",
+    "orientation": "portrait-primary",
+    "lang": "zh-CN",
+    "dir": "ltr",
+    "categories": [
+        "productivity",
+        "education",
+        "technology"
+    ],
+    "icons": [
+        {
+            "src": "/logo.jpg",
+            "sizes": "192x192",
+            "type": "image/jpeg",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/logo.jpg",
+            "sizes": "512x512",
+            "type": "image/jpeg",
+            "purpose": "any"
+        },
+        {
+            "src": "/logo.jpg",
+            "sizes": "any",
+            "type": "image/jpeg"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/images/screenshot-desktop.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "form_factor": "wide"
+        },
+        {
+            "src": "/images/screenshot-mobile.png",
+            "sizes": "375x667",
+            "type": "image/png",
+            "form_factor": "narrow"
+        }
+    ]
+}
+
