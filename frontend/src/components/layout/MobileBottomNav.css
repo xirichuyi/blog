@@ -1,0 +1,173 @@
+/* Mobile Bottom Navigation - Apple Glass Style */
+
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(64px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--apple-glass-background);
+  border-top: 0.5px solid var(--apple-glass-border);
+  z-index: 1000;
+  backdrop-filter: var(--apple-glass-blur);
+  -webkit-backdrop-filter: var(--apple-glass-blur);
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.04), 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mobile-bottom-nav-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 64px;
+  padding: 0;
+  max-width: 100%;
+}
+
+.mobile-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: all var(--apple-transition-base);
+  -webkit-tap-highlight-color: transparent;
+  padding: var(--apple-spacing-xs) var(--apple-spacing-sm);
+}
+
+.mobile-bottom-nav-item:active {
+  opacity: 0.6;
+  transform: scale(0.95);
+}
+
+.mobile-bottom-nav-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.mobile-bottom-nav-item svg {
+  color: var(--apple-color-text-secondary);
+  transition: all var(--apple-transition-base);
+}
+
+.mobile-bottom-nav-item.active svg {
+  color: var(--apple-color-primary);
+}
+
+.mobile-bottom-nav-label {
+  font-size: var(--apple-font-size-xs);
+  font-weight: var(--apple-font-weight-medium);
+  color: var(--apple-color-text-secondary);
+  transition: all var(--apple-transition-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+  text-align: center;
+  letter-spacing: var(--apple-letter-spacing-normal);
+  font-family: var(--apple-font-family);
+}
+
+.mobile-bottom-nav-label.active {
+  color: var(--apple-color-primary);
+  font-weight: var(--apple-font-weight-semibold);
+}
+
+/* Active Indicator - Simple Dot (iOS Style) */
+.mobile-bottom-nav-indicator {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--apple-color-primary);
+  opacity: 0;
+  transition: all var(--apple-transition-slow);
+}
+
+.mobile-bottom-nav-item.active .mobile-bottom-nav-indicator {
+  opacity: 1;
+}
+
+/* Ripple Effect - Subtle */
+.mobile-bottom-nav-item::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: var(--apple-color-primary);
+  opacity: 0;
+  transition: width 0.4s, height 0.4s, opacity 0.4s;
+}
+
+.mobile-bottom-nav-item:active::before {
+  width: 48px;
+  height: 48px;
+  opacity: 0.1;
+}
+
+/* Dark Mode - Support both data-theme attribute and system preference */
+html[data-theme="dark"] .mobile-bottom-nav,
+[data-theme="dark"] .mobile-bottom-nav {
+  background: var(--apple-glass-background-dark);
+  border-top-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.06), 0 -2px 8px rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .mobile-bottom-nav {
+    background: var(--apple-glass-background-dark);
+    border-top-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.06),
+      0 -2px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Animation on mount */
+.mobile-bottom-nav {
+  animation: slideUpNav 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpNav {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Accessibility */
+.mobile-bottom-nav-item:focus-visible {
+  outline: 2px solid var(--apple-color-primary);
+  outline-offset: -2px;
+  border-radius: var(--apple-radius-md);
+}
+
+/* Performance optimization */
+.mobile-bottom-nav {
+  will-change: transform;
+  contain: layout style paint;
+}
+
+.mobile-bottom-nav-item {
+  will-change: transform, opacity;
+}

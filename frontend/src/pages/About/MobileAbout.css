@@ -1,0 +1,203 @@
+/* Mobile About Page - Apple Style */
+
+.mobile-about {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--apple-color-background);
+  padding-top: calc(56px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-left: var(--apple-spacing-md);
+  padding-right: var(--apple-spacing-md);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-about *,
+.mobile-about *::before,
+.mobile-about *::after {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Loading State */
+.mobile-about-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  gap: var(--apple-spacing-md);
+}
+
+.loading-spinner {
+  color: var(--apple-color-primary);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mobile-about-loading p {
+  color: var(--apple-color-text-secondary);
+  font-family: var(--apple-font-family);
+  font-size: var(--apple-font-size-base);
+}
+
+/* Error State */
+.mobile-about-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  gap: var(--apple-spacing-md);
+  text-align: center;
+  padding: var(--apple-spacing-lg);
+}
+
+.error-icon {
+  color: var(--apple-color-error);
+}
+
+.mobile-about-error p {
+  color: var(--apple-color-text-secondary);
+  font-family: var(--apple-font-family);
+  font-size: var(--apple-font-size-base);
+}
+
+/* Hero Section - Photo on top, info below */
+.mobile-about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--apple-spacing-xl) var(--apple-spacing-md);
+  gap: var(--apple-spacing-lg);
+}
+
+.mobile-about-photo {
+  width: 140px;
+  height: 140px;
+  border-radius: var(--apple-radius-full);
+  overflow: hidden;
+  background: var(--apple-color-surface);
+  box-shadow: var(--apple-shadow-md);
+  border: 3px solid var(--apple-color-surface-elevated);
+}
+
+.mobile-about-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-about-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--apple-spacing-sm);
+}
+
+.mobile-about-title {
+  font-size: var(--apple-font-size-2xl);
+  font-weight: var(--apple-font-weight-bold);
+  color: var(--apple-color-text-primary);
+  font-family: var(--apple-font-family);
+  letter-spacing: var(--apple-letter-spacing-tight);
+  line-height: var(--apple-line-height-tight);
+  margin: 0;
+}
+
+.mobile-about-subtitle {
+  font-size: var(--apple-font-size-lg);
+  font-weight: var(--apple-font-weight-medium);
+  color: var(--apple-color-text-secondary);
+  font-family: var(--apple-font-family);
+  letter-spacing: var(--apple-letter-spacing-normal);
+  line-height: var(--apple-line-height-normal);
+  margin: 0;
+}
+
+/* Content Section */
+.mobile-about-content {
+  padding: 0 var(--apple-spacing-md) var(--apple-spacing-xl);
+}
+
+.mobile-about-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--apple-spacing-md);
+}
+
+.mobile-about-paragraph {
+  font-size: var(--apple-font-size-md);
+  font-weight: var(--apple-font-weight-regular);
+  color: var(--apple-color-text-primary);
+  font-family: var(--apple-font-family);
+  letter-spacing: var(--apple-letter-spacing-normal);
+  line-height: var(--apple-line-height-relaxed);
+  margin: 0;
+}
+
+.mobile-about-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--apple-spacing-2xl);
+  text-align: center;
+}
+
+.mobile-about-empty p {
+  color: var(--apple-color-text-tertiary);
+  font-family: var(--apple-font-family);
+  font-size: var(--apple-font-size-base);
+}
+
+/* Button Styles */
+.apple-button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--apple-spacing-sm);
+  padding: var(--apple-spacing-sm) var(--apple-spacing-md);
+  border-radius: var(--apple-radius-md);
+  font-family: var(--apple-font-family);
+  font-size: var(--apple-font-size-base);
+  font-weight: var(--apple-font-weight-medium);
+  transition: all var(--apple-transition-base);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.apple-button-primary {
+  background: var(--apple-color-primary);
+  color: white;
+}
+
+.apple-button-primary:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+/* Dark Mode - Support both data-theme attribute and system preference */
+html[data-theme="dark"] .mobile-about-photo,
+[data-theme="dark"] .mobile-about-photo {
+  border-color: var(--apple-color-surface-elevated);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .mobile-about-photo {
+    border-color: var(--apple-color-surface-elevated);
+  }
+}

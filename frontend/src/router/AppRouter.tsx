@@ -1,21 +1,12 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import RoutePreloader from '../components/ui/RoutePreloader';
-import Layout from '../components/layout/Layout';
+import ResponsiveLayout from '../components/layout/ResponsiveLayout';
+import ResponsiveRoute from '../components/routes/ResponsiveRoute';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
 import { AuthProvider } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
-
-// Lazy load components for better performance
-const Home = lazy(() => import('../pages/Home'));
-const ArticleDetail = lazy(() => import('../pages/Articles/components/ArticleDetail'));
-// const CategoriesPage = lazy(() => import('../components/blog/CategoriesPage'));
-// const TagsPage = lazy(() => import('../components/blog/TagsPage'));
-const Articles = lazy(() => import('../pages/Articles'));
-// const SearchResultsPage = lazy(() => import('../components/blog/SearchResultsPage'));
-const About = lazy(() => import('../pages/About'));
-const Contact = lazy(() => import('../pages/Contact'));
 
 // Admin components - lazy loaded with more granular code splitting
 const AdminLogin = lazy(() => import('../pages/Admin/Login'));
@@ -54,13 +45,14 @@ const NotFoundPage: React.FC = () => (
   </div>
 );
 
-// Article Detail Route Component
+// Article Detail Route Component with Responsive Support
 const ArticleDetailRoute: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const articleId = id || '1';
 
   return (
-    <ArticleDetail
+    <ResponsiveRoute 
+      page="article-detail"
       articleId={articleId}
     />
   );
@@ -82,57 +74,49 @@ const AppRouter: React.FC = () => {
           <ErrorBoundary>
             <RoutePreloader />
             <Routes>
-              {/* Main Layout Routes */}
+              {/* Main Layout Routes with Responsive Support */}
               <Route path="/" element={
-                <Layout title="Chuyi的博客 - 现代化个人博客">
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <Home />
-                  </Suspense>
-                </Layout>
+                <ResponsiveLayout title="Chuyi的博客 - 现代化个人博客">
+                  <ResponsiveRoute page="home" />
+                </ResponsiveLayout>
               } />
 
               <Route path="/articles" element={
-                <Layout title="所有文章 - Chuyi的博客">
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <Articles />
-                  </Suspense>
-                </Layout>
+                <ResponsiveLayout title="所有文章 - Chuyi的博客">
+                  <ResponsiveRoute page="articles" />
+                </ResponsiveLayout>
               } />
 
               <Route path="/search" element={
-                <Layout title="搜索结果 - Chuyi的博客">
+                <ResponsiveLayout title="搜索结果 - Chuyi的博客">
                   <Suspense fallback={<LoadingSpinner />}>
                     {/* <SearchResults /> TODO: add search results page */}
                   </Suspense>
-                </Layout>
+                </ResponsiveLayout>
               } />
 
               <Route path="/article/:id" element={
-                <Layout title="文章详情 - Chuyi的博客">
+                <ResponsiveLayout 
+                  title="文章详情 - Chuyi的博客"
+                  showBottomNav={true}
+                  showTopBar={false}
+                >
                   <Suspense fallback={<LoadingSpinner />}>
                     <ArticleDetailRoute />
                   </Suspense>
-                </Layout>
+                </ResponsiveLayout>
               } />
 
-
-
-
-
               <Route path="/about" element={
-                <Layout title="关于我 - Chuyi的博客">
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <About />
-                  </Suspense>
-                </Layout>
+                <ResponsiveLayout title="关于我 - Chuyi的博客">
+                  <ResponsiveRoute page="about" />
+                </ResponsiveLayout>
               } />
 
               <Route path="/contact" element={
-                <Layout title="联系我 - Chuyi的博客">
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <Contact />
-                  </Suspense>
-                </Layout>
+                <ResponsiveLayout title="联系我 - Chuyi的博客">
+                  <ResponsiveRoute page="contact" />
+                </ResponsiveLayout>
               } />
 
 
@@ -203,9 +187,9 @@ const AppRouter: React.FC = () => {
 
               {/* 404 Page */}
               <Route path="*" element={
-                <Layout title="Page Not Found - Cyrus Blog">
+                <ResponsiveLayout title="Page Not Found - Chuyi's Blog">
                   <NotFoundPage />
-                </Layout>
+                </ResponsiveLayout>
               } />
             </Routes>
             <NotificationContainer />

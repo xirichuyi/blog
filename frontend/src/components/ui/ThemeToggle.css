@@ -1,74 +1,72 @@
-/* Theme Toggle Styles */
+/* Theme Toggle - Apple Style */
 
 .theme-toggle {
-  --md-icon-button-icon-color: var(--md-sys-color-on-surface);
-  --md-icon-button-state-layer-color: var(--md-sys-color-on-surface);
-  transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--apple-radius-md);
+  cursor: pointer;
+  color: var(--apple-color-text-primary);
+  transition: all var(--apple-transition-base);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  padding: var(--apple-spacing-xs);
 }
 
-.theme-toggle:hover {
-  --md-icon-button-state-layer-opacity: 0.08;
-  transform: rotate(15deg);
-}
-
-.theme-toggle:focus {
-  --md-icon-button-state-layer-opacity: 0.12;
-}
-
-.theme-toggle:active {
-  --md-icon-button-state-layer-opacity: 0.16;
-  transform: rotate(0deg) scale(0.95);
-}
-
-/* Size Variants */
 .theme-toggle-small {
-  --md-icon-button-icon-size: 20px;
-  --md-icon-button-state-layer-size: 36px;
+  width: var(--apple-touch-target-min);
+  height: var(--apple-touch-target-min);
 }
 
 .theme-toggle-medium {
-  --md-icon-button-icon-size: 24px;
-  --md-icon-button-state-layer-size: 48px;
+  width: 44px;
+  height: 44px;
 }
 
 .theme-toggle-large {
-  --md-icon-button-icon-size: 28px;
-  --md-icon-button-state-layer-size: 56px;
+  width: 48px;
+  height: 48px;
 }
 
-/* Animation for theme change */
-.theme-toggle md-icon {
-  transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+.theme-toggle:hover {
+  background: rgba(var(--apple-color-primary-rgb, 0, 122, 255), 0.1);
 }
 
-/* Theme-specific styling */
-[data-theme="light"] .theme-toggle {
-  --md-icon-button-icon-color: var(--md-sys-color-primary);
+.theme-toggle:active {
+  opacity: 0.6;
+  transform: scale(0.95);
+  background: rgba(var(--apple-color-primary-rgb, 0, 122, 255), 0.15);
 }
 
-[data-theme="dark"] .theme-toggle {
-  --md-icon-button-icon-color: var(--md-sys-color-primary);
+.theme-toggle svg {
+  transition: transform var(--apple-transition-base);
+  color: var(--apple-color-text-primary);
 }
 
-/* Auto theme follows system preference */
-:root:not([data-theme]) .theme-toggle {
-  --md-icon-button-icon-color: var(--md-sys-color-primary);
+.theme-toggle:hover svg {
+  transform: rotate(15deg);
+}
+
+.theme-toggle:active svg {
+  transform: rotate(0deg) scale(0.95);
 }
 
 /* Accessibility */
 .theme-toggle:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
+  outline: 2px solid var(--apple-color-primary);
   outline-offset: 2px;
 }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .theme-toggle,
-  .theme-toggle md-icon {
+  .theme-toggle svg {
     transition: none;
   }
   
-  .theme-toggle:hover {
+  .theme-toggle:hover svg {
     transform: none;
   }
   

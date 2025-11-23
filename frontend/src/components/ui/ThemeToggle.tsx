@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Sun, Moon } from 'lucide-react';
 import './ThemeToggle.css';
 
 type Theme = 'light' | 'dark';
@@ -40,23 +41,25 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
-  const getThemeIcon = () => {
-    return theme === 'light' ? 'light_mode' : 'dark_mode';
+  const getThemeLabel = () => {
+    return theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
   };
 
-  const getThemeLabel = () => {
-    return theme === 'light' ? 'Light theme' : 'Dark theme';
-  };
+  const iconSize = size === 'small' ? 18 : size === 'large' ? 24 : 20;
 
   return (
-    <md-icon-button
+    <button
       className={`theme-toggle theme-toggle-${size} ${className}`}
       onClick={handleThemeChange}
-      aria-label={`Switch theme. Current: ${getThemeLabel()}`}
+      aria-label={getThemeLabel()}
       title={getThemeLabel()}
     >
-      <md-icon>{getThemeIcon()}</md-icon>
-    </md-icon-button>
+      {theme === 'light' ? (
+        <Sun size={iconSize} />
+      ) : (
+        <Moon size={iconSize} />
+      )}
+    </button>
   );
 };
 

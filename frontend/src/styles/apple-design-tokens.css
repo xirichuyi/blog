@@ -1,0 +1,188 @@
+/* Apple Design Tokens - Design System Variables */
+
+:root {
+  /* Spacing Scale */
+  --apple-spacing-xs: 4px;
+  --apple-spacing-sm: 8px;
+  --apple-spacing-md: 16px;
+  --apple-spacing-lg: 24px;
+  --apple-spacing-xl: 32px;
+  --apple-spacing-2xl: 48px;
+  --apple-spacing-3xl: 64px;
+
+  /* Border Radius */
+  --apple-radius-xs: 4px;
+  --apple-radius-sm: 8px;
+  --apple-radius-md: 12px;
+  --apple-radius-lg: 16px;
+  --apple-radius-xl: 20px;
+  --apple-radius-2xl: 24px;
+  --apple-radius-full: 9999px;
+
+  /* Shadows */
+  --apple-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --apple-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --apple-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --apple-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --apple-shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.25);
+
+  /* Typography */
+  --apple-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Roboto", sans-serif;
+  --apple-font-family-mono: "SF Mono", "Monaco", "Menlo", "Consolas", monospace;
+
+  /* Font Sizes - SF Pro Scale */
+  --apple-font-size-xs: 11px;
+  --apple-font-size-sm: 13px;
+  --apple-font-size-base: 15px;
+  --apple-font-size-md: 17px;
+  --apple-font-size-lg: 20px;
+  --apple-font-size-xl: 24px;
+  --apple-font-size-2xl: 28px;
+  --apple-font-size-3xl: 34px;
+
+  /* Font Weights */
+  --apple-font-weight-regular: 400;
+  --apple-font-weight-medium: 500;
+  --apple-font-weight-semibold: 600;
+  --apple-font-weight-bold: 700;
+
+  /* Line Heights */
+  --apple-line-height-tight: 1.2;
+  --apple-line-height-normal: 1.5;
+  --apple-line-height-relaxed: 1.7;
+
+  /* Letter Spacing */
+  --apple-letter-spacing-tight: -0.5px;
+  --apple-letter-spacing-normal: -0.2px;
+  --apple-letter-spacing-wide: 0px;
+
+  /* Colors - Light Mode */
+  --apple-color-background: #ffffff;
+  --apple-color-surface: #f5f5f7;
+  --apple-color-surface-elevated: #ffffff;
+  --apple-color-surface-container: #f5f5f7;
+  --apple-color-text-primary: #1d1d1f;
+  --apple-color-text-secondary: #6e6e73;
+  --apple-color-text-tertiary: #86868b;
+  --apple-color-border: rgba(0, 0, 0, 0.1);
+  --apple-color-border-strong: rgba(0, 0, 0, 0.2);
+  --apple-color-primary: #007aff;
+  --apple-color-primary-rgb: 0, 122, 255;
+  --apple-color-primary-hover: #0051d5;
+  --apple-color-error: #ff3b30;
+  --apple-color-success: #34c759;
+
+  /* Glass Effect */
+  --apple-glass-background: rgba(255, 255, 255, 0.8);
+  --apple-glass-background-dark: rgba(28, 28, 30, 0.8);
+  --apple-glass-blur: blur(30px) saturate(180%);
+  --apple-glass-border: rgba(0, 0, 0, 0.08);
+
+  /* Transitions */
+  --apple-transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --apple-transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --apple-transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --apple-transition-spring: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Touch Targets */
+  --apple-touch-target-min: 44px;
+}
+
+/* Dark Mode - Support both data-theme attribute and system preference */
+html[data-theme="dark"],
+[data-theme="dark"] {
+  --apple-color-background: #000000;
+  --apple-color-surface: #1c1c1e;
+  --apple-color-surface-elevated: #2c2c2e;
+  --apple-color-surface-container: #1c1c1e;
+  --apple-color-text-primary: #f5f5f7;
+  --apple-color-text-secondary: #a1a1a6;
+  --apple-color-text-tertiary: #6e6e73;
+  --apple-color-border: rgba(255, 255, 255, 0.1);
+  --apple-color-border-strong: rgba(255, 255, 255, 0.2);
+  --apple-color-primary: #0a84ff;
+  --apple-color-primary-rgb: 10, 132, 255;
+  --apple-color-primary-hover: #409cff;
+  --apple-glass-background: rgba(28, 28, 30, 0.8);
+  --apple-glass-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Fallback to system preference if no data-theme is set */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --apple-color-background: #000000;
+    --apple-color-surface: #1c1c1e;
+    --apple-color-surface-elevated: #2c2c2e;
+    --apple-color-surface-container: #1c1c1e;
+    --apple-color-text-primary: #f5f5f7;
+    --apple-color-text-secondary: #a1a1a6;
+    --apple-color-text-tertiary: #6e6e73;
+    --apple-color-border: rgba(255, 255, 255, 0.1);
+    --apple-color-border-strong: rgba(255, 255, 255, 0.2);
+    --apple-color-primary: #0a84ff;
+    --apple-color-primary-rgb: 10, 132, 255;
+    --apple-color-primary-hover: #409cff;
+    --apple-glass-background: rgba(28, 28, 30, 0.8);
+    --apple-glass-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Utility Classes */
+.apple-text-primary {
+  color: var(--apple-color-text-primary);
+  font-family: var(--apple-font-family);
+}
+
+.apple-text-secondary {
+  color: var(--apple-color-text-secondary);
+  font-family: var(--apple-font-family);
+}
+
+.apple-text-tertiary {
+  color: var(--apple-color-text-tertiary);
+  font-family: var(--apple-font-family);
+}
+
+.apple-surface {
+  background: var(--apple-color-surface);
+}
+
+.apple-surface-elevated {
+  background: var(--apple-color-surface-elevated);
+  box-shadow: var(--apple-shadow-sm);
+}
+
+.apple-glass {
+  background: var(--apple-glass-background);
+  backdrop-filter: var(--apple-glass-blur);
+  -webkit-backdrop-filter: var(--apple-glass-blur);
+  border: 0.5px solid var(--apple-glass-border);
+}
+
+.apple-card {
+  background: var(--apple-color-surface-elevated);
+  border-radius: var(--apple-radius-lg);
+  box-shadow: var(--apple-shadow-sm);
+  padding: var(--apple-spacing-md);
+}
+
+.apple-button-base {
+  min-height: var(--apple-touch-target-min);
+  min-width: var(--apple-touch-target-min);
+  border-radius: var(--apple-radius-md);
+  font-family: var(--apple-font-family);
+  font-size: var(--apple-font-size-base);
+  font-weight: var(--apple-font-weight-medium);
+  transition: all var(--apple-transition-base);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.apple-button-base:active {
+  opacity: 0.6;
+  transform: scale(0.98);
+}
+
