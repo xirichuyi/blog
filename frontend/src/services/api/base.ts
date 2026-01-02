@@ -7,7 +7,7 @@ import type { ApiResponse } from '../types';
 // Use environment variable for API URL, fallback to local development server
 // In production, use relative URL to connect to the same server
 export const API_BASE_URL = import.meta.env.VITE_API_URL ||
-    (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3007');
+    (import.meta.env.MODE === 'production' ? '' : 'http://localhost:8085');
 export const API_PREFIX = '/api';
 
 export class BaseApiService {

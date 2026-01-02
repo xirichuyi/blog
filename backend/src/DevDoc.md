@@ -288,10 +288,121 @@ GET /api/post/list
 - `page`: 页码 (可选，默认: 1)
 - `page_size`: 每页数量 (可选，默认: 10)
 - `category_id`: 目录 ID 过滤 (可选)
-- `status`: 状态过滤 (可选)
+- `status`: 状态过滤 (可选，0: 草稿, 1: 已发布, 3: 私密)
+- `search`: 搜索关键词 (可选，搜索标题和内容)
+- `tag_id`: 标签 ID 过滤 (可选)
 
-**响应示例**:
-包含状态码、消息和数据列表的标准响应格式
+**响应格式**:
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": [
+    {
+      "id": 1,
+      "title": "文章标题",
+      "cover_url": "封面URL",
+      "content": "文章摘要（前200字符）...",
+      "category_name": "分类名称",
+      "category_id": 1,
+      "status": 1,
+      "post_images": "[\"图片URL1\", \"图片URL2\"]",
+      "tags": [
+        {
+          "id": 1,
+          "name": "标签名称",
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z"
+        }
+      ],
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "total": 100,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+**响应说明**:
+
+- `code`: 状态码 (200: 成功, 500: 服务器错误)
+- `message`: 响应消息
+- `data`: Post 数据数组（列表接口返回摘要，content 字段只包含前 200 字符）
+- `total`: 总记录数
+- `page`: 当前页码
+- `page_size`: 每页数量
+
+**注意**: 列表接口返回的 `content` 字段是摘要（前 200 字符），完整内容需要通过详情接口获取。
+
+#### 获取 Post 列表（带详细信息）
+
+```
+GET /api/post/list_with_details
+```
+
+**查询参数**:
+
+- `page`: 页码 (可选，默认: 1)
+- `page_size`: 每页数量 (可选，默认: 10)
+- `category_id`: 目录 ID 过滤 (可选)
+- `status`: 状态过滤 (可选，0: 草稿, 1: 已发布, 3: 私密)
+- `search`: 搜索关键词 (可选，搜索标题和内容)
+- `tag_id`: 标签 ID 过滤 (可选)
+
+**响应格式**:
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": [
+    {
+      "post": {
+        "id": 1,
+        "title": "文章标题",
+        "cover_url": "封面URL",
+        "content": "文章摘要（前200字符）...",
+        "category_name": "分类名称",
+        "category_id": 1,
+        "status": 1,
+        "post_images": "[\"图片URL1\", \"图片URL2\"]",
+        "tags": [],
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z"
+      },
+      "tags": [
+        {
+          "id": 1,
+          "name": "标签名称",
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z"
+        }
+      ],
+      "category_name": "分类名称"
+    }
+  ],
+  "total": 100,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+**响应说明**:
+
+- `code`: 状态码 (200: 成功, 500: 服务器错误)
+- `message`: 响应消息
+- `data`: PostWithDetails 数据数组，每个元素包含：
+  - `post`: Post 对象（列表接口返回摘要，content 字段只包含前 200 字符）
+  - `tags`: 标签数组
+  - `category_name`: 分类名称
+- `total`: 总记录数
+- `page`: 当前页码
+- `page_size`: 每页数量
+
+**注意**: 列表接口返回的 `content` 字段是摘要（前 200 字符），完整内容需要通过详情接口 `/api/post/get/:id` 获取。
 
 #### 通过 ID 获取 Post
 
@@ -303,8 +414,33 @@ GET /api/post/get/:id
 
 - `id`: Post ID
 
+**实现逻辑**:
+
+1. 根据 ID 查询 Post 记录
+2. 获取 Post 的完整信息（包括目录名称、标签等关联数据）
+3. 返回 Post 详细信息
+
 **响应示例**:
 包含状态码、消息和单个 Post 数据的标准响应格式
+
+**响应数据字段**:
+
+- `id`: Post ID
+- `title`: 文章标题
+- `cover_url`: 封面图片 URL（可选）
+- `content`: 文章内容
+- `category_name`: 目录名称（可选）
+- `category_id`: 目录 ID（可选）
+- `status`: 文章状态（0: 草稿, 1: 已发布, 2: 已删除, 3: 私密）
+- `post_images`: 文章图片列表（JSON 字符串数组，可选）
+- `tags`: 文章标签列表
+- `created_at`: 创建时间
+- `updated_at`: 更新时间
+
+**错误响应**:
+
+- `404`: Post 不存在
+- `500`: 服务器内部错误
 
 #### 获取 Music 列表
 

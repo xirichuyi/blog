@@ -2,6 +2,7 @@
 
 import { BaseApiService } from './base';
 import type { Tag, Article, ApiResponse } from '../types';
+import { CacheKeys } from '../../utils/cacheManager';
 
 // Backend response typing helpers
 interface BackendListResponse<T> {
@@ -16,9 +17,22 @@ interface BackendTag {
     name: string;
 }
 
+// 缓存有效期：10分钟（标签变化不频繁）
+const TAGS_CACHE_TTL = 10 * 60 * 1000;
+
 export class TagsApiService extends BaseApiService {
-    // Public Tags API
-    async getPublicTags(): Promise<ApiResponse<Tag[]>> {
+    // Public Tags API - 带缓存
+    async getPublicTags(forceRefresh = false): Promise<ApiResponse<Tag[]>> {
+        const cacheKey = CacheKeys.TAGS;
+
+        // 检查缓存（除非强制刷新）
+        if (!forceRefresh) {
+            const cached = this.getCachedData<Tag[]>(cacheKey);
+            if (cached) {
+                return { success: true, data: cached };
+            }
+        }
+
         try {
             const response = await this.request<BackendListResponse<BackendTag>>('/tag/list');
 
@@ -26,8 +40,8 @@ export class TagsApiService extends BaseApiService {
                 const backendTags = response.data.data || [];
 
                 // 使用缓存获取标签数量，避免重复API调用
-                const cacheKey = 'tag_counts';
-                let tagCountMap = this.getCachedData<Map<string, number>>(cacheKey);
+                const countCacheKey = 'tag_counts';
+                let tagCountMap = this.getCachedData<Map<string, number>>(countCacheKey);
 
                 if (!tagCountMap) {
                     // 暂时不计算标签数量，避免循环调用
@@ -35,7 +49,7 @@ export class TagsApiService extends BaseApiService {
                     tagCountMap = new Map<string, number>();
 
                     // 缓存空的标签数量映射，避免重复检查
-                    this.setCachedData(cacheKey, tagCountMap);
+                    this.setCachedData(countCacheKey, tagCountMap);
                 }
 
                 // 确保tagCountMap不为null
@@ -56,6 +70,9 @@ export class TagsApiService extends BaseApiService {
                     }
                     return a.name.localeCompare(b.name);
                 });
+
+                // 存入缓存
+                this.setCachedData(cacheKey, tags, TAGS_CACHE_TTL);
 
                 return { success: true, data: tags };
             }

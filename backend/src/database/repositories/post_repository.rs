@@ -2,7 +2,7 @@ use crate::database::DatabasePool;
 use crate::models::{
     CreatePostRequest, Post, PostListQuery, PostStatus, PostWithDetails, UpdatePostRequest,
 };
-use crate::utils::error::Result;
+use crate::utils::{error::Result, text::truncate_safely};
 use sqlx::Row;
 
 pub struct PostRepository;
@@ -415,11 +415,15 @@ impl PostRepository {
                 })
                 .collect();
 
+            // 获取完整内容并生成摘要（列表接口只返回摘要）
+            let full_content: String = row.get("content");
+            let content_summary = truncate_safely(&full_content, 200);
+
             let post = Post {
                 id: post_id,
                 title: row.get("title"),
                 cover_url: row.get("cover_url"),
-                content: row.get("content"),
+                content: content_summary, // 列表接口返回摘要
                 category_name: row.get("category_name"), // 从JOIN查询中获取分类名
                 category_id: row.get("category_id"),
                 status: row.get::<i32, _>("status"),
@@ -572,11 +576,15 @@ impl PostRepository {
                 })
                 .collect();
 
+            // 获取完整内容并生成摘要（列表接口只返回摘要）
+            let full_content: String = row.get("content");
+            let content_summary = truncate_safely(&full_content, 200);
+
             let post = Post {
                 id: post_id,
                 title: row.get("title"),
                 cover_url: row.get("cover_url"),
-                content: row.get("content"),
+                content: content_summary, // 列表接口返回摘要
                 category_name: row.get("category_name"), // 从JOIN查询中获取分类名
                 category_id: row.get("category_id"),
                 status: row.get::<i32, _>("status"),

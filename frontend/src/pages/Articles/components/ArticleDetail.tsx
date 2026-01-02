@@ -8,17 +8,18 @@ import MarkdownRenderer, { generateHeadingId } from '../../../components/ui/Mark
 import './ArticleDetail.css';
 
 interface ArticleDetailProps {
-    articleId: string;
+    articleId?: string;
+    article?: Article;
 }
 
-const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
+const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initialArticle }) => {
     // ===================================================================
     // A区 - 数据与状态：所有Hooks调用都放在最上面
     // ===================================================================
 
     const navigate = useNavigate();
-    const [article, setArticle] = useState<Article | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [article, setArticle] = useState<Article | null>(initialArticle || null);
+    const [isLoading, setIsLoading] = useState(!initialArticle);
     const [error, setError] = useState<string | null>(null);
     const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
     const [tocBottomOffset, setTocBottomOffset] = useState<number>(0);
@@ -27,6 +28,56 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
     const [imageError, setImageError] = useState<boolean>(false);
     const mountedRef = useRef(true);
     const imageRef = useRef<HTMLImageElement>(null);
+
+    // ===================================================================
+    // B区 - 核心逻辑：所有事件处理函数和业务逻辑
+    // ===================================================================
+
+    // 加载文章数据
+    const loadArticle = useCallback(async () => {
+        if (!mountedRef.current || !articleId) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const response = await apiService.getArticle(articleId);
+            
+            if (!mountedRef.current) return;
+
+            if (response.success && response.data) {
+                const fetchedArticle = response.data;
+                setArticle(fetchedArticle);
+
+                // Load related articles (same category, excluding current article)
+                if (fetchedArticle.category) {
+                    const relatedResponse = await apiService.getArticles({
+                        category: fetchedArticle.category,
+                        status: 'published'
+                    });
+
+                    if (!mountedRef.current) return;
+
+                    if (relatedResponse.success && relatedResponse.data) {
+                        const related = relatedResponse.data
+                            .filter((a: Article) => a.id !== articleId && a.status === 'published')
+                            .slice(0, 3);
+                        setRelatedArticles(related);
+                    }
+                }
+            } else {
+                setError(response.error || 'Article not found');
+            }
+        } catch (err) {
+            if (!mountedRef.current) return;
+            setError('Failed to load article');
+            console.error('Error loading article:', err);
+        } finally {
+            if (mountedRef.current) {
+                setIsLoading(false);
+            }
+        }
+    }, [articleId]);
 
     // 安全的状态更新函数
     const safeSetState = useCallback((updater: (prev: any) => any, setter: (value: any) => void) => {
@@ -56,68 +107,25 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
     // 文章数据加载
     useEffect(() => {
         mountedRef.current = true;
-        loadArticle();
+        
+        // 如果已经有了传入的文章数据，且 ID 匹配，则不需要重新加载
+        if (initialArticle && (initialArticle.id === articleId || !articleId)) {
+            setArticle(initialArticle);
+            setIsLoading(false);
+        } else if (articleId) {
+            loadArticle();
+        }
 
         return () => {
             mountedRef.current = false;
         };
-    }, [articleId]);
+    }, [articleId, initialArticle, loadArticle]);
 
     // 重置图片加载状态当文章改变时
     useEffect(() => {
         setImageLoaded(false);
         setImageError(false);
     }, [article?.id]);
-
-    // ===================================================================
-    // B区 - 核心逻辑：所有事件处理函数和业务逻辑
-    // ===================================================================
-
-    // 加载文章数据
-    const loadArticle = useCallback(async () => {
-        if (!mountedRef.current) return;
-
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const response = await apiService.getArticle(articleId);
-            const fetchedArticle = response.success ? response.data : null;
-
-            if (!mountedRef.current) return;
-
-            if (fetchedArticle) {
-                setArticle(fetchedArticle);
-
-                // Load related articles (same category, excluding current article)
-                if (fetchedArticle.category) {
-                    const relatedResponse = await apiService.getArticles({
-                        category: fetchedArticle.category,
-                        status: 'published'
-                    });
-
-                    if (!mountedRef.current) return;
-
-                    if (relatedResponse.success && relatedResponse.data) {
-                        const related = relatedResponse.data
-                            .filter((a: Article) => a.id !== articleId && a.status === 'published')
-                            .slice(0, 3);
-                        setRelatedArticles(related);
-                    }
-                }
-            } else {
-                setError('Article not found');
-            }
-        } catch (err) {
-            if (!mountedRef.current) return;
-            setError('Failed to load article');
-            console.error('Error loading article:', err);
-        } finally {
-            if (mountedRef.current) {
-                setIsLoading(false);
-            }
-        }
-    }, [articleId]);
 
     // 从markdown内容提取标题 - 使用markdown-it准确解析
     const extractHeadings = useCallback((content: string) => {
@@ -207,11 +215,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
 
     // 计算衍生数据
     const headings = useMemo(() => {
-        return article ? extractHeadings(article.content) : [];
+        return article?.content ? extractHeadings(article.content) : [];
     }, [article, extractHeadings]);
 
     const readingTime = useMemo(() => {
-        return article ? calculateReadingTime(article.content) : 0;
+        return article?.content ? calculateReadingTime(article.content) : 0;
     }, [article, calculateReadingTime]);
 
     const formattedDate = useMemo(() => {
@@ -337,7 +345,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId }) => {
 
                 {/* Article Content */}
                 <main className="article-content">
-                    <MarkdownRenderer content={article.content} />
+                    <MarkdownRenderer content={article.content || ''} />
                 </main>
 
                 {/* Article Footer */}

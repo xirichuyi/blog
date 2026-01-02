@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import type { Article, Category, Tag } from '../../services/types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -10,8 +10,6 @@ import './style.css';
 
 // 常量定义
 const ARTICLES_PER_PAGE = 12;
-const ANIMATION_DELAY_BASE = 50; // 基础延迟时间(ms)
-const CONTENT_SHOW_DELAY = 200; // 内容显示延迟时间(ms)
 
 // 应用状态类型定义
 interface AppState {
@@ -54,8 +52,10 @@ const Articles: React.FC = () => {
     // ===================================================================
 
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [state, setState] = useState<AppState>(initialState);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [hasInitialLoaded, setHasInitialLoaded] = useState(false);
     const animationTimeoutRef = useRef<NodeJS.Timeout>();
     const mountedRef = useRef(true);
 
@@ -72,17 +72,16 @@ const Articles: React.FC = () => {
     // 数据加载函数
     const loadData = useCallback(async (
         page: number = 1,
-        filter?: { type: 'category' | 'tag' | null; id: string | null }
+        filter: { type: 'category' | 'tag' | null; id: string | null } = { type: null, id: null }
     ) => {
         try {
-            const currentFilter = filter || state.activeFilter;
             let articlesData: Article[] = [];
             let total = 0;
 
             // 根据筛选条件加载文章
-            if (currentFilter.type === 'category' && currentFilter.id) {
+            if (filter.type === 'category' && filter.id) {
                 const response = await apiService.getArticles({
-                    category: currentFilter.id,
+                    category: filter.id,
                     status: 'published'
                 });
                 if (response.success && response.data) {
@@ -92,9 +91,9 @@ const Articles: React.FC = () => {
                     articlesData = allArticles.slice(startIndex, endIndex);
                     total = allArticles.length;
                 }
-            } else if (currentFilter.type === 'tag' && currentFilter.id) {
+            } else if (filter.type === 'tag' && filter.id) {
                 const response = await apiService.getArticles({
-                    tag_id: Number(currentFilter.id),
+                    tag_id: Number(filter.id),
                     status: 'published'
                 });
                 if (response.success && response.data) {
@@ -121,28 +120,21 @@ const Articles: React.FC = () => {
             console.error('Error loading articles:', error);
             throw error;
         }
-    }, [state.activeFilter]);
+    }, []);
 
     // 初始化数据加载
     const initializeData = useCallback(async () => {
         try {
             safeSetState({ error: null });
 
-            // 并行加载基础数据和所有文章总数
+            // 1. 并行加载分类和标签元数据以及所有文章（用于计数）
+            // 注意：这些数据只需要加载一次
             const [categoriesResponse, tagsResponse, allArticlesResponse] = await Promise.all([
                 apiService.getCategories(),
                 apiService.getTags(),
-                apiService.getArticles({ status: 'published' }) // 获取所有文章来计算总数
+                apiService.getArticles({ status: 'published' })
             ]);
 
-            // 加载第一页文章数据
-            const { articles } = await loadData(1);
-
-            // 计算总文章数
-            const totalArticles = allArticlesResponse.success ?
-                (allArticlesResponse.total || allArticlesResponse.data?.length || 0) : 0;
-
-            // 处理分类和标签数据，确保包含文章计数
             const allArticles = allArticlesResponse.success ? allArticlesResponse.data || [] : [];
             const processedCategories = categoriesResponse.success ?
                 (categoriesResponse.data || []).map(category => ({
@@ -160,88 +152,102 @@ const Articles: React.FC = () => {
                     ).length
                 })) : [];
 
-            // 直接更新状态，简单渲染
             safeSetState({
                 categories: processedCategories,
                 tags: processedTags,
-                articles,
-                totalArticles,
-                isDataLoaded: true
+                totalArticles: allArticles.length
             });
 
         } catch (error) {
-            console.error('Error initializing data:', error);
+            console.error('Error initializing metadata:', error);
             safeSetState({
-                error: error instanceof Error ? error.message : 'Failed to load data',
-                isDataLoaded: true
+                error: error instanceof Error ? error.message : 'Failed to load metadata'
             });
         }
-    }, [loadData, safeSetState]);
+    }, [safeSetState]);
+
+    // 根据 URL 参数加载文章数据（URL 中直接使用 ID）
+    useEffect(() => {
+        const syncWithUrl = async () => {
+            const categoryId = searchParams.get('category');
+            const tagId = searchParams.get('tag');
+            const pageStr = searchParams.get('page');
+            const page = pageStr ? parseInt(pageStr, 10) : 1;
+
+            let filter: { type: 'category' | 'tag' | null; id: string | null } = { type: null, id: null };
+            
+            // URL 中直接使用 ID，无需映射
+            if (categoryId) {
+                filter = { type: 'category', id: categoryId };
+            } else if (tagId) {
+                filter = { type: 'tag', id: tagId };
+            }
+
+            // 只有在已加载过数据后才显示过渡动画（首次加载不需要）
+            if (hasInitialLoaded) {
+                setIsTransitioning(true);
+            }
+
+            try {
+                const { articles, total } = await loadData(page, filter);
+                
+                // 短暂延迟让过渡动画平滑（首次加载不延迟）
+                const transitionDelay = hasInitialLoaded ? 150 : 0;
+                
+                setTimeout(() => {
+                    safeSetState(prev => ({
+                        articles,
+                        totalArticles: filter.type ? total : prev.totalArticles,
+                        activeFilter: filter,
+                        currentPage: page,
+                        isDataLoaded: true
+                    }));
+                    setIsTransitioning(false);
+                    
+                    // 标记首次加载完成
+                    if (!hasInitialLoaded) {
+                        setHasInitialLoaded(true);
+                    }
+                }, transitionDelay);
+            } catch (error) {
+                safeSetState({
+                    error: error instanceof Error ? error.message : 'Failed to load articles',
+                    isDataLoaded: true
+                });
+                setIsTransitioning(false);
+            }
+        };
+
+        syncWithUrl();
+    }, [searchParams, loadData, safeSetState, hasInitialLoaded]);
 
     // ===================================================================
     // B区 - 核心逻辑：所有事件处理函数和业务逻辑
     // ===================================================================
 
-    // 处理筛选操作
-    const handleFilter = useCallback(async (
+    // 处理筛选操作 - URL 中直接使用 ID
+    const handleFilter = useCallback((
         type: 'category' | 'tag' | null,
         id: string | null
     ) => {
-        try {
-            // 开始过渡动画
-            setIsTransitioning(true);
-
-            const newFilter = { type, id };
-            const { articles, total } = await loadData(1, newFilter);
-
-            // 延迟更新数据以配合动画
-            setTimeout(() => {
-                safeSetState({
-                    articles,
-                    totalArticles: total,
-                    activeFilter: newFilter,
-                    currentPage: 1
-                });
-                setIsTransitioning(false);
-            }, 300);
-
-        } catch (error) {
-            console.error('Error filtering articles:', error);
-            setIsTransitioning(false);
-            safeSetState({
-                error: error instanceof Error ? error.message : 'Failed to filter articles'
-            });
+        const newParams = new URLSearchParams();
+        if (type && id) {
+            newParams.set(type, id);
         }
-    }, [loadData, safeSetState]);
+        // 筛选变更时重置到第一页
+        setSearchParams(newParams);
+    }, [setSearchParams]);
 
     // 处理分页
-    const handlePageChange = useCallback(async (page: number) => {
-        if (page === state.currentPage) return;
-
-        try {
-            // 开始过渡动画
-            setIsTransitioning(true);
-
-            const { articles, total } = await loadData(page);
-
-            // 延迟更新数据以配合动画
-            setTimeout(() => {
-                safeSetState({
-                    articles,
-                    totalArticles: total,
-                    currentPage: page
-                });
-                setIsTransitioning(false);
-            }, 300);
-
-        } catch (error) {
-            console.error('Error changing page:', error);
-            setIsTransitioning(false);
-            safeSetState({
-                error: error instanceof Error ? error.message : 'Failed to load page'
-            });
+    const handlePageChange = useCallback((page: number) => {
+        const newParams = new URLSearchParams(searchParams);
+        if (page > 1) {
+            newParams.set('page', page.toString());
+        } else {
+            newParams.delete('page');
         }
-    }, [state.currentPage, loadData, safeSetState]);
+        setSearchParams(newParams);
+    }, [searchParams, setSearchParams]);
 
     // 组件挂载时初始化
     useEffect(() => {
@@ -552,7 +558,7 @@ const Articles: React.FC = () => {
                 {/* Main Content */}
                 <main className="articles-main">
                     {/* Articles Grid */}
-                    <div className={`articles-grid ${isTransitioning ? 'articles-grid--transitioning' : ''}`}>
+                    <div className={`articles-grid ${isTransitioning ? 'articles-grid--transitioning' : ''} ${hasInitialLoaded ? 'articles-grid--loaded' : ''}`}>
                         {state.articles.length > 0 ? (
                             state.articles.map((article, index) => {
                                 const cardData = convertArticleToCardFormat(article, index);

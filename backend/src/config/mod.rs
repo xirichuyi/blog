@@ -1,8 +1,36 @@
 use serde::{Deserialize, Serialize};
 use std::env;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Environment {
+    Development,
+    Production,
+}
+
+impl Environment {
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "dev" | "development" | "debug" => Environment::Development,
+            "prod" | "production" | "release" => Environment::Production,
+            _ => {
+                tracing::warn!("Unknown environment '{}', defaulting to development", s);
+                Environment::Development
+            }
+        }
+    }
+
+    pub fn is_development(&self) -> bool {
+        matches!(self, Environment::Development)
+    }
+
+    pub fn is_production(&self) -> bool {
+        matches!(self, Environment::Production)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    pub environment: Environment,
     pub database: DatabaseConfig,
     pub jwt: JwtConfig,
     pub server: ServerConfig,
@@ -51,11 +79,27 @@ impl Config {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         dotenvy::dotenv().ok();
 
+        // 确定运行环境：优先使用环境变量，否则根据编译模式判断
+        let environment = env::var("ENV")
+            .or_else(|_| env::var("RUST_ENV"))
+            .or_else(|_| env::var("APP_ENV"))
+            .map(|s| Environment::from_str(&s))
+            .unwrap_or_else(|_| {
+                // 如果没有设置环境变量，根据编译模式判断
+                if cfg!(debug_assertions) {
+                    Environment::Development
+                } else {
+                    Environment::Production
+                }
+            });
+
+        tracing::info!("Running in {:?} mode", environment);
+
         let database_url =
             env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/blog.db".to_string());
 
         let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
-            if cfg!(debug_assertions) {
+            if environment.is_development() {
                 "dev-jwt-secret-key-not-for-production".to_string()
             } else {
                 panic!("JWT_SECRET environment variable is required in production")
@@ -63,7 +107,7 @@ impl Config {
         });
 
         let admin_token = env::var("BLOG_ADMIN_TOKEN").unwrap_or_else(|_| {
-            if cfg!(debug_assertions) {
+            if environment.is_development() {
                 "dev-admin-token-not-for-production".to_string()
             } else {
                 panic!("BLOG_ADMIN_TOKEN environment variable is required in production")
@@ -87,20 +131,32 @@ impl Config {
         let deepseek_api_url =
             env::var("DEEPSEEK_API_URL").unwrap_or_else(|_| "https://api.deepseek.com".to_string());
 
-        let cors_origins = env::var("CORS_ORIGINS")
-            .unwrap_or_else(|_| {
-                if cfg!(debug_assertions) {
-                    "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000".to_string()
-                } else {
-                    // Production should explicitly set CORS_ORIGINS
+        // CORS 配置：开发模式允许所有来源，生产模式需要明确配置
+        let cors_origins = if environment.is_development() {
+            // 开发模式：如果设置了 CORS_ORIGINS 就使用，否则允许所有（通过空列表表示）
+            env::var("CORS_ORIGINS")
+                .unwrap_or_else(|_| {
+                    // 开发模式默认不限制，返回空列表表示允许所有
+                    tracing::info!("Development mode: CORS will allow all origins");
+                    "".to_string()
+                })
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        } else {
+            // 生产模式：必须明确配置 CORS_ORIGINS
+            let origins = env::var("CORS_ORIGINS")
+                .unwrap_or_else(|_| {
                     tracing::warn!("CORS_ORIGINS not set in production, using restrictive defaults");
                     "".to_string()
-                }
-            })
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
+                });
+            origins
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        };
 
         let upload_dir = env::var("UPLOAD_DIR").unwrap_or_else(|_| "uploads".to_string());
 
@@ -112,6 +168,7 @@ impl Config {
             .unwrap_or(10485760);
 
         Ok(Config {
+            environment,
             database: DatabaseConfig { url: database_url },
             jwt: JwtConfig {
                 secret: jwt_secret,

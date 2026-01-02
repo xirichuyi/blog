@@ -2,6 +2,7 @@
 
 import { BaseApiService } from './base';
 import type { Category, Article, ApiResponse } from '../types';
+import { CacheKeys, generateCacheKey } from '../../utils/cacheManager';
 
 // Backend response typing helpers
 interface BackendListResponse<T> {
@@ -11,14 +12,27 @@ interface BackendListResponse<T> {
     page_size?: number;
 }
 
+// 缓存有效期：10分钟（分类变化不频繁）
+const CATEGORIES_CACHE_TTL = 10 * 60 * 1000;
+
 export class CategoriesApiService extends BaseApiService {
     // Category Management APIs
     async getCategories(): Promise<ApiResponse<Category[]>> {
         return this.getPublicCategories();
     }
 
-    // Public Categories API - 轻量实现（不再额外请求所有文章来统计数量，避免循环和巨大开销）
-    async getPublicCategories(): Promise<ApiResponse<Category[]>> {
+    // Public Categories API - 带缓存
+    async getPublicCategories(forceRefresh = false): Promise<ApiResponse<Category[]>> {
+        const cacheKey = CacheKeys.CATEGORIES;
+
+        // 检查缓存（除非强制刷新）
+        if (!forceRefresh) {
+            const cached = this.getCachedData<Category[]>(cacheKey);
+            if (cached) {
+                return { success: true, data: cached };
+            }
+        }
+
         try {
             const response = await this.request<BackendListResponse<{ id: number; name: string }>>('/category/list');
 
@@ -37,6 +51,9 @@ export class CategoriesApiService extends BaseApiService {
                         icon: this.getCategoryIcon(cat.name)
                     });
                 });
+
+                // 存入缓存
+                this.setCachedData(cacheKey, categories, CATEGORIES_CACHE_TTL);
 
                 return { success: true, data: categories };
             }

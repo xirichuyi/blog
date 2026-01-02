@@ -33,7 +33,11 @@
   font-size: 3rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, var(--md-sys-color-on-surface) 0%, var(--md-sys-color-primary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--md-sys-color-on-surface) 0%,
+    var(--md-sys-color-primary) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -112,24 +116,30 @@
   overflow: hidden;
   opacity: 0;
   transform: translateX(-15px);
-  animation: slideInFromLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1) calc(1.6s + var(--filter-animation-delay, 0s)) forwards;
+  animation: slideInFromLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1)
+    calc(1.6s + var(--filter-animation-delay, 0s)) forwards;
 }
 
 .filter-option::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
   transition: left 0.5s;
 }
 
 .filter-option:hover:not([disabled]) {
   background: var(--md-sys-color-surface-container);
   transform: translateX(4px) scale(1.02);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .filter-option:hover::before {
@@ -145,7 +155,7 @@
   color: var(--md-sys-color-on-primary-container);
   font-weight: 500;
   transform: translateX(6px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .filter-option--selected md-icon {
@@ -197,24 +207,33 @@
   gap: 2rem;
   margin-bottom: 3rem;
   min-height: 600px;
-  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
 }
 
 .articles-grid--transitioning {
-  opacity: 0.3;
+  opacity: 0.6;
+  transform: scale(0.98);
   pointer-events: none;
 }
 
 .articles-grid--transitioning .article-card-wrapper {
-  transform: scale(0.95);
-  opacity: 0.5;
+  transform: translateY(5px);
+  opacity: 0.7;
+  transition: all 0.2s ease-out;
 }
 
 .article-card-wrapper {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 仅首次加载时播放入场动画 */
+.articles-grid:not(.articles-grid--loaded) .article-card-wrapper {
   opacity: 0;
   transform: translateY(30px) scale(0.9);
-  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) var(--animation-delay, 0s) forwards;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1)
+    var(--animation-delay, 0s) forwards;
 }
 
 .article-card-wrapper:hover {
@@ -222,7 +241,12 @@
   z-index: 10;
 }
 
-
+/* 已加载后的卡片：使用 transition 而非 animation，保持平滑 */
+.articles-grid--loaded .article-card-wrapper {
+  opacity: 1;
+  transform: translateY(0);
+  animation: none;
+}
 
 /* ===========================================
    ARTICLE IMAGE 样式
@@ -240,7 +264,6 @@
   object-fit: cover;
   transition: transform 0.3s ease;
 }
-
 
 .article-fallback {
   width: 100%;
@@ -406,7 +429,12 @@
 .loading-card {
   height: 300px;
   border-radius: 12px;
-  background: linear-gradient(90deg, var(--md-sys-color-surface-container) 0%, var(--md-sys-color-surface-container-high) 50%, var(--md-sys-color-surface-container) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--md-sys-color-surface-container) 0%,
+    var(--md-sys-color-surface-container-high) 50%,
+    var(--md-sys-color-surface-container) 100%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
@@ -477,20 +505,25 @@
 }
 
 @keyframes bounce {
-  0%, 20%, 53%, 80%, 100% {
-    animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
-    transform: translate3d(0,0,0);
+  0%,
+  20%,
+  53%,
+  80%,
+  100% {
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+    transform: translate3d(0, 0, 0);
   }
-  40%, 43% {
-    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+  40%,
+  43% {
+    animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
     transform: translate3d(0, -30px, 0);
   }
   70% {
-    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+    animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
     transform: translate3d(0, -15px, 0);
   }
   90% {
-    transform: translate3d(0,-4px,0);
+    transform: translate3d(0, -4px, 0);
   }
 }
 
@@ -639,7 +672,6 @@
    HIGH CONTRAST MODE
    =========================================== */
 @media (prefers-contrast: high) {
-
   .articles-filters {
     border: 2px solid var(--md-sys-color-outline);
   }

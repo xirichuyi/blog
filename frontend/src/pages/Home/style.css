@@ -34,7 +34,11 @@
   margin: 0;
   letter-spacing: -0.02em;
   flex-shrink: 0;
-  background: linear-gradient(135deg, var(--md-sys-color-on-surface) 0%, var(--md-sys-color-primary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--md-sys-color-on-surface) 0%,
+    var(--md-sys-color-primary) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -214,8 +218,12 @@
   --md-elevated-button-container-color: var(--md-sys-color-primary);
   --md-elevated-button-label-text-color: var(--md-sys-color-on-primary);
   --md-elevated-button-container-shape: 20px;
-  --md-elevated-button-hover-state-layer-color: var(--md-sys-color-primary-hover);
-  --md-elevated-button-pressed-state-layer-color: var(--md-sys-color-primary-pressed);
+  --md-elevated-button-hover-state-layer-color: var(
+    --md-sys-color-primary-hover
+  );
+  --md-elevated-button-pressed-state-layer-color: var(
+    --md-sys-color-primary-pressed
+  );
   --md-elevated-button-icon-color: var(--md-sys-color-on-primary);
   --md-elevated-button-container-elevation: 1;
   --md-elevated-button-hover-container-elevation: 2;
@@ -293,7 +301,7 @@
   justify-content: center;
   position: relative;
   width: 100%;
-  border-radius: 24px ; /* 只有上方圆角 */
+  border-radius: 24px; /* 只有上方圆角 */
   overflow: hidden;
   flex-shrink: 0; /* 防止图片被压缩 */
 }
@@ -920,8 +928,6 @@
   cursor: default;
 }
 
-
-
 .server-status-header {
   display: flex;
   align-items: center;
@@ -983,9 +989,15 @@
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .server-metrics {
@@ -1205,7 +1217,7 @@
     transition: opacity 0.3s ease;
     transform: none !important;
   }
-  
+
   .featured-card--visible,
   .secondary-card--visible,
   .sidebar-item--visible {
@@ -1213,7 +1225,7 @@
     opacity: 1 !important;
     transform: none !important;
   }
-  
+
   .featured-card--hidden,
   .secondary-card--hidden,
   .sidebar-item--hidden {

@@ -2,6 +2,7 @@
 
 import { BaseApiService } from './base';
 import type { Article, ApiResponse } from '../types';
+import { generateCacheKey } from '../../utils/cacheManager';
 
 // Backend response typing helpers
 interface BackendListResponse<T> {
@@ -19,7 +20,14 @@ interface BackendPost {
     updated_at?: string;
     status: number;
     category_id?: number;
+    category_name?: string;
     cover_url?: string;
+    tags?: Array<{
+        id: number;
+        name: string;
+        created_at: string;
+        updated_at: string;
+    }>;
 }
 
 interface BackendTag {
@@ -29,9 +37,37 @@ interface BackendTag {
 
 type PostImagesPayload = { post_images?: string[] };
 
+// 缓存有效期：3分钟（文章列表可能更新较频繁）
+const ARTICLES_LIST_CACHE_TTL = 3 * 60 * 1000;
+// 单篇文章缓存：5分钟
+const ARTICLE_DETAIL_CACHE_TTL = 5 * 60 * 1000;
+
 export class PostsApiService extends BaseApiService {
-    // Blog Management APIs
-    async getPosts(params?: { status?: string; search?: string; category?: string; tag_id?: number; page?: number; page_size?: number }): Promise<ApiResponse<Article[]>> {
+    // Blog Management APIs - 带缓存
+    async getPosts(params?: { status?: string; search?: string; category?: string; tag_id?: number; page?: number; page_size?: number }, forceRefresh = false): Promise<ApiResponse<Article[]>> {
+        // 生成缓存key（基于请求参数）
+        const cacheKey = generateCacheKey('articles_list', params);
+
+        // 检查缓存（除非强制刷新或有搜索条件）
+        // 搜索结果不缓存，因为用户可能频繁修改搜索词
+        if (!forceRefresh && !params?.search) {
+            const cached = this.getCachedData<{
+                articles: Article[];
+                total: number;
+                page: number;
+                page_size: number;
+            }>(cacheKey);
+            if (cached) {
+                return {
+                    success: true,
+                    data: cached.articles,
+                    total: cached.total,
+                    page: cached.page,
+                    page_size: cached.page_size
+                };
+            }
+        }
+
         try {
             const queryParams = new URLSearchParams();
 
@@ -65,25 +101,42 @@ export class PostsApiService extends BaseApiService {
                 category_name?: string;
             }
 
-            const response = await this.request<BackendListResponse<BackendPostWithDetails>>(url);
+            // 后端返回的是 ApiListResponse 格式: { code, message, data, total, page, page_size }
+            const response = await this.request<{
+                code: number;
+                message: string;
+                data?: BackendPostWithDetails[];
+                total?: number;
+                page?: number;
+                page_size?: number;
+            }>(url);
 
             if (response.success && response.data) {
-                // Transform backend response to frontend format - no need for additional API calls!
-                const backendData: BackendListResponse<BackendPostWithDetails> = response.data as BackendListResponse<BackendPostWithDetails>;
+                // 后端返回格式: { code, message, data: [...], total, page, page_size }
+                const backendResponse = response.data;
+                
+                if (!backendResponse.data) {
+                    return {
+                        success: false,
+                        error: 'No data in response',
+                    };
+                }
 
-                const articles: Article[] = (backendData.data || []).map((postWithDetails) => {
+                const articles: Article[] = backendResponse.data.map((postWithDetails) => {
                     const post = postWithDetails.post;
                     const tags = postWithDetails.tags.map(tag => tag.name);
                     const category = postWithDetails.category_name || 'Uncategorized';
 
+                    // 后端列表接口返回的是摘要（content字段已截取），直接使用作为excerpt
+                    // 详情接口会返回完整内容
                     return {
                         id: post.id.toString(),
                         title: post.title,
-                        content: post.content,
-                        excerpt: this.generatePlainTextExcerpt(post.content, 80),
+                        content: post.content, // 列表接口返回的是摘要
+                        excerpt: post.content, // 直接使用摘要作为excerpt
                         author: 'chuyi',
                         publishDate: post.created_at,
-                        readTime: Math.ceil(post.content.length / 1000),
+                        readTime: Math.ceil(post.content.length / 1000), // 基于摘要计算，实际阅读时间需要从详情获取
                         category: category,
                         tags: tags,
                         featured: false,
@@ -93,12 +146,24 @@ export class PostsApiService extends BaseApiService {
                     };
                 });
 
+                const result = {
+                    articles,
+                    total: backendResponse.total || articles.length,
+                    page: backendResponse.page || 1,
+                    page_size: backendResponse.page_size || articles.length
+                };
+
+                // 存入缓存（搜索结果不缓存）
+                if (!params?.search) {
+                    this.setCachedData(cacheKey, result, ARTICLES_LIST_CACHE_TTL);
+                }
+
                 return {
                     success: true,
-                    data: articles,
-                    total: backendData.total || articles.length,
-                    page: backendData.page || 1,
-                    page_size: backendData.page_size || articles.length
+                    data: result.articles,
+                    total: result.total,
+                    page: result.page,
+                    page_size: result.page_size
                 };
             }
 
@@ -156,52 +221,75 @@ export class PostsApiService extends BaseApiService {
         return tagsMap;
     }
 
-    async getPost(id: string): Promise<ApiResponse<Article>> {
+    async getPost(id: string, forceRefresh = false): Promise<ApiResponse<Article>> {
+        const cacheKey = `article_detail_${id}`;
+
+        // 检查缓存（除非强制刷新）
+        if (!forceRefresh) {
+            const cached = this.getCachedData<Article>(cacheKey);
+            if (cached) {
+                return { success: true, data: cached };
+            }
+        }
+
         try {
-            const response = await this.request<{ data: BackendPost }>(`/post/get/${id}`);
+            // 后端 /api/post/get/:id 返回格式: { code, message, data: { ... } }
+            const response = await this.request<{
+                code: number;
+                message: string;
+                data: BackendPost;
+            }>(`/post/get/${id}`);
 
-            if (response.success && response.data) {
+            if (response.success && response.data && response.data.data) {
                 const post = response.data.data;
-                if (post) {
-                    // Use cached categories map - avoid calling getPublicCategories to prevent duplicate requests
-                    const cacheKey = 'categories';
-                    const categoryMap: Map<string, string> = this.getCachedData<Map<string, string>>(cacheKey) ?? new Map<string, string>();
-                    if (categoryMap.size === 0) {
-                        // 先尝试从全局缓存获取
-                        const cachedCategories = this.getCachedData<Array<{ id: string, name: string }>>('public_categories');
-                        if (cachedCategories && cachedCategories.length > 0) {
-                            cachedCategories.forEach((cat: { id: string, name: string }) => {
-                                categoryMap.set(cat.id, cat.name);
-                            });
-                            this.setCachedData(cacheKey, categoryMap);
-                        }
-                        // 如果缓存中没有分类数据，使用默认值，不再发起请求
+                
+                // 优先使用后端返回的 category_name，如果没有则尝试从缓存映射获取
+                let categoryName = post.category_name || 'Uncategorized';
+                
+                if (!post.category_name && post.category_id) {
+                    const categoryCacheKey = 'categories';
+                    const categoryMap = this.getCachedData<Map<string, string>>(categoryCacheKey);
+                    if (categoryMap) {
+                        categoryName = categoryMap.get(post.category_id.toString()) || 'Uncategorized';
                     }
-
-                    // Get tags with cache helper
-                    const tagsMap = await this.getBatchPostTags([post.id.toString()]);
-                    const tags = tagsMap.get(post.id.toString()) || [];
-
-                    const article: Article = {
-                        id: post.id.toString(),
-                        title: post.title,
-                        content: post.content,
-                        excerpt: this.generatePlainTextExcerpt(post.content, 80),
-                        author: 'chuyi',
-                        publishDate: post.created_at,
-                        readTime: Math.ceil(post.content.length / 1000),
-                        category: post.category_id ? (categoryMap.get(post.category_id.toString()) || 'Uncategorized') : 'Uncategorized',
-                        tags: tags,
-                        featured: false,
-                        status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
-                        imageUrl: post.cover_url ? this.getImageUrl(post.cover_url) : undefined,
-                        coverImage: post.cover_url ? this.getImageUrl(post.cover_url) : undefined
-                    };
-                    return { success: true, data: article };
                 }
+
+                // 优先使用后端返回的 tags，如果没有则尝试从缓存/批量接口获取
+                let tags: string[] = [];
+                if (post.tags && Array.isArray(post.tags)) {
+                    tags = post.tags.map(tag => tag.name);
+                } else {
+                    try {
+                        const tagsMap = await this.getBatchPostTags([post.id.toString()]);
+                        tags = tagsMap.get(post.id.toString()) || [];
+                    } catch (e) {
+                        console.warn('Failed to fetch tags for article detail:', e);
+                    }
+                }
+
+                const article: Article = {
+                    id: post.id.toString(),
+                    title: post.title,
+                    content: post.content,
+                    excerpt: this.generatePlainTextExcerpt(post.content, 80),
+                    author: 'chuyi',
+                    publishDate: post.created_at,
+                    readTime: Math.ceil((post.content?.length || 0) / 1000) || 1,
+                    category: categoryName,
+                    tags: tags,
+                    featured: false,
+                    status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
+                    imageUrl: post.cover_url ? this.getImageUrl(post.cover_url) : undefined,
+                    coverImage: post.cover_url ? this.getImageUrl(post.cover_url) : undefined
+                };
+
+                // 存入缓存
+                this.setCachedData(cacheKey, article, ARTICLE_DETAIL_CACHE_TTL);
+
+                return { success: true, data: article };
             }
 
-            return { success: false, error: 'Post not found' };
+            return { success: false, error: response.data?.message || 'Post not found' };
         } catch (error) {
             return {
                 success: false,
@@ -264,6 +352,10 @@ export class PostsApiService extends BaseApiService {
                 imageUrl: backendPost.cover_url ? this.getImageUrl(backendPost.cover_url) : undefined,
                 coverImage: backendPost.cover_url ? this.getImageUrl(backendPost.cover_url) : undefined
             };
+
+            // 清除文章列表缓存（新文章会影响列表）
+            this.invalidateCache(/^articles_list/);
+
             return { success: true, data: article };
         } catch (error) {
             return {
@@ -334,6 +426,11 @@ export class PostsApiService extends BaseApiService {
                 imageUrl: backendPost.cover_url ? this.getImageUrl(backendPost.cover_url) : undefined,
                 coverImage: backendPost.cover_url ? this.getImageUrl(backendPost.cover_url) : undefined
             };
+
+            // 清除该文章的详情缓存和列表缓存
+            this.invalidateCache(new RegExp(`^article_detail_${id}$`));
+            this.invalidateCache(/^articles_list/);
+
             return { success: true, data: article };
         } catch (error) {
             return {
@@ -350,6 +447,10 @@ export class PostsApiService extends BaseApiService {
             });
 
             if (response.success) {
+                // 清除该文章的详情缓存和列表缓存
+                this.invalidateCache(new RegExp(`^article_detail_${id}$`));
+                this.invalidateCache(/^articles_list/);
+
                 return { success: true };
             } else {
                 return { success: false, error: response.error || 'Failed to delete post' };

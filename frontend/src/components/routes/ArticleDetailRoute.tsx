@@ -139,7 +139,7 @@ const ArticleDetailRoute: React.FC = () => {
             category={article.category}
             readingTime={readingTime}
         >
-            <ArticleDetail article={article} />
+            <ArticleDetail articleId={id} article={article} />
         </Layout>
     );
 };

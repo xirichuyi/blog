@@ -177,8 +177,6 @@ const Home: React.FC = () => {
     };
 
     fetchServerStatus();
-    const interval = setInterval(fetchServerStatus, 300000); // 每5分钟更新
-    return () => clearInterval(interval);
   }, []);
 
   // 搜索防抖处理
