@@ -266,7 +266,7 @@
 }
 
 .featured-article-card {
-  background: var(--md-sys-color-surface-container);
+  background: #F0EED4;
   border-radius: 24px;
   height: 298px; /* 固定高度，防止图片撑开 */
   display: grid;
@@ -277,26 +277,28 @@
   transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   /* Bottom shadow for depth - Brad Frost style */
   box-shadow: 
-    0 4px 0 0 rgba(58, 46, 31, 0.15),
-    0 6px 12px -4px rgba(58, 46, 31, 0.1);
+    0 4px 0 0 #DEDCB9,
+    0 6px 12px -4px rgba(222, 220, 185, 0.3);
 }
 
 .featured-article-card:hover {
-  background-color: var(--md-sys-color-surface-container-high);
+  background-color: #F0EED4;
   transform: translateY(-2px);
   box-shadow: 
-    0 6px 0 0 rgba(58, 46, 31, 0.12),
-    0 10px 20px -6px rgba(58, 46, 31, 0.15);
+    0 6px 0 0 #DEDCB9,
+    0 10px 20px -6px rgba(222, 220, 185, 0.4);
 }
 
 /* Dark mode shadow for featured card */
 [data-theme="dark"] .featured-article-card {
+  background: #F0EED4;
   box-shadow: 
     0 4px 0 0 rgba(0, 0, 0, 0.3),
     0 6px 12px -4px rgba(0, 0, 0, 0.2);
 }
 
 [data-theme="dark"] .featured-article-card:hover {
+  background-color: #F0EED4;
   box-shadow: 
     0 6px 0 0 rgba(0, 0, 0, 0.25),
     0 10px 20px -6px rgba(0, 0, 0, 0.3);

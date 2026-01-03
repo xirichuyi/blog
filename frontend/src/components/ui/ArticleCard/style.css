@@ -8,26 +8,26 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background: var(--md-sys-color-surface-container);
+  background: #f0eed4;
   backdrop-filter: blur(8px);
   /* Bottom shadow for depth - Brad Frost style */
-  box-shadow: 0 4px 0 0 rgba(58, 46, 31, 0.15),
-    0 6px 12px -4px rgba(58, 46, 31, 0.1);
+  box-shadow: 0 4px 0 0 #dedcb9, 0 6px 12px -4px rgba(222, 220, 185, 0.3);
 }
 
 .article-card:hover {
-  background-color: var(--md-sys-color-surface-container-high);
+  background-color: #f0eed4;
   transform: translateY(-2px);
-  box-shadow: 0 6px 0 0 rgba(58, 46, 31, 0.12),
-    0 10px 20px -6px rgba(58, 46, 31, 0.15);
+  box-shadow: 0 6px 0 0 #dedcb9, 0 10px 20px -6px rgba(222, 220, 185, 0.4);
 }
 
 /* Dark mode shadow */
 [data-theme="dark"] .article-card {
+  background: #f0eed4;
   box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.3), 0 6px 12px -4px rgba(0, 0, 0, 0.2);
 }
 
 [data-theme="dark"] .article-card:hover {
+  background-color: #f0eed4;
   box-shadow: 0 6px 0 0 rgba(0, 0, 0, 0.25), 0 10px 20px -6px rgba(0, 0, 0, 0.3);
 }
 
