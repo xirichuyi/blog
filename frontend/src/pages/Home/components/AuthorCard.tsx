@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../../../services/api';
 import './AuthorCard.css';
 
 interface AuthorCardProps {
@@ -6,25 +7,32 @@ interface AuthorCardProps {
 }
 
 const AuthorCard: React.FC<AuthorCardProps> = ({ className = '' }) => {
-    // 作者信息数据 - 可以后续从props或context中获取
+    const [avatar, setAvatar] = useState<string>('');
+
+    useEffect(() => {
+        const fetchAbout = async () => {
+            try {
+                const response = await apiService.getAbout();
+                if (response.success && response.data?.photo_url) {
+                    setAvatar(apiService.getImageUrl(response.data.photo_url));
+                }
+            } catch (error) {
+                console.error('Failed to fetch about data:', error);
+            }
+        };
+        fetchAbout();
+    }, []);
+
+    // 作者信息数据
     const authorInfo = {
         name: "chuyi",
         title: "Full Stack Developer & UI/UX Designer",
-        bio: "Passionate about creating beautiful and functional web experiences with modern technologies. Specializing in React, TypeScript, and Material Design.",
-        avatar: "", // 头像图片路径 - 留空使用默认头像
-        location: "San Francisco, CA",
-        experience: "5+ years",
         socialLinks: {
             github: "https://github.com/xirichuyi",
             telegram: "https://t.me/xrcy97",
             linkedin: "https://www.linkedin.com/in/%E5%88%9D%E4%B8%80-%E6%98%94%E6%97%A5-223012366/",
             linuxdo: "https://linux.do/u/xirichuyi/summary",
             email: "xrcy123@gmail.com"
-        },
-        stats: {
-            articles: 42,
-            followers: 1200,
-            likes: 3400
         }
     };
 
@@ -42,12 +50,11 @@ const AuthorCard: React.FC<AuthorCardProps> = ({ className = '' }) => {
                 {/* 头像和基本信息 */}
                 <div className="author-header">
                     <div className="author-avatar">
-                        {authorInfo.avatar ? (
+                        {avatar ? (
                             <img
-                                src={authorInfo.avatar}
+                                src={avatar}
                                 alt={authorInfo.name}
                                 onError={(e) => {
-                                    // 如果头像加载失败，隐藏图片显示默认图标
                                     (e.target as HTMLImageElement).style.display = 'none';
                                     const parent = (e.target as HTMLImageElement).parentElement;
                                     if (parent && !parent.querySelector('.default-avatar-icon')) {

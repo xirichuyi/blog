@@ -579,60 +579,62 @@ const Home: React.FC = () => {
           animationDelay: isContentReady ? '500ms' : '0ms'
         }}>
           <div className="server-status-card">
-            <div className="server-status-header">
-              <md-icon className="server-status-icon">dns</md-icon>
-              <h3 className="server-status-title">Server</h3>
-              <div className="server-status-indicator">
-                <div className={`status-dot ${serverStatus?.status === 'healthy' ? 'status-online' : 'status-offline'}`}></div>
-                <span className={`status-text ${serverStatus?.status === 'healthy' ? '' : 'status-error'}`}>
-                  {serverStatus?.status === 'healthy' ? 'Online' : 'Offline'}
-                </span>
+            <div className="server-status-content">
+              <div className="server-status-header">
+                <md-icon className="server-status-icon">dns</md-icon>
+                <h3 className="server-status-title">Server</h3>
+                <div className="server-status-indicator">
+                  <div className={`status-dot ${serverStatus?.status === 'healthy' ? 'status-online' : 'status-offline'}`}></div>
+                  <span className={`status-text ${serverStatus?.status === 'healthy' ? '' : 'status-error'}`}>
+                    {serverStatus?.status === 'healthy' ? 'Online' : 'Offline'}
+                  </span>
+                </div>
               </div>
+
+              {serverStatus ? (
+                <div className="server-metrics">
+                  <div className="metric-item">
+                    <div className="metric-header">
+                      <md-icon className="metric-icon">memory</md-icon>
+                      <span className="metric-label">Memory</span>
+                      <span className="metric-value">{serverStatus.checks.memory.details.usage_percent.toFixed(0)}%</span>
+                    </div>
+                    <md-linear-progress
+                      value={serverStatus.checks.memory.details.usage_percent / 100}
+                      className="memory-progress"
+                    ></md-linear-progress>
+                  </div>
+
+                  <div className="metric-item">
+                    <div className="metric-header">
+                      <md-icon className="metric-icon">developer_board</md-icon>
+                      <span className="metric-label">CPU</span>
+                      <span className="metric-value">{serverStatus.metrics.cpu_usage_percent.toFixed(0)}%</span>
+                    </div>
+                    <md-linear-progress
+                      value={serverStatus.metrics.cpu_usage_percent / 100}
+                      className="cpu-progress"
+                    ></md-linear-progress>
+                  </div>
+
+                  <div className="metric-item">
+                    <div className="metric-header">
+                      <md-icon className="metric-icon">storage</md-icon>
+                      <span className="metric-label">Disk</span>
+                      <span className="metric-value">{serverStatus.checks.disk.details.usage_percent.toFixed(0)}%</span>
+                    </div>
+                    <md-linear-progress
+                      value={serverStatus.checks.disk.details.usage_percent / 100}
+                      className="disk-progress"
+                    ></md-linear-progress>
+                  </div>
+                </div>
+              ) : (
+                <div className="server-metrics">
+                  <div className="metric-loading">Loading server status...</div>
+                </div>
+              )}
             </div>
-
-            {serverStatus ? (
-              <div className="server-metrics">
-                <div className="metric-item">
-                  <div className="metric-header">
-                    <md-icon className="metric-icon">memory</md-icon>
-                    <span className="metric-label">Memory</span>
-                    <span className="metric-value">{serverStatus.checks.memory.details.usage_percent.toFixed(0)}%</span>
-                  </div>
-                  <md-linear-progress
-                    value={serverStatus.checks.memory.details.usage_percent / 100}
-                    className="memory-progress"
-                  ></md-linear-progress>
-                </div>
-
-                <div className="metric-item">
-                  <div className="metric-header">
-                    <md-icon className="metric-icon">developer_board</md-icon>
-                    <span className="metric-label">CPU</span>
-                    <span className="metric-value">{serverStatus.metrics.cpu_usage_percent.toFixed(0)}%</span>
-                  </div>
-                  <md-linear-progress
-                    value={serverStatus.metrics.cpu_usage_percent / 100}
-                    className="cpu-progress"
-                  ></md-linear-progress>
-                </div>
-
-                <div className="metric-item">
-                  <div className="metric-header">
-                    <md-icon className="metric-icon">storage</md-icon>
-                    <span className="metric-label">Disk</span>
-                    <span className="metric-value">{serverStatus.checks.disk.details.usage_percent.toFixed(0)}%</span>
-                  </div>
-                  <md-linear-progress
-                    value={serverStatus.checks.disk.details.usage_percent / 100}
-                    className="disk-progress"
-                  ></md-linear-progress>
-                </div>
-              </div>
-            ) : (
-              <div className="server-metrics">
-                <div className="metric-loading">Loading server status...</div>
-              </div>
-            )}
           </div>
         </div>
       </aside>
