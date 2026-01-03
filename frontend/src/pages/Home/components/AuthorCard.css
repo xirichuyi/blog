@@ -153,7 +153,46 @@
   }
 }
 
-/* Brad Frost style is light theme only, no dark mode override */
+/* Dark Mode Support */
+[data-theme="dark"] .author-card::after {
+  background: var(--md-sys-color-secondary);
+  border-color: var(--md-sys-color-outline);
+}
+
+[data-theme="dark"] .author-card::before {
+  background: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-outline);
+}
+
+[data-theme="dark"] .author-card-content {
+  background: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-outline-variant);
+}
+
+[data-theme="dark"] .author-name {
+  color: var(--md-sys-color-on-surface);
+}
+
+[data-theme="dark"] .author-title {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+[data-theme="dark"] .author-avatar {
+  background: var(--md-sys-color-surface-container-high);
+  border-color: var(--md-sys-color-outline-variant);
+}
+
+[data-theme="dark"] .default-avatar-icon {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+[data-theme="dark"] .social-button {
+  --md-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
+  --md-icon-button-hover-state-layer-color: var(--md-sys-color-primary-alpha-12);
+  --md-icon-button-hover-icon-color: var(--md-sys-color-primary);
+  --md-icon-button-pressed-state-layer-color: var(--md-sys-color-primary-alpha-16);
+  --md-icon-button-pressed-icon-color: var(--md-sys-color-primary);
+}
 
 /* 无障碍支持 */
 .author-card:focus-within .author-card-content {

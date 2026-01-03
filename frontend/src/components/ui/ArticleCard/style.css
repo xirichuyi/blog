@@ -105,8 +105,8 @@
   font-size: 11px;
   font-weight: 500;
   line-height: 1.3;
-  color: #6750a4;
-  background: rgba(103, 80, 164, 0.12);
+  color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-alpha-12);
   padding: 4px 8px;
   border-radius: 12px;
   text-transform: uppercase;

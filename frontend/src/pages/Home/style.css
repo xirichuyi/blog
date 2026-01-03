@@ -4,7 +4,7 @@
   display: flex;
   width: 100%;
   min-height: 100vh;
-  background: #f6f5de; /* Brad Frost background color */
+  background: var(--md-sys-color-background);
   gap: 8px;
   padding: 8px;
   max-width: 1400px;
@@ -424,7 +424,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 24px;
-  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+  background: var(--md-sys-color-surface-container-high);
   position: relative;
   overflow: hidden;
   height: 100%; /* 确保高度不超过父容器 */
@@ -1109,6 +1109,65 @@
 }
 
 /* 删除不需要的复杂样式 */
+
+/* Dark Mode Support for Server Status Card */
+[data-theme="dark"] .server-status-card::after {
+  background: var(--md-sys-color-secondary);
+  border-color: var(--md-sys-color-outline);
+}
+
+[data-theme="dark"] .server-status-card::before {
+  background: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-outline);
+}
+
+[data-theme="dark"] .server-status-content {
+  background: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-outline-variant);
+}
+
+[data-theme="dark"] .server-status-header {
+  border-bottom-color: var(--md-sys-color-outline-variant);
+}
+
+[data-theme="dark"] .server-status-icon {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+[data-theme="dark"] .server-status-title {
+  color: var(--md-sys-color-on-surface);
+}
+
+[data-theme="dark"] .metric-icon {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+[data-theme="dark"] .metric-label {
+  color: var(--md-sys-color-on-surface);
+}
+
+[data-theme="dark"] .metric-value {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+[data-theme="dark"] .metric-loading {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+[data-theme="dark"] .memory-progress {
+  --md-linear-progress-active-indicator-color: var(--md-sys-color-primary);
+  --md-linear-progress-track-color: var(--md-sys-color-surface-variant);
+}
+
+[data-theme="dark"] .cpu-progress {
+  --md-linear-progress-active-indicator-color: var(--md-sys-color-secondary);
+  --md-linear-progress-track-color: var(--md-sys-color-surface-variant);
+}
+
+[data-theme="dark"] .disk-progress {
+  --md-linear-progress-active-indicator-color: var(--md-sys-color-tertiary);
+  --md-linear-progress-track-color: var(--md-sys-color-surface-variant);
+}
 
 /* Responsive adjustments for server status */
 @media (max-width: 1200px) {
