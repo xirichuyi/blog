@@ -4,13 +4,70 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import GithubSlugger from 'github-slugger';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { apiService } from '../../services/api'
 import './MarkdownRenderer.css';
+
+// 自定义主题 - 使用透明背景，让 CSS 控制颜色
+const customTheme = {
+  'code[class*="language-"]': {
+    background: 'transparent',
+    color: 'inherit',
+  },
+  'pre[class*="language-"]': {
+    background: 'transparent',
+    color: 'inherit',
+  },
+};
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
 }
+
+// macOS 风格代码块组件
+const CodeBlock: React.FC<{ language?: string; children: string }> = ({ language, children }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(children);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [children]);
+
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <div className="code-block-dots">
+          <span className="code-block-dot code-block-dot--close" />
+          <span className="code-block-dot code-block-dot--minimize" />
+          <span className="code-block-dot code-block-dot--maximize" />
+        </div>
+        {language && <span className="code-block-language">{language}</span>}
+      </div>
+      <button 
+        className={`code-block-copy ${copied ? 'code-block-copy--copied' : ''}`}
+        onClick={handleCopy}
+      >
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
+      <SyntaxHighlighter
+        style={customTheme}
+        language={language || 'text'}
+        PreTag="div"
+        className="code-block"
+        customStyle={{
+          margin: 0,
+          padding: '16px',
+          background: 'transparent',
+          borderRadius: 0,
+        }}
+      >
+        {children}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
 
 // 自定义图片组件
 const MarkdownImage: React.FC<{ src?: string; alt?: string;[key: string]: any }> = ({ src, alt, ...props }) => {
@@ -78,19 +135,23 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
         components={{
           // Custom image renderer to handle relative URLs and loading states
           img: MarkdownImage,
-          // Custom code block renderer
-          pre: ({ children, ...props }) => (
-            <pre className="code-block" {...props}>
-              {children}
-            </pre>
-          ),
-          code: ({ children, ...props }: any) => {
-            const inline = props.inline;
+          // Custom code block renderer with macOS style
+          code: ({ children, className, ...props }: any) => {
+            const match = /language-(\w+)/.exec(className || '');
+            const inline = props.inline || !className;
+            
             if (inline) {
               return <code className="inline-code" {...props}>{children}</code>;
             }
-            return <code {...props}>{children}</code>;
+            
+            return (
+              <CodeBlock language={match ? match[1] : undefined}>
+                {String(children).replace(/\n$/, '')}
+              </CodeBlock>
+            );
           },
+          // Remove default pre wrapper since CodeBlock handles it
+          pre: ({ children }) => <>{children}</>,
           // Custom blockquote renderer
           blockquote: ({ children, ...props }) => (
             <blockquote className="markdown-blockquote" {...props}>

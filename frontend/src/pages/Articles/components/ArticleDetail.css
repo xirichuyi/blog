@@ -6,9 +6,9 @@
 }
 
 .article-detail-container {
-  max-width: calc(100vw - 360px); /* Full width minus sidebars */
+  max-width: calc(100vw - 352px); /* Full width minus sidebars */
   margin: 0 auto;
-  margin-left: 360px; /* Space for main nav (80px) + toc sidebar (280px) */
+  margin-left: 352px; /* Space for main nav (72px) + toc sidebar (280px) */
   padding: 2rem 2rem 1rem 2rem; /* Reduce bottom padding */
   display: flex;
   flex-direction: column;
@@ -188,12 +188,12 @@
 /* Table of Contents Sidebar */
 .article-toc-sidebar {
   position: fixed;
-  left: 80px; /* After main navigation */
+  left: 72px; /* Directly after main navigation (72px width) */
   top: 0;
   width: 280px;
   height: calc(100vh); /* Slightly shorter than full screen height */
   background: var(--md-sys-color-surface-container-lowest);
-  border-right: 1px solid var(--md-sys-color-outline-variant);
+  border-right: none;
   padding: 2rem 1.5rem;
   overflow-y: auto;
   z-index: 100;
@@ -243,28 +243,32 @@
 }
 
 .toc-item {
-  background: none;
+  background: transparent;
   border: none;
   color: var(--md-sys-color-on-surface-variant);
   text-align: left;
-  padding: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
   cursor: pointer;
   font-size: 0.875rem;
   line-height: 1.4;
   transition: all 0.2s ease;
   border-left: 2px solid transparent;
-  padding-left: 0.75rem;
   font-weight: 400;
+  border-radius: 4px;
+  display: block;
+  width: 100%;
 }
 
 .toc-item:hover {
   color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface-container);
 }
 
 .toc-item.active {
   color: var(--md-sys-color-primary);
   border-left-color: var(--md-sys-color-primary);
   font-weight: 500;
+  background: var(--md-sys-color-primary-container);
 }
 
 .toc-level-1 { padding-left: 0.75rem; }
@@ -444,8 +448,8 @@
   }
   
   .article-detail-container {
-    max-width: calc(100vw - 330px); /* Full width minus smaller sidebars */
-    margin-left: 330px; /* Space for main nav (80px) + smaller toc sidebar (250px) */
+    max-width: calc(100vw - 322px); /* Full width minus smaller sidebars */
+    margin-left: 322px; /* Space for main nav (72px) + smaller toc sidebar (250px) */
     padding: 1.5rem 1.5rem 0.5rem 1.5rem; /* Reduce bottom padding */
   }
 }
