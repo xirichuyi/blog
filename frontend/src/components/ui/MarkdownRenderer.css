@@ -1,70 +1,99 @@
+/* Brad Frost / Notion Style Typography */
 .markdown-renderer {
   color: var(--md-sys-color-on-surface);
-  line-height: 1.7;
-  font-family: var(--md-sys-typescale-body-large-font);
-  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: 1.8; /* 宽大的行间距 - Notion 风格 */
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto",
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 17px; /* 16px-18px 范围，Notion 常用 17px */
+  font-weight: 400;
+  text-align: left; /* 左侧对齐 */
+  letter-spacing: -0.01em; /* 轻微字距调整 */
 }
 
-/* Headings */
+/* Headings - Brad Frost 风格：大标题与小正文强烈对比 */
 .markdown-renderer h1 {
-  font-family: var(--md-sys-typescale-display-small-font);
-  font-size: var(--md-sys-typescale-display-small-size);
-  font-weight: var(--md-sys-typescale-display-small-weight);
-  line-height: var(--md-sys-typescale-display-small-line-height);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto",
+    sans-serif;
+  font-size: 2.5rem; /* 非常大且粗 */
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--md-sys-color-on-surface);
+  margin: 48px 0 24px 0;
+  letter-spacing: -0.02em;
+}
+
+.markdown-renderer h2 {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto",
+    sans-serif;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--md-sys-color-on-surface);
+  margin: 40px 0 20px 0;
+  letter-spacing: -0.01em;
+}
+
+.markdown-renderer h3 {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto",
+    sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
   color: var(--md-sys-color-on-surface);
   margin: 32px 0 16px 0;
 }
 
-.markdown-renderer h2 {
-  font-family: var(--md-sys-typescale-headline-medium-font);
-  font-size: var(--md-sys-typescale-headline-medium-size);
-  font-weight: var(--md-sys-typescale-headline-medium-weight);
-  line-height: var(--md-sys-typescale-headline-medium-line-height);
+.markdown-renderer h4 {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto",
+    sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
   color: var(--md-sys-color-on-surface);
   margin: 28px 0 14px 0;
-  padding-bottom: 8px;
 }
 
-.markdown-renderer h3 {
-  font-family: var(--md-sys-typescale-headline-small-font);
-  font-size: var(--md-sys-typescale-headline-small-size);
-  font-weight: var(--md-sys-typescale-headline-small-weight);
-  line-height: var(--md-sys-typescale-headline-small-line-height);
+.markdown-renderer h5,
+.markdown-renderer h6 {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto",
+    sans-serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.5;
   color: var(--md-sys-color-on-surface);
   margin: 24px 0 12px 0;
 }
 
-.markdown-renderer h4,
-.markdown-renderer h5,
-.markdown-renderer h6 {
-  font-family: var(--md-sys-typescale-title-medium-font);
-  font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: var(--md-sys-typescale-title-medium-weight);
-  line-height: var(--md-sys-typescale-title-medium-line-height);
-  color: var(--md-sys-color-on-surface);
-  margin: 20px 0 10px 0;
-}
-
-/* Paragraphs */
+/* Paragraphs - Notion 风格：宽大间距 */
 .markdown-renderer p {
-  margin: 16px 0;
+  margin: 20px 0; /* 更大的段落间距 */
   color: var(--md-sys-color-on-surface);
+  line-height: 1.8;
 }
 
-/* Lists */
+/* Lists - Notion 风格：核心内容由列表构成 */
 .markdown-renderer ul,
 .markdown-renderer ol {
-  margin: 16px 0;
-  padding-left: 24px;
+  margin: 20px 0;
+  padding-left: 28px; /* 稍微增加缩进 */
 }
 
 .markdown-renderer li {
-  margin: 8px 0;
+  margin: 10px 0; /* 列表项间距更大 */
   color: var(--md-sys-color-on-surface);
+  line-height: 1.8;
 }
 
 .markdown-renderer li::marker {
-  color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 500;
+}
+
+/* 嵌套列表 */
+.markdown-renderer li ul,
+.markdown-renderer li ol {
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 /* Code */
@@ -77,16 +106,15 @@
   font-size: 0.9em;
 }
 
-/* macOS Window Style Code Block */
+/* Code Block - 数学公式的沉浸感：轻微圆角阴影，像浮在纸面上的公式卡片 */
 .markdown-renderer .code-block-wrapper {
   position: relative;
-  margin: 16px 0;
-  border-radius: 12px;
+  margin: 24px 0;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--md-sys-color-surface-container-highest);
   border: none;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05); /* 轻微圆角阴影 - 公式卡片感 */
 }
 
 /* macOS Title Bar with three dots */
@@ -298,19 +326,26 @@
     0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 4px 0 0 rgba(58, 46, 31, 0.08);
 }
 
-/* Blockquotes */
+/* Blockquotes - Brad Frost 风格：左侧带深色边框的引用块 */
 .markdown-renderer .markdown-blockquote {
-  border-left: 4px solid var(--md-sys-color-primary);
+  border-left: 4px solid var(--md-sys-color-on-surface); /* 深色边框 */
   background: var(--md-sys-color-surface-container-low);
-  margin: 16px 0;
-  padding: 16px 20px;
-  border-radius: 0 8px 8px 0;
-  font-style: italic;
-  color: var(--md-sys-color-on-surface-variant);
+  margin: 24px 0;
+  padding: 20px 24px;
+  border-radius: 0;
+  font-style: normal; /* 不使用斜体，更清晰 */
+  color: var(--md-sys-color-on-surface);
+  line-height: 1.8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .markdown-renderer .markdown-blockquote p {
   margin: 0;
+  line-height: 1.8;
+}
+
+.markdown-renderer .markdown-blockquote p + p {
+  margin-top: 12px;
 }
 
 /* Images */
@@ -422,12 +457,46 @@
   border-bottom: none;
 }
 
+/* Callout Blocks - Notion 风格标注块 */
+.markdown-renderer .callout {
+  margin: 24px 0;
+  padding: 20px 24px;
+  border-radius: 4px;
+  border-left: 4px solid;
+  background: var(--md-sys-color-surface-container);
+  line-height: 1.8;
+}
+
+.markdown-renderer .callout-info {
+  border-left-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.markdown-renderer .callout-warning {
+  border-left-color: #ffbd2e;
+  background: rgba(255, 189, 46, 0.1);
+  color: var(--md-sys-color-on-surface);
+}
+
+.markdown-renderer .callout-tip {
+  border-left-color: var(--md-sys-color-tertiary);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+.markdown-renderer .callout-note {
+  border-left-color: var(--md-sys-color-secondary);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
 /* Horizontal Rule */
 .markdown-renderer hr {
   border: none;
   height: 1px;
   background: var(--md-sys-color-outline-variant);
-  margin: 32px 0;
+  margin: 40px 0;
 }
 
 /* Strong and Emphasis */

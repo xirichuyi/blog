@@ -89,22 +89,24 @@
 
 .article-title {
   color: var(--md-sys-color-on-surface);
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 400;
+  font-size: clamp(2.5rem, 5vw, 3.5rem); /* 非常大且粗 */
+  font-weight: 700;
   line-height: 1.2;
-  margin-bottom: 1.5rem;
-  font-family: var(--md-sys-typescale-display-large-font-family-name, inherit);
+  margin-bottom: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto", sans-serif;
+  letter-spacing: -0.02em;
+  text-align: left; /* 左侧对齐 */
 }
 
 .article-excerpt {
   color: var(--md-sys-color-on-surface-variant);
   font-size: 1.25rem;
-  line-height: 1.6;
-  margin-bottom: 2rem;
+  line-height: 1.8; /* 宽大行间距 */
+  margin-bottom: 32px;
   font-weight: 400;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 100%;
+  text-align: left; /* 左侧对齐 */
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto", sans-serif;
 }
 
 .article-tags {
@@ -278,15 +280,17 @@
 .toc-level-5 { padding-left: 2.75rem; }
 .toc-level-6 { padding-left: 3.25rem; }
 
-/* Article Content */
+/* Article Content - Brad Frost / Notion 风格：单栏窄屏布局 */
 .article-content {
   width: 100%;
-  max-width: 800px;
+  max-width: 720px; /* 700px-800px 范围，Notion 常用 720px */
   margin: 0 auto;
   color: var(--md-sys-color-on-surface);
-  line-height: 1.7;
-  font-size: 1rem;
+  line-height: 1.8; /* 宽大行间距 */
+  font-size: 17px; /* 16px-18px 范围 */
   font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  text-align: left; /* 左侧对齐 */
 }
 
 .article-content h1,
@@ -296,22 +300,47 @@
 .article-content h5,
 .article-content h6 {
   color: var(--md-sys-color-on-surface);
-  font-weight: 600;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  line-height: 1.3;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Roboto", sans-serif;
+  font-weight: 700; /* 大标题非常粗 */
+  margin-top: 48px;
+  margin-bottom: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
-.article-content h1 { font-size: 2rem; }
-.article-content h2 { font-size: 1.75rem; }
-.article-content h3 { font-size: 1.5rem; }
-.article-content h4 { font-size: 1.25rem; }
-.article-content h5 { font-size: 1.125rem; }
-.article-content h6 { font-size: 1rem; }
+.article-content h1 { 
+  font-size: 2.5rem; /* 非常大且粗 */
+  margin-top: 0;
+}
+.article-content h2 { 
+  font-size: 1.875rem;
+  margin-top: 40px;
+}
+.article-content h3 { 
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 32px;
+}
+.article-content h4 { 
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 28px;
+}
+.article-content h5 { 
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 24px;
+}
+.article-content h6 { 
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 24px;
+}
 
 .article-content p {
-  margin-bottom: 1.5rem;
+  margin-bottom: 20px; /* 更大的段落间距 */
   color: var(--md-sys-color-on-surface);
+  line-height: 1.8; /* 宽大行间距 */
 }
 
 .article-content a {
@@ -326,23 +355,26 @@
 
 .article-content ul,
 .article-content ol {
-  margin-bottom: 1.5rem;
-  padding-left: 1.5rem;
+  margin-bottom: 20px;
+  padding-left: 28px; /* 稍微增加缩进 */
 }
 
 .article-content li {
-  margin-bottom: 0.5rem;
+  margin-bottom: 10px; /* 列表项间距更大 */
   color: var(--md-sys-color-on-surface);
+  line-height: 1.8;
 }
 
 .article-content blockquote {
   background: var(--md-sys-color-surface-container-low);
-  border-left: 4px solid var(--md-sys-color-primary);
-  padding: 1rem 1.5rem;
-  margin: 1.5rem 0;
-  border-radius: 0 8px 8px 0;
-  font-style: italic;
-  color: var(--md-sys-color-on-surface-variant);
+  border-left: 4px solid var(--md-sys-color-on-surface); /* 深色边框 - Brad Frost 风格 */
+  padding: 20px 24px;
+  margin: 24px 0;
+  border-radius: 0;
+  font-style: normal; /* 不使用斜体，更清晰 */
+  color: var(--md-sys-color-on-surface);
+  line-height: 1.8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .article-content code {
@@ -359,8 +391,10 @@
   padding: 1.5rem;
   border-radius: 8px;
   overflow-x: auto;
-  margin: 1.5rem 0;
-  border: 1px solid var(--md-sys-color-outline-variant);
+  margin: 24px 0;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05); /* 轻微圆角阴影 - 公式卡片感 */
 }
 
 .article-content pre code {
@@ -381,11 +415,12 @@
 .article-content table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1.5rem 0;
+  margin: 24px 0;
   background: var(--md-sys-color-surface-container-lowest);
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
-  border: 1px solid var(--md-sys-color-outline-variant);
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .article-content th,
