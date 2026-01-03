@@ -47,6 +47,13 @@
 .side-navigation-item.active {
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
+  border: 3px solid #3a2e1f;
+  border-radius: 0;
+}
+
+/* Dark mode active item border */
+[data-theme="dark"] .side-navigation-item.active {
+  border-color: var(--md-sys-color-outline-variant);
 }
 
 .side-navigation-item.active::before {
@@ -130,8 +137,7 @@
 
 /* Focus states */
 .side-navigation-item:focus {
-  outline: 2px solid rgba(208, 188, 255, 0.5);
-  outline-offset: 2px;
+  outline: none;
 }
 
 /* High contrast mode */
