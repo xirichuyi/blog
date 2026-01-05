@@ -2,14 +2,15 @@ use crate::database::{repositories::DownloadRepository, Database};
 use crate::models::{CreateDownloadRequest, Download, DownloadListQuery};
 use crate::utils::error::Result;
 use crate::utils::FileHandler;
+use std::sync::Arc;
 
 pub struct DownloadService {
     database: Database,
-    file_handler: FileHandler,
+    file_handler: Arc<FileHandler>,
 }
 
 impl DownloadService {
-    pub fn new(database: Database, file_handler: FileHandler) -> Self {
+    pub fn new(database: Database, file_handler: Arc<FileHandler>) -> Self {
         Self {
             database,
             file_handler,
@@ -29,12 +30,8 @@ impl DownloadService {
     }
 
     pub async fn delete_download(&self, id: i64) -> Result<bool> {
-        // Get download to check for file to delete
         if let Some(download) = DownloadRepository::get_by_id(self.database.pool(), id).await? {
-            // Delete the file
             let _ = self.file_handler.delete_file(&download.file_url).await;
-
-            // Delete the database record
             DownloadRepository::delete(self.database.pool(), id).await
         } else {
             Ok(false)

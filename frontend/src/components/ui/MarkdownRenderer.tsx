@@ -5,8 +5,8 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import GithubSlugger from 'github-slugger';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { apiService } from '../../services/api'
-import { PdfViewer } from './PdfViewer';
+import { apiService } from '../../services/api';
+import { API_BASE_URL } from '../../services/api/base';
 import './MarkdownRenderer.css';
 
 // 自定义主题 - 使用透明背景，让 CSS 控制颜色
@@ -167,30 +167,29 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
               </table>
             </div>
           ),
-          // Custom link renderer - handle PDF links specially
+          // Custom link renderer - handle relative URLs and open external links in new tab
           a: ({ href, children, ...props }) => {
-            // Check if this is a PDF link (format: pdf:filename)
-            if (href?.startsWith('pdf:')) {
-              const pdfFileName = href.substring(4); // Remove 'pdf:' prefix
-              const pdfTitle = typeof children === 'string' 
-                ? children.replace(/^PDF:\s*/, '') 
-                : pdfFileName;
-              
-              return (
-                <PdfViewer
-                  pdfUrl={pdfFileName}
-                  title={pdfTitle}
-                  height={800}
-                />
-              );
+            // Ensure href exists
+            if (!href) {
+              return <span>{children}</span>;
             }
-            
-            // Regular link
+
+            // Build full URL for links if it's a relative path
+            let finalHref = href;
+            if (!href.startsWith('http') && href.startsWith('/')) {
+              finalHref = `${API_BASE_URL}${href}`;
+            }
+
+            // External links and PDF links should open in new tab
+            const shouldOpenInNewTab = href.startsWith('http') ||
+              href.includes('/uploads/pdfs/') ||
+              href.toLowerCase().endsWith('.pdf');
+
             return (
               <a
-                href={href}
-                target={href?.startsWith('http') ? '_blank' : undefined}
-                rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                href={finalHref}
+                target={shouldOpenInNewTab ? '_blank' : undefined}
+                rel={shouldOpenInNewTab ? 'noopener noreferrer' : undefined}
                 {...props}
               >
                 {children}

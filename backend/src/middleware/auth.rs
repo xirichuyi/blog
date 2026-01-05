@@ -1,3 +1,4 @@
+use crate::config::constants::BEARER_PREFIX;
 use crate::routes::AppState;
 use crate::utils::error::{AppError, Result};
 use axum::{
@@ -18,13 +19,9 @@ pub async fn admin_middleware(
         .and_then(|header| header.to_str().ok())
         .ok_or_else(|| AppError::Unauthorized("Missing Authorization header".to_string()))?;
 
-    if !auth_header.starts_with("Bearer ") {
-        return Err(AppError::Unauthorized(
-            "Invalid Authorization header format".to_string(),
-        ));
-    }
-
-    let token = &auth_header[7..]; // Remove "Bearer " prefix
+    let token = auth_header
+        .strip_prefix(BEARER_PREFIX)
+        .ok_or_else(|| AppError::Unauthorized("Invalid Authorization header format".to_string()))?;
 
     if token != app_state.config.jwt.admin_token {
         return Err(AppError::Unauthorized("Invalid admin token".to_string()));

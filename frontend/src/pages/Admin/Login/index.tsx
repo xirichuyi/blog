@@ -1,173 +1,174 @@
-// Admin Login Page Component
+// Admin Login Page Component with Ant Design
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
-import { useForm, FormConfigs } from '../../../hooks/useForm';
-import { ValidationRules } from '../../../utils';
+import {
+  Form,
+  Input,
+  Button,
+  Card,
+  Typography,
+  Space,
+  Alert,
+  Spin,
+} from 'antd';
+import {
+  UserOutlined,
+  LockOutlined,
+  LoginOutlined,
+  ArrowLeftOutlined,
+} from '@ant-design/icons';
 import './style.css';
 
+const { Title, Text } = Typography;
+
+interface LoginFormValues {
+  username: string;
+  password: string;
+}
+
 const Login: React.FC = () => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form] = Form.useForm();
+  const { login, isAuthenticated, error, isLoading, clearError } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    const { login, isAuthenticated, error, isLoading, clearError } = useAuth();
-    const navigate = useNavigate();
-    const location = useLocation();
-
-    // Redirect if already authenticated
-    useEffect(() => {
-        if (isAuthenticated && !isLoading) {
-            const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
-            navigate(from, { replace: true });
-        }
-    }, [isAuthenticated, isLoading, navigate, location]);
-
-    // Clear error when component unmounts
-    useEffect(() => {
-        return () => clearError();
-    }, [clearError]);
-
-    // Clear error when user starts typing (handled in input handlers)
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!username.trim() || !password.trim()) {
-            return;
-        }
-
-        setIsSubmitting(true);
-
-        try {
-            const success = await login({ username: username.trim(), password });
-
-            if (success) {
-                const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
-                navigate(from, { replace: true });
-            }
-        } catch (err) {
-            console.error('Login failed:', err);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setUsername(e.target.value);
-        if (error) clearError();
-    };
-
-    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setPassword(e.target.value);
-        if (error) clearError();
-    };
-
-    // Show loading state while checking authentication
-    if (isLoading) {
-        return (
-            <div className="login-page">
-                <div className="login-container">
-                    <div className="login-loading">
-                        <md-circular-progress indeterminate></md-circular-progress>
-                        <p>Checking authentication...</p>
-                    </div>
-                </div>
-            </div>
-        );
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+      navigate(from, { replace: true });
     }
+  }, [isAuthenticated, isLoading, navigate, location]);
 
+  // Clear error when component unmounts
+  useEffect(() => {
+    return () => clearError();
+  }, [clearError]);
+
+  const handleSubmit = async (values: LoginFormValues) => {
+    try {
+      const success = await login({
+        username: values.username.trim(),
+        password: values.password,
+      });
+
+      if (success) {
+        const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+        navigate(from, { replace: true });
+      }
+    } catch (err) {
+      console.error('Login failed:', err);
+    }
+  };
+
+  const handleValuesChange = () => {
+    if (error) clearError();
+  };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
     return (
-        <div className="login-page">
-            <div className="login-container">
-                <div className="login-card">
-                    <div className="login-header">
-                        <md-icon className="login-icon">admin_panel_settings</md-icon>
-                        <h1 className="login-title">Admin Login</h1>
-                        <p className="login-subtitle">Sign in to access the admin panel</p>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="login-form">
-                        <div className="form-field">
-                            <md-outlined-text-field
-                                label="Username"
-                                type="text"
-                                value={username}
-                                onInput={handleUsernameChange}
-                                required
-                                autocomplete="username"
-                                class="login-input"
-                            >
-                                <md-icon slot="leading-icon">person</md-icon>
-                            </md-outlined-text-field>
-                        </div>
-
-                        <div className="form-field">
-                            <md-outlined-text-field
-                                label="Password"
-                                type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onInput={handlePasswordChange}
-                                required
-                                autocomplete="current-password"
-                                class="login-input"
-                            >
-                                <md-icon slot="leading-icon">lock</md-icon>
-                                <md-icon-button
-                                    slot="trailing-icon"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    type="button"
-                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                >
-                                    <md-icon>{showPassword ? 'visibility_off' : 'visibility'}</md-icon>
-                                </md-icon-button>
-                            </md-outlined-text-field>
-                        </div>
-
-                        {error && (
-                            <div className="error-message">
-                                <md-icon className="error-icon">error</md-icon>
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        <div className="form-actions">
-                            <md-filled-button
-                                type="submit"
-                                disabled={!username.trim() || !password.trim() || isSubmitting}
-                                class="login-button"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <md-circular-progress
-                                            indeterminate
-                                            slot="icon"
-                                            style={{ "--md-circular-progress-size": "18px" }}
-                                        ></md-circular-progress>
-                                        Signing in...
-                                    </>
-                                ) : (
-                                    <>
-                                        <md-icon slot="icon">login</md-icon>
-                                        Sign In
-                                    </>
-                                )}
-                            </md-filled-button>
-                        </div>
-                    </form>
-
-                    <div className="login-footer">
-                        <md-text-button onClick={() => navigate('/')}>
-                            <md-icon slot="icon">arrow_back</md-icon>
-                            Back to Blog
-                        </md-text-button>
-                    </div>
-                </div>
+      <div className="login-page">
+        <div className="login-container">
+          <Card className="login-card">
+            <div className="login-loading">
+              <Spin size="large" />
+              <Text type="secondary" style={{ marginTop: 16 }}>
+                Checking authentication...
+              </Text>
             </div>
+          </Card>
         </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="login-page">
+      <div className="login-container">
+        <Card className="login-card" bordered={false}>
+          <div className="login-header">
+            <div className="login-icon">
+              <UserOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+            </div>
+            <Title level={2} style={{ marginBottom: 8 }}>Admin Login</Title>
+            <Text type="secondary">Sign in to access the admin panel</Text>
+          </div>
+
+          <Form
+            form={form}
+            name="login"
+            onFinish={handleSubmit}
+            onValuesChange={handleValuesChange}
+            layout="vertical"
+            size="large"
+            className="login-form"
+          >
+            <Form.Item
+              name="username"
+              rules={[
+                { required: true, message: 'Please enter your username' },
+                { whitespace: true, message: 'Username cannot be empty' },
+              ]}
+            >
+              <Input
+                prefix={<UserOutlined />}
+                placeholder="Username"
+                autoComplete="username"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="password"
+              rules={[
+                { required: true, message: 'Please enter your password' },
+              ]}
+            >
+              <Input.Password
+                prefix={<LockOutlined />}
+                placeholder="Password"
+                autoComplete="current-password"
+              />
+            </Form.Item>
+
+            {error && (
+              <Form.Item>
+                <Alert
+                  message={error}
+                  type="error"
+                  showIcon
+                />
+              </Form.Item>
+            )}
+
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={isLoading}
+                icon={<LoginOutlined />}
+                block
+              >
+                Sign In
+              </Button>
+            </Form.Item>
+          </Form>
+
+          <div className="login-footer">
+            <Button
+              type="link"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate('/')}
+            >
+              Back to Blog
+            </Button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 };
 
 export default Login;

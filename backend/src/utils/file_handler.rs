@@ -1,3 +1,4 @@
+use crate::config::constants::UPLOADS_URL_PREFIX;
 use crate::utils::error::{AppError, Result};
 use axum_extra::extract::multipart::Field;
 use std::path::{Path, PathBuf};
@@ -75,14 +76,18 @@ impl FileHandler {
         file.flush().await?;
 
         // Generate URL
-        let file_url = format!("/uploads/{}/{}", subfolder, unique_name);
+        let file_url = format!("{}{}/{}", UPLOADS_URL_PREFIX, subfolder, unique_name);
 
         Ok((file_url, unique_name, total_size))
     }
 
+    /// 从URL中提取相对路径，移除/uploads/前缀
+    pub fn strip_url_prefix(file_url: &str) -> Option<&str> {
+        file_url.strip_prefix(UPLOADS_URL_PREFIX)
+    }
+
     pub async fn delete_file(&self, file_url: &str) -> Result<()> {
-        if file_url.starts_with("/uploads/") {
-            let relative_path = &file_url[9..]; // Remove "/uploads/" prefix
+        if let Some(relative_path) = Self::strip_url_prefix(file_url) {
 
             // Prevent path traversal attacks
             if relative_path.contains("..") || relative_path.contains("//") {
@@ -194,16 +199,14 @@ impl FileHandler {
         file.flush().await?;
 
         // Generate URL
-        let file_url = format!("/uploads/{}/{}", subfolder, file_name);
+        let file_url = format!("{}{}/{}", UPLOADS_URL_PREFIX, subfolder, file_name);
 
         Ok((file_url, file_name, total_size))
     }
 
     /// Get file path from URL
     pub fn get_file_path(&self, file_url: &str) -> Result<PathBuf> {
-        if file_url.starts_with("/uploads/") {
-            let relative_path = &file_url[9..]; // Remove "/uploads/" prefix
-
+        if let Some(relative_path) = Self::strip_url_prefix(file_url) {
             // Prevent path traversal attacks
             if relative_path.contains("..") || relative_path.contains("//") {
                 return Err(AppError::BadRequest("Invalid file path".to_string()));

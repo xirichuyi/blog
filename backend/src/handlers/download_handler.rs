@@ -1,8 +1,7 @@
-use crate::config::Config;
-use crate::database::Database;
 use crate::models::{ApiListResponse, ApiResponse, CreateDownloadRequest, DownloadListQuery};
-use crate::services::DownloadService;
-use crate::utils::{FileHandler, DOCUMENT_TYPES};
+use crate::routes::AppState;
+use crate::services::Services;
+use crate::utils::DOCUMENT_TYPES;
 use axum::{
     body::Body,
     extract::{Path, Query, State},
@@ -13,35 +12,26 @@ use axum::{
     response::{Json, Response},
 };
 use axum_extra::extract::Multipart;
-use std::path::PathBuf;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
 pub async fn upload_file(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(app_state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Json<ApiResponse<crate::models::Download>>, StatusCode> {
-    let file_handler = FileHandler::new(
-        config.storage.upload_dir.clone(),
-        config.storage.max_file_size,
-    );
-    let service = DownloadService::new(database, file_handler.clone());
-
     while let Some(field) = multipart
         .next_field()
         .await
         .map_err(|_| StatusCode::BAD_REQUEST)?
     {
         if let Some(file_name) = field.file_name() {
-            // Validate file type
-            if let Err(e) = file_handler.validate_file_type(file_name, DOCUMENT_TYPES) {
+            if let Err(e) = app_state.file_handler.validate_file_type(file_name, DOCUMENT_TYPES) {
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }
 
-            match file_handler.save_file(field, "downloads").await {
+            match app_state.file_handler.save_file(field, "downloads").await {
                 Ok((file_url, original_name, file_size)) => {
-                    let file_type = file_handler.get_file_type(&original_name);
+                    let file_type = app_state.file_handler.get_file_type(&original_name);
 
                     let create_request = CreateDownloadRequest {
                         file_name: original_name,
@@ -50,7 +40,7 @@ pub async fn upload_file(
                         file_size: file_size as i64,
                     };
 
-                    match service.create_download(create_request).await {
+                    match app_state.services.download.create_download(create_request).await {
                         Ok(download) => return Ok(Json(ApiResponse::success(download))),
                         Err(e) => {
                             tracing::error!("Failed to create download record: {}", e);
@@ -72,32 +62,20 @@ pub async fn upload_file(
 }
 
 pub async fn download_file(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(app_state): State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<Response<Body>, StatusCode> {
-    let file_handler = FileHandler::new(
-        config.storage.upload_dir.clone(),
-        config.storage.max_file_size,
-    );
-    let service = DownloadService::new(database, file_handler);
-
-    match service.get_download(id).await {
+    match app_state.services.download.get_download(id).await {
         Ok(Some(download)) => {
-            // Construct file path
-            let file_path = if download.file_url.starts_with("/uploads/") {
-                let relative_path = &download.file_url[9..]; // Remove "/uploads/" prefix
-                PathBuf::from(&config.storage.upload_dir).join(relative_path)
-            } else {
-                return Err(StatusCode::NOT_FOUND);
+            let file_path = match app_state.file_handler.get_file_path(&download.file_url) {
+                Ok(path) => path,
+                Err(_) => return Err(StatusCode::NOT_FOUND),
             };
 
-            // Check if file exists
             if !file_path.exists() {
                 return Err(StatusCode::NOT_FOUND);
             }
 
-            // Open file
             match File::open(&file_path).await {
                 Ok(file) => {
                     let stream = ReaderStream::new(file);
@@ -130,21 +108,16 @@ pub async fn download_file(
 }
 
 pub async fn get_file_list(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(services): State<Services>,
     Query(query): Query<DownloadListQuery>,
 ) -> Result<Json<ApiListResponse<crate::models::Download>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = DownloadService::new(database, file_handler);
+    let page = query.page.unwrap_or(1);
+    let page_size = query.page_size.unwrap_or(10);
 
-    match service.list_downloads(query.clone()).await {
-        Ok((downloads, total)) => {
-            let page = query.page.unwrap_or(1);
-            let page_size = query.page_size.unwrap_or(10);
-            Ok(Json(ApiListResponse::success(
-                downloads, total, page, page_size,
-            )))
-        }
+    match services.download.list_downloads(query).await {
+        Ok((downloads, total)) => Ok(Json(ApiListResponse::success(
+            downloads, total, page, page_size,
+        ))),
         Err(e) => {
             tracing::error!("Failed to list downloads: {}", e);
             Ok(Json(ApiListResponse::error(
@@ -156,14 +129,10 @@ pub async fn get_file_list(
 }
 
 pub async fn get_file(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(services): State<Services>,
     Path(id): Path<i64>,
 ) -> Result<Json<ApiResponse<crate::models::Download>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = DownloadService::new(database, file_handler);
-
-    match service.get_download(id).await {
+    match services.download.get_download(id).await {
         Ok(Some(download)) => Ok(Json(ApiResponse::success(download))),
         Ok(None) => Ok(Json(ApiResponse::not_found("File not found"))),
         Err(e) => {
@@ -174,14 +143,10 @@ pub async fn get_file(
 }
 
 pub async fn delete_file(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(services): State<Services>,
     Path(id): Path<i64>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = DownloadService::new(database, file_handler);
-
-    match service.delete_download(id).await {
+    match services.download.delete_download(id).await {
         Ok(true) => Ok(Json(ApiResponse::success_with_message(
             (),
             "File deleted successfully",

@@ -1,30 +1,23 @@
 use crate::database::Database;
 use crate::models::{About, UpdateAboutRequest};
-use crate::utils::FileHandler;
-use anyhow::Result;
+use crate::utils::error::{AppError, Result};
 
-#[derive(Clone)]
 pub struct AboutService {
     database: Database,
-    _file_handler: FileHandler,
 }
 
 impl AboutService {
-    pub fn new(database: Database, file_handler: FileHandler) -> Self {
-        Self {
-            database,
-            _file_handler: file_handler,
-        }
+    pub fn new(database: Database) -> Self {
+        Self { database }
     }
 
     pub async fn get(&self) -> Result<About> {
-        let about = sqlx::query_as::<_, About>(
+        sqlx::query_as::<_, About>(
             "SELECT id, title, subtitle, content, photo_url, updated_at FROM about WHERE id = 1",
         )
         .fetch_optional(self.database.pool())
         .await?
-        .ok_or_else(|| anyhow::anyhow!("About page not found"))?;
-        Ok(about)
+        .ok_or_else(|| AppError::NotFound("About page not found".to_string()))
     }
 
     pub async fn update(&self, req: UpdateAboutRequest) -> Result<About> {

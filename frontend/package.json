@@ -1,5 +1,5 @@
 {
-  "name": "chuyi-blog-frontend",
+  "name": "blog.chuyi.uk-front",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,6 +13,8 @@
     "convert-images": "node scripts/convert-images.js"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "@ant-design/pro-components": "^2.8.10",
     "@heroicons/react": "^2.2.0",
     "@heroui/react": "^2.8.2",
     "@material/web": "^2.3.0",
@@ -25,6 +27,7 @@
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/react-router-dom": "^5.3.3",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "antd": "^5.29.3",
     "framer-motion": "^12.23.12",
     "github-slugger": "^2.0.0",
     "lucide-react": "^0.539.0",

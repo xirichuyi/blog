@@ -14,10 +14,6 @@ impl CategoryService {
     pub async fn create_category(&self, request: CreateCategoryRequest) -> Result<Category> {
         CategoryRepository::create(self.database.pool(), request).await
     }
-    #[allow(dead_code)]
-    pub async fn get_category(&self, id: i64) -> Result<Option<Category>> {
-        CategoryRepository::get_by_id(self.database.pool(), id).await
-    }
 
     pub async fn list_categories(&self) -> Result<Vec<Category>> {
         CategoryRepository::list(self.database.pool()).await

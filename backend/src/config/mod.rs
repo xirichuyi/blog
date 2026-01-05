@@ -1,6 +1,24 @@
 use serde::{Deserialize, Serialize};
 use std::env;
 
+/// 应用常量定义
+pub mod constants {
+    /// URL前缀常量
+    pub const UPLOADS_URL_PREFIX: &str = "/uploads/";
+
+    /// 默认配置值
+    pub const DEFAULT_DATABASE_URL: &str = "sqlite:data/blog.db";
+    pub const DEFAULT_HOST: &str = "0.0.0.0";
+    pub const DEFAULT_PORT: u16 = 3006;
+    pub const DEFAULT_MAX_FILE_SIZE: u64 = 10_485_760; // 10MB
+    pub const DEFAULT_UPLOAD_DIR: &str = "uploads";
+    pub const DEFAULT_BLOG_DATA_DIR: &str = "data";
+    pub const DEFAULT_DEEPSEEK_API_URL: &str = "https://api.deepseek.com";
+
+    /// Bearer token前缀
+    pub const BEARER_PREFIX: &str = "Bearer ";
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Environment {
     Development,
@@ -96,7 +114,7 @@ impl Config {
         tracing::info!("Running in {:?} mode", environment);
 
         let database_url =
-            env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/blog.db".to_string());
+            env::var("DATABASE_URL").unwrap_or_else(|_| constants::DEFAULT_DATABASE_URL.to_string());
 
         let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
             if environment.is_development() {
@@ -114,12 +132,12 @@ impl Config {
             }
         });
 
-        let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+        let host = env::var("HOST").unwrap_or_else(|_| constants::DEFAULT_HOST.to_string());
 
         let port = env::var("PORT")
-            .unwrap_or_else(|_| "3006".to_string())
+            .unwrap_or_else(|_| constants::DEFAULT_PORT.to_string())
             .parse::<u16>()
-            .unwrap_or(3006);
+            .unwrap_or(constants::DEFAULT_PORT);
 
         let use_tls = env::var("USE_TLS")
             .unwrap_or_else(|_| "false".to_string())
@@ -129,7 +147,7 @@ impl Config {
         let deepseek_api_key = env::var("DEEPSEEK_API_KEY").unwrap_or_else(|_| "".to_string());
 
         let deepseek_api_url =
-            env::var("DEEPSEEK_API_URL").unwrap_or_else(|_| "https://api.deepseek.com".to_string());
+            env::var("DEEPSEEK_API_URL").unwrap_or_else(|_| constants::DEFAULT_DEEPSEEK_API_URL.to_string());
 
         // CORS 配置：开发模式允许所有来源，生产模式需要明确配置
         let cors_origins = if environment.is_development() {
@@ -158,14 +176,14 @@ impl Config {
                 .collect()
         };
 
-        let upload_dir = env::var("UPLOAD_DIR").unwrap_or_else(|_| "uploads".to_string());
+        let upload_dir = env::var("UPLOAD_DIR").unwrap_or_else(|_| constants::DEFAULT_UPLOAD_DIR.to_string());
 
-        let blog_data_dir = env::var("BLOG_DATA_DIR").unwrap_or_else(|_| "data".to_string());
+        let blog_data_dir = env::var("BLOG_DATA_DIR").unwrap_or_else(|_| constants::DEFAULT_BLOG_DATA_DIR.to_string());
 
         let max_file_size = env::var("MAX_FILE_SIZE")
-            .unwrap_or_else(|_| "10485760".to_string()) // 10MB default
+            .unwrap_or_else(|_| constants::DEFAULT_MAX_FILE_SIZE.to_string())
             .parse::<u64>()
-            .unwrap_or(10485760);
+            .unwrap_or(constants::DEFAULT_MAX_FILE_SIZE);
 
         Ok(Config {
             environment,

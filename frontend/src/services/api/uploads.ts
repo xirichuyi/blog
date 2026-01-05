@@ -153,6 +153,15 @@ export class UploadsApiService extends BaseApiService {
 
     // Upload PDF file
     async uploadPdf(file: File, postId?: number): Promise<ApiResponse<{ file_url: string; file_name: string }>> {
+        // Validate file size (max 50MB)
+        const MAX_PDF_SIZE = 50 * 1024 * 1024;
+        if (file.size > MAX_PDF_SIZE) {
+            return {
+                success: false,
+                error: 'PDF file size exceeds 50MB limit',
+            };
+        }
+
         const formData = new FormData();
         formData.append('file', file);
         if (postId) {

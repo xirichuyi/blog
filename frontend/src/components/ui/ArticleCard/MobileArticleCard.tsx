@@ -1,79 +1,14 @@
-import React, { useState } from 'react';
-import { FileText } from 'lucide-react';
-import './MobileArticleCard.css';
+// MobileArticleCard - Re-exports ArticleCard with mobile variant
+// This file exists for backwards compatibility
 
-export interface MobileArticleCardProps {
-    id: string;
-    title: string;
-    description: string;
-    date: string;
-    tag: string;
-    coverImage?: string;
-    gradient: string;
-    onClick: (id: string) => void;
-    className?: string;
-    style?: React.CSSProperties;
-}
+import React from 'react';
+import ArticleCard from './index';
+import type { ArticleCardProps } from './index';
 
-const MobileArticleCard: React.FC<MobileArticleCardProps> = ({
-    id,
-    title,
-    description,
-    date,
-    tag,
-    coverImage,
-    gradient,
-    onClick,
-    className = '',
-    style = {}
-}) => {
-    const [imageError, setImageError] = useState(false);
+export interface MobileArticleCardProps extends Omit<ArticleCardProps, 'variant'> {}
 
-    const handleClick = () => {
-        onClick(id);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onClick(id);
-        }
-    };
-
-    const handleImageError = () => {
-        setImageError(true);
-    };
-
-    return (
-        <article
-            className={`mobile-article-card ${!coverImage || imageError ? 'mobile-article-card--no-image' : ''} ${className}`}
-            onClick={handleClick}
-            role="button"
-            tabIndex={0}
-            onKeyDown={handleKeyDown}
-            style={style}
-        >
-            {coverImage && !imageError && (
-                <div className="mobile-article-card-image">
-                    <img
-                        src={coverImage}
-                        alt={title}
-                        className="mobile-article-card-img"
-                        onError={handleImageError}
-                        loading="lazy"
-                    />
-                </div>
-            )}
-            <div className="mobile-article-card-content">
-                <div className="mobile-article-card-meta">
-                    <span className="mobile-article-card-tag">{tag}</span>
-                    <span className="mobile-article-card-date">{date}</span>
-                </div>
-                <h3 className="mobile-article-card-title">{title}</h3>
-                <p className="mobile-article-card-description">{description}</p>
-            </div>
-        </article>
-    );
+const MobileArticleCard: React.FC<MobileArticleCardProps> = (props) => {
+    return <ArticleCard {...props} variant="mobile" />;
 };
 
 export default MobileArticleCard;

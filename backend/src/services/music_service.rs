@@ -2,14 +2,15 @@ use crate::database::{repositories::MusicRepository, Database};
 use crate::models::{CreateMusicRequest, Music, MusicListQuery, UpdateMusicRequest};
 use crate::utils::error::Result;
 use crate::utils::FileHandler;
+use std::sync::Arc;
 
 pub struct MusicService {
     database: Database,
-    file_handler: FileHandler,
+    file_handler: Arc<FileHandler>,
 }
 
 impl MusicService {
-    pub fn new(database: Database, file_handler: FileHandler) -> Self {
+    pub fn new(database: Database, file_handler: Arc<FileHandler>) -> Self {
         Self {
             database,
             file_handler,
@@ -37,17 +38,13 @@ impl MusicService {
     }
 
     pub async fn delete_music(&self, id: i64) -> Result<bool> {
-        // Get music to check for files to delete
         if let Some(music) = MusicRepository::get_by_id(self.database.pool(), id).await? {
-            // Delete music file
             let _ = self.file_handler.delete_file(&music.music_url).await;
 
-            // Delete cover image if exists
             if let Some(cover_url) = &music.music_cover_url {
                 let _ = self.file_handler.delete_file(cover_url).await;
             }
 
-            // Soft delete the music
             MusicRepository::delete(self.database.pool(), id).await
         } else {
             Ok(false)
@@ -59,14 +56,11 @@ impl MusicService {
         id: i64,
         new_cover_url: String,
     ) -> Result<Option<Music>> {
-        // Get existing music to delete old cover
         if let Some(existing_music) = MusicRepository::get_by_id(self.database.pool(), id).await? {
-            // Delete old cover if exists
             if let Some(old_cover_url) = &existing_music.music_cover_url {
                 let _ = self.file_handler.delete_file(old_cover_url).await;
             }
 
-            // Update with new cover
             let update_request = UpdateMusicRequest {
                 music_name: None,
                 music_author: None,

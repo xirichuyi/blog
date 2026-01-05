@@ -1,11 +1,11 @@
 [package]
-name = "cyrus-blog-backend"
+name = "chuyi-uk-back"
 version = "0.1.0"
 edition = "2021"
-authors = ["Cyrus <cyrus@example.com>"]
-description = "High-performance Rust backend for Cyrus Blog with advanced caching, monitoring, and security"
+authors = ["Chuyi <chuyi@chuyi.uk>"]
+description = "High-performance Rust backend for Chuyi Blog with advanced caching, monitoring, and security"
 license = "MIT"
-repository = "https://github.com/cyrus/blog"
+repository = "https://github.com/chuyi/blog"
 keywords = ["blog", "api", "rust", "axum", "sqlite"]
 categories = ["web-programming"]
 build = "build.rs"

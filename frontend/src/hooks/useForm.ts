@@ -1,14 +1,10 @@
 // 通用表单Hook
 import { useState, useCallback, useMemo } from 'react';
-// Removed utility imports to simplify architecture
-// import {
-//   validateForm,
-//   createInputHandler,
-//   FormDataTransformers
-// } from '../utils';
-// Removed utility type imports to simplify architecture
+
 interface ValidationRule {
   required?: boolean;
+  minLength?: number;
+  pattern?: RegExp;
   message?: string;
 }
 
@@ -19,6 +15,54 @@ interface FormValidationResult {
 
 interface MDCInputEvent {
   target: { value: string };
+}
+
+// 内联实现表单验证函数
+function validateForm<T extends Record<string, string>>(
+  data: T,
+  rules: Partial<Record<keyof T, ValidationRule[]>>
+): FormValidationResult {
+  const errors: Record<string, string> = {};
+  let isValid = true;
+
+  for (const [field, fieldRules] of Object.entries(rules)) {
+    if (!fieldRules) continue;
+
+    const value = data[field as keyof T] || '';
+
+    for (const rule of fieldRules as ValidationRule[]) {
+      if (rule.required && !value.trim()) {
+        errors[field] = rule.message || `${field} is required`;
+        isValid = false;
+        break;
+      }
+
+      if (rule.minLength && value.length < rule.minLength) {
+        errors[field] = rule.message || `${field} must be at least ${rule.minLength} characters`;
+        isValid = false;
+        break;
+      }
+
+      if (rule.pattern && !rule.pattern.test(value)) {
+        errors[field] = rule.message || `${field} format is invalid`;
+        isValid = false;
+        break;
+      }
+    }
+  }
+
+  return { isValid, errors };
+}
+
+// 内联实现输入处理函数生成器
+function createInputHandler(
+  setValue: (value: string) => void,
+  clearError: () => void
+): (event: MDCInputEvent) => void {
+  return (event: MDCInputEvent) => {
+    setValue(event.target.value);
+    clearError();
+  };
 }
 
 export interface UseFormOptions<T extends Record<string, string>> {

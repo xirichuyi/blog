@@ -1,391 +1,323 @@
-// Post Management Component
+// Post Management Component with Ant Design ProTable
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../../../services/api'
+import { apiService } from '../../../services/api';
 import { useNotification } from '../../../contexts/NotificationContext';
 import type { Article, Category } from '../../../services/types';
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
-import ErrorMessage from '../../../components/ui/ErrorMessage';
-import EnhancedDataTable from '../../../components/ui/EnhancedDataTable';
-import type { TableColumn, TableAction, BulkAction } from '../../../components/ui/EnhancedDataTable';
-import { showConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { ProTable } from '@ant-design/pro-components';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
+import {
+  Button,
+  Space,
+  Tag,
+  Modal,
+  Typography,
+  message,
+  Popconfirm,
+  Tooltip,
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  StarFilled,
+  ExclamationCircleOutlined,
+} from '@ant-design/icons';
 import './style.css';
 
-interface PostFilters {
-  search: string;
-  category: string;
-  status: 'all' | 'published' | 'draft';
-}
-
-interface PaginationState {
-  current: number;
-  pageSize: number;
-  total: number;
-}
-
-interface SortState {
-  key: string | null;
-  direction: 'asc' | 'desc' | null;
-}
+const { Text, Paragraph } = Typography;
 
 const PostManagement: React.FC = () => {
-  const [posts, setPosts] = useState<Article[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<PostFilters>({
-    search: '',
-    category: '',
-    status: 'all',
-  });
-  const [pagination, setPagination] = useState<PaginationState>({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
-  const [sortState, setSortState] = useState<SortState>({
-    key: null,
-    direction: null,
-  });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const navigate = useNavigate();
   const { showNotification } = useNotification();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const actionRef = useRef<ActionType>();
 
-  // Load categories
-  const loadCategories = async () => {
-    try {
-      const response = await apiService.getCategories();
-      if (response.success && response.data) {
-        setCategories(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading categories:', error);
-    }
-  };
-
+  // Load categories for filter
   useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await apiService.getCategories();
+        if (response.success && response.data) {
+          setCategories(response.data.filter(cat => cat.id !== 'all'));
+        }
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      }
+    };
     loadCategories();
-    loadPosts();
-  }, [pagination.current, pagination.pageSize, filters, sortState]);
+  }, []);
 
-  const loadPosts = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Build API parameters
-      const params: any = {
-        page: pagination.current,
-        page_size: pagination.pageSize,
-      };
-
-      if (filters.search) {
-        params.search = filters.search;
-      }
-
-      if (filters.category) {
-        params.category = filters.category;
-      }
-
-      if (filters.status !== 'all') {
-        params.status = filters.status;
-      }
-
-      if (sortState.key && sortState.direction) {
-        params.sort_by = sortState.key;
-        params.sort_order = sortState.direction;
-      }
-
-      const response = await apiService.getPosts(params);
-
-      if (response.success && response.data) {
-        setPosts(response.data);
-        setPagination(prev => ({
-          ...prev,
-          total: response.total || response.data?.length || 0,
-        }));
-      } else {
-        throw new Error(response.error || 'Failed to load posts');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load posts');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Event handlers (defined before useMemo to avoid hoisting issues)
   const handleCreatePost = () => {
     navigate('/admin/posts/new');
   };
 
-  const handleDeletePost = async (post: Article) => {
-    const confirmed = await showConfirmDialog({
-      title: 'Delete Post',
-      message: `Are you sure you want to delete "${post.title}"? This action cannot be undone.`,
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
-      type: 'error',
-    });
+  const handleEditPost = (record: Article) => {
+    navigate(`/admin/posts/edit/${record.id}`);
+  };
 
-    if (confirmed) {
-      try {
-        const response = await apiService.deletePost(post.id);
-        if (response.success) {
-          // Reload data to reflect changes
-          loadPosts();
-
-          showNotification({
-            type: 'success',
-            title: 'Post Deleted',
-            message: 'Post deleted successfully.',
-          });
-        } else {
-          throw new Error(response.error || 'Failed to delete post');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete post');
+  const handleDeletePost = async (record: Article) => {
+    try {
+      const response = await apiService.deletePost(record.id);
+      if (response.success) {
+        message.success('Post deleted successfully');
+        actionRef.current?.reload();
+      } else {
+        throw new Error(response.error || 'Failed to delete post');
       }
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Failed to delete post');
     }
   };
 
-  const handleBulkDelete = async (selectedPosts: Article[]) => {
-    const confirmed = await showConfirmDialog({
+  const handleBulkDelete = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select posts to delete');
+      return;
+    }
+
+    Modal.confirm({
       title: 'Delete Posts',
-      message: `Are you sure you want to delete ${selectedPosts.length} posts? This action cannot be undone.`,
-      confirmText: 'Delete All',
+      icon: <ExclamationCircleOutlined />,
+      content: `Are you sure you want to delete ${selectedRowKeys.length} posts? This action cannot be undone.`,
+      okText: 'Delete',
+      okType: 'danger',
       cancelText: 'Cancel',
-      type: 'error',
-    });
-
-    if (confirmed) {
-      try {
-        const postIds = selectedPosts.map(post => post.id);
-        const response = await apiService.bulkDeletePosts(postIds);
-        if (response.success) {
-          // Reload data to reflect changes
-          loadPosts();
-
-          showNotification({
-            type: 'success',
-            title: 'Posts Deleted',
-            message: `${selectedPosts.length} post${selectedPosts.length > 1 ? 's' : ''} deleted successfully.`,
-          });
-        } else {
-          throw new Error(response.error || 'Failed to delete posts');
+      onOk: async () => {
+        try {
+          const response = await apiService.bulkDeletePosts(selectedRowKeys as number[]);
+          if (response.success) {
+            message.success(`${selectedRowKeys.length} posts deleted successfully`);
+            setSelectedRowKeys([]);
+            actionRef.current?.reload();
+          } else {
+            throw new Error(response.error || 'Failed to delete posts');
+          }
+        } catch (err) {
+          message.error(err instanceof Error ? err.message : 'Failed to delete posts');
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete posts');
-      }
-    }
+      },
+    });
   };
 
-  // Table configuration
-  const columns: TableColumn<Article>[] = useMemo(() => [
+  const columns: ProColumns<Article>[] = [
     {
-      key: 'title',
       title: 'Title',
-      sortable: true,
+      dataIndex: 'title',
+      key: 'title',
+      width: '40%',
+      ellipsis: true,
       render: (_, record) => (
-        <div className="post-title-cell">
-          <h3 className="md-typescale-title-medium">{record.title}</h3>
-          <p className="md-typescale-body-small">{record.excerpt}</p>
-          {record.featured && (
-            <md-assist-chip className="featured-chip">
-              <md-icon slot="icon">star</md-icon>
-              Featured
-            </md-assist-chip>
+        <div>
+          <Space>
+            <Text strong style={{ fontSize: 14 }}>{record.title}</Text>
+            {record.featured && (
+              <Tooltip title="Featured">
+                <StarFilled style={{ color: '#faad14' }} />
+              </Tooltip>
+            )}
+          </Space>
+          {record.excerpt && (
+            <Paragraph
+              type="secondary"
+              ellipsis={{ rows: 1 }}
+              style={{ marginBottom: 0, fontSize: 12 }}
+            >
+              {record.excerpt}
+            </Paragraph>
           )}
         </div>
       ),
     },
     {
-      key: 'category',
       title: 'Category',
-      sortable: true,
-      render: (value) => (
-        <md-assist-chip>{value}</md-assist-chip>
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      filters: true,
+      valueType: 'select',
+      valueEnum: categories.reduce((acc, cat) => {
+        acc[cat.name] = { text: cat.name };
+        return acc;
+      }, {} as Record<string, { text: string }>),
+      render: (_, record) => (
+        <Tag color="blue">{record.category}</Tag>
       ),
     },
     {
-      key: 'publishDate',
-      title: 'Date',
-      sortable: true,
-      render: (value) => formatDate(value),
-    },
-    {
-      key: 'status',
       title: 'Status',
-      sortable: true,
-      render: (value) => (
-        <md-assist-chip className={`status-${value || 'draft'}`}>
-          {value === 'published' ? 'Published' :
-            value === 'draft' ? 'Draft' :
-              value === 'private' ? 'Private' : 'Draft'}
-        </md-assist-chip>
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      filters: true,
+      valueType: 'select',
+      valueEnum: {
+        published: { text: 'Published', status: 'Success' },
+        draft: { text: 'Draft', status: 'Default' },
+        private: { text: 'Private', status: 'Warning' },
+      },
+      render: (_, record) => {
+        const status = record.status || 'draft';
+        const colorMap: Record<string, string> = {
+          published: 'success',
+          draft: 'default',
+          private: 'warning',
+        };
+        return <Tag color={colorMap[status]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Tag>;
+      },
+    },
+    {
+      title: 'Date',
+      dataIndex: 'publishDate',
+      key: 'publishDate',
+      width: 120,
+      sorter: true,
+      valueType: 'date',
+      render: (_, record) => (
+        <Text type="secondary">
+          {new Date(record.publishDate).toLocaleDateString('zh-CN')}
+        </Text>
       ),
     },
-  ], []);
-
-  const actions: TableAction<Article>[] = useMemo(() => [
     {
-      key: 'edit',
-      label: 'Edit',
-      icon: 'edit',
-      onClick: (record) => navigate(`/admin/posts/edit/${record.id}`),
-      color: 'primary',
+      title: 'Actions',
+      key: 'actions',
+      width: 120,
+      valueType: 'option',
+      render: (_, record) => [
+        <Tooltip title="Edit" key="edit">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleEditPost(record)}
+          />
+        </Tooltip>,
+        <Popconfirm
+          key="delete"
+          title="Delete Post"
+          description={`Are you sure you want to delete "${record.title}"?`}
+          onConfirm={() => handleDeletePost(record)}
+          okText="Delete"
+          okType="danger"
+          cancelText="Cancel"
+        >
+          <Tooltip title="Delete">
+            <Button type="text" danger icon={<DeleteOutlined />} />
+          </Tooltip>
+        </Popconfirm>,
+      ],
     },
-    {
-      key: 'delete',
-      label: 'Delete',
-      icon: 'delete',
-      onClick: handleDeletePost,
-      color: 'error',
-    },
-  ], [navigate]);
-
-  const bulkActions: BulkAction<Article>[] = useMemo(() => [
-    {
-      key: 'delete',
-      label: 'Delete Selected',
-      icon: 'delete',
-      onClick: handleBulkDelete,
-      color: 'error',
-      confirmMessage: 'Are you sure you want to delete {count} posts?',
-    },
-  ], [handleBulkDelete]);
-
-  const handlePageChange = (page: number, pageSize: number) => {
-    setPagination(prev => ({
-      ...prev,
-      current: page,
-      pageSize: pageSize,
-    }));
-  };
-
-  const handleSort = (key: string, direction: 'asc' | 'desc' | null) => {
-    setSortState({ key, direction });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <AdminLayout title="Post Management">
-        <div className="post-management-loading">
-          <md-circular-progress indeterminate></md-circular-progress>
-          <p className="md-typescale-body-medium">Loading posts...</p>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <AdminLayout title="Post Management">
-        <ErrorMessage
-          title="Error Loading Posts"
-          message={error}
-          onRetry={loadPosts}
-        />
-      </AdminLayout>
-    );
-  }
+  ];
 
   return (
     <AdminLayout title="Post Management">
-      <div className="post-management">
-        {/* Header Actions */}
-        <div className="post-header">
-          <div className="post-header-title">
-            <h1 className="md-typescale-display-small">Posts</h1>
-            <p className="md-typescale-body-large">
-              Manage your blog posts and content
-            </p>
-          </div>
-          <div className="post-header-actions">
-            <md-filled-button onClick={handleCreatePost}>
-              <md-icon slot="icon">add</md-icon>
-              New Post
-            </md-filled-button>
-          </div>
-        </div>
+      <ProTable<Article>
+        actionRef={actionRef}
+        columns={columns}
+        rowKey="id"
+        cardBordered
+        request={async (params, sort) => {
+          const { current, pageSize, title, category, status } = params;
 
-        {/* Filters */}
-        <div className="post-filters">
-          <md-outlined-text-field
-            label="Search posts..."
-            value={filters.search}
-            onInput={(e: any) => setFilters({ ...filters, search: e.target.value })}
-            className="search-field"
+          const apiParams: any = {
+            page: current,
+            page_size: pageSize,
+          };
+
+          if (title) {
+            apiParams.search = title;
+          }
+
+          if (category) {
+            apiParams.category = category;
+          }
+
+          if (status) {
+            apiParams.status = status;
+          }
+
+          // Handle sorting
+          if (sort && Object.keys(sort).length > 0) {
+            const sortKey = Object.keys(sort)[0];
+            apiParams.sort_by = sortKey;
+            apiParams.sort_order = sort[sortKey] === 'ascend' ? 'asc' : 'desc';
+          }
+
+          try {
+            const response = await apiService.getPosts(apiParams);
+
+            if (response.success && response.data) {
+              return {
+                data: response.data,
+                success: true,
+                total: response.total || response.data.length,
+              };
+            }
+
+            return {
+              data: [],
+              success: false,
+              total: 0,
+            };
+          } catch (error) {
+            message.error('Failed to load posts');
+            return {
+              data: [],
+              success: false,
+              total: 0,
+            };
+          }
+        }}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+        }}
+        tableAlertRender={({ selectedRowKeys }) => (
+          <Space>
+            <span>Selected {selectedRowKeys.length} items</span>
+          </Space>
+        )}
+        tableAlertOptionRender={() => (
+          <Button danger onClick={handleBulkDelete}>
+            Delete Selected
+          </Button>
+        )}
+        toolbar={{
+          title: 'Posts',
+          subTitle: 'Manage your blog posts and content',
+        }}
+        toolBarRender={() => [
+          <Button
+            key="create"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreatePost}
           >
-            <md-icon slot="leading-icon">search</md-icon>
-          </md-outlined-text-field>
-
-          <md-outlined-select
-            label="Category"
-            value={filters.category}
-            onInput={(e: any) => setFilters({ ...filters, category: e.target.value })}
-          >
-            <md-select-option value="">All Categories</md-select-option>
-            {categories
-              .filter(cat => cat.id !== 'all') // Exclude "All Articles" category
-              .map((category) => (
-                <md-select-option key={category.id} value={category.id}>
-                  {category.name}
-                </md-select-option>
-              ))}
-          </md-outlined-select>
-
-          <md-outlined-select
-            label="Status"
-            value={filters.status}
-            onInput={(e: any) => setFilters({ ...filters, status: e.target.value })}
-          >
-            <md-select-option value="all">All Posts</md-select-option>
-            <md-select-option value="published">Published</md-select-option>
-            <md-select-option value="draft">Draft</md-select-option>
-          </md-outlined-select>
-        </div>
-
-        {/* Enhanced Data Table */}
-        <EnhancedDataTable
-          data={posts}
-          columns={columns}
-          actions={actions}
-          bulkActions={bulkActions}
-          loading={isLoading}
-          error={error || undefined}
-          selectable={true}
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            showSizeChanger: true,
-            pageSizeOptions: [10, 20, 50, 100],
-            onPageChange: handlePageChange,
-          }}
-          onSort={handleSort}
-          emptyState={{
-            icon: 'article',
-            title: 'No posts found',
-            description: filters.search || filters.category
-              ? 'Try adjusting your filters'
-              : 'Create your first post to get started',
-            action: !filters.search && !filters.category ? {
-              label: 'Create Post',
-              onClick: handleCreatePost,
-            } : undefined,
-          }}
-          className="posts-table"
-        />
-      </div>
+            New Post
+          </Button>,
+        ]}
+        pagination={{
+          defaultPageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          pageSizeOptions: [10, 20, 50, 100],
+        }}
+        search={{
+          labelWidth: 'auto',
+          defaultCollapsed: false,
+        }}
+        options={{
+          density: true,
+          fullScreen: true,
+          reload: true,
+          setting: true,
+        }}
+        dateFormatter="string"
+        headerTitle={false}
+      />
     </AdminLayout>
   );
 };

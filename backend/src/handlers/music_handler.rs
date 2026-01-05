@@ -1,10 +1,9 @@
-use crate::config::Config;
-use crate::database::Database;
 use crate::models::{
     ApiListResponse, ApiResponse, CreateMusicRequest, FileUploadResponse, MusicListQuery,
     UpdateMusicRequest,
 };
-use crate::services::MusicService;
+use crate::routes::AppState;
+use crate::services::Services;
 use crate::utils::{FileHandler, IMAGE_TYPES, MUSIC_TYPES};
 use axum::{
     extract::{Path, Query, State},
@@ -12,16 +11,13 @@ use axum::{
     response::Json,
 };
 use axum_extra::extract::Multipart;
+use std::sync::Arc;
 
 pub async fn create_music(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(services): State<Services>,
     Json(request): Json<CreateMusicRequest>,
 ) -> Result<Json<ApiResponse<crate::models::Music>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = MusicService::new(database, file_handler);
-
-    match service.create_music(request).await {
+    match services.music.create_music(request).await {
         Ok(music) => Ok(Json(ApiResponse::success(music))),
         Err(e) => {
             tracing::error!("Failed to create music: {}", e);
@@ -31,14 +27,10 @@ pub async fn create_music(
 }
 
 pub async fn get_music(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(services): State<Services>,
     Path(id): Path<i64>,
 ) -> Result<Json<ApiResponse<crate::models::Music>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = MusicService::new(database, file_handler);
-
-    match service.get_music(id).await {
+    match services.music.get_music(id).await {
         Ok(Some(music)) => Ok(Json(ApiResponse::success(music))),
         Ok(None) => Ok(Json(ApiResponse::not_found("Music not found"))),
         Err(e) => {
@@ -49,21 +41,16 @@ pub async fn get_music(
 }
 
 pub async fn list_music(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(services): State<Services>,
     Query(query): Query<MusicListQuery>,
 ) -> Result<Json<ApiListResponse<crate::models::Music>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = MusicService::new(database, file_handler);
+    let page = query.page.unwrap_or(1);
+    let page_size = query.page_size.unwrap_or(10);
 
-    match service.list_music(query.clone()).await {
-        Ok((music_list, total)) => {
-            let page = query.page.unwrap_or(1);
-            let page_size = query.page_size.unwrap_or(10);
-            Ok(Json(ApiListResponse::success(
-                music_list, total, page, page_size,
-            )))
-        }
+    match services.music.list_music(query).await {
+        Ok((music_list, total)) => Ok(Json(ApiListResponse::success(
+            music_list, total, page, page_size,
+        ))),
         Err(e) => {
             tracing::error!("Failed to list music: {}", e);
             Ok(Json(ApiListResponse::error(500, "Failed to list music")))
@@ -72,15 +59,11 @@ pub async fn list_music(
 }
 
 pub async fn update_music(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(services): State<Services>,
     Path(id): Path<i64>,
     Json(request): Json<UpdateMusicRequest>,
 ) -> Result<Json<ApiResponse<crate::models::Music>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = MusicService::new(database, file_handler);
-
-    match service.update_music(id, request).await {
+    match services.music.update_music(id, request).await {
         Ok(Some(music)) => Ok(Json(ApiResponse::success(music))),
         Ok(None) => Ok(Json(ApiResponse::not_found("Music not found"))),
         Err(e) => {
@@ -91,14 +74,10 @@ pub async fn update_music(
 }
 
 pub async fn delete_music(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(services): State<Services>,
     Path(id): Path<i64>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = MusicService::new(database, file_handler);
-
-    match service.delete_music(id).await {
+    match services.music.delete_music(id).await {
         Ok(true) => Ok(Json(ApiResponse::success_with_message(
             (),
             "Music deleted successfully",
@@ -112,18 +91,15 @@ pub async fn delete_music(
 }
 
 pub async fn upload_music(
-    State(config): State<Config>,
+    State(file_handler): State<Arc<FileHandler>>,
     mut multipart: Multipart,
 ) -> Result<Json<ApiResponse<FileUploadResponse>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-
     while let Some(field) = multipart
         .next_field()
         .await
         .map_err(|_| StatusCode::BAD_REQUEST)?
     {
         if let Some(file_name) = field.file_name() {
-            // Validate file type
             if let Err(e) = file_handler.validate_file_type(file_name, MUSIC_TYPES) {
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }
@@ -149,36 +125,33 @@ pub async fn upload_music(
 }
 
 pub async fn upload_music_cover(
-    State(database): State<Database>,
-    State(config): State<Config>,
+    State(app_state): State<AppState>,
     Path(id): Path<i64>,
     mut multipart: Multipart,
 ) -> Result<Json<ApiResponse<crate::models::Music>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-    let service = MusicService::new(database, file_handler.clone());
-
     while let Some(field) = multipart
         .next_field()
         .await
         .map_err(|_| StatusCode::BAD_REQUEST)?
     {
         if let Some(file_name) = field.file_name() {
-            // Validate file type
-            if let Err(e) = file_handler.validate_file_type(file_name, IMAGE_TYPES) {
+            if let Err(e) = app_state.file_handler.validate_file_type(file_name, IMAGE_TYPES) {
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }
 
-            match file_handler.save_file(field, "music_covers").await {
-                Ok((file_url, _, _)) => match service.update_music_cover(id, file_url).await {
-                    Ok(Some(music)) => return Ok(Json(ApiResponse::success(music))),
-                    Ok(None) => return Ok(Json(ApiResponse::not_found("Music not found"))),
-                    Err(e) => {
-                        tracing::error!("Failed to update music cover: {}", e);
-                        return Ok(Json(ApiResponse::internal_error(
-                            "Failed to update music cover",
-                        )));
+            match app_state.file_handler.save_file(field, "music_covers").await {
+                Ok((file_url, _, _)) => {
+                    match app_state.services.music.update_music_cover(id, file_url).await {
+                        Ok(Some(music)) => return Ok(Json(ApiResponse::success(music))),
+                        Ok(None) => return Ok(Json(ApiResponse::not_found("Music not found"))),
+                        Err(e) => {
+                            tracing::error!("Failed to update music cover: {}", e);
+                            return Ok(Json(ApiResponse::internal_error(
+                                "Failed to update music cover",
+                            )));
+                        }
                     }
-                },
+                }
                 Err(e) => {
                     tracing::error!("Failed to upload music cover: {}", e);
                     return Ok(Json(ApiResponse::internal_error(
@@ -193,18 +166,15 @@ pub async fn upload_music_cover(
 }
 
 pub async fn upload_cover_image(
-    State(config): State<Config>,
+    State(file_handler): State<Arc<FileHandler>>,
     mut multipart: Multipart,
 ) -> Result<Json<ApiResponse<FileUploadResponse>>, StatusCode> {
-    let file_handler = FileHandler::new(config.storage.upload_dir, config.storage.max_file_size);
-
     while let Some(field) = multipart
         .next_field()
         .await
         .map_err(|_| StatusCode::BAD_REQUEST)?
     {
         if let Some(file_name) = field.file_name() {
-            // Validate file type
             if let Err(e) = file_handler.validate_file_type(file_name, IMAGE_TYPES) {
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }

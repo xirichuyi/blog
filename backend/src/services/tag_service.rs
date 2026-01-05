@@ -15,11 +15,6 @@ impl TagService {
         TagRepository::create(self.database.pool(), request).await
     }
 
-    #[allow(dead_code)]
-    pub async fn get_tag(&self, id: i64) -> Result<Option<Tag>> {
-        TagRepository::get_by_id(self.database.pool(), id).await
-    }
-
     pub async fn list_tags(&self) -> Result<Vec<Tag>> {
         TagRepository::list(self.database.pool()).await
     }

@@ -5,17 +5,22 @@ use crate::handlers::{
     post_handler, tag_handler,
 };
 use crate::middleware::auth::admin_middleware;
+use crate::services::Services;
+use crate::utils::FileHandler;
 use axum::{
     extract::FromRef,
     middleware,
     routing::{delete, get, post, put},
     Router,
 };
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
     pub database: Database,
-    pub config: Config,
+    pub config: Arc<Config>,
+    pub file_handler: Arc<FileHandler>,
+    pub services: Services,
 }
 
 impl FromRef<AppState> for Database {
@@ -24,16 +29,36 @@ impl FromRef<AppState> for Database {
     }
 }
 
-impl FromRef<AppState> for Config {
-    fn from_ref(app_state: &AppState) -> Config {
-        app_state.config.clone()
+impl FromRef<AppState> for Arc<Config> {
+    fn from_ref(app_state: &AppState) -> Arc<Config> {
+        Arc::clone(&app_state.config)
+    }
+}
+
+impl FromRef<AppState> for Arc<FileHandler> {
+    fn from_ref(app_state: &AppState) -> Arc<FileHandler> {
+        Arc::clone(&app_state.file_handler)
+    }
+}
+
+impl FromRef<AppState> for Services {
+    fn from_ref(app_state: &AppState) -> Services {
+        app_state.services.clone()
     }
 }
 
 pub async fn create_app(database: Database, config: &Config) -> Router {
+    let config = Arc::new(config.clone());
+    let file_handler = Arc::new(FileHandler::new(
+        config.storage.upload_dir.clone(),
+        config.storage.max_file_size,
+    ));
+    let services = Services::new(database.clone(), file_handler.clone());
     let app_state = AppState {
-        database: database.clone(),
-        config: config.clone(),
+        database,
+        config,
+        file_handler,
+        services,
     };
     // Public routes (no authentication required)
     let public_routes = Router::new()

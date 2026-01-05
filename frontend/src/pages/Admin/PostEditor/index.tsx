@@ -1,15 +1,44 @@
-// Post Editor Component
+// Post Editor Component with Ant Design
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiService } from '../../../services/api'
-import { useNotification } from '../../../contexts/NotificationContext';
+import { apiService } from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
 import MarkdownRenderer from '../../../components/ui/MarkdownRenderer';
 import CoverUpload from '../../../components/ui/CoverUpload';
 import { useKeyboardShortcuts, createCommonShortcuts } from '../../../hooks/useKeyboardShortcuts';
-
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
+import {
+  Form,
+  Input,
+  Select,
+  Switch,
+  Button,
+  Card,
+  Tag,
+  Space,
+  Typography,
+  Spin,
+  Alert,
+  Upload,
+  Modal,
+  message,
+  Divider,
+} from 'antd';
+import {
+  SaveOutlined,
+  SendOutlined,
+  PictureOutlined,
+  EyeOutlined,
+  EditOutlined,
+  PlusOutlined,
+  InboxOutlined,
+  FilePdfOutlined,
+} from '@ant-design/icons';
 import './style.css';
+
+const { TextArea } = Input;
+const { Text } = Typography;
 
 interface PostFormData {
   title: string;
@@ -20,19 +49,27 @@ interface PostFormData {
   featured: boolean;
   status: 'draft' | 'published';
   coverUrl?: string;
-  images: string[]; // Array of image URLs used in content
+  images: string[];
 }
 
+interface Category {
+  id: string;
+  name: string;
+}
 
+interface TagItem {
+  id: string;
+  name: string;
+}
 
 const PostEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { showNotification } = useNotification();
+  const { user } = useAuth();
 
   // Data states
-  const [categories, setCategories] = useState([]);
-  const [availableTags, setAvailableTags] = useState([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [availableTags, setAvailableTags] = useState<TagItem[]>([]);
 
   const isEditing = id !== 'new';
 
@@ -48,7 +85,6 @@ const PostEditor: React.FC = () => {
     images: [],
   });
 
-
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,11 +92,10 @@ const PostEditor: React.FC = () => {
 
   // Image upload states
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Drag and drop states for content area
   const [isDragOver, setIsDragOver] = useState(false);
-  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Handle cover URL changes
   const handleCoverChange = (url: string | null) => {
@@ -69,8 +104,6 @@ const PostEditor: React.FC = () => {
       coverUrl: url || ''
     }));
   };
-
-
 
   // Helper function to extract image URLs from markdown content
   const extractImagesFromContent = (content: string): string[] => {
@@ -90,12 +123,10 @@ const PostEditor: React.FC = () => {
 
   // Helper function to extract PDF URL from markdown content
   const extractPdfUrlFromContent = (content: string): string | null => {
-    // Match pattern: [PDF: filename](pdf:filename)
-    const pdfRegex = /\[PDF:.*?\]\(pdf:(.*?)\)/;
+    const pdfRegex = /\[PDF:.*?\]\((\/uploads\/pdfs\/.*?)\)/;
     const match = content.match(pdfRegex);
     if (match && match[1]) {
-      // Return the full URL path
-      return `/uploads/pdfs/${match[1]}`;
+      return match[1];
     }
     return null;
   };
@@ -103,17 +134,7 @@ const PostEditor: React.FC = () => {
   // Helper function to insert image into content at cursor position
   const insertImageIntoContent = (imageUrl: string) => {
     const imageMarkdown = `![Image](${imageUrl})`;
-
-    // Try to find the Material Design text field's internal textarea
-    const mdTextField = document.querySelector('md-outlined-text-field[label="Content (Markdown)"]') as any;
-    let textarea: HTMLTextAreaElement | null = null;
-
-    if (mdTextField) {
-      // Look for the textarea inside the shadow DOM or as a child
-      textarea = mdTextField.querySelector('textarea') ||
-        mdTextField.shadowRoot?.querySelector('textarea') ||
-        mdTextField.renderRoot?.querySelector('textarea');
-    }
+    const textarea = contentTextareaRef.current;
 
     if (textarea) {
       const cursorPosition = textarea.selectionStart || 0;
@@ -124,43 +145,34 @@ const PostEditor: React.FC = () => {
         imageMarkdown +
         currentContent.slice(cursorPosition);
 
-      // Update content
       setFormData(prev => ({
         ...prev,
         content: newContent,
-        images: [...prev.images, imageUrl].filter((url, index, arr) => arr.indexOf(url) === index) // Remove duplicates
+        images: [...prev.images, imageUrl].filter((url, index, arr) => arr.indexOf(url) === index)
       }));
 
-      // Set cursor position after the inserted image
       setTimeout(() => {
-        textarea!.focus();
-        textarea!.setSelectionRange(
+        textarea.focus();
+        textarea.setSelectionRange(
           cursorPosition + imageMarkdown.length,
           cursorPosition + imageMarkdown.length
         );
       }, 0);
     } else {
-      // Fallback: insert at the end with proper spacing
       const currentContent = formData.content;
       const separator = currentContent && !currentContent.endsWith('\n') ? '\n\n' : '\n';
 
       setFormData(prev => ({
         ...prev,
         content: prev.content + separator + imageMarkdown,
-        images: [...prev.images, imageUrl].filter((url, index, arr) => arr.indexOf(url) === index) // Remove duplicates
+        images: [...prev.images, imageUrl].filter((url, index, arr) => arr.indexOf(url) === index)
       }));
 
-      // Show notification about where the image was inserted
-      showNotification({
-        type: 'info',
-        title: 'Image Inserted',
-        message: 'Image has been added to the end of your content.',
-      });
+      message.info('Image has been added to the end of your content.');
     }
   };
 
   useEffect(() => {
-    // Load categories and tags when component mounts
     const initializeData = async () => {
       await loadCategoriesAndTags();
 
@@ -172,47 +184,33 @@ const PostEditor: React.FC = () => {
     initializeData();
   }, [isEditing, id]);
 
-  // Load categories and tags data
   const loadCategoriesAndTags = async () => {
     try {
-      // Load categories
       const categoriesResponse = await apiService.getCategories();
       if (categoriesResponse.success && categoriesResponse.data) {
         setCategories(categoriesResponse.data);
       }
 
-      // Load tags
       const tagsResponse = await apiService.getTags();
       if (tagsResponse.success && tagsResponse.data) {
         setAvailableTags(tagsResponse.data);
       }
     } catch (error) {
       console.error('Failed to load categories and tags:', error);
-      showNotification({
-        type: 'error',
-        title: 'Loading Error',
-        message: 'Failed to load categories and tags data',
-      });
+      message.error('Failed to load categories and tags data');
     }
   };
-
-
-
-
 
   const loadPost = async (postId: string) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Load real post data from API
       const response = await apiService.getPost(postId);
 
       if (response.success && response.data) {
         const post = response.data;
 
-        // Find the category ID by matching with available categories
-        // If categories are not loaded yet, this will be empty and can be set later
         let categoryId = '';
         if (categories.length > 0 && post.category) {
           const matchingCategory = categories.find(cat => cat.name === post.category);
@@ -221,7 +219,6 @@ const PostEditor: React.FC = () => {
           }
         }
 
-        // Extract images from content
         const contentImages = extractImagesFromContent(post.content || '');
 
         setFormData({
@@ -245,7 +242,7 @@ const PostEditor: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof PostFormData, value: any) => {
+  const handleInputChange = (field: keyof PostFormData, value: string | boolean | string[]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -261,10 +258,6 @@ const PostEditor: React.FC = () => {
     }
   };
 
-  const handleSelectExistingTag = (tagName: string) => {
-    handleAddTag(tagName);
-  };
-
   const handleRemoveTag = (tagToRemove: string) => {
     setFormData(prev => ({
       ...prev,
@@ -272,11 +265,7 @@ const PostEditor: React.FC = () => {
     }));
   };
 
-
-
-
-
-  // Content image upload function (simplified)
+  // Content image upload function
   const handleContentImageUpload = async (file: File): Promise<string | null> => {
     if (!file) return null;
 
@@ -285,22 +274,14 @@ const PostEditor: React.FC = () => {
       const result = await apiService.uploadPostImage(file);
 
       if (result.success && result.data?.file_url) {
-        showNotification({
-          type: 'success',
-          title: 'Image Uploaded',
-          message: 'Image has been uploaded successfully',
-        });
+        message.success('Image has been uploaded successfully');
         return apiService.getImageUrl(result.data.file_url);
       } else {
         throw new Error(result.error || 'Failed to upload image');
       }
     } catch (error) {
       console.error('Image upload failed:', error);
-      showNotification({
-        type: 'error',
-        title: 'Upload Failed',
-        message: error instanceof Error ? error.message : 'Failed to upload image',
-      });
+      message.error(error instanceof Error ? error.message : 'Failed to upload image');
       return null;
     } finally {
       setIsUploadingImage(false);
@@ -312,30 +293,19 @@ const PostEditor: React.FC = () => {
     if (!file) return null;
 
     try {
-      setIsUploadingImage(true); // Reuse the same loading state
+      setIsUploadingImage(true);
       const postId = isEditing && id ? parseInt(id) : undefined;
       const result = await apiService.uploadPdf(file, postId);
 
       if (result.success && result.data?.file_url) {
-        showNotification({
-          type: 'success',
-          title: 'PDF Uploaded',
-          message: 'PDF has been uploaded successfully',
-        });
-        // Extract filename from file_url (format: /uploads/pdfs/filename.pdf)
-        const fileUrl = result.data.file_url;
-        const fileName = fileUrl.split('/').pop() || fileUrl;
-        return fileName;
+        message.success('PDF has been uploaded successfully');
+        return result.data.file_url;
       } else {
         throw new Error(result.error || 'Failed to upload PDF');
       }
     } catch (error) {
       console.error('PDF upload failed:', error);
-      showNotification({
-        type: 'error',
-        title: 'Upload Failed',
-        message: error instanceof Error ? error.message : 'Failed to upload PDF',
-      });
+      message.error(error instanceof Error ? error.message : 'Failed to upload PDF');
       return null;
     } finally {
       setIsUploadingImage(false);
@@ -343,59 +313,62 @@ const PostEditor: React.FC = () => {
   };
 
   // Helper function to insert PDF into content at cursor position
-  const insertPdfIntoContent = (pdfFileName: string) => {
-    // Use a simple markdown link format that we'll recognize in MarkdownRenderer
-    const pdfMarkdown = `[PDF: ${pdfFileName}](pdf:${pdfFileName})`;
-
-    // Try to find the Material Design text field's internal textarea
-    const mdTextField = document.querySelector('md-outlined-text-field[label="Content (Markdown)"]') as any;
-    let textarea: HTMLTextAreaElement | null = null;
-
-    if (mdTextField) {
-      // Look for the textarea inside the shadow DOM or as a child
-      textarea = mdTextField.querySelector('textarea') ||
-        mdTextField.shadowRoot?.querySelector('textarea') ||
-        mdTextField.renderRoot?.querySelector('textarea');
-    }
+  const insertPdfIntoContent = (pdfUrl: string) => {
+    const fileName = pdfUrl.split('/').pop() || 'PDF Document';
+    const pdfMarkdownCore = `[PDF: ${fileName}](${pdfUrl})`;
+    const textarea = contentTextareaRef.current;
 
     if (textarea) {
       const cursorPosition = textarea.selectionStart || 0;
       const currentContent = formData.content;
+
+      // Check if we need line breaks before/after to ensure PDF is a separate paragraph
+      const beforeChar = currentContent[cursorPosition - 1];
+      const afterChar = currentContent[cursorPosition];
+
+      // Add line breaks if not at start/end of content and not already preceded/followed by newlines
+      let prefix = '';
+      let suffix = '\n\n';
+
+      if (cursorPosition > 0 && beforeChar && beforeChar !== '\n') {
+        prefix = '\n\n';
+      } else if (cursorPosition > 0 && beforeChar === '\n' && currentContent[cursorPosition - 2] !== '\n') {
+        prefix = '\n';
+      }
+
+      if (afterChar && afterChar !== '\n') {
+        suffix = '\n\n';
+      }
+
+      const pdfMarkdown = prefix + pdfMarkdownCore + suffix;
 
       const newContent =
         currentContent.slice(0, cursorPosition) +
         pdfMarkdown +
         currentContent.slice(cursorPosition);
 
-      // Update content
       setFormData(prev => ({
         ...prev,
         content: newContent,
       }));
 
-      // Focus and set cursor position
       setTimeout(() => {
         textarea?.focus();
         const newPosition = cursorPosition + pdfMarkdown.length;
         textarea?.setSelectionRange(newPosition, newPosition);
       }, 0);
     } else {
-      // Fallback: append to content
       setFormData(prev => ({
         ...prev,
-        content: prev.content + '\n\n' + pdfMarkdown + '\n\n',
+        content: prev.content + '\n\n' + pdfMarkdownCore + '\n\n',
       }));
     }
   };
-
-
 
   // Handle drag and drop events for content area
   const handleContentDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    // Check if dragged items contain files
     if (e.dataTransfer.types.includes('Files')) {
       setIsDragOver(true);
     }
@@ -416,7 +389,6 @@ const PostEditor: React.FC = () => {
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
     const pdfFiles = files.filter(file => file.type === 'application/pdf');
 
-    // Handle PDF files
     if (pdfFiles.length > 0) {
       for (const file of pdfFiles) {
         const pdfFileName = await handleContentPdfUpload(file);
@@ -426,7 +398,6 @@ const PostEditor: React.FC = () => {
       }
     }
 
-    // Handle image files
     if (imageFiles.length > 0) {
       for (const file of imageFiles) {
         const imageUrl = await handleContentImageUpload(file);
@@ -436,28 +407,19 @@ const PostEditor: React.FC = () => {
       }
     }
 
-    // Show warning if no supported files
     if (imageFiles.length === 0 && pdfFiles.length === 0) {
-      showNotification({
-        type: 'warning',
-        title: 'No Supported Files',
-        message: 'Please drop image or PDF files only.',
-      });
+      message.warning('Please drop image or PDF files only.');
     }
   };
 
   // Handle paste events for content area
   const handleContentPaste = async (e: React.ClipboardEvent) => {
     const clipboardData = e.clipboardData;
-
-    // Check for files in clipboard
     const files = Array.from(clipboardData.files);
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
 
     if (imageFiles.length > 0) {
-      e.preventDefault(); // Prevent default paste behavior for images
-
-      // Upload and insert each image
+      e.preventDefault();
       for (const file of imageFiles) {
         const imageUrl = await handleContentImageUpload(file);
         if (imageUrl) {
@@ -467,13 +429,11 @@ const PostEditor: React.FC = () => {
       return;
     }
 
-    // Check for image data in clipboard (e.g., from screenshots)
     const items = Array.from(clipboardData.items);
     const imageItems = items.filter(item => item.type.startsWith('image/'));
 
     if (imageItems.length > 0) {
-      e.preventDefault(); // Prevent default paste behavior for images
-
+      e.preventDefault();
       for (const item of imageItems) {
         const file = item.getAsFile();
         if (file) {
@@ -486,23 +446,12 @@ const PostEditor: React.FC = () => {
     }
   };
 
-  // Check if form is valid for enabling save buttons
-  const isFormValid = () => {
-    return formData.title.trim() &&
-      formData.content.trim() &&
-      !isSaving;
-  };
-
-
-
   const handleSave = async (status: 'draft' | 'published') => {
     try {
       setIsSaving(true);
       setError(null);
 
-      // Extract current images from content to ensure images array is up to date
       const currentImages = extractImagesFromContent(formData.content);
-      // Extract PDF URL from content
       const pdfUrl = extractPdfUrlFromContent(formData.content);
 
       const postData = {
@@ -513,12 +462,12 @@ const PostEditor: React.FC = () => {
         tags: formData.tags,
         featured: formData.featured,
         status,
-        coverImage: formData.coverUrl, // Use coverImage field name expected by API
-        author: 'Admin', // This should come from auth context
+        coverImage: formData.coverUrl,
+        author: user?.username || 'Admin',
         publishDate: status === 'published' ? new Date().toISOString() : undefined,
-        readTime: Math.ceil((formData.content || '').split(' ').length / 200), // Estimate reading time
-        images: currentImages, // Include images array
-        pdf_url: pdfUrl || undefined, // Include PDF URL if present
+        readTime: Math.ceil((formData.content || '').split(' ').length / 200),
+        images: currentImages,
+        pdf_url: pdfUrl || undefined,
       };
 
       let response;
@@ -529,12 +478,11 @@ const PostEditor: React.FC = () => {
       }
 
       if (response.success) {
-        // Show success notification
-        showNotification({
-          type: 'success',
-          title: status === 'published' ? 'Post Published!' : 'Draft Saved!',
-          message: `"${formData.title}" has been ${status === 'published' ? 'published' : 'saved as draft'} successfully.`,
-        });
+        message.success(
+          status === 'published'
+            ? `"${formData.title}" has been published successfully.`
+            : `"${formData.title}" has been saved as draft.`
+        );
         navigate('/admin/posts');
       } else {
         throw new Error(response.error || 'Failed to save post');
@@ -547,9 +495,14 @@ const PostEditor: React.FC = () => {
   };
 
   const handleCancel = () => {
-    if (confirm('Are you sure you want to discard your changes?')) {
-      navigate('/admin/posts');
-    }
+    Modal.confirm({
+      title: 'Discard Changes',
+      content: 'Are you sure you want to discard your changes?',
+      okText: 'Discard',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: () => navigate('/admin/posts'),
+    });
   };
 
   // Keyboard shortcuts
@@ -562,110 +515,109 @@ const PostEditor: React.FC = () => {
 
   useKeyboardShortcuts(shortcuts, { enabled: !isSaving });
 
-  // Simple title without complex breadcrumbs
   const pageTitle = isEditing ? 'Edit Post' : 'New Post';
 
-  // Prepare header actions
+  // Header actions
   const headerActions = (
-    <div className="editor-actions">
-      <md-text-button onClick={handleCancel}>
+    <Space size="middle">
+      <Button onClick={handleCancel}>
         Cancel
-      </md-text-button>
-
-      <md-outlined-button
+      </Button>
+      <Button
+        icon={<SaveOutlined />}
         onClick={() => handleSave('draft')}
-
+        loading={isSaving}
       >
-        {isSaving ? (
-          <>
-            <md-circular-progress
-              indeterminate
-              slot="icon"
-              style={{ width: '18px', height: '18px' }}
-            ></md-circular-progress>
-            Saving...
-          </>
-        ) : (
-          <>
-            <md-icon slot="icon">save</md-icon>
-            Save Draft
-          </>
-        )}
-      </md-outlined-button>
-
-      <md-filled-button
+        Save Draft
+      </Button>
+      <Button
+        type="primary"
+        icon={<SendOutlined />}
         onClick={() => handleSave('published')}
-
+        loading={isSaving}
       >
-        {isSaving ? (
-          <>
-            <md-circular-progress
-              indeterminate
-              slot="icon"
-              style={{ width: '18px', height: '18px' }}
-            ></md-circular-progress>
-            Publishing...
-          </>
-        ) : (
-          <>
-            <md-icon slot="icon">publish</md-icon>
-            Publish
-          </>
-        )}
-      </md-filled-button>
-    </div>
+        Publish
+      </Button>
+    </Space>
   );
+
+  // Custom upload props for image insertion
+  const imageUploadProps = {
+    accept: 'image/*',
+    showUploadList: false,
+    beforeUpload: async (file: File) => {
+      const imageUrl = await handleContentImageUpload(file);
+      if (imageUrl) {
+        insertImageIntoContent(imageUrl);
+      }
+      return false;
+    },
+  };
+
+  // Custom upload props for PDF insertion
+  const pdfUploadProps = {
+    accept: '.pdf',
+    showUploadList: false,
+    beforeUpload: async (file: File) => {
+      const pdfUrl = await handleContentPdfUpload(file);
+      if (pdfUrl) {
+        insertPdfIntoContent(pdfUrl);
+      }
+      return false;
+    },
+  };
 
   if (isLoading) {
     return (
       <AdminLayout title={pageTitle}>
         <div className="post-editor-loading">
-          <md-circular-progress indeterminate></md-circular-progress>
-          <p className="md-typescale-body-medium">Loading post...</p>
+          <Spin size="large" />
+          <Text type="secondary" style={{ marginTop: 16 }}>Loading post...</Text>
         </div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout
-      title={pageTitle}
-      actions={headerActions}
-    >
+    <AdminLayout title={pageTitle} actions={headerActions}>
       <div className="post-editor">
         {error && (
-          <div className="post-editor-error">
-            <md-icon>error</md-icon>
-            <span>{error}</span>
-          </div>
+          <Alert
+            message={error}
+            type="error"
+            showIcon
+            closable
+            onClose={() => setError(null)}
+            style={{ marginBottom: 24 }}
+          />
         )}
 
-        {/* Form */}
-        <div className="post-editor-form">
-          {/* Basic Info */}
-          <div className="form-section">
-            <h2 className="md-typescale-headline-small">Basic Information</h2>
-
-            <md-outlined-text-field
+        {/* Basic Info Section */}
+        <Card className="form-section" title="Basic Information">
+          <Form layout="vertical">
+            <Form.Item
               label="Post Title"
-              value={formData.title}
-              onInput={(e: any) => handleInputChange('title', e.target.value)}
               required
-              className="title-field"
-            ></md-outlined-text-field>
+              validateStatus={!formData.title.trim() ? 'error' : ''}
+            >
+              <Input
+                placeholder="Enter post title"
+                value={formData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
+                size="large"
+              />
+            </Form.Item>
 
-            <md-outlined-text-field
-              label="Excerpt"
-              value={formData.excerpt}
-              onInput={(e: any) => handleInputChange('excerpt', e.target.value)}
-              type="textarea"
-              rows={3}
-              className="excerpt-field"
-            ></md-outlined-text-field>
+            <Form.Item label="Excerpt">
+              <TextArea
+                placeholder="Enter a brief excerpt (optional)"
+                value={formData.excerpt}
+                onChange={(e) => handleInputChange('excerpt', e.target.value)}
+                rows={3}
+              />
+            </Form.Item>
 
-            {/* Cover Image Upload */}
-            <div className="cover-upload-section">
-              <label className="md-typescale-body-large">Cover Image</label>
+            <Form.Item label="Cover Image">
               <CoverUpload
                 value={formData.coverUrl}
                 onChange={handleCoverChange}
@@ -674,172 +626,159 @@ const PostEditor: React.FC = () => {
                 supportPaste={true}
                 supportDragDrop={true}
               />
-            </div>
-          </div>
+            </Form.Item>
+          </Form>
+        </Card>
 
-          {/* Content */}
-          <div className="form-section">
-            <div className="content-header">
-              <div className="content-title-section">
-                <h2 className="md-typescale-headline-small">Content</h2>
-                <p className="md-typescale-body-small content-hint">
-                  Supports Markdown • Drag & drop images • Paste images from clipboard
-                </p>
+        {/* Content Section */}
+        <Card
+          className="form-section"
+          title={
+            <div className="content-card-header">
+              <div>
+                <span>Content</span>
+                <Text type="secondary" style={{ fontSize: 12, marginLeft: 12 }}>
+                  Supports Markdown, drag & drop images, paste from clipboard
+                </Text>
               </div>
-              <div className="content-actions">
-                <md-outlined-button
-                  onClick={() => imageInputRef.current?.click()}
-                >
-                  <md-icon slot="icon">image</md-icon>
-                  {isUploadingImage ? 'Uploading...' : 'Insert Image'}
-                </md-outlined-button>
-
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const imageUrl = await handleContentImageUpload(file);
-                      if (imageUrl) {
-                        insertImageIntoContent(imageUrl);
-                      }
-                    }
-                    // Reset input value to allow uploading the same file again
-                    e.target.value = '';
-                  }}
-                  style={{ display: 'none' }}
-                  disabled={isUploadingImage}
-                />
-
-                <md-outlined-button
+              <Space>
+                <Upload {...imageUploadProps}>
+                  <Button
+                    icon={<PictureOutlined />}
+                    loading={isUploadingImage}
+                  >
+                    Insert Image
+                  </Button>
+                </Upload>
+                <Upload {...pdfUploadProps}>
+                  <Button
+                    icon={<FilePdfOutlined />}
+                    loading={isUploadingImage}
+                  >
+                    Insert PDF
+                  </Button>
+                </Upload>
+                <Button
+                  icon={previewMode ? <EditOutlined /> : <EyeOutlined />}
                   onClick={() => setPreviewMode(!previewMode)}
-                  className={previewMode ? 'active' : ''}
+                  type={previewMode ? 'primary' : 'default'}
                 >
-                  <md-icon slot="icon">{previewMode ? 'edit' : 'preview'}</md-icon>
                   {previewMode ? 'Edit' : 'Preview'}
-                </md-outlined-button>
-              </div>
+                </Button>
+              </Space>
             </div>
-
-
-
-            {previewMode ? (
-              <div className="content-preview">
-                <MarkdownRenderer
-                  content={formData.content || 'No content to preview'}
-                  className="markdown-preview"
-                />
-              </div>
-            ) : (
-              <div
-                className={`content-editor-wrapper ${isDragOver ? 'drag-over' : ''}`}
-                onDragOver={handleContentDragOver}
-                onDragLeave={handleContentDragLeave}
-                onDrop={handleContentDrop}
-              >
-                <md-outlined-text-field
-                  label="Content (Markdown)"
-                  value={formData.content}
-                  onInput={(e: any) => handleInputChange('content', e.target.value)}
-                  onPaste={handleContentPaste}
-                  type="textarea"
-                  rows={20}
-                  class="content-field"
-                  ref={contentTextareaRef}
-                ></md-outlined-text-field>
-                {isDragOver && (
-                  <div className="drag-overlay">
-                    <div className="drag-overlay-content">
-                      <md-icon className="drag-icon">image</md-icon>
-                      <p className="md-typescale-body-large">Drop images here to upload</p>
-                      <p className="md-typescale-body-medium">Images will be uploaded and inserted as markdown</p>
-                    </div>
+          }
+        >
+          {previewMode ? (
+            <div className="content-preview">
+              <MarkdownRenderer
+                content={formData.content || 'No content to preview'}
+                className="markdown-preview"
+              />
+            </div>
+          ) : (
+            <div
+              className={`content-editor-wrapper ${isDragOver ? 'drag-over' : ''}`}
+              onDragOver={handleContentDragOver}
+              onDragLeave={handleContentDragLeave}
+              onDrop={handleContentDrop}
+            >
+              <TextArea
+                ref={contentTextareaRef}
+                placeholder="Write your content in Markdown..."
+                value={formData.content}
+                onChange={(e) => handleInputChange('content', e.target.value)}
+                onPaste={handleContentPaste}
+                rows={20}
+                className="content-textarea"
+              />
+              {isDragOver && (
+                <div className="drag-overlay">
+                  <div className="drag-overlay-content">
+                    <InboxOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+                    <p>Drop images or PDFs here to upload</p>
+                    <Text type="secondary">Files will be uploaded and inserted as markdown</Text>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
 
-          {/* Metadata */}
-          <div className="form-section">
-            <h2 className="md-typescale-headline-small">Metadata</h2>
-
-            <div className="metadata-grid">
-              <md-outlined-select
+        {/* Metadata Section */}
+        <Card className="form-section" title="Metadata">
+          <Form layout="vertical">
+            <div className="metadata-row">
+              <Form.Item
                 label="Category"
-                value={formData.category}
-                onInput={(e: any) => handleInputChange('category', e.target.value)}
+                required
+                validateStatus={!formData.category ? 'error' : ''}
+                style={{ flex: 1 }}
               >
-                <md-select-option value="">Select Category</md-select-option>
-                {categories.map((category) => (
-                  <md-select-option key={category.id} value={category.id}>
-                    {category.name}
-                  </md-select-option>
-                ))}
-              </md-outlined-select>
+                <Select
+                  placeholder="Select Category"
+                  value={formData.category || undefined}
+                  onChange={(value) => handleInputChange('category', value)}
+                  size="large"
+                >
+                  {categories.map((category) => (
+                    <Select.Option key={category.id} value={category.id}>
+                      {category.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
 
-              <div className="featured-toggle">
-                <md-switch
-                  selected={formData.featured}
-                  onChange={(e: any) => handleInputChange('featured', e.target.selected)}
-                ></md-switch>
-                <span className="md-typescale-body-medium">Featured Post</span>
-              </div>
+              <Form.Item label="Featured Post" style={{ marginBottom: 0 }}>
+                <Switch
+                  checked={formData.featured}
+                  onChange={(checked) => handleInputChange('featured', checked)}
+                />
+              </Form.Item>
             </div>
 
-            {/* Tags - Simplified */}
-            <div className="tags-section">
-              <div className="tags-input-container">
+            <Divider />
 
-                {/* Current Tags */}
+            <Form.Item label="Tags">
+              <div className="tags-section">
                 {formData.tags.length > 0 && (
                   <div className="current-tags">
-                    <div className="tags-list">
-                      {formData.tags.map((tag, index) => (
-                        <div key={index} className="current-tag-wrapper">
-                          <md-assist-chip className="tag-chip current-tag-chip">
-                            {tag}
-                          </md-assist-chip>
-                          <button
-                            className="remove-tag-btn"
-                            onClick={() => handleRemoveTag(tag)}
-                            title={`Remove ${tag} tag`}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    {formData.tags.map((tag) => (
+                      <Tag
+                        key={tag}
+                        closable
+                        onClose={() => handleRemoveTag(tag)}
+                        color="blue"
+                      >
+                        {tag}
+                      </Tag>
+                    ))}
                   </div>
                 )}
 
-                {/* Quick Add Popular Tags */}
                 {availableTags.length > 0 && (
-                  <div className="popular-tags">
-                    <div className="suggestions-header">Popular tags:</div>
-                    <div className="suggestions-list">
-                      {availableTags
-                        .filter(tag => !formData.tags.includes(tag.name))
-                        .slice(0, 8) // Show only first 8 popular tags
-                        .map(tag => (
-                          <md-assist-chip
-                            key={tag.id}
-                            className="available-chip"
-                            onClick={() => handleSelectExistingTag(tag.name)}
-                          >
-                            <md-icon slot="icon">add</md-icon>
-                            {tag.name}
-                          </md-assist-chip>
-                        ))}
-                    </div>
+                  <div className="available-tags">
+                    <Text type="secondary" style={{ marginRight: 8 }}>
+                      Popular tags:
+                    </Text>
+                    {availableTags
+                      .filter(tag => !formData.tags.includes(tag.name))
+                      .slice(0, 8)
+                      .map(tag => (
+                        <Tag
+                          key={tag.id}
+                          className="available-tag"
+                          onClick={() => handleAddTag(tag.name)}
+                        >
+                          <PlusOutlined /> {tag.name}
+                        </Tag>
+                      ))}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
+            </Form.Item>
+          </Form>
+        </Card>
       </div>
     </AdminLayout>
   );

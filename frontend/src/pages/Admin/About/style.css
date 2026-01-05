@@ -1,65 +1,144 @@
-/* Admin About Management Page Styles */
+/* About Management Styles - Ant Design Version */
 
-.about-management {
-  padding: 24px;
-  max-width: 1200px;
+.about-management-page {
+  max-width: 800px;
   margin: 0 auto;
 }
 
-.about-form {
+/* Loading State */
+.about-management-loading {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 16px;
 }
 
+/* Form Sections */
 .form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  margin-bottom: 24px;
+  border-radius: 12px !important;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.form-section .ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.form-group label {
+.form-section .ant-card-head-title {
   font-weight: 500;
-  color: var(--md-sys-color-on-surface);
 }
 
-.photo-upload-section {
-  display: flex;
-  flex-direction: column;
+/* Basic Info Grid */
+.basic-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-.photo-preview {
+/* Image Preview */
+.image-preview {
+  position: relative;
   width: 200px;
   height: 200px;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--md-sys-color-surface-variant);
+  background: #f5f5f5;
 }
 
-.photo-preview img {
+.image-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.form-actions {
+.image-preview .image-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding-top: 16px;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
-.loading-container {
+.image-preview:hover .image-actions {
+  opacity: 1;
+}
+
+.image-preview .image-actions .ant-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.image-preview .image-actions .ant-btn:hover {
+  background: #fff;
+}
+
+/* Upload Area */
+.upload-area {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  min-height: 400px;
+  justify-content: center;
+  width: 200px;
+  height: 200px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fafafa;
 }
 
+.upload-area:hover {
+  border-color: #1890ff;
+  background: #e6f7ff;
+}
+
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Content Textarea */
+.content-textarea {
+  font-family: "Fira Code", "Monaco", "Consolas", monospace !important;
+  font-size: 14px;
+}
+
+/* Content Help */
+.content-help {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .basic-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .image-preview,
+  .upload-area {
+    width: 100%;
+    max-width: 200px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-section {
+    border-radius: 8px !important;
+  }
+
+  .form-section .ant-card-body {
+    padding: 16px;
+  }
+}

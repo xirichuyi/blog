@@ -1,8 +1,35 @@
+// Categories & Tags Management with Ant Design
+
 import React, { useState, useEffect } from 'react';
-import { useNotification } from '../../../contexts/NotificationContext';
+import { apiService } from '../../../services/api';
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
-import { apiService } from '../../../services/api'
+import {
+  Card,
+  Tabs,
+  Button,
+  Modal,
+  Form,
+  Input,
+  Row,
+  Col,
+  Space,
+  Typography,
+  Empty,
+  Spin,
+  Popconfirm,
+  message,
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  FolderOutlined,
+  TagOutlined,
+} from '@ant-design/icons';
 import './style.css';
+
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 interface Category {
   id: string;
@@ -22,51 +49,23 @@ interface Tag {
   updated_at: string;
 }
 
-interface CreateCategoryRequest {
-  name: string;
-  description?: string;
-  icon?: string;
-}
-
-interface CreateTagRequest {
-  name: string;
-}
-
-interface UpdateCategoryRequest {
-  name?: string;
-  description?: string;
-  icon?: string;
-}
-
-interface UpdateTagRequest {
-  name?: string;
-}
-
 const CategoriesTagsManagement: React.FC = () => {
-  const { showNotification } = useNotification();
-
   // State for categories
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [categoryForm, setCategoryForm] = useState<CreateCategoryRequest>({
-    name: '',
-    description: '',
-    icon: 'folder'
-  });
+  const [categoryForm] = Form.useForm();
 
   // State for tags
   const [tags, setTags] = useState<Tag[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
-  const [showTagDialog, setShowTagDialog] = useState(false);
+  const [tagModalOpen, setTagModalOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
-  const [tagForm, setTagForm] = useState<CreateTagRequest>({
-    name: ''
-  });
+  const [tagForm] = Form.useForm();
 
   // Active tab state
-  const [activeTab, setActiveTab] = useState<'categories' | 'tags'>('categories');
+  const [activeTab, setActiveTab] = useState('categories');
 
   // Load data on component mount
   useEffect(() => {
@@ -84,110 +83,71 @@ const CategoriesTagsManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load categories:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to load categories'
-      });
+      message.error('Failed to load categories');
     } finally {
       setCategoriesLoading(false);
     }
   };
 
-  const handleCreateCategory = async () => {
-    if (!categoryForm.name.trim()) {
-      showNotification({
-        type: 'error',
-        title: 'Category name is required'
-      });
-      return;
-    }
-
+  const handleCategorySubmit = async (values: any) => {
     try {
-      const response = await apiService.createCategory(categoryForm);
-      if (response.success) {
-        showNotification({
-          type: 'success',
-          title: 'Category created successfully'
-        });
-        setShowCategoryDialog(false);
-        setCategoryForm({ name: '', description: '', icon: 'folder' });
-        loadCategories();
+      if (editingCategory) {
+        const response = await apiService.updateCategory(editingCategory.id, values);
+        if (response.success) {
+          message.success('Category updated successfully');
+          setCategoryModalOpen(false);
+          setEditingCategory(null);
+          categoryForm.resetFields();
+          loadCategories();
+        } else {
+          message.error(response.message || 'Failed to update category');
+        }
       } else {
-        showNotification({
-          type: 'error',
-          title: response.message || 'Failed to create category'
-        });
+        const response = await apiService.createCategory(values);
+        if (response.success) {
+          message.success('Category created successfully');
+          setCategoryModalOpen(false);
+          categoryForm.resetFields();
+          loadCategories();
+        } else {
+          message.error(response.message || 'Failed to create category');
+        }
       }
     } catch (error) {
-      console.error('Failed to create category:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to create category'
-      });
-    }
-  };
-
-  const handleUpdateCategory = async () => {
-    if (!editingCategory || !categoryForm.name.trim()) {
-      showNotification({
-        type: 'error',
-        title: 'Category name is required'
-      });
-      return;
-    }
-
-    try {
-      const response = await apiService.updateCategory(editingCategory.id, categoryForm);
-      if (response.success) {
-        showNotification({
-          type: 'success',
-          title: 'Category updated successfully'
-        });
-        setShowCategoryDialog(false);
-        setEditingCategory(null);
-        setCategoryForm({ name: '', description: '', icon: 'folder' });
-        loadCategories();
-      } else {
-        showNotification({
-          type: 'error',
-          title: response.message || 'Failed to update category'
-        });
-      }
-    } catch (error) {
-      console.error('Failed to update category:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to update category'
-      });
+      console.error('Category operation failed:', error);
+      message.error('Operation failed');
     }
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) {
-      return;
-    }
-
     try {
       const response = await apiService.deleteCategory(categoryId);
       if (response.success) {
-        showNotification({
-          type: 'success',
-          title: 'Category deleted successfully'
-        });
+        message.success('Category deleted successfully');
         loadCategories();
       } else {
-        showNotification({
-          type: 'error',
-          title: response.message || 'Failed to delete category'
-        });
+        message.error(response.message || 'Failed to delete category');
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to delete category'
-      });
+      message.error('Failed to delete category');
     }
+  };
+
+  const openCategoryModal = (category?: Category) => {
+    if (category) {
+      setEditingCategory(category);
+      categoryForm.setFieldsValue({
+        name: category.name,
+        description: category.description || '',
+        icon: category.icon || 'folder',
+      });
+    } else {
+      setEditingCategory(null);
+      categoryForm.resetFields();
+      categoryForm.setFieldsValue({ icon: 'folder' });
+    }
+    setCategoryModalOpen(true);
   };
 
   // Tags functions
@@ -200,332 +160,329 @@ const CategoriesTagsManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load tags:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to load tags'
-      });
+      message.error('Failed to load tags');
     } finally {
       setTagsLoading(false);
     }
   };
 
-  const handleCreateTag = async () => {
-    if (!tagForm.name.trim()) {
-      showNotification({
-        type: 'error',
-        title: 'Tag name is required'
-      });
-      return;
-    }
-
+  const handleTagSubmit = async (values: any) => {
     try {
-      const response = await apiService.createTag(tagForm);
-      if (response.success) {
-        showNotification({
-          type: 'success',
-          title: 'Tag created successfully'
-        });
-        setShowTagDialog(false);
-        setTagForm({ name: '' });
-        loadTags();
+      if (editingTag) {
+        const response = await apiService.updateTag(editingTag.id, values);
+        if (response.success) {
+          message.success('Tag updated successfully');
+          setTagModalOpen(false);
+          setEditingTag(null);
+          tagForm.resetFields();
+          loadTags();
+        } else {
+          message.error(response.message || 'Failed to update tag');
+        }
       } else {
-        showNotification({
-          type: 'error',
-          title: response.message || 'Failed to create tag'
-        });
+        const response = await apiService.createTag(values);
+        if (response.success) {
+          message.success('Tag created successfully');
+          setTagModalOpen(false);
+          tagForm.resetFields();
+          loadTags();
+        } else {
+          message.error(response.message || 'Failed to create tag');
+        }
       }
     } catch (error) {
-      console.error('Failed to create tag:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to create tag'
-      });
-    }
-  };
-
-  const handleUpdateTag = async () => {
-    if (!editingTag || !tagForm.name.trim()) {
-      showNotification({
-        type: 'error',
-        title: 'Tag name is required'
-      });
-      return;
-    }
-
-    try {
-      const response = await apiService.updateTag(editingTag.id, tagForm);
-      if (response.success) {
-        showNotification({
-          type: 'success',
-          title: 'Tag updated successfully'
-        });
-        setShowTagDialog(false);
-        setEditingTag(null);
-        setTagForm({ name: '' });
-        loadTags();
-      } else {
-        showNotification({
-          type: 'error',
-          title: response.message || 'Failed to update tag'
-        });
-      }
-    } catch (error) {
-      console.error('Failed to update tag:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to update tag'
-      });
+      console.error('Tag operation failed:', error);
+      message.error('Operation failed');
     }
   };
 
   const handleDeleteTag = async (tagId: string) => {
-    if (!confirm('Are you sure you want to delete this tag?')) {
-      return;
-    }
-
     try {
       const response = await apiService.deleteTag(tagId);
       if (response.success) {
-        showNotification({
-          type: 'success',
-          title: 'Tag deleted successfully'
-        });
+        message.success('Tag deleted successfully');
         loadTags();
       } else {
-        showNotification({
-          type: 'error',
-          title: response.message || 'Failed to delete tag'
-        });
+        message.error(response.message || 'Failed to delete tag');
       }
     } catch (error) {
       console.error('Failed to delete tag:', error);
-      showNotification({
-        type: 'error',
-        title: 'Failed to delete tag'
-      });
+      message.error('Failed to delete tag');
     }
   };
 
-  // Dialog handlers
-  const openCategoryDialog = (category?: Category) => {
-    if (category) {
-      setEditingCategory(category);
-      setCategoryForm({
-        name: category.name,
-        description: category.description || '',
-        icon: category.icon || 'folder'
-      });
-    } else {
-      setEditingCategory(null);
-      setCategoryForm({ name: '', description: '', icon: 'folder' });
-    }
-    setShowCategoryDialog(true);
-  };
-
-  const openTagDialog = (tag?: Tag) => {
+  const openTagModal = (tag?: Tag) => {
     if (tag) {
       setEditingTag(tag);
-      setTagForm({ name: tag.name });
+      tagForm.setFieldsValue({ name: tag.name });
     } else {
       setEditingTag(null);
-      setTagForm({ name: '' });
+      tagForm.resetFields();
     }
-    setShowTagDialog(true);
+    setTagModalOpen(true);
   };
 
-  const closeCategoryDialog = () => {
-    setShowCategoryDialog(false);
-    setEditingCategory(null);
-    setCategoryForm({ name: '', description: '', icon: 'folder' });
-  };
+  // Render category card
+  const renderCategoryCard = (category: Category) => (
+    <Col xs={24} sm={12} md={8} lg={6} key={category.id}>
+      <Card
+        hoverable
+        className="item-card"
+        actions={[
+          <Button
+            key="edit"
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => openCategoryModal(category)}
+          />,
+          <Popconfirm
+            key="delete"
+            title="Delete Category"
+            description="Are you sure you want to delete this category?"
+            onConfirm={() => handleDeleteCategory(category.id)}
+            okText="Delete"
+            okType="danger"
+            cancelText="Cancel"
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} />
+          </Popconfirm>,
+        ]}
+      >
+        <Card.Meta
+          avatar={
+            <div className="item-icon category-icon">
+              <FolderOutlined />
+            </div>
+          }
+          title={category.name}
+          description={
+            <Paragraph ellipsis={{ rows: 2 }} type="secondary">
+              {category.description || 'No description'}
+            </Paragraph>
+          }
+        />
+      </Card>
+    </Col>
+  );
 
-  const closeTagDialog = () => {
-    setShowTagDialog(false);
-    setEditingTag(null);
-    setTagForm({ name: '' });
-  };
+  // Render tag card
+  const renderTagCard = (tag: Tag) => (
+    <Col xs={24} sm={12} md={8} lg={6} key={tag.id}>
+      <Card
+        hoverable
+        className="item-card"
+        actions={[
+          <Button
+            key="edit"
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => openTagModal(tag)}
+          />,
+          <Popconfirm
+            key="delete"
+            title="Delete Tag"
+            description="Are you sure you want to delete this tag?"
+            onConfirm={() => handleDeleteTag(tag.id)}
+            okText="Delete"
+            okType="danger"
+            cancelText="Cancel"
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} />
+          </Popconfirm>,
+        ]}
+      >
+        <Card.Meta
+          avatar={
+            <div className="item-icon tag-icon">
+              <TagOutlined />
+            </div>
+          }
+          title={tag.name}
+        />
+      </Card>
+    </Col>
+  );
+
+  const tabItems = [
+    {
+      key: 'categories',
+      label: (
+        <span>
+          <FolderOutlined />
+          Categories
+        </span>
+      ),
+      children: (
+        <div className="tab-content">
+          <div className="content-header">
+            <Title level={4}>Categories</Title>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => openCategoryModal()}
+            >
+              Add Category
+            </Button>
+          </div>
+
+          {categoriesLoading ? (
+            <div className="loading-container">
+              <Spin size="large" />
+              <Text type="secondary">Loading categories...</Text>
+            </div>
+          ) : categories.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No categories yet"
+            >
+              <Button type="primary" onClick={() => openCategoryModal()}>
+                Create Category
+              </Button>
+            </Empty>
+          ) : (
+            <Row gutter={[16, 16]}>
+              {categories.map(renderCategoryCard)}
+            </Row>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'tags',
+      label: (
+        <span>
+          <TagOutlined />
+          Tags
+        </span>
+      ),
+      children: (
+        <div className="tab-content">
+          <div className="content-header">
+            <Title level={4}>Tags</Title>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => openTagModal()}
+            >
+              Add Tag
+            </Button>
+          </div>
+
+          {tagsLoading ? (
+            <div className="loading-container">
+              <Spin size="large" />
+              <Text type="secondary">Loading tags...</Text>
+            </div>
+          ) : tags.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No tags yet"
+            >
+              <Button type="primary" onClick={() => openTagModal()}>
+                Create Tag
+              </Button>
+            </Empty>
+          ) : (
+            <Row gutter={[16, 16]}>
+              {tags.map(renderTagCard)}
+            </Row>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <AdminLayout title="Categories & Tags Management">
-      <div className="categories-tags-management">
-        {/* Header */}
-        <div className="management-header">
-          <h1 className="page-title md-typescale-headline-large">Categories & Tags Management</h1>
-          <p className="page-description md-typescale-body-large">
-            Manage your blog categories and tags. Create, edit, and organize your content taxonomy.
-          </p>
-        </div>
+    <AdminLayout title="Categories & Tags">
+      <Card className="admin-card">
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={tabItems}
+          size="large"
+        />
+      </Card>
 
-        {/* Tab Navigation */}
-        <div className="tab-navigation">
-          <md-tabs>
-            <md-primary-tab
-              active={activeTab === 'categories'}
-              onClick={() => setActiveTab('categories')}
-            >
-              <md-icon slot="icon" style={{ fontSize: '40px', width: '40px', height: '40px', lineHeight: '40px' }}>folder</md-icon>
-            </md-primary-tab>
-            <md-primary-tab
-              active={activeTab === 'tags'}
-              onClick={() => setActiveTab('tags')}
-            >
-              <md-icon slot="icon" style={{ fontSize: '40px', width: '40px', height: '40px', lineHeight: '40px' }}>label</md-icon>
-            </md-primary-tab>
-          </md-tabs>
-        </div>
+      {/* Category Modal */}
+      <Modal
+        title={editingCategory ? 'Edit Category' : 'Create Category'}
+        open={categoryModalOpen}
+        onCancel={() => {
+          setCategoryModalOpen(false);
+          setEditingCategory(null);
+          categoryForm.resetFields();
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form
+          form={categoryForm}
+          layout="vertical"
+          onFinish={handleCategorySubmit}
+          initialValues={{ icon: 'folder' }}
+        >
+          <Form.Item
+            name="name"
+            label="Category Name"
+            rules={[{ required: true, message: 'Please enter category name' }]}
+          >
+            <Input placeholder="Enter category name" />
+          </Form.Item>
 
-        {/* Categories Tab Content */}
-        {activeTab === 'categories' && (
-          <div className="tab-content">
-            <div className="content-header">
-              <h2 className="section-title md-typescale-headline-medium">Categories</h2>
-              <md-filled-button onClick={() => openCategoryDialog()}>
-                <md-icon slot="icon">add</md-icon>
-                Add Category
-              </md-filled-button>
-            </div>
+          <Form.Item name="description" label="Description">
+            <TextArea rows={3} placeholder="Enter description (optional)" />
+          </Form.Item>
 
-            {categoriesLoading ? (
-              <div className="loading-container">
-                <md-circular-progress indeterminate></md-circular-progress>
-                <span className="loading-text">Loading categories...</span>
-              </div>
-            ) : (
-              <div className="categories-grid">
-                {categories.map((category) => (
-                  <md-elevated-card key={category.id} className="category-item">
-                    <div className="category-content">
-                      <div className="category-header">
-                        <md-icon className="category-icon">{category.icon || 'folder'}</md-icon>
-                        <div className="category-info">
-                          <h3 className="category-name md-typescale-title-medium">{category.name}</h3>
-                          <p className="category-description md-typescale-body-medium">
-                            {category.description || 'No description'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="category-actions">
-                        <md-icon-button onClick={() => openCategoryDialog(category)}>
-                          <md-icon>edit</md-icon>
-                        </md-icon-button>
-                        <md-icon-button onClick={() => handleDeleteCategory(category.id)}>
-                          <md-icon>delete</md-icon>
-                        </md-icon-button>
-                      </div>
-                    </div>
-                  </md-elevated-card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+          <Form.Item
+            name="icon"
+            label="Icon"
+            extra="Material Design icon name (e.g., folder, category, label)"
+          >
+            <Input placeholder="Enter icon name" />
+          </Form.Item>
 
-        {/* Tags Tab Content */}
-        {activeTab === 'tags' && (
-          <div className="tab-content">
-            <div className="content-header">
-              <h2 className="section-title md-typescale-headline-medium">Tags</h2>
-              <md-filled-button onClick={() => openTagDialog()}>
-                <md-icon slot="icon">add</md-icon>
-                Add Tag
-              </md-filled-button>
-            </div>
-
-            {tagsLoading ? (
-              <div className="loading-container">
-                <md-circular-progress indeterminate></md-circular-progress>
-                <span className="loading-text">Loading tags...</span>
-              </div>
-            ) : (
-              <div className="tags-grid">
-                {tags.map((tag) => (
-                  <md-elevated-card key={tag.id} className="tag-item">
-                    <div className="tag-content">
-                      <div className="tag-header">
-                        <md-icon className="tag-icon">label</md-icon>
-                        <div className="tag-info">
-                          <h3 className="tag-name md-typescale-title-medium">{tag.name}</h3>
-                        </div>
-                      </div>
-                      <div className="tag-actions">
-                        <md-icon-button onClick={() => openTagDialog(tag)}>
-                          <md-icon>edit</md-icon>
-                        </md-icon-button>
-                        <md-icon-button onClick={() => handleDeleteTag(tag.id)}>
-                          <md-icon>delete</md-icon>
-                        </md-icon-button>
-                      </div>
-                    </div>
-                  </md-elevated-card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Category Dialog */}
-        {showCategoryDialog && (
-          <md-dialog open={showCategoryDialog}>
-            <div slot="headline">
-              {editingCategory ? 'Edit Category' : 'Create Category'}
-            </div>
-            <form slot="content" className="dialog-form">
-              <md-outlined-text-field
-                label="Category Name"
-                value={categoryForm.name}
-                onInput={(e: any) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                required
-              />
-              <md-outlined-text-field
-                label="Description"
-                value={categoryForm.description}
-                onInput={(e: any) => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                type="textarea"
-                rows={3}
-              />
-              <md-outlined-text-field
-                label="Icon"
-                value={categoryForm.icon}
-                onInput={(e: any) => setCategoryForm({ ...categoryForm, icon: e.target.value })}
-                supporting-text="Material Design icon name (e.g., folder, category, label)"
-              />
-            </form>
-            <div slot="actions">
-              <md-text-button onClick={closeCategoryDialog}>Cancel</md-text-button>
-              <md-filled-button
-                onClick={editingCategory ? handleUpdateCategory : handleCreateCategory}
-              >
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
+              <Button type="primary" htmlType="submit">
                 {editingCategory ? 'Update' : 'Create'}
-              </md-filled-button>
-            </div>
-          </md-dialog>
-        )}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
 
-        {/* Tag Dialog */}
-        {showTagDialog && (
-          <md-dialog open={showTagDialog}>
-            <div slot="headline">
-              {editingTag ? 'Edit Tag' : 'Create Tag'}
-            </div>
-            <form slot="content" className="dialog-form">
-              <md-outlined-text-field
-                label="Tag Name"
-                value={tagForm.name}
-                onInput={(e: any) => setTagForm({ ...tagForm, name: e.target.value })}
-                required
-              />
-            </form>
-            <div slot="actions">
-              <md-text-button onClick={closeTagDialog}>Cancel</md-text-button>
-              <md-filled-button
-                onClick={editingTag ? handleUpdateTag : handleCreateTag}
-              >
+      {/* Tag Modal */}
+      <Modal
+        title={editingTag ? 'Edit Tag' : 'Create Tag'}
+        open={tagModalOpen}
+        onCancel={() => {
+          setTagModalOpen(false);
+          setEditingTag(null);
+          tagForm.resetFields();
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={tagForm} layout="vertical" onFinish={handleTagSubmit}>
+          <Form.Item
+            name="name"
+            label="Tag Name"
+            rules={[{ required: true, message: 'Please enter tag name' }]}
+          >
+            <Input placeholder="Enter tag name" />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setTagModalOpen(false)}>Cancel</Button>
+              <Button type="primary" htmlType="submit">
                 {editingTag ? 'Update' : 'Create'}
-              </md-filled-button>
-            </div>
-          </md-dialog>
-        )}
-      </div>
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </AdminLayout>
   );
 };

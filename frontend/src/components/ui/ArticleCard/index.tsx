@@ -11,7 +11,7 @@ export interface ArticleCardProps {
     gradient: string;
     onClick: (id: string) => void;
     className?: string;
-    variant?: 'default' | 'compact';
+    variant?: 'default' | 'compact' | 'mobile';
     style?: React.CSSProperties;
 }
 

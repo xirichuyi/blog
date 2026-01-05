@@ -1,85 +1,8 @@
-.categories-tags-management {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
+/* Categories & Tags Management Styles - Ant Design Version */
 
-/* Header */
-.management-header {
-  margin-bottom: 32px;
-}
-
-.page-title {
-  color: var(--md-sys-color-on-surface);
-  margin: 0 0 8px 0;
-}
-
-.page-description {
-  color: var(--md-sys-color-on-surface-variant);
-  margin: 0;
-}
-
-/* Tab Navigation */
-.tab-navigation {
-  margin-bottom: 32px;
-  border-bottom: 1px solid var(--md-sys-color-outline-variant);
-}
-
-.tab-navigation md-tabs {
-  width: 100%;
-  height: 80px;
-}
-
-.tab-navigation md-primary-tab {
-  height: 80px;
-  min-height: 80px;
-  --md-icon-size: 32px;
-}
-
-.tab-navigation md-primary-tab md-icon[slot="icon"] {
-  font-size: 32px !important;
-  width: 32px !important;
-  height: 32px !important;
-}
-
-/* Alternative selector for Material Design icons */
-.tab-navigation md-primary-tab::part(icon) {
-  font-size: 32px !important;
-  width: 32px !important;
-  height: 32px !important;
-}
-
-/* Direct targeting of md-icon elements in tabs */
-md-primary-tab md-icon {
-  font-size: 32px !important;
-  width: 32px !important;
-  height: 32px !important;
-}
-
-/* More specific targeting */
-.tab-navigation md-primary-tab[slot] md-icon,
-.tab-navigation md-primary-tab md-icon[slot="icon"] {
-  font-size: 36px !important;
-  width: 36px !important;
-  height: 36px !important;
-  display: inline-block !important;
-}
-
-.tab-navigation md-primary-tab {
-  --md-primary-tab-container-color: transparent;
-  --md-primary-tab-label-text-color: var(--md-sys-color-on-surface-variant);
-  --md-primary-tab-active-label-text-color: var(--md-sys-color-primary);
-  --md-primary-tab-active-indicator-color: var(--md-sys-color-primary);
-  --md-primary-tab-inactive-indicator-color: transparent;
-}
-
-/* Ensure only active tab shows indicator */
-.tab-navigation md-primary-tab:not([active]) {
-  --md-primary-tab-active-indicator-color: transparent;
-}
-
-.tab-navigation md-primary-tab[active="false"] {
-  --md-primary-tab-active-indicator-color: transparent;
+/* Admin Card */
+.admin-card {
+  border-radius: 12px !important;
 }
 
 /* Tab Content */
@@ -106,17 +29,11 @@ md-primary-tab md-icon {
   margin-bottom: 24px;
 }
 
-.section-title {
-  color: var(--md-sys-color-on-surface);
-  margin: 0;
+.content-header h4.ant-typography {
+  margin: 0 !important;
 }
 
-.content-header md-filled-button {
-  --md-filled-button-container-color: var(--md-sys-color-primary);
-  --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
-}
-
-/* Loading */
+/* Loading Container */
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -126,211 +43,69 @@ md-primary-tab md-icon {
   gap: 16px;
 }
 
-.loading-text {
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 14px;
-}
-
-/* Categories Grid */
-.categories-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-}
-
-.category-item {
-  --md-elevated-card-container-color: var(--md-sys-color-surface-container-low);
-  --md-elevated-card-container-elevation: var(--md-sys-elevation-level1);
+/* Item Card */
+.item-card {
+  border-radius: 12px !important;
   transition: all 0.2s ease-in-out;
 }
 
-.category-item:hover {
-  --md-elevated-card-container-elevation: var(--md-sys-elevation-level2);
+.item-card:hover {
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.category-content {
+.item-card .ant-card-body {
   padding: 16px;
+}
+
+.item-card .ant-card-actions {
+  border-top: 1px solid #f0f0f0;
+}
+
+.item-card .ant-card-actions > li {
+  margin: 8px 0;
+}
+
+/* Item Icon */
+.item-icon {
+  width: 40px;
+  height: 40px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.category-header {
-  display: flex;
-  gap: 12px;
-  flex: 1;
-}
-
-.category-icon {
-  color: var(--md-sys-color-primary);
-  font-size: 24px;
-  margin-top: 4px;
-}
-
-.category-info {
-  flex: 1;
-}
-
-.category-name {
-  color: var(--md-sys-color-on-surface);
-  margin: 0 0 4px 0;
-  font-weight: 500;
-}
-
-.category-description {
-  color: var(--md-sys-color-on-surface-variant);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.category-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.category-actions md-icon-button {
-  --md-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
-}
-
-.category-actions md-icon-button:hover {
-  --md-icon-button-icon-color: var(--md-sys-color-primary);
-}
-
-/* Tags Grid */
-.tags-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.tag-item {
-  --md-elevated-card-container-color: var(--md-sys-color-surface-container-low);
-  --md-elevated-card-container-elevation: var(--md-sys-elevation-level1);
-  transition: all 0.2s ease-in-out;
-}
-
-.tag-item:hover {
-  --md-elevated-card-container-elevation: var(--md-sys-elevation-level2);
-  transform: translateY(-2px);
-}
-
-.tag-content {
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.tag-header {
-  display: flex;
-  gap: 12px;
-  flex: 1;
-}
-
-.tag-icon {
-  color: var(--md-sys-color-secondary);
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
   font-size: 20px;
-  margin-top: 2px;
 }
 
-.tag-info {
-  flex: 1;
+.item-icon.category-icon {
+  background: #e6f7ff;
+  color: #1890ff;
 }
 
-.tag-name {
-  color: var(--md-sys-color-on-surface);
-  margin: 0;
-  font-weight: 500;
-}
-
-.tag-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.tag-actions md-icon-button {
-  --md-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
-}
-
-.tag-actions md-icon-button:hover {
-  --md-icon-button-icon-color: var(--md-sys-color-secondary);
-}
-
-/* Dialog Styles */
-.dialog-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 400px;
-  padding: 16px 0;
-}
-
-.dialog-form md-outlined-text-field {
-  width: 100%;
+.item-icon.tag-icon {
+  background: #f6ffed;
+  color: #52c41a;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .categories-tags-management {
-    padding: 16px;
-  }
-
   .content-header {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
   }
 
-  .categories-grid,
-  .tags-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dialog-form {
-    min-width: 300px;
+  .content-header .ant-btn {
+    width: 100%;
   }
 }
 
 @media (max-width: 480px) {
-  .categories-tags-management {
+  .tab-content {
+    padding: 0;
+  }
+
+  .item-card .ant-card-body {
     padding: 12px;
   }
-
-  .category-content,
-  .tag-content {
-    padding: 12px;
-  }
-
-  .category-header,
-  .tag-header {
-    gap: 8px;
-  }
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px;
-  text-align: center;
-  color: var(--md-sys-color-on-surface-variant);
-}
-
-.empty-state md-icon {
-  font-size: 48px;
-  opacity: 0.5;
-  margin-bottom: 16px;
-}
-
-.empty-state h3 {
-  margin: 0 0 8px 0;
-  color: var(--md-sys-color-on-surface);
-}
-
-.empty-state p {
-  margin: 0;
-  max-width: 300px;
 }

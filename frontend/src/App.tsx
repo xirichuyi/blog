@@ -1,12 +1,15 @@
 // import React from 'react' // Not needed in React 17+
+import { ConfigProvider } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
 import AppRouter from './router/AppRouter'
 import ResourcePreloader from './components/ui/ResourcePreloader'
 import PerformanceOptimizer from './components/ui/PerformanceOptimizer'
+import { lightTheme } from './config/antd';
 import './App.css'
 
 function App() {
   return (
-    <>
+    <ConfigProvider locale={zhCN} theme={lightTheme}>
       <PerformanceOptimizer />
       <ResourcePreloader
         resources={[
@@ -20,7 +23,7 @@ function App() {
         criticalCSS={[]}
       />
       <AppRouter />
-    </>
+    </ConfigProvider>
   )
 }
 

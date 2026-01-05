@@ -408,10 +408,33 @@
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: border-color 0.2s ease;
+  cursor: pointer;
 }
 
 .markdown-renderer a:hover {
   border-bottom-color: var(--md-sys-color-primary);
+  text-decoration: underline;
+}
+
+/* PDF Links - Make them more visible */
+.markdown-renderer a[href*="/uploads/pdfs/"],
+.markdown-renderer a[href$=".pdf"],
+.markdown-renderer a.pdf-link {
+  color: var(--md-sys-color-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--md-sys-color-primary);
+  text-underline-offset: 2px;
+  display: inline-block;
+}
+
+.markdown-renderer a[href*="/uploads/pdfs/"]:hover,
+.markdown-renderer a[href$=".pdf"]:hover,
+.markdown-renderer a.pdf-link:hover {
+  color: var(--md-sys-color-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  opacity: 0.8;
 }
 
 /* Tables */
@@ -541,4 +564,53 @@
 
 .markdown-renderer .heading-link:hover:before {
   opacity: 0.7;
+}
+
+/* PDF Embedded Viewer Container */
+.markdown-renderer .markdown-pdf-container {
+  margin: 24px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--md-sys-elevation-level2);
+  background: var(--md-sys-color-surface-container);
+}
+
+.markdown-renderer .markdown-pdf-container .pdf-viewer {
+  border: none;
+  border-radius: 12px 12px 0 0;
+  margin: 0;
+}
+
+.markdown-renderer .markdown-pdf-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  background: var(--md-sys-color-surface-container-low);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.markdown-renderer .pdf-download-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary) !important;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none !important;
+  border: none !important;
+  transition: all 0.2s ease;
+}
+
+.markdown-renderer .pdf-download-link:hover {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+.markdown-renderer .pdf-download-link md-icon {
+  font-size: 18px;
 }

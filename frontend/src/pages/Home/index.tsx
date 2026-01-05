@@ -7,6 +7,7 @@ import ArticleCard from '../../components/ui/ArticleCard';
 import { apiService } from '../../services/api';
 import type { Article } from '../../services/types';
 import { logger } from '../../utils/logger';
+import { getGradientForIndex, PAGE_SIZE } from '../../constants';
 
 // 服务器状态接口
 interface ServerStatus {
@@ -78,6 +79,9 @@ const Home: React.FC = () => {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
   const [serverStatusLoading, setServerStatusLoading] = useState(true);
 
+  // 用于存储 content ready 定时器
+  const contentReadyTimerRef = React.useRef<NodeJS.Timeout>();
+
   // 数据加载Hook
   const loadArticles = useCallback(async () => {
     try {
@@ -86,15 +90,19 @@ const Home: React.FC = () => {
 
       const response = await apiService.getArticles({
         page: 1,
-        page_size: 7,
+        page_size: PAGE_SIZE.HOME,
         status: 'published'
       });
 
       if (response.success && response.data) {
         setArticles(response.data);
 
+        // 清理之前的定时器
+        if (contentReadyTimerRef.current) {
+          clearTimeout(contentReadyTimerRef.current);
+        }
         // 延迟显示内容，实现苹果风格的加载动画
-        setTimeout(() => {
+        contentReadyTimerRef.current = setTimeout(() => {
           setIsContentReady(true);
         }, 200);
       }
@@ -255,11 +263,14 @@ const Home: React.FC = () => {
   // 搜索失焦处理 - 使用ref存储timer以便清理
   const searchBlurTimerRef = React.useRef<NodeJS.Timeout>();
 
-  // 组件卸载时清理timer - 必须在所有条件语句之前声明
+  // 组件卸载时清理所有timer - 必须在所有条件语句之前声明
   useEffect(() => {
     return () => {
       if (searchBlurTimerRef.current) {
         clearTimeout(searchBlurTimerRef.current);
+      }
+      if (contentReadyTimerRef.current) {
+        clearTimeout(contentReadyTimerRef.current);
       }
     };
   }, []);
@@ -280,22 +291,6 @@ const Home: React.FC = () => {
     navigate('/articles');
   }, [navigate]);
 
-  // 渐变色数组 - 使用useMemo避免重复创建
-  const gradients = useMemo(() => [
-    "linear-gradient(135deg, #E1BEE7 0%, #F8BBD9 100%)",
-    "linear-gradient(135deg, #B8C5D1 0%, #D6E3F0 100%)",
-    "linear-gradient(135deg, #E8F5E8 0%, #C8E6C9 100%)",
-    "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)",
-    "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)",
-    "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
-    "linear-gradient(135deg, #FCE4EC 0%, #F8BBD9 100%)"
-  ], []);
-
-  // 渐变色生成
-  const getGradientForIndex = useCallback((index: number): string => {
-    return gradients[index % gradients.length];
-  }, [gradients]);
-
   // 文章数据转换
   const convertArticleToDisplayFormat = useCallback((article: Article, index: number) => {
     return {
@@ -311,17 +306,17 @@ const Home: React.FC = () => {
       gradient: getGradientForIndex(index),
       coverImage: article.coverImage || article.imageUrl
     };
-  }, [getGradientForIndex]);
+  }, []);
 
-  // 数据准备 - 使用useMemo避免不必要的重复计算（必须在条件渲染之前）
+  // 数据准备 - 使用useMemo避免不必要的重复计算
   const displayArticles = useMemo(() =>
-    articles.slice(0, 7).map((article, index) =>
+    articles.slice(0, PAGE_SIZE.HOME).map((article, index) =>
       convertArticleToDisplayFormat(article, index)
     ), [articles, convertArticleToDisplayFormat]
   );
 
   const featuredArticles = useMemo(() => displayArticles.slice(0, 1), [displayArticles]);
-  const secondaryArticles = useMemo(() => displayArticles.slice(1, 7), [displayArticles]);
+  const secondaryArticles = useMemo(() => displayArticles.slice(1, PAGE_SIZE.HOME), [displayArticles]);
 
   // ===================================================================
   // C区 - 渲染：纯声明式渲染

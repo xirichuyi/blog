@@ -1,202 +1,182 @@
-// Admin Layout Component with Sidebar Navigation
+// Admin Layout Component with Ant Design ProLayout
 
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import ShortcutsHelp from '../ui/ShortcutsHelp';
-import { createCommonShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { ProLayout, PageContainer } from '@ant-design/pro-components';
+import { Button, Dropdown, Avatar, Space, Typography } from 'antd';
+import type { MenuProps } from 'antd';
+import {
+  DashboardOutlined,
+  FileTextOutlined,
+  TagsOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  BellOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+} from '@ant-design/icons';
 import './AdminLayout.css';
 
+const { Text } = Typography;
+
 interface AdminLayoutProps {
-    children: React.ReactNode;
-    title?: string;
-    breadcrumbs?: { label: string; path?: string }[];
-    actions?: React.ReactNode;
+  children: React.ReactNode;
+  title?: string;
+  breadcrumbs?: { label: string; path?: string }[];
+  actions?: React.ReactNode;
 }
 
-interface NavigationItem {
-    id: string;
-    label: string;
-    icon: string;
-    path: string;
-    badge?: string;
-}
-
-const navigationItems: NavigationItem[] = [
-    {
-        id: 'dashboard',
-        label: 'Dashboard',
-        icon: 'dashboard',
-        path: '/admin/dashboard',
-    },
-    {
-        id: 'posts',
-        label: 'Posts',
-        icon: 'article',
-        path: '/admin/posts',
-    },
-    {
-        id: 'categories-tags',
-        label: 'Categories & Tags',
-        icon: 'label',
-        path: '/admin/categories-tags',
-    },
-    {
-        id: 'about',
-        label: 'About',
-        icon: 'person',
-        path: '/admin/about',
-    },
+const menuItems = [
+  {
+    path: '/admin/dashboard',
+    name: 'Dashboard',
+    icon: <DashboardOutlined />,
+  },
+  {
+    path: '/admin/posts',
+    name: 'Posts',
+    icon: <FileTextOutlined />,
+  },
+  {
+    path: '/admin/categories-tags',
+    name: 'Categories & Tags',
+    icon: <TagsOutlined />,
+  },
+  {
+    path: '/admin/about',
+    name: 'About',
+    icon: <UserOutlined />,
+  },
 ];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({
-    children,
-    title = 'Admin Dashboard',
-    breadcrumbs = [],
-    actions
+  children,
+  title = 'Admin Dashboard',
+  actions
 }) => {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-    const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    const handleLogout = () => {
-        logout();
-        navigate('/admin/login');
-    };
+  const handleLogout = () => {
+    logout();
+    navigate('/admin/login');
+  };
 
-    const toggleSidebar = () => {
-        setSidebarOpen(!sidebarOpen);
-    };
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Profile',
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      onClick: handleLogout,
+    },
+  ];
 
-    const handleNavigate = (path: string) => {
-        navigate(path);
-        setSidebarOpen(false); // Close sidebar on mobile after navigation
-    };
-
-    const isActiveRoute = (path: string) => {
-        return location.pathname === path;
-    };
-
-    return (
-        <div className="admin-layout">
-            {/* Top App Bar */}
-            <header className="admin-header">
-                <div className="admin-header-content">
-                    <div className="admin-header-start">
-                        <md-icon-button onClick={toggleSidebar} className="sidebar-toggle">
-                            <md-icon>menu</md-icon>
-                        </md-icon-button>
-                        <div className="header-title-section">
-                            {breadcrumbs.length > 0 && (
-                                <nav className="breadcrumbs">
-                                    {breadcrumbs.map((crumb, index) => (
-                                        <span key={index} className="breadcrumb-item">
-                                            {crumb.path ? (
-                                                <button
-                                                    className="breadcrumb-link"
-                                                    onClick={() => navigate(crumb.path!)}
-                                                >
-                                                    {crumb.label}
-                                                </button>
-                                            ) : (
-                                                <span className="breadcrumb-current">{crumb.label}</span>
-                                            )}
-                                            {index < breadcrumbs.length - 1 && (
-                                                <md-icon className="breadcrumb-separator">chevron_right</md-icon>
-                                            )}
-                                        </span>
-                                    ))}
-                                </nav>
-                            )}
-                            <h1 className="admin-title md-typescale-headline-small">{title}</h1>
-                        </div>
-                    </div>
-
-                    <div className="admin-header-end">
-                        {actions && (
-                            <div className="header-actions">
-                                {actions}
-                            </div>
-                        )}
-
-                        <ShortcutsHelp
-                            shortcuts={createCommonShortcuts({
-                                newItem: () => navigate('/admin/posts/new'),
-                                search: () => { }, // Could implement global search
-                                refresh: () => window.location.reload()
-                            })}
-                        />
-
-                        <md-icon-button className="header-action">
-                            <md-icon>notifications</md-icon>
-                        </md-icon-button>
-
-                        <div className="user-menu">
-                            <md-icon-button className="user-avatar">
-                                <md-icon>account_circle</md-icon>
-                            </md-icon-button>
-                            <div className="user-info">
-                                <span className="user-name md-typescale-body-medium">{user?.username}</span>
-                                <span className="user-role md-typescale-body-small">{user?.role}</span>
-                            </div>
-                            <md-icon-button onClick={handleLogout} className="logout-button">
-                                <md-icon>logout</md-icon>
-                            </md-icon-button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* Sidebar Navigation */}
-            <nav className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
-                <div className="sidebar-header">
-                    <div className="sidebar-brand">
-                        <md-icon class="brand-icon">admin_panel_settings</md-icon>
-                        <span className="brand-text md-typescale-title-medium">Admin Panel</span>
-                    </div>
-                </div>
-
-                <div className="sidebar-content">
-                    <md-list class="navigation-list">
-                        {navigationItems.map((item) => (
-                            <md-list-item
-                                key={item.id}
-                                onClick={() => handleNavigate(item.path)}
-                                class={`nav-item ${isActiveRoute(item.path) ? 'active' : ''}`}
-                            >
-                                <md-icon slot="start">{item.icon}</md-icon>
-                                <div slot="headline" className="nav-label">{item.label}</div>
-                                {item.badge && (
-                                    <md-badge slot="end" value={item.badge}></md-badge>
-                                )}
-                            </md-list-item>
-                        ))}
-                    </md-list>
-                </div>
-
-                <div className="sidebar-footer">
-                    <md-divider></md-divider>
-                    <md-list-item onClick={handleLogout} class="logout-item">
-                        <md-icon slot="start">logout</md-icon>
-                        <div slot="headline">Logout</div>
-                    </md-list-item>
-                </div>
-            </nav>
-
-            {/* Sidebar Overlay for Mobile */}
-            {sidebarOpen && (
-                <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}></div>
-            )}
-
-            {/* Main Content */}
-            <main className="admin-main">
-                <div className="admin-content">
-                    {children}
-                </div>
-            </main>
+  return (
+    <ProLayout
+      title="Admin Panel"
+      logo={null}
+      layout="mix"
+      splitMenus={false}
+      collapsed={collapsed}
+      onCollapse={setCollapsed}
+      location={{ pathname: location.pathname }}
+      route={{
+        path: '/admin',
+        routes: menuItems,
+      }}
+      menuItemRender={(item, dom) => (
+        <div onClick={() => navigate(item.path || '/admin')}>
+          {dom}
         </div>
-    );
+      )}
+      actionsRender={() => [
+        <Button
+          key="notifications"
+          type="text"
+          icon={<BellOutlined />}
+          style={{ color: 'inherit' }}
+        />,
+        <Dropdown
+          key="user"
+          menu={{ items: userMenuItems }}
+          placement="bottomRight"
+        >
+          <Space style={{ cursor: 'pointer', marginLeft: 8 }}>
+            <Avatar icon={<UserOutlined />} size="small" />
+            <Space direction="vertical" size={0} style={{ lineHeight: 1.2 }}>
+              <Text strong style={{ fontSize: 14 }}>{user?.username}</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>{user?.role}</Text>
+            </Space>
+          </Space>
+        </Dropdown>,
+      ]}
+      headerTitleRender={() => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{ fontSize: 16, width: 40, height: 40 }}
+          />
+          <span style={{ fontWeight: 600, fontSize: 18 }}>Admin Panel</span>
+        </div>
+      )}
+      token={{
+        header: {
+          colorBgHeader: '#fff',
+          colorHeaderTitle: '#1f1f1f',
+          colorTextMenu: '#595959',
+          colorTextMenuSecondary: '#595959',
+          colorTextMenuSelected: '#1890ff',
+          colorBgMenuItemSelected: 'rgba(24, 144, 255, 0.1)',
+          colorTextMenuActive: '#1890ff',
+          colorTextRightActionsItem: '#595959',
+        },
+        sider: {
+          colorMenuBackground: '#001529',
+          colorMenuItemDivider: 'rgba(255,255,255,0.1)',
+          colorTextMenu: 'rgba(255,255,255,0.65)',
+          colorTextMenuSelected: '#fff',
+          colorBgMenuItemSelected: '#1890ff',
+          colorBgMenuItemHover: 'rgba(255,255,255,0.05)',
+        },
+      }}
+      fixSiderbar
+      fixedHeader
+      contentStyle={{
+        padding: 24,
+        minHeight: 'calc(100vh - 56px)',
+        background: '#f5f5f5',
+      }}
+    >
+      <PageContainer
+        title={title}
+        extra={actions}
+        header={{
+          style: {
+            padding: '16px 0',
+            background: 'transparent',
+          },
+        }}
+        style={{
+          background: 'transparent',
+        }}
+      >
+        {children}
+      </PageContainer>
+    </ProLayout>
+  );
 };
 
 export default AdminLayout;

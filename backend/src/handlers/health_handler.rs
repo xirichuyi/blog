@@ -1,9 +1,10 @@
-use crate::models::ApiResponse;
 use crate::routes::AppState;
 use axum::{extract::State, http::StatusCode, response::Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::OnceLock;
+use std::time::Instant;
 use sysinfo::{Disks, System};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -52,20 +53,23 @@ pub struct SystemMetrics {
     pub disk_total_bytes: u64,
 }
 
-// Global variables to track server metrics
-static mut SERVER_START_TIME: Option<SystemTime> = None;
-static mut REQUEST_COUNT: u64 = 0;
+// 线程安全的服务器指标跟踪
+static SERVER_START_TIME: OnceLock<Instant> = OnceLock::new();
+static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
 
 pub fn init_server_metrics() {
-    unsafe {
-        SERVER_START_TIME = Some(SystemTime::now());
-    }
+    SERVER_START_TIME.get_or_init(Instant::now);
 }
 
-pub fn increment_request_count() {
-    unsafe {
-        REQUEST_COUNT += 1;
-    }
+fn get_uptime_seconds() -> u64 {
+    SERVER_START_TIME
+        .get()
+        .map(|start| start.elapsed().as_secs())
+        .unwrap_or(0)
+}
+
+fn get_request_count() -> u64 {
+    REQUEST_COUNT.load(Ordering::Relaxed)
 }
 
 /// Basic health check endpoint
@@ -107,11 +111,7 @@ pub async fn detailed_health_check(
     };
 
     // Calculate uptime
-    let uptime_seconds = unsafe {
-        SERVER_START_TIME
-            .map(|start| start.elapsed().unwrap_or_default().as_secs())
-            .unwrap_or(0)
-    };
+    let uptime_seconds = get_uptime_seconds();
 
     // Get system metrics
     let metrics = get_system_metrics(&system);
@@ -269,7 +269,7 @@ fn check_disk_health(_system: &System) -> CheckResult {
 }
 
 fn get_system_metrics(system: &System) -> SystemMetrics {
-    let total_memory = system.total_memory() as f64 / 1024.0 / 1024.0; // Convert to MB
+    let _total_memory = system.total_memory() as f64 / 1024.0 / 1024.0; // Convert to MB
     let used_memory = system.used_memory() as f64 / 1024.0 / 1024.0; // Convert to MB
 
     // Get CPU usage (average of all cores)
@@ -287,7 +287,7 @@ fn get_system_metrics(system: &System) -> SystemMetrics {
         (0, 0, 0.0)
     };
 
-    let request_count = unsafe { REQUEST_COUNT };
+    let request_count = get_request_count();
 
     SystemMetrics {
         memory_usage_mb: used_memory,

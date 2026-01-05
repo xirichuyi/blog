@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { API_BASE_URL } from '../../services/api/base';
 
 const PerformanceOptimizer: React.FC = () => {
   useEffect(() => {
@@ -54,8 +55,8 @@ const PerformanceOptimizer: React.FC = () => {
         const domains = [
           'https://fonts.googleapis.com',
           'https://fonts.gstatic.com',
-          'http://172.245.148.234:3007' // API域名
-        ];
+          API_BASE_URL
+        ].filter(Boolean);
 
         domains.forEach(domain => {
           const link = document.createElement('link');
