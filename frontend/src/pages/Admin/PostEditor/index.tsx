@@ -88,6 +88,18 @@ const PostEditor: React.FC = () => {
     return images;
   };
 
+  // Helper function to extract PDF URL from markdown content
+  const extractPdfUrlFromContent = (content: string): string | null => {
+    // Match pattern: [PDF: filename](pdf:filename)
+    const pdfRegex = /\[PDF:.*?\]\(pdf:(.*?)\)/;
+    const match = content.match(pdfRegex);
+    if (match && match[1]) {
+      // Return the full URL path
+      return `/uploads/pdfs/${match[1]}`;
+    }
+    return null;
+  };
+
   // Helper function to insert image into content at cursor position
   const insertImageIntoContent = (imageUrl: string) => {
     const imageMarkdown = `![Image](${imageUrl})`;
@@ -295,6 +307,87 @@ const PostEditor: React.FC = () => {
     }
   };
 
+  // PDF upload function
+  const handleContentPdfUpload = async (file: File): Promise<string | null> => {
+    if (!file) return null;
+
+    try {
+      setIsUploadingImage(true); // Reuse the same loading state
+      const postId = isEditing && id ? parseInt(id) : undefined;
+      const result = await apiService.uploadPdf(file, postId);
+
+      if (result.success && result.data?.file_url) {
+        showNotification({
+          type: 'success',
+          title: 'PDF Uploaded',
+          message: 'PDF has been uploaded successfully',
+        });
+        // Extract filename from file_url (format: /uploads/pdfs/filename.pdf)
+        const fileUrl = result.data.file_url;
+        const fileName = fileUrl.split('/').pop() || fileUrl;
+        return fileName;
+      } else {
+        throw new Error(result.error || 'Failed to upload PDF');
+      }
+    } catch (error) {
+      console.error('PDF upload failed:', error);
+      showNotification({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error instanceof Error ? error.message : 'Failed to upload PDF',
+      });
+      return null;
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Helper function to insert PDF into content at cursor position
+  const insertPdfIntoContent = (pdfFileName: string) => {
+    // Use a simple markdown link format that we'll recognize in MarkdownRenderer
+    const pdfMarkdown = `[PDF: ${pdfFileName}](pdf:${pdfFileName})`;
+
+    // Try to find the Material Design text field's internal textarea
+    const mdTextField = document.querySelector('md-outlined-text-field[label="Content (Markdown)"]') as any;
+    let textarea: HTMLTextAreaElement | null = null;
+
+    if (mdTextField) {
+      // Look for the textarea inside the shadow DOM or as a child
+      textarea = mdTextField.querySelector('textarea') ||
+        mdTextField.shadowRoot?.querySelector('textarea') ||
+        mdTextField.renderRoot?.querySelector('textarea');
+    }
+
+    if (textarea) {
+      const cursorPosition = textarea.selectionStart || 0;
+      const currentContent = formData.content;
+
+      const newContent =
+        currentContent.slice(0, cursorPosition) +
+        pdfMarkdown +
+        currentContent.slice(cursorPosition);
+
+      // Update content
+      setFormData(prev => ({
+        ...prev,
+        content: newContent,
+      }));
+
+      // Focus and set cursor position
+      setTimeout(() => {
+        textarea?.focus();
+        const newPosition = cursorPosition + pdfMarkdown.length;
+        textarea?.setSelectionRange(newPosition, newPosition);
+      }, 0);
+    } else {
+      // Fallback: append to content
+      setFormData(prev => ({
+        ...prev,
+        content: prev.content + '\n\n' + pdfMarkdown + '\n\n',
+      }));
+    }
+  };
+
 
 
   // Handle drag and drop events for content area
@@ -321,22 +414,35 @@ const PostEditor: React.FC = () => {
 
     const files = Array.from(e.dataTransfer.files);
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    const pdfFiles = files.filter(file => file.type === 'application/pdf');
 
-    if (imageFiles.length === 0) {
-      showNotification({
-        type: 'warning',
-        title: 'No Images Found',
-        message: 'Please drop image files only.',
-      });
-      return;
+    // Handle PDF files
+    if (pdfFiles.length > 0) {
+      for (const file of pdfFiles) {
+        const pdfFileName = await handleContentPdfUpload(file);
+        if (pdfFileName) {
+          insertPdfIntoContent(pdfFileName);
+        }
+      }
     }
 
-    // Upload and insert each image
-    for (const file of imageFiles) {
-      const imageUrl = await handleContentImageUpload(file);
-      if (imageUrl) {
-        insertImageIntoContent(imageUrl);
+    // Handle image files
+    if (imageFiles.length > 0) {
+      for (const file of imageFiles) {
+        const imageUrl = await handleContentImageUpload(file);
+        if (imageUrl) {
+          insertImageIntoContent(imageUrl);
+        }
       }
+    }
+
+    // Show warning if no supported files
+    if (imageFiles.length === 0 && pdfFiles.length === 0) {
+      showNotification({
+        type: 'warning',
+        title: 'No Supported Files',
+        message: 'Please drop image or PDF files only.',
+      });
     }
   };
 
@@ -396,6 +502,8 @@ const PostEditor: React.FC = () => {
 
       // Extract current images from content to ensure images array is up to date
       const currentImages = extractImagesFromContent(formData.content);
+      // Extract PDF URL from content
+      const pdfUrl = extractPdfUrlFromContent(formData.content);
 
       const postData = {
         title: formData.title.trim() || 'Untitled',
@@ -410,6 +518,7 @@ const PostEditor: React.FC = () => {
         publishDate: status === 'published' ? new Date().toISOString() : undefined,
         readTime: Math.ceil((formData.content || '').split(' ').length / 200), // Estimate reading time
         images: currentImages, // Include images array
+        pdf_url: pdfUrl || undefined, // Include PDF URL if present
       };
 
       let response;

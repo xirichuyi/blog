@@ -127,9 +127,105 @@ impl FileHandler {
             .first_or_octet_stream()
             .to_string()
     }
+
+    /// Save PDF file with original filename (handle conflicts by appending number)
+    pub async fn save_pdf_with_original_name(
+        &self,
+        mut field: Field,
+        subfolder: &str,
+    ) -> Result<(String, String, u64)> {
+        // Get original file name
+        let original_name = field
+            .file_name()
+            .ok_or_else(|| AppError::BadRequest("No file name provided".to_string()))?
+            .to_string();
+
+        // Sanitize filename (remove path components)
+        let sanitized_name = Path::new(&original_name)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(&original_name)
+            .to_string();
+
+        // Create directory path
+        let dir_path = PathBuf::from(&self.upload_dir).join(subfolder);
+        fs::create_dir_all(&dir_path).await?;
+
+        // Handle filename conflicts
+        let mut file_name = sanitized_name.clone();
+        let mut file_path = dir_path.join(&file_name);
+        let mut counter = 1;
+
+        while file_path.exists() {
+            let stem = Path::new(&sanitized_name)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("file");
+            let extension = Path::new(&sanitized_name)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or("pdf");
+
+            file_name = format!("{}_{}.{}", stem, counter, extension);
+            file_path = dir_path.join(&file_name);
+            counter += 1;
+        }
+
+        // Save file
+        let mut file = fs::File::create(&file_path).await?;
+        let mut total_size = 0u64;
+
+        while let Some(chunk) = field
+            .chunk()
+            .await
+            .map_err(|e| AppError::BadRequest(format!("Failed to read file chunk: {}", e)))?
+        {
+            total_size += chunk.len() as u64;
+            if total_size > self.max_file_size {
+                // Clean up partial file
+                let _ = fs::remove_file(&file_path).await;
+                return Err(AppError::BadRequest(
+                    "File size exceeds maximum allowed size".to_string(),
+                ));
+            }
+            file.write_all(&chunk).await?;
+        }
+
+        file.flush().await?;
+
+        // Generate URL
+        let file_url = format!("/uploads/{}/{}", subfolder, file_name);
+
+        Ok((file_url, file_name, total_size))
+    }
+
+    /// Get file path from URL
+    pub fn get_file_path(&self, file_url: &str) -> Result<PathBuf> {
+        if file_url.starts_with("/uploads/") {
+            let relative_path = &file_url[9..]; // Remove "/uploads/" prefix
+
+            // Prevent path traversal attacks
+            if relative_path.contains("..") || relative_path.contains("//") {
+                return Err(AppError::BadRequest("Invalid file path".to_string()));
+            }
+
+            let upload_dir = PathBuf::from(&self.upload_dir);
+            let file_path = upload_dir.join(relative_path);
+
+            // Ensure the file path is within the upload directory
+            if !file_path.starts_with(&upload_dir) {
+                return Err(AppError::BadRequest("Invalid file path".to_string()));
+            }
+
+            Ok(file_path)
+        } else {
+            Err(AppError::BadRequest("Invalid file URL".to_string()))
+        }
+    }
 }
 
 // File type constants
 pub const IMAGE_TYPES: &[&str] = &["jpg", "jpeg", "png", "gif", "webp"];
 pub const MUSIC_TYPES: &[&str] = &["mp3", "wav", "flac", "aac", "ogg"];
 pub const DOCUMENT_TYPES: &[&str] = &["pdf", "doc", "docx", "txt", "zip", "rar"];
+pub const PDF_TYPES: &[&str] = &["pdf"];

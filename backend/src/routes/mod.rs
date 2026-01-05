@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
-    about_handler, category_handler, download_handler, health_handler, music_handler, post_handler,
-    tag_handler,
+    about_handler, category_handler, download_handler, health_handler, music_handler, pdf_handler,
+    post_handler, tag_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use axum::{
@@ -99,6 +99,8 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             "/api/post/update_tags/:id",
             put(post_handler::update_post_tags),
         )
+        // PDF admin routes
+        .route("/api/pdf/upload", post(pdf_handler::upload_pdf))
         // About admin routes
         .route("/api/about/update", put(about_handler::update_about))
         // Music admin routes

@@ -474,61 +474,54 @@ const Home: React.FC = () => {
         <section className={`blog-featured-section ${isContentReady ? 'featured--visible' : 'featured--hidden'}`}>
           <div className="blog-featured-grid">
             {/* 特色文章 */}
-            {featuredArticles.map((article, index) => (
-              <div
-                key={article.id}
-                className={`featured-article-card ${isContentReady ? 'featured-card--visible' : 'featured-card--hidden'}`}
-                onClick={() => handleArticleClick(article.id)}
-                style={{
-                  cursor: 'pointer',
-                  animationDelay: isContentReady ? `${index * 100}ms` : '0ms'
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleArticleClick(article.id);
-                  }
-                }}
-              >
-                <div className="featured-article-image-area">
-                  {article.coverImage ? (
-                    <img
-                      src={article.coverImage}
-                      alt={article.title}
-                      className="featured-article-image"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        // XSS fix: Don't use innerHTML, update the article state instead
-                        setArticles(prev => prev.map(a =>
-                          a.id === article.id ? { ...a, coverImage: null } : a
-                        ));
-                      }}
-                    />
-                  ) : (
-                    <div className="featured-article-fallback" style={{ background: article.gradient }}>
-                      <div className="featured-fallback-content">
-                        <div className="fallback-icon">
-                          <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
-                            <path d="M14.828 14.828a4 4 0 0 1-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                        <p className="fallback-text">{article.title}</p>
-                      </div>
+            {featuredArticles.map((article, index) => {
+              const hasCoverImage = article.coverImage;
+              
+              return (
+                <div
+                  key={article.id}
+                  className={`featured-article-card ${!hasCoverImage ? 'featured-article-card--no-image' : ''} ${isContentReady ? 'featured-card--visible' : 'featured-card--hidden'}`}
+                  onClick={() => handleArticleClick(article.id)}
+                  style={{
+                    cursor: 'pointer',
+                    animationDelay: isContentReady ? `${index * 100}ms` : '0ms'
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleArticleClick(article.id);
+                    }
+                  }}
+                >
+                  {hasCoverImage && (
+                    <div className="featured-article-image-area">
+                      <img
+                        src={article.coverImage}
+                        alt={article.title}
+                        className="featured-article-image"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          // XSS fix: Don't use innerHTML, update the article state instead
+                          setArticles(prev => prev.map(a =>
+                            a.id === article.id ? { ...a, coverImage: null } : a
+                          ));
+                        }}
+                      />
                     </div>
                   )}
-                </div>
-                <div className="featured-article-content">
-                  <div className="featured-article-meta">
-                    <span className="featured-article-date">{article.date}</span>
+                  <div className="featured-article-content">
+                    <div className="featured-article-meta">
+                      <span className="featured-article-date">{article.date}</span>
+                    </div>
+                    <h2 className="featured-article-title">{article.title}</h2>
+                    <p className="featured-article-description">{article.description}</p>
                   </div>
-                  <h2 className="featured-article-title">{article.title}</h2>
-                  <p className="featured-article-description">{article.description}</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* 次要文章网格 */}

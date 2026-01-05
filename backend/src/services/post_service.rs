@@ -100,6 +100,7 @@ impl PostService {
                     category_id: None,
                     status: None,
                     post_images: None,
+                    pdf_url: None,
                 };
 
                 let updated_post =

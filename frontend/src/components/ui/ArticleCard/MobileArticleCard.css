@@ -55,6 +55,15 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* No image variant */
+.mobile-article-card--no-image {
+  /* When no image, content takes full width */
+}
+
+.mobile-article-card--no-image .mobile-article-card-content {
+  padding-left: var(--apple-spacing-md);
+}
+
 /* Content Area - Right Side */
 .mobile-article-card-content {
   flex: 1;

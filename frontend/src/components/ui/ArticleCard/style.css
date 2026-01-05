@@ -10,6 +10,8 @@
   overflow: hidden;
   background: #f0eed4;
   backdrop-filter: blur(8px);
+  border-bottom: 3px solid #3a2e1f;
+  border-right: 3px solid #3a2e1f;
   /* Bottom shadow for depth - Brad Frost style */
   box-shadow: 0 4px 0 0 #dedcb9, 0 6px 12px -4px rgba(222, 220, 185, 0.3);
 }
@@ -39,6 +41,15 @@
 /* Compact variant (Articles page style) */
 .article-card--compact {
   height: 400px;
+}
+
+/* No image variant - keep same height for grid alignment */
+.article-card--no-image.article-card--default {
+  height: 500px; /* Same as default to maintain grid alignment */
+}
+
+.article-card--no-image.article-card--compact {
+  height: 400px; /* Same as compact to maintain grid alignment */
 }
 
 .article-card-image {
@@ -98,6 +109,14 @@
   gap: var(--md-sys-spacing-2);
   min-height: 0;
   border-radius: 0 0 24px 24px;
+}
+
+/* When no image, content should have full border radius and more padding */
+.article-card--no-image .article-card-content {
+  border-radius: 24px;
+  padding: var(--md-sys-spacing-6);
+  justify-content: center;
+  min-height: 100%;
 }
 
 .article-card--compact .article-card-content {
@@ -188,6 +207,14 @@
     height: 350px;
   }
 
+  .article-card--no-image.article-card--default {
+    height: 450px; /* Same as default to maintain grid alignment */
+  }
+
+  .article-card--no-image.article-card--compact {
+    height: 350px; /* Same as compact to maintain grid alignment */
+  }
+
   .article-card--default .article-card-image {
     height: 250px;
   }
@@ -214,6 +241,14 @@
     height: 320px;
   }
 
+  .article-card--no-image.article-card--default {
+    height: 400px; /* Same as default to maintain grid alignment */
+  }
+
+  .article-card--no-image.article-card--compact {
+    height: 320px; /* Same as compact to maintain grid alignment */
+  }
+
   .article-card--default .article-card-image {
     height: 220px;
   }
@@ -224,6 +259,10 @@
 
   .article-card-content {
     padding: var(--md-sys-spacing-3);
+  }
+
+  .article-card--no-image .article-card-content {
+    padding-top: var(--md-sys-spacing-3);
   }
 
   .article-card-title {

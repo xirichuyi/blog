@@ -48,35 +48,23 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
 
     return (
         <div
-            className={`article-card article-card--${variant} ${className}`}
+            className={`article-card article-card--${variant} ${!coverImage || imageError ? 'article-card--no-image' : ''} ${className}`}
             onClick={handleClick}
             style={{ cursor: 'pointer', ...style }}
             role="button"
             tabIndex={0}
             onKeyDown={handleKeyDown}
         >
-            <div className="article-card-image">
-                {coverImage && !imageError ? (
+            {coverImage && !imageError && (
+                <div className="article-card-image">
                     <img
                         src={coverImage}
                         alt={title}
                         className="article-card-img"
                         onError={handleImageError}
                     />
-                ) : (
-                    <div className="article-card-fallback" style={{ background: gradient }}>
-                        <div className="article-fallback-content">
-                            <div className="fallback-icon">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
             <div className="article-card-content">
                 <div className="article-card-meta">
                     <span className="article-card-tag">{tag}</span>

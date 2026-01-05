@@ -46,15 +46,15 @@ const MobileArticleCard: React.FC<MobileArticleCardProps> = ({
 
     return (
         <article
-            className={`mobile-article-card ${className}`}
+            className={`mobile-article-card ${!coverImage || imageError ? 'mobile-article-card--no-image' : ''} ${className}`}
             onClick={handleClick}
             role="button"
             tabIndex={0}
             onKeyDown={handleKeyDown}
             style={style}
         >
-            <div className="mobile-article-card-image">
-                {coverImage && !imageError ? (
+            {coverImage && !imageError && (
+                <div className="mobile-article-card-image">
                     <img
                         src={coverImage}
                         alt={title}
@@ -62,14 +62,8 @@ const MobileArticleCard: React.FC<MobileArticleCardProps> = ({
                         onError={handleImageError}
                         loading="lazy"
                     />
-                ) : (
-                    <div className="mobile-article-card-fallback" style={{ background: gradient }}>
-                        <div className="mobile-fallback-content">
-                            <FileText size={32} />
-                        </div>
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
             <div className="mobile-article-card-content">
                 <div className="mobile-article-card-meta">
                     <span className="mobile-article-card-tag">{tag}</span>

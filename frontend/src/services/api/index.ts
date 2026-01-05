@@ -225,6 +225,11 @@ class ApiService {
         return this.uploads.getImageUrl(imagePath);
     }
 
+    // ========== PDF相关 ==========
+    async uploadPdf(file: File, postId?: number) {
+        return this.uploads.uploadPdf(file, postId);
+    }
+
     // 缓存管理方法
     invalidateCachePattern(pattern: RegExp): void {
         this.posts.invalidateCachePattern(pattern);

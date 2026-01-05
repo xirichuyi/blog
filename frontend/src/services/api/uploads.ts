@@ -150,4 +150,50 @@ export class UploadsApiService extends BaseApiService {
             };
         }
     }
+
+    // Upload PDF file
+    async uploadPdf(file: File, postId?: number): Promise<ApiResponse<{ file_url: string; file_name: string }>> {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (postId) {
+            formData.append('post_id', postId.toString());
+        }
+
+        try {
+            const response = await fetch(`${this.baseURL}/pdf/upload`, {
+                method: 'POST',
+                headers: this.getUploadHeaders(),
+                body: formData,
+            });
+
+            const data = await response.json();
+            console.log('PDF upload response:', data);
+
+            if (!response.ok) {
+                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+            }
+
+            // Handle different response structures
+            let extractedData;
+            if (data.data && data.data.file_url) {
+                extractedData = data.data;
+            } else if (data.file_url) {
+                extractedData = data;
+            } else {
+                console.error('Unexpected response structure:', data);
+                throw new Error('Invalid response structure: missing file_url');
+            }
+
+            return {
+                success: true,
+                data: extractedData,
+            };
+        } catch (error) {
+            console.error('PDF upload failed:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'PDF upload failed',
+            };
+        }
+    }
 }

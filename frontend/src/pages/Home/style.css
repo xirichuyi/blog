@@ -266,7 +266,7 @@
 }
 
 .featured-article-card {
-  background: #F0EED4;
+  background: #f0eed4;
   border-radius: 24px;
   height: 298px; /* 固定高度，防止图片撑开 */
   display: grid;
@@ -274,34 +274,37 @@
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.2s ease;
+  border-right: 3px solid #3a2e1f;
   /* Bottom shadow for depth - Brad Frost style */
-  box-shadow: 
-    0 4px 0 0 #DEDCB9,
-    0 6px 12px -4px rgba(222, 220, 185, 0.3);
+  box-shadow: 0 4px 0 0 #dedcb9, 0 6px 12px -4px rgba(222, 220, 185, 0.3);
+}
+
+/* No image variant - single column layout */
+.featured-article-card--no-image {
+  height: auto;
+  min-height: 200px;
+  grid-template-columns: 1fr;
+  border-right: 3px solid #3a2e1f;
+  border-bottom: 3px solid #3a2e1f;
 }
 
 .featured-article-card:hover {
-  background-color: #F0EED4;
+  background-color: #f0eed4;
   transform: translateY(-2px);
-  box-shadow: 
-    0 6px 0 0 #DEDCB9,
-    0 10px 20px -6px rgba(222, 220, 185, 0.4);
+  box-shadow: 0 6px 0 0 #dedcb9, 0 10px 20px -6px rgba(222, 220, 185, 0.4);
 }
 
 /* Dark mode shadow for featured card */
 [data-theme="dark"] .featured-article-card {
-  background: #F0EED4;
-  box-shadow: 
-    0 4px 0 0 rgba(0, 0, 0, 0.3),
-    0 6px 12px -4px rgba(0, 0, 0, 0.2);
+  background: #f0eed4;
+  box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.3), 0 6px 12px -4px rgba(0, 0, 0, 0.2);
 }
 
 [data-theme="dark"] .featured-article-card:hover {
-  background-color: #F0EED4;
-  box-shadow: 
-    0 6px 0 0 rgba(0, 0, 0, 0.25),
-    0 10px 20px -6px rgba(0, 0, 0, 0.3);
+  background-color: #f0eed4;
+  box-shadow: 0 6px 0 0 rgba(0, 0, 0, 0.25), 0 10px 20px -6px rgba(0, 0, 0, 0.3);
 }
 
 /* Secondary Articles Section */
@@ -587,6 +590,12 @@
   z-index: 2;
 }
 
+/* When no image, content should have more padding */
+.featured-article-card--no-image .featured-article-content {
+  padding: var(--md-sys-spacing-6);
+  justify-content: flex-start;
+}
+
 .featured-article-meta {
   margin-bottom: var(--md-sys-spacing-3);
 }
@@ -625,6 +634,11 @@
     height: 480px; /* 固定高度，防止撑开 */
   }
 
+  .featured-article-card--no-image {
+    height: auto;
+    min-height: 300px;
+  }
+
   .featured-article-image-area {
     flex: none;
     height: 200px;
@@ -654,6 +668,10 @@
 
   .featured-article-card {
     min-height: 400px;
+  }
+
+  .featured-article-card--no-image {
+    min-height: 280px;
   }
 
   .featured-article-image-area {
@@ -849,6 +867,10 @@
     padding: var(--md-sys-spacing-6);
   }
 
+  .featured-article-card--no-image {
+    min-height: 200px;
+  }
+
   .blog-releases-grid {
     grid-template-columns: 1fr;
   }
@@ -911,6 +933,10 @@
   .featured-article-card {
     min-height: 180px;
     padding: var(--md-sys-spacing-5);
+  }
+
+  .featured-article-card--no-image {
+    min-height: 180px;
   }
 
   .featured-article-title {
