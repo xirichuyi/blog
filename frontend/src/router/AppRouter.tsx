@@ -18,6 +18,7 @@ const LazyPostManagement = lazy(() => import('../pages/Admin/PostManagement'));
 const LazyPostEditor = lazy(() => import('../pages/Admin/PostEditor'));
 const LazyCategoriesTagsManagement = lazy(() => import('../pages/Admin/CategoriesTags'));
 const LazyAboutManagement = lazy(() => import('../pages/Admin/About'));
+const LazyResourceManagement = lazy(() => import('../pages/Admin/ResourceManagement'));
 import NotificationContainer from '../components/ui/NotificationContainer';
 import '../styles/page-placeholder.css';
 
@@ -175,6 +176,14 @@ const AppRouter: React.FC = () => {
                 <Suspense fallback={<LoadingSpinner />}>
                   <ProtectedRoute>
                     <LazyAboutManagement />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+
+              <Route path="/admin/resources" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProtectedRoute>
+                    <LazyResourceManagement />
                   </ProtectedRoute>
                 </Suspense>
               } />

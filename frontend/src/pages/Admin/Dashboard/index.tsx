@@ -75,26 +75,8 @@ const Dashboard: React.FC = () => {
       if (response.success && response.data) {
         setStats(response.data);
       } else {
-        const [postsResponse, categoriesResponse, tagsResponse] = await Promise.all([
-          apiService.getPosts(1, 1),
-          apiService.getCategories(),
-          apiService.getTags()
-        ]);
-
-        const calculatedStats: DashboardStats = {
-          total_music: 0,
-          total_posts: postsResponse.success && postsResponse.data ? postsResponse.data.total : 0,
-          total_categories: categoriesResponse.success && categoriesResponse.data ? categoriesResponse.data.length : 0,
-          total_tags: tagsResponse.success && tagsResponse.data ? tagsResponse.data.length : 0,
-          recent_posts: postsResponse.success && postsResponse.data ? postsResponse.data.posts.slice(0, 5) : [],
-          system_info: {
-            uptime: '0 days',
-            memory_usage: 'N/A',
-            disk_usage: 'N/A'
-          }
-        };
-
-        setStats(calculatedStats);
+        // If dashboard stats API fails, show error
+        setError(response.error || 'Failed to load dashboard stats');
       }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
@@ -280,7 +262,7 @@ const Dashboard: React.FC = () => {
           >
             <List
               dataSource={stats.recent_posts.slice(0, 5)}
-              renderItem={(post) => (
+              renderItem={(post: any) => (
                 <List.Item
                   actions={[
                     <Button
@@ -297,9 +279,11 @@ const Dashboard: React.FC = () => {
                     title={post.title}
                     description={
                       <Space>
-                        <Tag color="blue">{post.category}</Tag>
+                        <Tag color={post.status === 1 ? 'green' : 'orange'}>
+                          {post.status === 1 ? 'Published' : 'Draft'}
+                        </Tag>
                         <Text type="secondary">
-                          {new Date(post.publishDate).toLocaleDateString()}
+                          {new Date(post.created_at).toLocaleDateString()}
                         </Text>
                       </Space>
                     }

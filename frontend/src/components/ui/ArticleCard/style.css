@@ -303,19 +303,19 @@
   background: var(--apple-color-surface-elevated, #f0eed4);
   border-radius: var(--apple-radius-lg, 16px);
   border: 0.5px solid var(--apple-color-border, #dedcb9);
-  box-shadow: var(--apple-shadow-sm, 0 2px 8px rgba(0,0,0,0.1));
+  box-shadow: var(--apple-shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.1));
   border-bottom: none;
   border-right: none;
 }
 
 .article-card--mobile:active {
   transform: scale(0.98);
-  box-shadow: var(--apple-shadow-xs, 0 1px 4px rgba(0,0,0,0.08));
+  box-shadow: var(--apple-shadow-xs, 0 1px 4px rgba(0, 0, 0, 0.08));
 }
 
 .article-card--mobile:hover {
   transform: none;
-  box-shadow: var(--apple-shadow-md, 0 4px 12px rgba(0,0,0,0.15));
+  box-shadow: var(--apple-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.15));
 }
 
 .article-card--mobile .article-card-image {

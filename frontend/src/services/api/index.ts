@@ -8,6 +8,7 @@ import { MusicApiService } from './music';
 import { UploadsApiService } from './uploads';
 import { AboutApiService } from './about';
 import { HealthApiService } from './health';
+import { ResourceApiService } from './resources';
 import type { Article } from '../types';
 
 /**
@@ -23,6 +24,7 @@ class ApiService {
     private uploads: UploadsApiService;
     private about: AboutApiService;
     private health: HealthApiService;
+    private resources: ResourceApiService;
 
     constructor() {
         this.auth = new AuthApiService();
@@ -33,6 +35,7 @@ class ApiService {
         this.uploads = new UploadsApiService();
         this.about = new AboutApiService();
         this.health = new HealthApiService();
+        this.resources = new ResourceApiService();
     }
 
     // ========== 认证相关 ==========
@@ -200,6 +203,23 @@ class ApiService {
     setCachedData<T>(key: string, data: T, ttl?: number): void {
         this.posts.setPublicCachedData(key, data, ttl);
     }
+
+    // ========== 资源管理相关 ==========
+    listResources(fileType?: string, used?: boolean) {
+        return this.resources.listResources(fileType, used);
+    }
+
+    getResourceStats() {
+        return this.resources.getResourceStats();
+    }
+
+    deleteResource(path: string) {
+        return this.resources.deleteResource(path);
+    }
+
+    optimizeAllImages() {
+        return this.resources.optimizeAllImages();
+    }
 }
 
 // Export singleton instance
@@ -215,5 +235,16 @@ export {
     MusicApiService,
     UploadsApiService,
     AboutApiService,
-    HealthApiService
+    HealthApiService,
+    ResourceApiService
 };
+
+// Re-export resource types for convenience
+export type {
+    StaticResource,
+    ResourceUsage,
+    UsageRef,
+    ResourceStats,
+    TypeStats,
+    OptimizeResult
+} from './resources';

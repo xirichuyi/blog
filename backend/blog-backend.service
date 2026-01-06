@@ -1,0 +1,23 @@
+[Unit]
+Description=Chuyi Blog Backend Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/blog/backend
+ExecStart=/var/www/blog/backend/target/release/chuyi-uk-back
+Restart=always
+RestartSec=5
+Environment=ENV=production
+Environment=RUST_LOG=info
+
+# 安全设置
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/blog/backend/data /var/www/blog/backend/uploads
+
+[Install]
+WantedBy=multi-user.target

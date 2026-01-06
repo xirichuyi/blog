@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
     about_handler, category_handler, download_handler, health_handler, music_handler, pdf_handler,
-    post_handler, tag_handler,
+    post_handler, resource_handler, tag_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
@@ -53,7 +53,11 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         config.storage.upload_dir.clone(),
         config.storage.max_file_size,
     ));
-    let services = Services::new(database.clone(), file_handler.clone());
+    let services = Services::new(
+        database.clone(),
+        file_handler.clone(),
+        config.storage.upload_dir.clone(),
+    );
     let app_state = AppState {
         database,
         config,
@@ -107,6 +111,11 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
 
     // Admin routes (authentication required)
     let admin_routes = Router::new()
+        // Dashboard stats
+        .route(
+            "/api/admin/dashboard/stats",
+            get(health_handler::get_dashboard_stats),
+        )
         // Post admin routes
         .route("/api/post/create", post(post_handler::create_post))
         .route("/api/post/update/:id", put(post_handler::update_post))
@@ -167,6 +176,23 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route("/api/tag/create", post(tag_handler::create_tag))
         .route("/api/tag/update/:id", put(tag_handler::update_tag))
         .route("/api/tag/delete/:id", delete(tag_handler::delete_tag))
+        // Resource management routes
+        .route(
+            "/api/admin/resources",
+            get(resource_handler::list_resources),
+        )
+        .route(
+            "/api/admin/resources/stats",
+            get(resource_handler::get_resource_stats),
+        )
+        .route(
+            "/api/admin/resources/delete",
+            delete(resource_handler::delete_resource),
+        )
+        .route(
+            "/api/admin/resources/optimize",
+            post(resource_handler::optimize_all_images),
+        )
         // Apply admin authentication middleware
         .layer(middleware::from_fn_with_state(
             app_state.clone(),

@@ -6,42 +6,22 @@ import type { LoginCredentials, LoginResponse, ApiResponse } from '../types';
 export class AuthApiService extends BaseApiService {
     // Authentication APIs
     async login(credentials: LoginCredentials): Promise<ApiResponse<LoginResponse>> {
-        try {
-            // For this backend, we use a fixed admin token instead of username/password login
-            // Check if credentials match expected admin credentials
-            const expectedUsername = 'admin';
-            const expectedPassword = 'dev-admin-token-not-for-production'; // This should match the backend's admin token
+        // Directly use the provided token
+        const mockUser = {
+            id: '1',
+            username: 'admin',
+            role: 'admin' as const,
+            lastLogin: new Date().toISOString(),
+        };
 
-            if (credentials.username !== expectedUsername || credentials.password !== expectedPassword) {
-                return {
-                    success: false,
-                    error: 'Invalid credentials',
-                };
-            }
-
-            // Return success with the admin token
-            const adminToken = 'dev-admin-token-not-for-production'; // This should match the backend's admin token
-            const mockUser = {
-                id: '1',
-                username: 'admin',
-                role: 'admin' as const,
-                lastLogin: new Date().toISOString(),
-            };
-
-            return {
+        return {
+            success: true,
+            data: {
                 success: true,
-                data: {
-                    success: true,
-                    token: adminToken,
-                    user: mockUser,
-                },
-            };
-        } catch (error) {
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Login failed',
-            };
-        }
+                token: credentials.token,
+                user: mockUser,
+            },
+        };
     }
 
     async verifyToken(): Promise<ApiResponse<{ valid: boolean }>> {

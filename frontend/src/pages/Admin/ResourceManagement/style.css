@@ -1,0 +1,55 @@
+.resource-management {
+  padding: 0;
+}
+
+.resource-management .ant-card {
+  border-radius: 8px;
+}
+
+.resource-management .ant-statistic-title {
+  font-size: 13px;
+  color: #8c8c8c;
+}
+
+.resource-management .ant-statistic-content-value {
+  font-size: 24px;
+}
+
+.resource-management .ant-image {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.resource-management .ant-table-row:hover {
+  cursor: pointer;
+}
+
+.resource-management .ant-tag {
+  margin-right: 0;
+}
+
+.resource-management .ant-progress {
+  margin-bottom: 0;
+}
+
+.resource-management .ant-progress-text {
+  font-weight: 600;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .resource-management .ant-statistic-title {
+    color: rgba(255, 255, 255, 0.65);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .resource-management .ant-statistic-content-value {
+    font-size: 20px;
+  }
+
+  .resource-management .ant-table-cell {
+    padding: 8px 4px;
+  }
+}

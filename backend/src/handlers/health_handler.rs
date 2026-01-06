@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::Instant;
 use sysinfo::{Disks, System};
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthStatus {
@@ -299,5 +300,163 @@ fn get_system_metrics(system: &System) -> SystemMetrics {
         disk_usage_percent,
         disk_used_bytes: disk_used,
         disk_total_bytes: disk_total,
+    }
+}
+
+// Dashboard Statistics
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DashboardStats {
+    pub total_views: i64,
+    pub total_posts: i64,
+    pub total_categories: i64,
+    pub total_tags: i64,
+    pub total_music: i64,
+    pub recent_posts: Vec<RecentPost>,
+    pub system_info: DashboardSystemInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RecentPost {
+    pub id: i64,
+    pub title: String,
+    pub created_at: DateTime<Utc>,
+    pub status: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DashboardSystemInfo {
+    pub uptime: String,
+    pub memory_usage: String,
+    pub disk_usage: String,
+}
+
+/// Dashboard statistics endpoint - returns real data from database
+pub async fn get_dashboard_stats(
+    State(app_state): State<AppState>,
+) -> Result<Json<DashboardStats>, StatusCode> {
+    // Get counts from database
+    let total_posts: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM posts WHERE status != 2")
+        .fetch_one(app_state.database.pool.as_ref())
+        .await
+        .unwrap_or((0,));
+
+    let total_categories: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM categories")
+        .fetch_one(app_state.database.pool.as_ref())
+        .await
+        .unwrap_or((0,));
+
+    let total_tags: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM tags")
+        .fetch_one(app_state.database.pool.as_ref())
+        .await
+        .unwrap_or((0,));
+
+    let total_music: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM music WHERE status != 2")
+        .fetch_one(app_state.database.pool.as_ref())
+        .await
+        .unwrap_or((0,));
+
+    // Get recent posts (latest 5)
+    let recent_posts_rows: Vec<(i64, String, DateTime<Utc>, i32)> = sqlx::query_as(
+        "SELECT id, title, created_at, status FROM posts WHERE status != 2 ORDER BY created_at DESC LIMIT 5"
+    )
+        .fetch_all(app_state.database.pool.as_ref())
+        .await
+        .unwrap_or_default();
+
+    let recent_posts: Vec<RecentPost> = recent_posts_rows
+        .into_iter()
+        .map(|(id, title, created_at, status)| RecentPost {
+            id,
+            title,
+            created_at,
+            status,
+        })
+        .collect();
+
+    // Get system info
+    let mut system = System::new_all();
+    system.refresh_all();
+
+    let uptime_seconds = get_uptime_seconds();
+    let uptime = format_uptime(uptime_seconds);
+
+    let used_memory = system.used_memory() as f64 / 1024.0 / 1024.0;
+    let memory_usage = format!("{:.0}MB", used_memory);
+
+    // Calculate uploads directory size
+    let upload_dir = &app_state.config.storage.upload_dir;
+    let disk_usage = get_directory_size(upload_dir);
+
+    let stats = DashboardStats {
+        total_views: 0, // Placeholder - would need view tracking
+        total_posts: total_posts.0,
+        total_categories: total_categories.0,
+        total_tags: total_tags.0,
+        total_music: total_music.0,
+        recent_posts,
+        system_info: DashboardSystemInfo {
+            uptime,
+            memory_usage,
+            disk_usage,
+        },
+    };
+
+    Ok(Json(stats))
+}
+
+fn format_uptime(seconds: u64) -> String {
+    let days = seconds / 86400;
+    let hours = (seconds % 86400) / 3600;
+    let minutes = (seconds % 3600) / 60;
+
+    if days > 0 {
+        format!("{}d {}h", days, hours)
+    } else if hours > 0 {
+        format!("{}h {}m", hours, minutes)
+    } else {
+        format!("{}m", minutes)
+    }
+}
+
+fn get_directory_size(path: &str) -> String {
+    let path = Path::new(path);
+    if !path.exists() {
+        return "0B".to_string();
+    }
+
+    let size = calculate_dir_size(path);
+    format_bytes(size)
+}
+
+fn calculate_dir_size(path: &Path) -> u64 {
+    let mut size = 0;
+    if path.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                if entry_path.is_dir() {
+                    size += calculate_dir_size(&entry_path);
+                } else if let Ok(metadata) = entry.metadata() {
+                    size += metadata.len();
+                }
+            }
+        }
+    }
+    size
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+
+    if bytes >= GB {
+        format!("{:.1}GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1}MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1}KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{}B", bytes)
     }
 }

@@ -15,6 +15,7 @@ import {
   BellOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  FolderOutlined,
 } from '@ant-design/icons';
 import './AdminLayout.css';
 
@@ -42,6 +43,11 @@ const menuItems = [
     path: '/admin/categories-tags',
     name: 'Categories & Tags',
     icon: <TagsOutlined />,
+  },
+  {
+    path: '/admin/resources',
+    name: 'Resources',
+    icon: <FolderOutlined />,
   },
   {
     path: '/admin/about',

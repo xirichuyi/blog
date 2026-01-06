@@ -14,8 +14,7 @@ import {
   Spin,
 } from 'antd';
 import {
-  UserOutlined,
-  LockOutlined,
+  KeyOutlined,
   LoginOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
@@ -24,8 +23,7 @@ import './style.css';
 const { Title, Text } = Typography;
 
 interface LoginFormValues {
-  username: string;
-  password: string;
+  token: string;
 }
 
 const Login: React.FC = () => {
@@ -50,8 +48,7 @@ const Login: React.FC = () => {
   const handleSubmit = async (values: LoginFormValues) => {
     try {
       const success = await login({
-        username: values.username.trim(),
-        password: values.password,
+        token: values.token.trim(),
       });
 
       if (success) {
@@ -91,10 +88,10 @@ const Login: React.FC = () => {
         <Card className="login-card" bordered={false}>
           <div className="login-header">
             <div className="login-icon">
-              <UserOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+              <KeyOutlined style={{ fontSize: 48, color: '#1890ff' }} />
             </div>
             <Title level={2} style={{ marginBottom: 8 }}>Admin Login</Title>
-            <Text type="secondary">Sign in to access the admin panel</Text>
+            <Text type="secondary">请输入管理Token登录</Text>
           </div>
 
           <Form
@@ -107,29 +104,16 @@ const Login: React.FC = () => {
             className="login-form"
           >
             <Form.Item
-              name="username"
+              name="token"
               rules={[
-                { required: true, message: 'Please enter your username' },
-                { whitespace: true, message: 'Username cannot be empty' },
-              ]}
-            >
-              <Input
-                prefix={<UserOutlined />}
-                placeholder="Username"
-                autoComplete="username"
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="password"
-              rules={[
-                { required: true, message: 'Please enter your password' },
+                { required: true, message: '请输入Token' },
+                { whitespace: true, message: 'Token不能为空' },
               ]}
             >
               <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="Password"
-                autoComplete="current-password"
+                prefix={<KeyOutlined />}
+                placeholder="请输入管理Token"
+                autoComplete="off"
               />
             </Form.Item>
 

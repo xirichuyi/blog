@@ -121,7 +121,8 @@ pub async fn upload_post_image(
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }
 
-            match file_handler.save_file(field, "images").await {
+            // Use optimized image upload (converts to WebP, resizes if needed)
+            match file_handler.save_optimized_image(field, "images", None).await {
                 Ok((file_url, file_name, file_size)) => {
                     let response = FileUploadResponse {
                         file_url,
@@ -156,7 +157,8 @@ pub async fn update_post_cover(
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }
 
-            match app_state.file_handler.save_file(field, "covers").await {
+            // Use optimized image upload (converts to WebP, resizes if needed)
+            match app_state.file_handler.save_optimized_image(field, "covers", None).await {
                 Ok((file_url, _, _)) => {
                     match app_state.services.post.update_post_cover(id, file_url).await {
                         Ok(Some(post)) => return Ok(Json(ApiResponse::success(post))),

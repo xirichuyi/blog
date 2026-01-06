@@ -1,8 +1,7 @@
 // Authentication-related type definitions
 
 export interface LoginCredentials {
-  username: string;
-  password: string;
+  token: string;
 }
 
 export interface LoginResponse {

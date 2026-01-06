@@ -52,6 +52,10 @@ async-trait = "0.1"
 # File handling
 mime_guess = "2.0"
 
+# Image processing
+image = { version = "0.24", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+webp = "0.3"
+
 # Authentication & Security
 jsonwebtoken = "9.2"
 bcrypt = "0.15"
