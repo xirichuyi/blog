@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiService } from '../../../services/api';
+import { logger } from '../../../utils/logger';
 import { useAuth } from '../../../contexts/AuthContext';
 import MarkdownRenderer from '../../../components/ui/MarkdownRenderer';
 import CoverUpload from '../../../components/ui/CoverUpload';
@@ -196,7 +197,7 @@ const PostEditor: React.FC = () => {
         setAvailableTags(tagsResponse.data);
       }
     } catch (error) {
-      console.error('Failed to load categories and tags:', error);
+      logger.error('Failed to load categories and tags:', error);
       message.error('Failed to load categories and tags data');
     }
   };
@@ -280,7 +281,7 @@ const PostEditor: React.FC = () => {
         throw new Error(result.error || 'Failed to upload image');
       }
     } catch (error) {
-      console.error('Image upload failed:', error);
+      logger.error('Image upload failed:', error);
       message.error(error instanceof Error ? error.message : 'Failed to upload image');
       return null;
     } finally {
@@ -304,7 +305,7 @@ const PostEditor: React.FC = () => {
         throw new Error(result.error || 'Failed to upload PDF');
       }
     } catch (error) {
-      console.error('PDF upload failed:', error);
+      logger.error('PDF upload failed:', error);
       message.error(error instanceof Error ? error.message : 'Failed to upload PDF');
       return null;
     } finally {

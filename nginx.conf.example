@@ -1,0 +1,50 @@
+# Nginx reverse proxy config for blog production deployment.
+#
+# How it works:
+#   - Serves the built frontend (dist/) as static files
+#   - Proxies /api/* and /uploads/* to the Rust backend
+#   - All image URLs stored as /uploads/... resolve correctly via this proxy
+#
+# Usage:
+#   1. Build the frontend:  cd frontend && npm run build
+#   2. Copy dist/ to the path set in `root` below
+#   3. Adjust `server_name` and `root` for your server
+#   4. Reload nginx: sudo nginx -s reload
+
+server {
+    listen 80;
+    server_name yourdomain.com;        # <-- change this
+
+    root /var/www/blog/dist;           # <-- path to frontend build output
+    index index.html;
+
+    # Forward API requests to the Rust backend
+    location /api/ {
+        proxy_pass http://127.0.0.1:3006;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Forward uploaded file requests to the Rust backend
+    # This is what makes /uploads/images/... and /uploads/covers/... display correctly.
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3006;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_cache_valid 200 7d;
+        add_header Cache-Control "public, max-age=604800, immutable";
+    }
+
+    # SPA fallback — serve index.html for all unmatched routes
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Enable gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
+    gzip_min_length 1024;
+}

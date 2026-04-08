@@ -412,7 +412,7 @@ const Home: React.FC = () => {
               }}>
                 {isSearching ? (
                   <div style={{ padding: '16px', textAlign: 'center' }}>
-                    <md-circular-progress indeterminate style={{ '--md-circular-progress-size': '24px' } as React.CSSProperties}></md-circular-progress>
+                    <md-circular-progress indeterminate style={{ '--md-circular-progress-size': '24px' }}></md-circular-progress>
                     <div style={{ marginTop: '8px', color: 'var(--md-sys-color-on-surface-variant)' }}>
                       Searching...
                     </div>
@@ -501,7 +501,7 @@ const Home: React.FC = () => {
                           target.style.display = 'none';
                           // XSS fix: Don't use innerHTML, update the article state instead
                           setArticles(prev => prev.map(a =>
-                            a.id === article.id ? { ...a, coverImage: null } : a
+                            a.id === article.id ? { ...a, coverImage: undefined } : a
                           ));
                         }}
                       />

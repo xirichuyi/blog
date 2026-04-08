@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { apiService } from '../../../services/api';
+import { logger } from '../../../utils/logger';
 import { API_BASE_URL } from '../../../services/api/base';
-import type { StaticResource, ResourceStats } from '../../../services/api';
+import type { StaticResource, ResourceStats } from '../../../services/api/resources';
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
 import { ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
@@ -65,7 +66,7 @@ const ResourceManagement: React.FC = () => {
         setStats(statsData);
       }
     } catch (error) {
-      console.error('Error loading resource stats:', error);
+      logger.error('Error loading resource stats:', error);
     } finally {
       setStatsLoading(false);
     }

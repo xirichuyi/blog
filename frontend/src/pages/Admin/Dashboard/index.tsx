@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../../services/api';
+import { logger } from '../../../utils/logger';
 import type { DashboardStats } from '../../../services/types';
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
 import {
@@ -79,7 +80,7 @@ const Dashboard: React.FC = () => {
         setError(response.error || 'Failed to load dashboard stats');
       }
     } catch (err) {
-      console.error('Failed to load dashboard data:', err);
+      logger.error('Failed to load dashboard data:', err);
       setError('Failed to load dashboard data');
     } finally {
       setIsLoading(false);

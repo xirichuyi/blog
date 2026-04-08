@@ -5,6 +5,7 @@ import type { Article, Category, Tag } from '../../services/types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 import ArticleCard from '../../components/ui/ArticleCard';
+import { logger } from '../../utils/logger';
 
 import './style.css';
 
@@ -117,7 +118,7 @@ const Articles: React.FC = () => {
 
             return { articles: articlesData, total };
         } catch (error) {
-            console.error('Error loading articles:', error);
+            logger.error('Error loading articles:', error);
             throw error;
         }
     }, []);
@@ -159,7 +160,7 @@ const Articles: React.FC = () => {
             });
 
         } catch (error) {
-            console.error('Error initializing metadata:', error);
+            logger.error('Error initializing metadata:', error);
             safeSetState({
                 error: error instanceof Error ? error.message : 'Failed to load metadata'
             });

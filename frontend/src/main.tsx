@@ -1,15 +1,11 @@
 import { createRoot } from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
-import { HeroUIProvider } from '@heroui/react'
 import { logger } from './utils/logger'
-// import { initPreloading } from './utils/preloadResources'
-// import { initAdminPreloading } from './utils/adminPreload'
 
 // Import Material Design styles and setup
 import './material-web.ts'
 import './styles/theme.css'
 import './styles/global.css'
-import './styles/heroui.css'
 import './index.css'
 import './styles/mobile.css'
 import './styles/responsive.css'
@@ -52,16 +48,9 @@ initializeTheme();
 // Initialize Material Design
 initializeMaterialDesign()
 
-// Initialize resource preloading
-// initPreloading()  // TODO: add resource preloading
-
-// Initialize admin components preloading
-// initAdminPreloading()
 
 createRoot(document.getElementById('root')!).render(
   <HelmetProvider>
-    <HeroUIProvider>
-      <App />
-    </HeroUIProvider>
+    <App />
   </HelmetProvider>,
 )

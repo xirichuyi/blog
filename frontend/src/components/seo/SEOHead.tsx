@@ -38,7 +38,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({
     const allKeywords = [...keywords, ...tags].join(', ');
 
     // 构建结构化数据
-    const structuredData = {
+    const structuredData: Record<string, unknown> = {
         "@context": "https://schema.org",
         "@type": type === 'article' ? "BlogPosting" : "WebSite",
         "name": fullTitle,

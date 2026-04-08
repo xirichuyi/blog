@@ -9,6 +9,7 @@ export interface Article {
   publishDate: string;
   readTime: number;
   category: string;
+  categoryId?: string;
   tags: string[];
   imageUrl?: string;
   coverImage?: string; // Add coverImage for compatibility

@@ -3,6 +3,8 @@
 import { BaseApiService } from './base';
 import type { Article, ApiResponse } from '../types';
 import { generateCacheKey } from '../../utils/cacheManager';
+import { logger } from '../../utils/logger';
+import { siteConfig } from '../../config/site';
 
 // Backend response typing helpers
 interface BackendListResponse<T> {
@@ -134,10 +136,11 @@ export class PostsApiService extends BaseApiService {
                         title: post.title,
                         content: post.content, // 列表接口返回的是摘要
                         excerpt: post.content, // 直接使用摘要作为excerpt
-                        author: 'chuyi',
+                        author: siteConfig.author.name,
                         publishDate: post.created_at,
                         readTime: Math.ceil(post.content.length / 1000), // 基于摘要计算，实际阅读时间需要从详情获取
                         category: category,
+                        categoryId: post.category_id ? post.category_id.toString() : undefined,
                         tags: tags,
                         featured: false,
                         status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
@@ -207,7 +210,7 @@ export class PostsApiService extends BaseApiService {
                     return { id, tags };
                 }
             } catch (error) {
-                console.warn(`Failed to load tags for post ${id}:`, error);
+                logger.warn(`Failed to load tags for post ${id}:`, error);
             }
             return { id, tags: [] };
         });
@@ -263,7 +266,7 @@ export class PostsApiService extends BaseApiService {
                         const tagsMap = await this.getBatchPostTags([post.id.toString()]);
                         tags = tagsMap.get(post.id.toString()) || [];
                     } catch (e) {
-                        console.warn('Failed to fetch tags for article detail:', e);
+                        logger.warn('Failed to fetch tags for article detail:', e);
                     }
                 }
 
@@ -272,10 +275,11 @@ export class PostsApiService extends BaseApiService {
                     title: post.title,
                     content: post.content,
                     excerpt: this.generatePlainTextExcerpt(post.content, 80),
-                    author: 'chuyi',
+                    author: siteConfig.author.name,
                     publishDate: post.created_at,
                     readTime: Math.ceil((post.content?.length || 0) / 1000) || 1,
                     category: categoryName,
+                    categoryId: post.category_id ? post.category_id.toString() : undefined,
                     tags: tags,
                     featured: false,
                     status: post.status === 1 ? 'published' : post.status === 0 ? 'draft' : post.status === 3 ? 'private' : 'draft',
@@ -342,10 +346,11 @@ export class PostsApiService extends BaseApiService {
                 title: backendPost.title,
                 content: backendPost.content,
                 excerpt: post.excerpt || this.generatePlainTextExcerpt(backendPost.content, 80),
-                author: 'Admin',
+                author: siteConfig.author.name,
                 publishDate: backendPost.created_at,
                 readTime: Math.ceil(backendPost.content.length / 1000),
                 category: backendPost.category_id ? `Category ${backendPost.category_id}` : 'Uncategorized',
+                categoryId: backendPost.category_id ? backendPost.category_id.toString() : undefined,
                 tags: post.tags || [],
                 featured: post.featured || false,
                 status: post.status || 'draft',
@@ -416,10 +421,11 @@ export class PostsApiService extends BaseApiService {
                 title: backendPost.title,
                 content: backendPost.content,
                 excerpt: post.excerpt || this.generatePlainTextExcerpt(backendPost.content, 80),
-                author: 'Admin',
+                author: siteConfig.author.name,
                 publishDate: backendPost.updated_at || backendPost.created_at,
                 readTime: Math.ceil(backendPost.content.length / 1000),
                 category: backendPost.category_id ? `Category ${backendPost.category_id}` : 'Uncategorized',
+                categoryId: backendPost.category_id ? backendPost.category_id.toString() : undefined,
                 tags: post.tags || [],
                 featured: post.featured || false,
                 status: post.status || 'draft',
@@ -520,7 +526,7 @@ export class PostsApiService extends BaseApiService {
 
             return tagIds;
         } catch (error) {
-            console.error('Failed to get or create tag IDs:', error);
+            logger.error('Failed to get or create tag IDs:', error);
             return [];
         }
     }

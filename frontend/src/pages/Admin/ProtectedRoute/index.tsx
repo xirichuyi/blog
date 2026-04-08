@@ -26,8 +26,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                 try {
                     setIsVerifying(true);
                     await checkAuth();
-                } catch (error) {
-                    console.error('Auth verification failed:', error);
+                } catch {
                 } finally {
                     setIsVerifying(false);
                 }

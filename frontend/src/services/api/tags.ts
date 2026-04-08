@@ -2,7 +2,6 @@
 
 import { BaseApiService } from './base';
 import type { Tag, Article, ApiResponse } from '../types';
-import { CacheKeys } from '../../utils/cacheManager';
 
 // Backend response typing helpers
 interface BackendListResponse<T> {
@@ -23,7 +22,7 @@ const TAGS_CACHE_TTL = 10 * 60 * 1000;
 export class TagsApiService extends BaseApiService {
     // Public Tags API - 带缓存
     async getPublicTags(forceRefresh = false): Promise<ApiResponse<Tag[]>> {
-        const cacheKey = CacheKeys.TAGS;
+        const cacheKey = 'tags';
 
         // 检查缓存（除非强制刷新）
         if (!forceRefresh) {

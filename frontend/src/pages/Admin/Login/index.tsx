@@ -35,7 +35,8 @@ const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+      const state = location.state as { from?: { pathname?: string } } | null;
+      const from = state?.from?.pathname || '/admin/dashboard';
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate, location]);
@@ -52,11 +53,12 @@ const Login: React.FC = () => {
       });
 
       if (success) {
-        const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+        const state = location.state as { from?: { pathname?: string } } | null;
+        const from = state?.from?.pathname || '/admin/dashboard';
         navigate(from, { replace: true });
       }
-    } catch (err) {
-      console.error('Login failed:', err);
+    } catch {
+      // Login error is handled by AuthContext
     }
   };
 

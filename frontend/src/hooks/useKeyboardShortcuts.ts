@@ -151,32 +151,4 @@ export const createCommonShortcuts = (actions: {
   return shortcuts;
 };
 
-// Hook for displaying keyboard shortcuts help
-export const useShortcutsHelp = (shortcuts: KeyboardShortcut[]) => {
-  const formatShortcut = (shortcut: KeyboardShortcut) => {
-    const keys = [];
-    
-    if (shortcut.ctrlKey) keys.push('Ctrl');
-    if (shortcut.metaKey) keys.push('Cmd');
-    if (shortcut.shiftKey) keys.push('Shift');
-    if (shortcut.altKey) keys.push('Alt');
-    
-    keys.push(shortcut.key.toUpperCase());
-    
-    return keys.join(' + ');
-  };
-
-  const getShortcutsList = () => {
-    return shortcuts.map(shortcut => ({
-      keys: formatShortcut(shortcut),
-      description: shortcut.description
-    }));
-  };
-
-  return {
-    formatShortcut,
-    getShortcutsList
-  };
-};
-
 export default useKeyboardShortcuts;

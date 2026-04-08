@@ -8,7 +8,6 @@ const breakpoints = {
   large: 1600
 } as const;
 
-type BreakpointKey = keyof typeof breakpoints;
 type ScreenSize = 'compact' | 'medium' | 'expanded' | 'large';
 
 interface ResponsiveState {

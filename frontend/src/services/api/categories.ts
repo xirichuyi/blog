@@ -2,7 +2,7 @@
 
 import { BaseApiService } from './base';
 import type { Category, Article, ApiResponse } from '../types';
-import { CacheKeys, generateCacheKey } from '../../utils/cacheManager';
+import { generateCacheKey } from '../../utils/cacheManager';
 
 // Backend response typing helpers
 interface BackendListResponse<T> {
@@ -23,7 +23,7 @@ export class CategoriesApiService extends BaseApiService {
 
     // Public Categories API - 带缓存
     async getPublicCategories(forceRefresh = false): Promise<ApiResponse<Category[]>> {
-        const cacheKey = CacheKeys.CATEGORIES;
+        const cacheKey = 'categories';
 
         // 检查缓存（除非强制刷新）
         if (!forceRefresh) {

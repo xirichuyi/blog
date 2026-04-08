@@ -2,6 +2,7 @@
 
 import { BaseApiService } from './base';
 import type { UploadResponse, ApiResponse } from '../types';
+import { logger } from '../../utils/logger';
 
 export class UploadsApiService extends BaseApiService {
     // File Upload APIs
@@ -28,7 +29,7 @@ export class UploadsApiService extends BaseApiService {
             });
 
             const data = await response.json();
-            console.log('File upload response:', data);
+            logger.debug('File upload response:', data);
 
             if (!response.ok) {
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -47,7 +48,7 @@ export class UploadsApiService extends BaseApiService {
                 data: extractedData,
             };
         } catch (error) {
-            console.error('File upload failed:', error);
+            logger.error('File upload failed:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Upload failed',
@@ -69,13 +70,13 @@ export class UploadsApiService extends BaseApiService {
             });
 
             const data = await response.json();
-            console.log('Cover upload response:', data);
+            logger.debug('Cover upload response:', data);
 
             if (!response.ok) {
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
             }
 
-            console.log('Extracted data:', data.data);
+            logger.debug('Extracted data:', data.data);
 
             // Handle different response structures
             let extractedData;
@@ -91,7 +92,7 @@ export class UploadsApiService extends BaseApiService {
                     file_url: data.file_url || data.cover_url
                 };
             } else {
-                console.error('Unexpected response structure:', data);
+                logger.error('Unexpected response structure:', data);
                 throw new Error('Invalid response structure: missing file_url or cover_url');
             }
 
@@ -100,7 +101,7 @@ export class UploadsApiService extends BaseApiService {
                 data: extractedData,
             };
         } catch (error) {
-            console.error('Cover upload failed:', error);
+            logger.error('Cover upload failed:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Cover upload failed',
@@ -121,7 +122,7 @@ export class UploadsApiService extends BaseApiService {
             });
 
             const data = await response.json();
-            console.log('Post image upload response:', data);
+            logger.debug('Post image upload response:', data);
 
             if (!response.ok) {
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -134,7 +135,7 @@ export class UploadsApiService extends BaseApiService {
             } else if (data.file_url) {
                 extractedData = data;
             } else {
-                console.error('Unexpected response structure:', data);
+                logger.error('Unexpected response structure:', data);
                 throw new Error('Invalid response structure: missing file_url');
             }
 
@@ -143,7 +144,7 @@ export class UploadsApiService extends BaseApiService {
                 data: extractedData,
             };
         } catch (error) {
-            console.error('Image upload failed:', error);
+            logger.error('Image upload failed:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Image upload failed',
@@ -176,7 +177,7 @@ export class UploadsApiService extends BaseApiService {
             });
 
             const data = await response.json();
-            console.log('PDF upload response:', data);
+            logger.debug('PDF upload response:', data);
 
             if (!response.ok) {
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -189,7 +190,7 @@ export class UploadsApiService extends BaseApiService {
             } else if (data.file_url) {
                 extractedData = data;
             } else {
-                console.error('Unexpected response structure:', data);
+                logger.error('Unexpected response structure:', data);
                 throw new Error('Invalid response structure: missing file_url');
             }
 
@@ -198,7 +199,7 @@ export class UploadsApiService extends BaseApiService {
                 data: extractedData,
             };
         } catch (error) {
-            console.error('PDF upload failed:', error);
+            logger.error('PDF upload failed:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'PDF upload failed',
