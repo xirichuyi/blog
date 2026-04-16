@@ -75,6 +75,38 @@ pub async fn delete_resource(
     }
 }
 
+/// Bulk delete all unused resources
+pub async fn delete_unused_resources(
+    State(services): State<Services>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+    match services.resource.list_resources().await {
+        Ok(resources) => {
+            let unused: Vec<_> = resources.iter().filter(|r| !r.usage.is_used).collect();
+            let total = unused.len();
+            let mut deleted = 0u32;
+            let mut failed = 0u32;
+
+            for resource in &unused {
+                match services.resource.delete_resource(&resource.path).await {
+                    Ok(true) => deleted += 1,
+                    _ => failed += 1,
+                }
+            }
+
+            tracing::info!("Bulk cleanup: {} deleted, {} failed out of {} unused", deleted, failed, total);
+            Ok(Json(ApiResponse::success(serde_json::json!({
+                "total_unused": total,
+                "deleted": deleted,
+                "failed": failed,
+            }))))
+        }
+        Err(e) => {
+            tracing::error!("Failed to list resources for cleanup: {}", e);
+            Ok(Json(ApiResponse::internal_error("Failed to cleanup resources")))
+        }
+    }
+}
+
 /// Optimize all images (batch convert to WebP)
 pub async fn optimize_all_images(
     State(services): State<Services>,

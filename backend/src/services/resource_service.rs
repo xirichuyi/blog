@@ -88,68 +88,138 @@ impl ResourceService {
         }
     }
 
-    /// Get all static resources with usage information
+    /// Get all static resources with usage information.
+    /// Primary source: R2 bucket listing. Fallback: local uploads/ directory.
     pub async fn list_resources(&self) -> Result<Vec<StaticResource>> {
         let mut resources = Vec::new();
 
-        // Scan all upload directories
-        let subdirs = ["images", "covers", "music", "music_covers", "pdfs", "downloads"];
+        // List objects directly from R2 bucket
+        let s3_objects = self.file_handler.list_s3_objects().await?;
+        let public_url = self.file_handler.s3_public_url().unwrap_or("");
 
-        for subdir in subdirs {
-            let dir_path = PathBuf::from(&self.upload_dir).join(subdir);
-            if !dir_path.exists() {
-                continue;
-            }
-
-            let mut entries = fs::read_dir(&dir_path).await?;
-            while let Some(entry) = entries.next_entry().await? {
-                let path = entry.path();
-                if !path.is_file() {
-                    continue;
-                }
-
-                let metadata = entry.metadata().await?;
-                let file_name = path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("")
-                    .to_string();
-
-                let relative_path = format!("/uploads/{}/{}", subdir, file_name);
-                let mime_type = mime_guess::from_path(&path)
+        if !s3_objects.is_empty() {
+            for (key, size, last_modified) in &s3_objects {
+                let file_name = key.rsplit('/').next().unwrap_or(key).to_string();
+                let full_url = if public_url.is_empty() {
+                    format!("/uploads/{}", key)
+                } else {
+                    format!("{}/{}", public_url, key)
+                };
+                let file_type = Self::guess_file_type_from_url(key);
+                let mime_type = mime_guess::from_path(&file_name)
                     .first_or_octet_stream()
                     .to_string();
-
-                let created_at = metadata.created()
-                    .map(|t| {
-                        let duration = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
-                        Utc.timestamp_opt(duration.as_secs() as i64, 0).unwrap()
-                    })
+                let created_at = chrono::DateTime::parse_from_rfc3339(last_modified)
+                    .map(|dt| dt.with_timezone(&Utc))
                     .unwrap_or_else(|_| Utc::now());
 
                 resources.push(StaticResource {
-                    path: relative_path.clone(),
-                    full_url: relative_path,
+                    path: full_url.clone(),
+                    full_url,
                     file_name,
-                    file_type: normalize_file_type(subdir),
-                    file_size: metadata.len(),
+                    file_type,
+                    file_size: *size,
                     mime_type,
                     created_at,
                     usage: ResourceUsage::default(),
                 });
             }
+        } else {
+            // Fallback: scan local upload directories
+            let subdirs = ["images", "covers", "music", "music_covers", "pdfs", "downloads"];
+            for subdir in subdirs {
+                let dir_path = PathBuf::from(&self.upload_dir).join(subdir);
+                if !dir_path.exists() { continue; }
+
+                let mut entries = fs::read_dir(&dir_path).await?;
+                while let Some(entry) = entries.next_entry().await? {
+                    let path = entry.path();
+                    if !path.is_file() { continue; }
+
+                    let metadata = entry.metadata().await?;
+                    let file_name = path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("").to_string();
+                    let relative_path = format!("/uploads/{}/{}", subdir, file_name);
+                    let mime_type = mime_guess::from_path(&path)
+                        .first_or_octet_stream().to_string();
+                    let created_at = metadata.created()
+                        .map(|t| {
+                            let d = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                            Utc.timestamp_opt(d.as_secs() as i64, 0).unwrap()
+                        })
+                        .unwrap_or_else(|_| Utc::now());
+
+                    resources.push(StaticResource {
+                        path: relative_path.clone(),
+                        full_url: relative_path,
+                        file_name,
+                        file_type: normalize_file_type(subdir),
+                        file_size: metadata.len(),
+                        mime_type,
+                        created_at,
+                        usage: ResourceUsage::default(),
+                    });
+                }
+            }
         }
 
-        // Get usage information from database
+        // Get usage information from database and update.
+        // Match by normalized tail path (subfolder/filename) since full paths may differ
+        // e.g. R2 key: "uploads/covers/xxx.jpg", DB URL: "https://asset.blog.chuyi.uk/covers/xxx.jpg"
         let usage_map = self.get_resource_usage().await?;
 
-        // Update usage status for each resource
         for resource in &mut resources {
+            // Direct match first
             if let Some(usage) = usage_map.get(&resource.path) {
                 resource.usage = usage.clone();
+                continue;
+            }
+            // Extract subfolder/filename from resource path
+            let resource_tail = Self::extract_tail_path(&resource.path);
+            if resource_tail.is_empty() { continue; }
+
+            for (url, usage) in &usage_map {
+                let url_tail = Self::extract_tail_path(url);
+                if !url_tail.is_empty() && resource_tail == url_tail {
+                    resource.usage = usage.clone();
+                    break;
+                }
             }
         }
 
         Ok(resources)
+    }
+
+    /// Extract the tail "subfolder/filename" from a URL or path.
+    /// e.g. "https://asset.blog.chuyi.uk/covers/xxx.jpg" -> "covers/xxx.jpg"
+    ///      "uploads/covers/xxx.jpg" -> "covers/xxx.jpg"
+    ///      "/uploads/images/xxx.png" -> "images/xxx.png"
+    fn extract_tail_path(url: &str) -> String {
+        let known_dirs = ["images", "covers", "music", "music_covers", "pdfs", "downloads"];
+        // Find the first known directory in the path and return everything from there
+        for dir in &known_dirs {
+            if let Some(pos) = url.find(&format!("{}/", dir)) {
+                return url[pos..].to_string();
+            }
+        }
+        // Fallback: last two segments
+        let parts: Vec<&str> = url.rsplitn(3, '/').collect();
+        if parts.len() >= 2 {
+            format!("{}/{}", parts[1], parts[0])
+        } else {
+            String::new()
+        }
+    }
+
+    /// Guess file type from URL path
+    fn guess_file_type_from_url(url: &str) -> String {
+        if url.contains("/covers/") { return "cover".to_string(); }
+        if url.contains("/music_covers/") { return "music_cover".to_string(); }
+        if url.contains("/music/") { return "music".to_string(); }
+        if url.contains("/pdfs/") { return "pdf".to_string(); }
+        if url.contains("/downloads/") { return "download".to_string(); }
+        "image".to_string()
     }
 
     /// Get resource usage map from database
@@ -318,7 +388,7 @@ impl ResourceService {
         Ok(stats)
     }
 
-    /// Delete a resource by path
+    /// Delete a resource by path — removes the file (local/R2) and any orphan DB records
     pub async fn delete_resource(&self, path: &str) -> Result<bool> {
         // First check if resource is used
         let resources = self.list_resources().await?;
@@ -332,9 +402,48 @@ impl ResourceService {
             }
         }
 
-        // Delete the file
+        // Delete the file (local or R2)
         self.file_handler.delete_file(path).await?;
+
+        // Also clean up orphan database records that reference this path
+        self.delete_db_references(path).await?;
+
         Ok(true)
+    }
+
+    /// Remove database records that reference a given resource path
+    async fn delete_db_references(&self, path: &str) -> Result<()> {
+        let pool = self.database.pool.as_ref();
+
+        // pdf_documents
+        sqlx::query("DELETE FROM pdf_documents WHERE file_path = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        // downloads
+        sqlx::query("DELETE FROM downloads WHERE file_url = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        // Clear post cover_url if it matches (set to empty)
+        sqlx::query("UPDATE posts SET cover_url = '' WHERE cover_url = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        // Clear about photo_url if it matches
+        sqlx::query("UPDATE about SET photo_url = '' WHERE photo_url = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        // Clear music URLs
+        sqlx::query("UPDATE music SET music_cover_url = NULL WHERE music_cover_url = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+        sqlx::query("DELETE FROM music WHERE music_url = ? AND status = 2")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        Ok(())
     }
 
     /// Batch optimize images in a directory

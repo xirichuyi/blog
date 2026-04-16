@@ -1,7 +1,11 @@
 use crate::config::constants::UPLOADS_URL_PREFIX;
+use crate::config::S3Config;
 use crate::utils::error::{AppError, Result};
 use axum_extra::extract::multipart::Field;
+use chrono::Utc;
+use hmac::{Hmac, Mac};
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
@@ -26,17 +30,352 @@ impl Default for ImageOptimizeOptions {
 }
 
 #[derive(Clone)]
+struct S3Info {
+    endpoint: String,
+    host: String,
+    bucket: String,
+    access_key: String,
+    secret_key: String,
+    region: String,
+    public_url: String,
+    http: reqwest::Client,
+}
+
+#[derive(Clone)]
 pub struct FileHandler {
     upload_dir: String,
     max_file_size: u64,
+    s3: Option<S3Info>,
 }
 
 impl FileHandler {
-    pub fn new(upload_dir: String, max_file_size: u64) -> Self {
+    pub fn new(upload_dir: String, max_file_size: u64, s3_config: Option<&S3Config>) -> Self {
+        let s3 = s3_config
+            .filter(|c| c.enabled)
+            .map(|config| {
+                tracing::info!("S3 client initialized for bucket '{}'", config.bucket);
+                let endpoint = config.endpoint.trim_end_matches('/').to_string();
+                let host = endpoint.replace("https://", "").replace("http://", "");
+                S3Info {
+                    endpoint,
+                    host,
+                    bucket: config.bucket.clone(),
+                    access_key: config.access_key.clone(),
+                    secret_key: config.secret_key.clone(),
+                    region: config.region.clone(),
+                    public_url: config.public_url.trim_end_matches('/').to_string(),
+                    http: reqwest::Client::new(),
+                }
+            });
+
         Self {
             upload_dir,
             max_file_size,
+            s3,
         }
+    }
+
+    /// Generate a presigned PUT URL for direct browser-to-R2 upload.
+    /// Returns (presigned_url, public_url, s3_key) or error if S3 not configured.
+    pub fn generate_presigned_upload(
+        &self,
+        subfolder: &str,
+        file_name: &str,
+        content_type: &str,
+        expires_secs: u64,
+    ) -> Result<(String, String, String)> {
+        let s3 = self.s3.as_ref().ok_or_else(|| {
+            AppError::Internal("S3 storage not configured".to_string())
+        })?;
+
+        // Generate unique key
+        let extension = Path::new(file_name)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("");
+        let unique_name = format!(
+            "{}_{}.{}",
+            Uuid::new_v4(),
+            chrono::Utc::now().timestamp(),
+            extension
+        );
+        let s3_key = format!("{}/{}", subfolder, unique_name);
+
+        let now = Utc::now();
+        let date_stamp = now.format("%Y%m%d").to_string();
+        let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+        let host = &s3.host;
+        let scope = format!("{}/{}/s3/aws4_request", date_stamp, s3.region);
+
+        // Query parameters for presigned URL
+        let query_params = format!(
+            "X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential={}/{}&X-Amz-Date={}&X-Amz-Expires={}&X-Amz-SignedHeaders=content-type;host",
+            s3.access_key,
+            urlencoding::encode(&scope),
+            amz_date,
+            expires_secs,
+        );
+
+        let canonical_request = format!(
+            "PUT\n/{}/{}\n{}\ncontent-type:{}\nhost:{}\n\ncontent-type;host\nUNSIGNED-PAYLOAD",
+            s3.bucket, s3_key, query_params, content_type, host,
+        );
+
+        let string_to_sign = format!(
+            "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+            amz_date, scope,
+            hex::encode(Sha256::digest(canonical_request.as_bytes())),
+        );
+
+        let signing_key = Self::derive_signing_key(&s3.secret_key, &date_stamp, &s3.region);
+        let signature = hex::encode(Self::hmac_sha256(&signing_key, string_to_sign.as_bytes()));
+
+        let presigned_url = format!(
+            "{}/{}/{}?{}&X-Amz-Signature={}",
+            s3.endpoint, s3.bucket, s3_key, query_params, signature,
+        );
+
+        let public_url = format!("{}/{}", s3.public_url, s3_key);
+
+        Ok((presigned_url, public_url, s3_key))
+    }
+
+    /// Sign and execute an S3 PUT request (AWS Signature V4).
+    /// Returns the public URL on success, None on failure.
+    async fn upload_to_s3(&self, key: &str, data: &[u8], content_type: Option<&str>) -> Option<String> {
+        let Some(s3) = &self.s3 else { return None };
+
+        let ct = content_type.unwrap_or("application/octet-stream");
+        let encoded_key = Self::encode_s3_key(key);
+        let url = format!("{}/{}/{}", s3.endpoint, s3.bucket, encoded_key);
+        let now = Utc::now();
+        let date_stamp = now.format("%Y%m%d").to_string();
+        let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+        let payload_hash = hex::encode(Sha256::digest(data));
+
+        let canonical_request = format!(
+            "PUT\n/{}/{}\n\ncontent-type:{}\nhost:{}\nx-amz-content-sha256:{}\nx-amz-date:{}\n\ncontent-type;host;x-amz-content-sha256;x-amz-date\n{}",
+            s3.bucket, encoded_key, ct,
+            s3.host.as_str(),
+            payload_hash, amz_date, payload_hash,
+        );
+
+        let scope = format!("{}/{}/s3/aws4_request", date_stamp, s3.region);
+        let string_to_sign = format!(
+            "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+            amz_date, scope,
+            hex::encode(Sha256::digest(canonical_request.as_bytes())),
+        );
+
+        let signing_key = Self::derive_signing_key(&s3.secret_key, &date_stamp, &s3.region);
+        let signature = hex::encode(Self::hmac_sha256(&signing_key, string_to_sign.as_bytes()));
+        let auth_header = format!(
+            "AWS4-HMAC-SHA256 Credential={}/{},SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date,Signature={}",
+            s3.access_key, scope, signature,
+        );
+
+        let host = &s3.host;
+        let result = s3.http.put(&url)
+            .header("Content-Type", ct)
+            .header("Host", host.as_str())
+            .header("x-amz-content-sha256", &payload_hash)
+            .header("x-amz-date", &amz_date)
+            .header("Authorization", &auth_header)
+            .body(data.to_vec())
+            .send()
+            .await;
+
+        match result {
+            Ok(resp) if resp.status().is_success() => {
+                let public = format!("{}/{}", s3.public_url, key);
+                tracing::info!("S3 upload OK: {} ({} bytes) -> {}", key, data.len(), public);
+                return Some(public);
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                tracing::warn!("S3 upload failed for {}: {} {}", key, status, body);
+            }
+            Err(e) => {
+                tracing::warn!("S3 upload failed for {}: {} (fallback to local)", key, e);
+            }
+        }
+        None
+    }
+
+    /// URL-encode an S3 key path (encode each segment, preserve '/')
+    fn encode_s3_key(key: &str) -> String {
+        key.split('/')
+            .map(|seg| urlencoding::encode(seg).into_owned())
+            .collect::<Vec<_>>()
+            .join("/")
+    }
+
+    /// Sign and execute an S3 DELETE request (AWS Signature V4).
+    async fn delete_from_s3(&self, key: &str) {
+        let Some(s3) = &self.s3 else { return };
+
+        let encoded_key = Self::encode_s3_key(key);
+        let url = format!("{}/{}/{}", s3.endpoint, s3.bucket, encoded_key);
+        let now = Utc::now();
+        let date_stamp = now.format("%Y%m%d").to_string();
+        let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+        let empty_hash = hex::encode(Sha256::digest(b""));
+
+        let canonical_request = format!(
+            "DELETE\n/{}/{}\n\nhost:{}\nx-amz-content-sha256:{}\nx-amz-date:{}\n\nhost;x-amz-content-sha256;x-amz-date\n{}",
+            s3.bucket, encoded_key,
+            s3.host.as_str(),
+            empty_hash, amz_date, empty_hash,
+        );
+
+        let scope = format!("{}/{}/s3/aws4_request", date_stamp, s3.region);
+        let string_to_sign = format!(
+            "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+            amz_date, scope,
+            hex::encode(Sha256::digest(canonical_request.as_bytes())),
+        );
+
+        let signing_key = Self::derive_signing_key(&s3.secret_key, &date_stamp, &s3.region);
+        let signature = hex::encode(Self::hmac_sha256(&signing_key, string_to_sign.as_bytes()));
+        let auth_header = format!(
+            "AWS4-HMAC-SHA256 Credential={}/{},SignedHeaders=host;x-amz-content-sha256;x-amz-date,Signature={}",
+            s3.access_key, scope, signature,
+        );
+
+        let host = &s3.host;
+        match s3.http.delete(&url)
+            .header("Host", host.as_str())
+            .header("x-amz-content-sha256", &empty_hash)
+            .header("x-amz-date", &amz_date)
+            .header("Authorization", &auth_header)
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                tracing::info!("S3 delete OK: {}", key);
+            }
+            Ok(resp) => {
+                tracing::warn!("S3 delete failed for {}: {}", key, resp.status());
+            }
+            Err(e) => {
+                tracing::warn!("S3 delete failed for {}: {}", key, e);
+            }
+        }
+    }
+
+    fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
+        // HMAC-SHA256 accepts any key length, so new_from_slice never fails
+        let mut mac = Hmac::<Sha256>::new_from_slice(key)
+            .unwrap_or_else(|_| unreachable!("HMAC-SHA256 accepts any key length"));
+        mac.update(data);
+        mac.finalize().into_bytes().to_vec()
+    }
+
+    fn derive_signing_key(secret: &str, date_stamp: &str, region: &str) -> Vec<u8> {
+        let k_date = Self::hmac_sha256(format!("AWS4{}", secret).as_bytes(), date_stamp.as_bytes());
+        let k_region = Self::hmac_sha256(&k_date, region.as_bytes());
+        let k_service = Self::hmac_sha256(&k_region, b"s3");
+        Self::hmac_sha256(&k_service, b"aws4_request")
+    }
+
+    /// List all objects in the S3 bucket. Returns Vec<(key, size, last_modified)>.
+    pub async fn list_s3_objects(&self) -> Result<Vec<(String, u64, String)>> {
+        let Some(s3) = &self.s3 else {
+            return Ok(Vec::new());
+        };
+
+        let mut all_objects = Vec::new();
+        let mut continuation_token: Option<String> = None;
+
+        loop {
+            let now = Utc::now();
+            let date_stamp = now.format("%Y%m%d").to_string();
+            let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+            let empty_hash = hex::encode(Sha256::digest(b""));
+
+            let mut query = "list-type=2&max-keys=1000".to_string();
+            if let Some(token) = &continuation_token {
+                query.push_str(&format!("&continuation-token={}", urlencoding::encode(token)));
+            }
+
+            let canonical_request = format!(
+                "GET\n/{}\n{}\nhost:{}\nx-amz-content-sha256:{}\nx-amz-date:{}\n\nhost;x-amz-content-sha256;x-amz-date\n{}",
+                s3.bucket, query, s3.host.as_str(), empty_hash, amz_date, empty_hash,
+            );
+
+            let scope = format!("{}/{}/s3/aws4_request", date_stamp, s3.region);
+            let string_to_sign = format!(
+                "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+                amz_date, scope,
+                hex::encode(Sha256::digest(canonical_request.as_bytes())),
+            );
+
+            let signing_key = Self::derive_signing_key(&s3.secret_key, &date_stamp, &s3.region);
+            let signature = hex::encode(Self::hmac_sha256(&signing_key, string_to_sign.as_bytes()));
+            let auth_header = format!(
+                "AWS4-HMAC-SHA256 Credential={}/{},SignedHeaders=host;x-amz-content-sha256;x-amz-date,Signature={}",
+                s3.access_key, scope, signature,
+            );
+
+            let url = format!("{}/{}?{}", s3.endpoint, s3.bucket, query);
+            let resp = s3.http.get(&url)
+                .header("Host", s3.host.as_str())
+                .header("x-amz-content-sha256", &empty_hash)
+                .header("x-amz-date", &amz_date)
+                .header("Authorization", &auth_header)
+                .send()
+                .await
+                .map_err(|e| AppError::Internal(format!("S3 list error: {}", e)))?;
+
+            let body = resp.text().await
+                .map_err(|e| AppError::Internal(format!("S3 list read error: {}", e)))?;
+
+            // Parse XML response
+            let mut next_token = None;
+            let mut is_truncated = false;
+
+            // Simple XML parsing for Contents
+            for content_block in body.split("<Contents>").skip(1) {
+                let key = content_block
+                    .split("<Key>").nth(1)
+                    .and_then(|s| s.split("</Key>").next())
+                    .unwrap_or("").to_string();
+                let size: u64 = content_block
+                    .split("<Size>").nth(1)
+                    .and_then(|s| s.split("</Size>").next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
+                let last_modified = content_block
+                    .split("<LastModified>").nth(1)
+                    .and_then(|s| s.split("</LastModified>").next())
+                    .unwrap_or("").to_string();
+
+                if !key.is_empty() {
+                    all_objects.push((key, size, last_modified));
+                }
+            }
+
+            if body.contains("<IsTruncated>true</IsTruncated>") {
+                is_truncated = true;
+                next_token = body
+                    .split("<NextContinuationToken>").nth(1)
+                    .and_then(|s| s.split("</NextContinuationToken>").next())
+                    .map(|s| s.to_string());
+            }
+
+            if !is_truncated || next_token.is_none() {
+                break;
+            }
+            continuation_token = next_token;
+        }
+
+        Ok(all_objects)
+    }
+
+    /// Get the S3 public URL prefix (e.g. "https://asset.blog.chuyi.uk")
+    pub fn s3_public_url(&self) -> Option<&str> {
+        self.s3.as_ref().map(|s| s.public_url.as_str()).filter(|u| !u.is_empty())
     }
 
     pub async fn save_file(
@@ -72,30 +411,37 @@ impl FileHandler {
         // Create file path
         let file_path = dir_path.join(&unique_name);
 
-        // Save file
-        let mut file = fs::File::create(&file_path).await?;
-        let mut total_size = 0u64;
-
+        // Read all chunks into memory (needed for S3 upload too)
+        let mut data = Vec::new();
         while let Some(chunk) = field
             .chunk()
             .await
             .map_err(|e| AppError::BadRequest(format!("Failed to read file chunk: {}", e)))?
         {
-            total_size += chunk.len() as u64;
-            if total_size > self.max_file_size {
-                // Clean up partial file
-                let _ = fs::remove_file(&file_path).await;
+            data.extend_from_slice(&chunk);
+            if data.len() as u64 > self.max_file_size {
                 return Err(AppError::BadRequest(
                     "File size exceeds maximum allowed size".to_string(),
                 ));
             }
-            file.write_all(&chunk).await?;
         }
 
+        let total_size = data.len() as u64;
+
+        // Save file locally
+        let mut file = fs::File::create(&file_path).await?;
+        file.write_all(&data).await?;
         file.flush().await?;
 
-        // Generate URL
-        let file_url = format!("{}{}/{}", UPLOADS_URL_PREFIX, subfolder, unique_name);
+        // Upload to S3, use public URL if successful, fallback to local
+        let s3_key = format!("{}/{}", subfolder, unique_name);
+        let content_type = mime_guess::from_path(&unique_name)
+            .first()
+            .map(|m| m.to_string());
+        let file_url = match self.upload_to_s3(&s3_key, &data, content_type.as_deref()).await {
+            Some(url) => url,
+            None => format!("{}{}/{}", UPLOADS_URL_PREFIX, subfolder, unique_name),
+        };
 
         Ok((file_url, unique_name, total_size))
     }
@@ -106,8 +452,18 @@ impl FileHandler {
     }
 
     pub async fn delete_file(&self, file_url: &str) -> Result<()> {
-        if let Some(relative_path) = Self::strip_url_prefix(file_url) {
+        // Handle R2 URLs (https://asset.blog.chuyi.uk/images/xxx.png)
+        if let Some(s3) = &self.s3 {
+            if !s3.public_url.is_empty() && file_url.starts_with(&s3.public_url) {
+                let s3_key = file_url.strip_prefix(&format!("{}/", s3.public_url))
+                    .unwrap_or(file_url);
+                self.delete_from_s3(s3_key).await;
+                return Ok(());
+            }
+        }
 
+        // Handle local /uploads/ paths
+        if let Some(relative_path) = Self::strip_url_prefix(file_url) {
             // Prevent path traversal attacks
             if relative_path.contains("..") || relative_path.contains("//") {
                 return Err(AppError::BadRequest("Invalid file path".to_string()));
@@ -124,6 +480,9 @@ impl FileHandler {
             if file_path.exists() {
                 fs::remove_file(file_path).await?;
             }
+
+            // Also delete from S3 (non-fatal)
+            self.delete_from_s3(relative_path).await;
         }
         Ok(())
     }
@@ -195,30 +554,34 @@ impl FileHandler {
             counter += 1;
         }
 
-        // Save file
-        let mut file = fs::File::create(&file_path).await?;
-        let mut total_size = 0u64;
-
+        // Read all data into memory (needed for S3 upload)
+        let mut data = Vec::new();
         while let Some(chunk) = field
             .chunk()
             .await
             .map_err(|e| AppError::BadRequest(format!("Failed to read file chunk: {}", e)))?
         {
-            total_size += chunk.len() as u64;
-            if total_size > self.max_file_size {
-                // Clean up partial file
-                let _ = fs::remove_file(&file_path).await;
+            data.extend_from_slice(&chunk);
+            if data.len() as u64 > self.max_file_size {
                 return Err(AppError::BadRequest(
                     "File size exceeds maximum allowed size".to_string(),
                 ));
             }
-            file.write_all(&chunk).await?;
         }
 
+        let total_size = data.len() as u64;
+
+        // Save locally
+        let mut file = fs::File::create(&file_path).await?;
+        file.write_all(&data).await?;
         file.flush().await?;
 
-        // Generate URL
-        let file_url = format!("{}{}/{}", UPLOADS_URL_PREFIX, subfolder, file_name);
+        // Upload to S3, use public URL if successful
+        let s3_key = format!("{}/{}", subfolder, file_name);
+        let file_url = match self.upload_to_s3(&s3_key, &data, Some("application/pdf")).await {
+            Some(url) => url,
+            None => format!("{}{}/{}", UPLOADS_URL_PREFIX, subfolder, file_name),
+        };
 
         Ok((file_url, file_name, total_size))
     }
@@ -297,8 +660,12 @@ impl FileHandler {
 
         let file_size = optimized_data.len() as u64;
 
-        // Generate URL
-        let file_url = format!("{}{}/{}", UPLOADS_URL_PREFIX, subfolder, unique_name);
+        // Upload to S3, use public URL if successful
+        let s3_key = format!("{}/{}", subfolder, unique_name);
+        let file_url = match self.upload_to_s3(&s3_key, &optimized_data, Some("image/webp")).await {
+            Some(url) => url,
+            None => format!("{}{}/{}", UPLOADS_URL_PREFIX, subfolder, unique_name),
+        };
 
         tracing::info!(
             "Image optimized: {} -> {} ({}KB -> {}KB)",

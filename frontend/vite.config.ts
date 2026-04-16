@@ -67,34 +67,6 @@ export default defineConfig({
         if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
         warn(warning);
       },
-      output: {
-        manualChunks(id) {
-          // Core React vendor
-          if (id.includes('react-dom') || id.includes('react-router-dom')) {
-            return 'vendor';
-          }
-          // Ant Design icons - very large, split separately
-          if (id.includes('@ant-design/icons')) {
-            return 'antd-icons';
-          }
-          // Ant Design Pro components (ProTable, ProLayout)
-          if (id.includes('@ant-design/pro')) {
-            return 'antd-pro';
-          }
-          // Ant Design core
-          if (id.includes('antd') || id.includes('@ant-design')) {
-            return 'antd';
-          }
-          // Markdown rendering - article detail only
-          if (id.includes('markdown-it') || id.includes('highlight.js') || id.includes('react-markdown') || id.includes('remark') || id.includes('rehype')) {
-            return 'markdown';
-          }
-          // Material Web - public pages
-          if (id.includes('@material/web')) {
-            return 'material';
-          }
-        }
-      }
     },
     chunkSizeWarningLimit: 500,
     assetsInlineLimit: 1024,

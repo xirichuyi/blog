@@ -9,6 +9,7 @@ import { UploadsApiService } from './uploads';
 import { AboutApiService } from './about';
 import { HealthApiService } from './health';
 import { ResourceApiService } from './resources';
+import { WebauthnApiService } from './webauthn';
 import type { Article, LoginCredentials } from '../types';
 
 const auth = new AuthApiService();
@@ -20,6 +21,7 @@ const uploads = new UploadsApiService();
 const about = new AboutApiService();
 const health = new HealthApiService();
 const resources = new ResourceApiService();
+const webauthn = new WebauthnApiService();
 
 export const apiService = {
   // Auth
@@ -85,9 +87,20 @@ export const apiService = {
   getResourceStats: () => resources.getResourceStats(),
   deleteResource: (path: string) => resources.deleteResource(path),
   optimizeAllImages: () => resources.optimizeAllImages(),
+  cleanupUnusedResources: () => resources.cleanupUnused(),
+
+  // WebAuthn
+  webauthnHasCredentials: () => webauthn.hasCredentials(),
+  webauthnAuthStart: () => webauthn.authStart(),
+  webauthnAuthFinish: (credential: PublicKeyCredential) => webauthn.authFinish(credential),
+  webauthnRegisterStart: () => webauthn.registerStart(),
+  webauthnRegisterFinish: (credential: PublicKeyCredential, name: string) => webauthn.registerFinish(credential, name),
+  webauthnRegisterFinishRaw: (credentialData: any, name: string) => webauthn.registerFinishRaw(credentialData, name),
+  webauthnListCredentials: () => webauthn.listCredentials(),
+  webauthnDeleteCredential: (id: string) => webauthn.deleteCredential(id),
 };
 
 export default apiService;
 
-export { AuthApiService, PostsApiService, CategoriesApiService, TagsApiService, MusicApiService, UploadsApiService, AboutApiService, HealthApiService, ResourceApiService };
+export { AuthApiService, PostsApiService, CategoriesApiService, TagsApiService, MusicApiService, UploadsApiService, AboutApiService, HealthApiService, ResourceApiService, WebauthnApiService };
 export type { StaticResource, ResourceUsage, UsageRef, ResourceStats, TypeStats, OptimizeResult } from './resources';

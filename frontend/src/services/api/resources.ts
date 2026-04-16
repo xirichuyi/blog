@@ -74,4 +74,10 @@ export class ResourceApiService extends BaseApiService {
       method: 'POST',
     });
   }
+
+  async cleanupUnused(): Promise<ApiResponse<{ total_unused: number; deleted: number; failed: number }>> {
+    return this.request('/admin/resources/cleanup', {
+      method: 'POST',
+    });
+  }
 }

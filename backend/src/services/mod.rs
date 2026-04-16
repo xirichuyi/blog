@@ -6,6 +6,7 @@ pub mod pdf_service;
 pub mod post_service;
 pub mod resource_service;
 pub mod tag_service;
+pub mod webauthn_service;
 
 pub use about_service::AboutService;
 pub use category_service::CategoryService;
@@ -15,6 +16,7 @@ pub use pdf_service::PdfService;
 pub use post_service::PostService;
 pub use resource_service::ResourceService;
 pub use tag_service::TagService;
+pub use webauthn_service::WebauthnService;
 
 use crate::database::Database;
 use crate::utils::FileHandler;
@@ -31,10 +33,16 @@ pub struct Services {
     pub about: Arc<AboutService>,
     pub pdf: Arc<PdfService>,
     pub resource: Arc<ResourceService>,
+    pub webauthn: Option<Arc<WebauthnService>>,
 }
 
 impl Services {
-    pub fn new(database: Database, file_handler: Arc<FileHandler>, upload_dir: String) -> Self {
+    pub fn new(
+        database: Database,
+        file_handler: Arc<FileHandler>,
+        upload_dir: String,
+        webauthn: Option<WebauthnService>,
+    ) -> Self {
         Self {
             post: Arc::new(PostService::new(database.clone(), file_handler.clone())),
             music: Arc::new(MusicService::new(database.clone(), file_handler.clone())),
@@ -44,6 +52,7 @@ impl Services {
             about: Arc::new(AboutService::new(database.clone())),
             pdf: Arc::new(PdfService::new(database.clone(), file_handler.clone())),
             resource: Arc::new(ResourceService::new(database, file_handler, upload_dir)),
+            webauthn: webauthn.map(Arc::new),
         }
     }
 }

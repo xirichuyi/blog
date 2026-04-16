@@ -8,3 +8,5 @@ pub mod post_handler;
 pub mod resource_handler;
 pub mod rss_handler;
 pub mod tag_handler;
+pub mod upload_handler;
+pub mod webauthn_handler;
