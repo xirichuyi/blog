@@ -17,6 +17,9 @@ const initializeTheme = () => {
 };
 initializeTheme();
 
+// Material Icons (local, no CDN)
+import 'material-symbols/outlined.css'
+
 // Import Material Design styles and setup
 import './material-web.ts'
 import './styles/theme.css'
