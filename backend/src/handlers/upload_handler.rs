@@ -1,3 +1,4 @@
+use crate::config::constants::{PRESIGN_EXPIRY_SECS, UPLOAD_SUBFOLDERS};
 use crate::models::ApiResponse;
 use crate::routes::AppState;
 use axum::{extract::State, http::StatusCode, response::Json};
@@ -10,13 +11,11 @@ pub struct PresignRequest {
     pub subfolder: String,
 }
 
-/// POST /api/admin/upload/presign — generate a presigned URL for direct browser-to-R2 upload
 pub async fn presign_upload(
     State(app_state): State<AppState>,
     Json(body): Json<PresignRequest>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
-    let allowed_subfolders = ["images", "covers", "music", "music_covers", "pdfs", "documents"];
-    if !allowed_subfolders.contains(&body.subfolder.as_str()) {
+    if !UPLOAD_SUBFOLDERS.contains(&body.subfolder.as_str()) {
         return Ok(Json(ApiResponse::bad_request("Invalid subfolder")));
     }
 
@@ -24,7 +23,7 @@ pub async fn presign_upload(
         &body.subfolder,
         &body.file_name,
         &body.content_type,
-        300, // 5 minutes expiry
+        PRESIGN_EXPIRY_SECS,
     ) {
         Ok((presigned_url, public_url, s3_key)) => {
             Ok(Json(ApiResponse::success(serde_json::json!({

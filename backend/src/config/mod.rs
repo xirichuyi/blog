@@ -17,6 +17,12 @@ pub mod constants {
 
     /// Bearer token前缀
     pub const BEARER_PREFIX: &str = "Bearer ";
+
+    /// Presigned URL expiry in seconds
+    pub const PRESIGN_EXPIRY_SECS: u64 = 300;
+
+    /// Allowed upload subfolders
+    pub const UPLOAD_SUBFOLDERS: &[&str] = &["images", "covers", "music", "music_covers", "pdfs", "downloads"];
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

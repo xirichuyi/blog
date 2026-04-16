@@ -126,7 +126,7 @@ impl ResourceService {
             }
         } else {
             // Fallback: scan local upload directories
-            let subdirs = ["images", "covers", "music", "music_covers", "pdfs", "downloads"];
+            let subdirs = crate::config::constants::UPLOAD_SUBFOLDERS;
             for subdir in subdirs {
                 let dir_path = PathBuf::from(&self.upload_dir).join(subdir);
                 if !dir_path.exists() { continue; }
@@ -196,9 +196,7 @@ impl ResourceService {
     ///      "uploads/covers/xxx.jpg" -> "covers/xxx.jpg"
     ///      "/uploads/images/xxx.png" -> "images/xxx.png"
     fn extract_tail_path(url: &str) -> String {
-        let known_dirs = ["images", "covers", "music", "music_covers", "pdfs", "downloads"];
-        // Find the first known directory in the path and return everything from there
-        for dir in &known_dirs {
+        for dir in crate::config::constants::UPLOAD_SUBFOLDERS {
             if let Some(pos) = url.find(&format!("{}/", dir)) {
                 return url[pos..].to_string();
             }
@@ -388,26 +386,46 @@ impl ResourceService {
         Ok(stats)
     }
 
-    /// Delete a resource by path — removes the file (local/R2) and any orphan DB records
-    pub async fn delete_resource(&self, path: &str) -> Result<bool> {
-        // First check if resource is used
-        let resources = self.list_resources().await?;
-        let resource = resources.iter().find(|r| r.path == path);
+    /// Check if a specific resource path is used in any DB record (without listing all resources)
+    async fn is_resource_used(&self, path: &str) -> Result<bool> {
+        let pool = self.database.pool.as_ref();
+        let tail = Self::extract_tail_path(path);
+        let like_pattern = format!("%{}", tail);
 
-        if let Some(res) = resource {
-            if res.usage.is_used {
-                return Err(AppError::BadRequest(
-                    "Cannot delete resource that is in use".to_string()
-                ));
-            }
+        // Helper: check a single table/column for exact or tail match
+        async fn check_col(pool: &crate::database::DatabasePool, table_where: &str, col: &str, path: &str, like: &str) -> bool {
+            let q = format!("SELECT 1 FROM {} WHERE {} = ? OR {} LIKE ? LIMIT 1", table_where, col, col);
+            sqlx::query_scalar::<_, i64>(&q)
+                .bind(path).bind(like)
+                .fetch_optional(pool).await.ok().flatten().is_some()
         }
 
-        // Delete the file (local or R2)
+        if check_col(pool, "posts WHERE status != 2", "cover_url", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "music WHERE status != 2", "music_url", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "music WHERE status != 2", "music_cover_url", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "downloads", "file_url", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "pdf_documents", "file_path", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "about", "photo_url", path, &like_pattern).await { return Ok(true); }
+
+        // Check post content for embedded image URLs
+        if !tail.is_empty() {
+            let found: Option<i64> = sqlx::query_scalar(
+                "SELECT 1 FROM posts WHERE content LIKE ? AND status != 2 LIMIT 1"
+            ).bind(format!("%{}%", tail)).fetch_optional(pool).await.ok().flatten();
+            if found.is_some() { return Ok(true); }
+        }
+
+        Ok(false)
+    }
+
+    /// Delete a resource by path — removes the file (local/R2) and any orphan DB records
+    pub async fn delete_resource(&self, path: &str) -> Result<bool> {
+        if self.is_resource_used(path).await? {
+            return Err(AppError::BadRequest("Cannot delete resource that is in use".to_string()));
+        }
+
         self.file_handler.delete_file(path).await?;
-
-        // Also clean up orphan database records that reference this path
         self.delete_db_references(path).await?;
-
         Ok(true)
     }
 
@@ -444,6 +462,28 @@ impl ResourceService {
             .execute(pool).await.ok();
 
         Ok(())
+    }
+
+    /// Delete all unused resources in one pass (avoids N+1 listing)
+    pub async fn delete_all_unused(&self) -> Result<(u32, u32, u32)> {
+        let resources = self.list_resources().await?;
+        let unused: Vec<_> = resources.iter().filter(|r| !r.usage.is_used).collect();
+        let total = unused.len() as u32;
+        let mut deleted = 0u32;
+        let mut failed = 0u32;
+
+        for resource in &unused {
+            match self.file_handler.delete_file(&resource.path).await {
+                Ok(()) => {
+                    self.delete_db_references(&resource.path).await.ok();
+                    deleted += 1;
+                }
+                Err(_) => failed += 1,
+            }
+        }
+
+        tracing::info!("Bulk cleanup: {} deleted, {} failed out of {} unused", deleted, failed, total);
+        Ok((total, deleted, failed))
     }
 
     /// Batch optimize images in a directory

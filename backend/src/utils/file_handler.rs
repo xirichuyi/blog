@@ -127,8 +127,11 @@ impl FileHandler {
             hex::encode(Sha256::digest(canonical_request.as_bytes())),
         );
 
-        let signing_key = Self::derive_signing_key(&s3.secret_key, &date_stamp, &s3.region);
-        let signature = hex::encode(Self::hmac_sha256(&signing_key, string_to_sign.as_bytes()));
+        let k = Self::hmac_sha256(format!("AWS4{}", s3.secret_key).as_bytes(), date_stamp.as_bytes());
+        let k = Self::hmac_sha256(&k, s3.region.as_bytes());
+        let k = Self::hmac_sha256(&k, b"s3");
+        let k = Self::hmac_sha256(&k, b"aws4_request");
+        let signature = hex::encode(Self::hmac_sha256(&k, string_to_sign.as_bytes()));
 
         let presigned_url = format!(
             "{}/{}/{}?{}&X-Amz-Signature={}",
@@ -140,70 +143,40 @@ impl FileHandler {
         Ok((presigned_url, public_url, s3_key))
     }
 
-    /// Sign and execute an S3 PUT request (AWS Signature V4).
-    /// Returns the public URL on success, None on failure.
+    /// Upload bytes to S3. Returns the public URL on success.
     async fn upload_to_s3(&self, key: &str, data: &[u8], content_type: Option<&str>) -> Option<String> {
         let Some(s3) = &self.s3 else { return None };
 
         let ct = content_type.unwrap_or("application/octet-stream");
         let encoded_key = Self::encode_s3_key(key);
-        let url = format!("{}/{}/{}", s3.endpoint, s3.bucket, encoded_key);
-        let now = Utc::now();
-        let date_stamp = now.format("%Y%m%d").to_string();
-        let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
-        let payload_hash = hex::encode(Sha256::digest(data));
+        let ph = hex::encode(Sha256::digest(data));
+        let path = format!("/{}/{}", s3.bucket, encoded_key);
 
-        let canonical_request = format!(
-            "PUT\n/{}/{}\n\ncontent-type:{}\nhost:{}\nx-amz-content-sha256:{}\nx-amz-date:{}\n\ncontent-type;host;x-amz-content-sha256;x-amz-date\n{}",
-            s3.bucket, encoded_key, ct,
-            s3.host.as_str(),
-            payload_hash, amz_date, payload_hash,
+        let canonical = format!(
+            "PUT\n{path}\n\ncontent-type:{ct}\nhost:{}\nx-amz-content-sha256:{ph}\nx-amz-date:{{amz_date}}\n\ncontent-type;host;x-amz-content-sha256;x-amz-date\n{ph}",
+            s3.host,
         );
+        let (auth, amz_date) = Self::s3_sign(s3, &canonical, "content-type;host;x-amz-content-sha256;x-amz-date");
 
-        let scope = format!("{}/{}/s3/aws4_request", date_stamp, s3.region);
-        let string_to_sign = format!(
-            "AWS4-HMAC-SHA256\n{}\n{}\n{}",
-            amz_date, scope,
-            hex::encode(Sha256::digest(canonical_request.as_bytes())),
-        );
-
-        let signing_key = Self::derive_signing_key(&s3.secret_key, &date_stamp, &s3.region);
-        let signature = hex::encode(Self::hmac_sha256(&signing_key, string_to_sign.as_bytes()));
-        let auth_header = format!(
-            "AWS4-HMAC-SHA256 Credential={}/{},SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date,Signature={}",
-            s3.access_key, scope, signature,
-        );
-
-        let host = &s3.host;
-        let result = s3.http.put(&url)
+        let result = s3.http.put(&format!("{}{}", s3.endpoint, path))
             .header("Content-Type", ct)
-            .header("Host", host.as_str())
-            .header("x-amz-content-sha256", &payload_hash)
+            .header("Host", s3.host.as_str())
+            .header("x-amz-content-sha256", &ph)
             .header("x-amz-date", &amz_date)
-            .header("Authorization", &auth_header)
+            .header("Authorization", &auth)
             .body(data.to_vec())
-            .send()
-            .await;
+            .send().await;
 
         match result {
             Ok(resp) if resp.status().is_success() => {
-                let public = format!("{}/{}", s3.public_url, key);
-                tracing::info!("S3 upload OK: {} ({} bytes) -> {}", key, data.len(), public);
-                return Some(public);
+                tracing::info!("S3 upload OK: {} ({} bytes)", key, data.len());
+                Some(format!("{}/{}", s3.public_url, key))
             }
-            Ok(resp) => {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
-                tracing::warn!("S3 upload failed for {}: {} {}", key, status, body);
-            }
-            Err(e) => {
-                tracing::warn!("S3 upload failed for {}: {} (fallback to local)", key, e);
-            }
+            Ok(resp) => { tracing::warn!("S3 upload failed for {}: {}", key, resp.status()); None }
+            Err(e) => { tracing::warn!("S3 upload failed for {}: {}", key, e); None }
         }
-        None
     }
 
-    /// URL-encode an S3 key path (encode each segment, preserve '/')
     fn encode_s3_key(key: &str) -> String {
         key.split('/')
             .map(|seg| urlencoding::encode(seg).into_owned())
@@ -211,72 +184,67 @@ impl FileHandler {
             .join("/")
     }
 
-    /// Sign and execute an S3 DELETE request (AWS Signature V4).
+    /// Delete an object from S3 by key.
     async fn delete_from_s3(&self, key: &str) {
         let Some(s3) = &self.s3 else { return };
 
-        let encoded_key = Self::encode_s3_key(key);
-        let url = format!("{}/{}/{}", s3.endpoint, s3.bucket, encoded_key);
-        let now = Utc::now();
-        let date_stamp = now.format("%Y%m%d").to_string();
-        let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
-        let empty_hash = hex::encode(Sha256::digest(b""));
+        let ek = Self::encode_s3_key(key);
+        let eh = hex::encode(Sha256::digest(b""));
+        let path = format!("/{}/{}", s3.bucket, ek);
 
-        let canonical_request = format!(
-            "DELETE\n/{}/{}\n\nhost:{}\nx-amz-content-sha256:{}\nx-amz-date:{}\n\nhost;x-amz-content-sha256;x-amz-date\n{}",
-            s3.bucket, encoded_key,
-            s3.host.as_str(),
-            empty_hash, amz_date, empty_hash,
+        let canonical = format!(
+            "DELETE\n{path}\n\nhost:{}\nx-amz-content-sha256:{eh}\nx-amz-date:{{amz_date}}\n\nhost;x-amz-content-sha256;x-amz-date\n{eh}",
+            s3.host,
         );
+        let (auth, amz) = Self::s3_sign(s3, &canonical, "host;x-amz-content-sha256;x-amz-date");
 
-        let scope = format!("{}/{}/s3/aws4_request", date_stamp, s3.region);
-        let string_to_sign = format!(
-            "AWS4-HMAC-SHA256\n{}\n{}\n{}",
-            amz_date, scope,
-            hex::encode(Sha256::digest(canonical_request.as_bytes())),
-        );
-
-        let signing_key = Self::derive_signing_key(&s3.secret_key, &date_stamp, &s3.region);
-        let signature = hex::encode(Self::hmac_sha256(&signing_key, string_to_sign.as_bytes()));
-        let auth_header = format!(
-            "AWS4-HMAC-SHA256 Credential={}/{},SignedHeaders=host;x-amz-content-sha256;x-amz-date,Signature={}",
-            s3.access_key, scope, signature,
-        );
-
-        let host = &s3.host;
-        match s3.http.delete(&url)
-            .header("Host", host.as_str())
-            .header("x-amz-content-sha256", &empty_hash)
-            .header("x-amz-date", &amz_date)
-            .header("Authorization", &auth_header)
-            .send()
-            .await
+        match s3.http.delete(&format!("{}{}", s3.endpoint, path))
+            .header("Host", s3.host.as_str())
+            .header("x-amz-content-sha256", &eh)
+            .header("x-amz-date", &amz)
+            .header("Authorization", &auth)
+            .send().await
         {
-            Ok(resp) if resp.status().is_success() => {
-                tracing::info!("S3 delete OK: {}", key);
-            }
-            Ok(resp) => {
-                tracing::warn!("S3 delete failed for {}: {}", key, resp.status());
-            }
-            Err(e) => {
-                tracing::warn!("S3 delete failed for {}: {}", key, e);
-            }
+            Ok(resp) if resp.status().is_success() => tracing::info!("S3 delete OK: {}", key),
+            Ok(resp) => tracing::warn!("S3 delete failed for {}: {}", key, resp.status()),
+            Err(e) => tracing::warn!("S3 delete failed for {}: {}", key, e),
         }
     }
 
+    /// Generate S3 signing components: (auth_header, amz_date).
+    /// `canonical_request` must be fully formed (caller fills in amz_date before calling).
+    fn s3_sign(s3: &S3Info, canonical_request: &str, signed_headers: &str) -> (String, String) {
+        let now = Utc::now();
+        let ds = now.format("%Y%m%d").to_string();
+        let amz = now.format("%Y%m%dT%H%M%SZ").to_string();
+        let scope = format!("{}/{}/s3/aws4_request", ds, s3.region);
+
+        // Replace {amz_date} placeholder in canonical request
+        let canonical = canonical_request.replace("{amz_date}", &amz);
+        let sts = format!(
+            "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+            amz, scope,
+            hex::encode(Sha256::digest(canonical.as_bytes())),
+        );
+
+        let k = Self::hmac_sha256(format!("AWS4{}", s3.secret_key).as_bytes(), ds.as_bytes());
+        let k = Self::hmac_sha256(&k, s3.region.as_bytes());
+        let k = Self::hmac_sha256(&k, b"s3");
+        let k = Self::hmac_sha256(&k, b"aws4_request");
+        let sig = hex::encode(Self::hmac_sha256(&k, sts.as_bytes()));
+
+        let auth = format!(
+            "AWS4-HMAC-SHA256 Credential={}/{},SignedHeaders={},Signature={}",
+            s3.access_key, scope, signed_headers, sig,
+        );
+        (auth, amz)
+    }
+
     fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
-        // HMAC-SHA256 accepts any key length, so new_from_slice never fails
         let mut mac = Hmac::<Sha256>::new_from_slice(key)
             .unwrap_or_else(|_| unreachable!("HMAC-SHA256 accepts any key length"));
         mac.update(data);
         mac.finalize().into_bytes().to_vec()
-    }
-
-    fn derive_signing_key(secret: &str, date_stamp: &str, region: &str) -> Vec<u8> {
-        let k_date = Self::hmac_sha256(format!("AWS4{}", secret).as_bytes(), date_stamp.as_bytes());
-        let k_region = Self::hmac_sha256(&k_date, region.as_bytes());
-        let k_service = Self::hmac_sha256(&k_region, b"s3");
-        Self::hmac_sha256(&k_service, b"aws4_request")
     }
 
     /// List all objects in the S3 bucket. Returns Vec<(key, size, last_modified)>.
@@ -288,44 +256,26 @@ impl FileHandler {
         let mut all_objects = Vec::new();
         let mut continuation_token: Option<String> = None;
 
-        loop {
-            let now = Utc::now();
-            let date_stamp = now.format("%Y%m%d").to_string();
-            let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
-            let empty_hash = hex::encode(Sha256::digest(b""));
+        let eh = hex::encode(Sha256::digest(b""));
 
+        loop {
             let mut query = "list-type=2&max-keys=1000".to_string();
             if let Some(token) = &continuation_token {
                 query.push_str(&format!("&continuation-token={}", urlencoding::encode(token)));
             }
 
-            let canonical_request = format!(
-                "GET\n/{}\n{}\nhost:{}\nx-amz-content-sha256:{}\nx-amz-date:{}\n\nhost;x-amz-content-sha256;x-amz-date\n{}",
-                s3.bucket, query, s3.host.as_str(), empty_hash, amz_date, empty_hash,
+            let canonical = format!(
+                "GET\n/{}\n{}\nhost:{}\nx-amz-content-sha256:{eh}\nx-amz-date:{{amz_date}}\n\nhost;x-amz-content-sha256;x-amz-date\n{eh}",
+                s3.bucket, query, s3.host,
             );
+            let (auth, amz) = Self::s3_sign(s3, &canonical, "host;x-amz-content-sha256;x-amz-date");
 
-            let scope = format!("{}/{}/s3/aws4_request", date_stamp, s3.region);
-            let string_to_sign = format!(
-                "AWS4-HMAC-SHA256\n{}\n{}\n{}",
-                amz_date, scope,
-                hex::encode(Sha256::digest(canonical_request.as_bytes())),
-            );
-
-            let signing_key = Self::derive_signing_key(&s3.secret_key, &date_stamp, &s3.region);
-            let signature = hex::encode(Self::hmac_sha256(&signing_key, string_to_sign.as_bytes()));
-            let auth_header = format!(
-                "AWS4-HMAC-SHA256 Credential={}/{},SignedHeaders=host;x-amz-content-sha256;x-amz-date,Signature={}",
-                s3.access_key, scope, signature,
-            );
-
-            let url = format!("{}/{}?{}", s3.endpoint, s3.bucket, query);
-            let resp = s3.http.get(&url)
+            let resp = s3.http.get(&format!("{}/{}?{}", s3.endpoint, s3.bucket, query))
                 .header("Host", s3.host.as_str())
-                .header("x-amz-content-sha256", &empty_hash)
-                .header("x-amz-date", &amz_date)
-                .header("Authorization", &auth_header)
-                .send()
-                .await
+                .header("x-amz-content-sha256", &eh)
+                .header("x-amz-date", &amz)
+                .header("Authorization", &auth)
+                .send().await
                 .map_err(|e| AppError::Internal(format!("S3 list error: {}", e)))?;
 
             let body = resp.text().await

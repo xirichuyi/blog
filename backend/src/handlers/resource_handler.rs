@@ -75,23 +75,12 @@ pub async fn delete_resource(
     }
 }
 
-/// Bulk delete all unused resources
+/// Bulk delete all unused resources (single list call, no N+1)
 pub async fn delete_unused_resources(
     State(services): State<Services>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
-    match services.resource.list_resources().await {
-        Ok(resources) => {
-            let unused: Vec<_> = resources.iter().filter(|r| !r.usage.is_used).collect();
-            let total = unused.len();
-            let mut deleted = 0u32;
-            let mut failed = 0u32;
-
-            for resource in &unused {
-                match services.resource.delete_resource(&resource.path).await {
-                    Ok(true) => deleted += 1,
-                    _ => failed += 1,
-                }
-            }
+    match services.resource.delete_all_unused().await {
+        Ok((total, deleted, failed)) => {
 
             tracing::info!("Bulk cleanup: {} deleted, {} failed out of {} unused", deleted, failed, total);
             Ok(Json(ApiResponse::success(serde_json::json!({
