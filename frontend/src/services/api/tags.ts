@@ -1,15 +1,7 @@
 // Tags API service
 
 import { BaseApiService } from './base';
-import type { Tag, Article, ApiResponse } from '../types';
-
-// Backend response typing helpers
-interface BackendListResponse<T> {
-    data: T[];
-    total?: number;
-    page?: number;
-    page_size?: number;
-}
+import type { Tag, Article, ApiResponse, BackendListResponse } from '../types';
 
 interface BackendTag {
     id: number;

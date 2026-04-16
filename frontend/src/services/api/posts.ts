@@ -1,18 +1,12 @@
 // Posts API service
 
 import { BaseApiService } from './base';
-import type { Article, ApiResponse } from '../types';
+import type { Article, ApiResponse, BackendListResponse } from '../types';
 import { generateCacheKey } from '../../utils/cacheManager';
 import { logger } from '../../utils/logger';
 import { siteConfig } from '../../config/site';
 
 // Backend response typing helpers
-interface BackendListResponse<T> {
-    data: T[];
-    total?: number;
-    page?: number;
-    page_size?: number;
-}
 
 interface BackendPost {
     id: number;

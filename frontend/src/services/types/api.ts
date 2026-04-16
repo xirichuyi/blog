@@ -9,6 +9,14 @@ export interface ApiResponse<T = any> {
     page_size?: number;
 }
 
+/** Standard backend list response wrapper */
+export interface BackendListResponse<T> {
+    data: T[];
+    total?: number;
+    page?: number;
+    page_size?: number;
+}
+
 export interface ApiError {
     code: string;
     message: string;

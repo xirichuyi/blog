@@ -412,27 +412,14 @@ impl FileHandler {
             }
         }
 
-        // Handle local /uploads/ paths
-        if let Some(relative_path) = Self::strip_url_prefix(file_url) {
-            // Prevent path traversal attacks
-            if relative_path.contains("..") || relative_path.contains("//") {
-                return Err(AppError::BadRequest("Invalid file path".to_string()));
-            }
-
-            let upload_dir = PathBuf::from(&self.upload_dir);
-            let file_path = upload_dir.join(relative_path);
-
-            // Ensure the file path is within the upload directory
-            if !file_path.starts_with(&upload_dir) {
-                return Err(AppError::BadRequest("Invalid file path".to_string()));
-            }
-
+        // Handle local /uploads/ paths — reuse get_file_path for validation
+        if let Ok(file_path) = self.get_file_path(file_url) {
             if file_path.exists() {
-                fs::remove_file(file_path).await?;
+                fs::remove_file(&file_path).await?;
             }
-
-            // Also delete from S3 (non-fatal)
-            self.delete_from_s3(relative_path).await;
+            if let Some(relative_path) = Self::strip_url_prefix(file_url) {
+                self.delete_from_s3(relative_path).await;
+            }
         }
         Ok(())
     }

@@ -1,16 +1,8 @@
 // Categories API service
 
 import { BaseApiService } from './base';
-import type { Category, Article, ApiResponse } from '../types';
+import type { Category, Article, ApiResponse, BackendListResponse } from '../types';
 import { generateCacheKey } from '../../utils/cacheManager';
-
-// Backend response typing helpers
-interface BackendListResponse<T> {
-    data: T[];
-    total?: number;
-    page?: number;
-    page_size?: number;
-}
 
 // 缓存有效期：10分钟（分类变化不频繁）
 const CATEGORIES_CACHE_TTL = 10 * 60 * 1000;

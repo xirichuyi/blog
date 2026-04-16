@@ -123,7 +123,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         // Post tags public routes
         .route(
             "/api/post/:id/tags",
-            get(post_handler::get_post_tags_public),
+            get(post_handler::get_post_tags),
         )
         // About public route
         .route("/api/about/get", get(about_handler::get_about))
