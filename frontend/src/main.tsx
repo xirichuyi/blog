@@ -23,7 +23,6 @@ import './styles/theme.css'
 import './styles/global.css'
 import './index.css'
 import './styles/mobile.css'
-import './styles/responsive.css'
 import './styles/apple-design-tokens.css'
 import initializeMaterialDesign from './components/material/material-setup'
 

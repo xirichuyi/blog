@@ -52,13 +52,6 @@ pub struct TypeStats {
     pub size: u64,
 }
 
-/// Duplicate resource group
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DuplicateGroup {
-    pub hash: String,
-    pub files: Vec<StaticResource>,
-}
-
 pub struct ResourceService {
     database: Database,
     file_handler: Arc<FileHandler>,

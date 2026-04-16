@@ -101,5 +101,4 @@ export const apiService = {
 
 export default apiService;
 
-export { AuthApiService, PostsApiService, CategoriesApiService, TagsApiService, MusicApiService, UploadsApiService, AboutApiService, HealthApiService, ResourceApiService, WebauthnApiService };
 export type { StaticResource, ResourceUsage, UsageRef, ResourceStats, TypeStats, OptimizeResult } from './resources';

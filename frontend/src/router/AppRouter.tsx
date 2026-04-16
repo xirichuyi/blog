@@ -54,8 +54,6 @@ const ArticleDetailRoute: React.FC = () => {
   );
 };
 
-const AdminPosts: React.FC = () => <LazyPostManagement />;
-const AdminCategoriesTags: React.FC = () => <LazyCategoriesTagsManagement />;
 
 const AppRouter: React.FC = () => {
   return (
@@ -137,7 +135,7 @@ const AppRouter: React.FC = () => {
               <Route path="/admin/posts" element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <ProtectedRoute>
-                    <AdminPosts />
+                    <LazyPostManagement />
                   </ProtectedRoute>
                 </Suspense>
               } />
@@ -165,7 +163,7 @@ const AppRouter: React.FC = () => {
               <Route path="/admin/categories-tags" element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <ProtectedRoute>
-                    <AdminCategoriesTags />
+                    <LazyCategoriesTagsManagement />
                   </ProtectedRoute>
                 </Suspense>
               } />

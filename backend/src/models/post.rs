@@ -142,13 +142,6 @@ pub struct UpdatePostRequest {
 }
 
 #[derive(Debug, Serialize)]
-pub struct PostWithTags {
-    #[serde(flatten)]
-    pub post: Post,
-    pub tags: Vec<super::tag::Tag>,
-}
-
-#[derive(Debug, Serialize)]
 pub struct PostWithDetails {
     pub post: Post,
     pub tags: Vec<super::tag::Tag>,
