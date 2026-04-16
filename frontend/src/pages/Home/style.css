@@ -266,7 +266,7 @@
 }
 
 .featured-article-card {
-  background: #f0eed4;
+  background: #F3F2E8;
   border-radius: 24px;
   height: 298px; /* 固定高度，防止图片撑开 */
   display: grid;
@@ -278,7 +278,7 @@
     transform 0.2s ease;
   border-right: 3px solid #3a2e1f;
   /* Bottom shadow for depth - Brad Frost style */
-  box-shadow: 0 4px 0 0 #dedcb9, 0 6px 12px -4px rgba(222, 220, 185, 0.3);
+  box-shadow: 0 4px 0 0 #E6E5D8, 0 6px 12px -4px rgba(230, 229, 216, 0.3);
 }
 
 /* No image variant - single column layout */
@@ -291,19 +291,19 @@
 }
 
 .featured-article-card:hover {
-  background-color: #f0eed4;
+  background-color: #F3F2E8;
   transform: translateY(-2px);
-  box-shadow: 0 6px 0 0 #dedcb9, 0 10px 20px -6px rgba(222, 220, 185, 0.4);
+  box-shadow: 0 6px 0 0 #E6E5D8, 0 10px 20px -6px rgba(230, 229, 216, 0.4);
 }
 
 /* Dark mode shadow for featured card */
 [data-theme="dark"] .featured-article-card {
-  background: #f0eed4;
+  background: #F3F2E8;
   box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.3), 0 6px 12px -4px rgba(0, 0, 0, 0.2);
 }
 
 [data-theme="dark"] .featured-article-card:hover {
-  background-color: #f0eed4;
+  background-color: #F3F2E8;
   box-shadow: 0 6px 0 0 rgba(0, 0, 0, 0.25), 0 10px 20px -6px rgba(0, 0, 0, 0.3);
 }
 
@@ -1023,7 +1023,7 @@
 .server-status-content {
   position: relative;
   z-index: 2;
-  background: #efeed4; /* Brad Frost card color */
+  background: #F3F2E8; /* Brad Frost card color */
   border: 3px solid #3a2e1f; /* Dark brown border like Brad Frost */
   border-radius: 0; /* No border radius for Brad Frost style */
   padding: 20px;

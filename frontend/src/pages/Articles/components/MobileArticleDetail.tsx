@@ -160,10 +160,10 @@ const MobileArticleDetail: React.FC = () => {
               <Calendar size={16} />
               <span>{formatDate(article.publishDate)}</span>
             </div>
-            {article.readingTime && (
+            {article.readTime > 0 && (
               <div className="mobile-meta-item">
                 <Clock size={16} />
-                <span>{article.readingTime} min</span>
+                <span>{article.readTime} min</span>
               </div>
             )}
           </div>
@@ -199,7 +199,7 @@ const MobileArticleDetail: React.FC = () => {
 
       {/* 文章内容 */}
       <article className="mobile-article-content">
-        <MarkdownRenderer content={article.content} />
+        <MarkdownRenderer content={article.content ?? ''} />
       </article>
 
       {/* 文章底部信息 */}
@@ -207,7 +207,7 @@ const MobileArticleDetail: React.FC = () => {
         <div className="mobile-article-stats">
           <div className="mobile-stat-item">
             <Eye size={16} />
-            <span>{article.views || 0} views</span>
+            <span>views</span>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../../../services/api';
+import { logger } from '../../../utils/logger';
 import './AuthorCard.css';
 
 interface AuthorCardProps {
@@ -17,7 +18,7 @@ const AuthorCard: React.FC<AuthorCardProps> = ({ className = '' }) => {
                     setAvatar(apiService.getImageUrl(response.data.photo_url));
                 }
             } catch (error) {
-                console.error('Failed to fetch about data:', error);
+                logger.error('Failed to fetch about data:', error);
             }
         };
         fetchAbout();

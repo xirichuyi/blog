@@ -52,13 +52,6 @@ pub struct TypeStats {
     pub size: u64,
 }
 
-/// Duplicate resource group
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DuplicateGroup {
-    pub hash: String,
-    pub files: Vec<StaticResource>,
-}
-
 pub struct ResourceService {
     database: Database,
     file_handler: Arc<FileHandler>,
@@ -88,68 +81,136 @@ impl ResourceService {
         }
     }
 
-    /// Get all static resources with usage information
+    /// Get all static resources with usage information.
+    /// Primary source: R2 bucket listing. Fallback: local uploads/ directory.
     pub async fn list_resources(&self) -> Result<Vec<StaticResource>> {
         let mut resources = Vec::new();
 
-        // Scan all upload directories
-        let subdirs = ["images", "covers", "music", "music_covers", "pdfs", "downloads"];
+        // List objects directly from R2 bucket
+        let s3_objects = self.file_handler.list_s3_objects().await?;
+        let public_url = self.file_handler.s3_public_url().unwrap_or("");
 
-        for subdir in subdirs {
-            let dir_path = PathBuf::from(&self.upload_dir).join(subdir);
-            if !dir_path.exists() {
-                continue;
-            }
-
-            let mut entries = fs::read_dir(&dir_path).await?;
-            while let Some(entry) = entries.next_entry().await? {
-                let path = entry.path();
-                if !path.is_file() {
-                    continue;
-                }
-
-                let metadata = entry.metadata().await?;
-                let file_name = path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("")
-                    .to_string();
-
-                let relative_path = format!("/uploads/{}/{}", subdir, file_name);
-                let mime_type = mime_guess::from_path(&path)
+        if !s3_objects.is_empty() {
+            for (key, size, last_modified) in &s3_objects {
+                let file_name = key.rsplit('/').next().unwrap_or(key).to_string();
+                let full_url = if public_url.is_empty() {
+                    format!("/uploads/{}", key)
+                } else {
+                    format!("{}/{}", public_url, key)
+                };
+                let file_type = Self::guess_file_type_from_url(key);
+                let mime_type = mime_guess::from_path(&file_name)
                     .first_or_octet_stream()
                     .to_string();
-
-                let created_at = metadata.created()
-                    .map(|t| {
-                        let duration = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
-                        Utc.timestamp_opt(duration.as_secs() as i64, 0).unwrap()
-                    })
+                let created_at = chrono::DateTime::parse_from_rfc3339(last_modified)
+                    .map(|dt| dt.with_timezone(&Utc))
                     .unwrap_or_else(|_| Utc::now());
 
                 resources.push(StaticResource {
-                    path: relative_path.clone(),
-                    full_url: relative_path,
+                    path: full_url.clone(),
+                    full_url,
                     file_name,
-                    file_type: normalize_file_type(subdir),
-                    file_size: metadata.len(),
+                    file_type,
+                    file_size: *size,
                     mime_type,
                     created_at,
                     usage: ResourceUsage::default(),
                 });
             }
+        } else {
+            // Fallback: scan local upload directories
+            let subdirs = crate::config::constants::UPLOAD_SUBFOLDERS;
+            for subdir in subdirs {
+                let dir_path = PathBuf::from(&self.upload_dir).join(subdir);
+                if !dir_path.exists() { continue; }
+
+                let mut entries = fs::read_dir(&dir_path).await?;
+                while let Some(entry) = entries.next_entry().await? {
+                    let path = entry.path();
+                    if !path.is_file() { continue; }
+
+                    let metadata = entry.metadata().await?;
+                    let file_name = path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("").to_string();
+                    let relative_path = format!("/uploads/{}/{}", subdir, file_name);
+                    let mime_type = mime_guess::from_path(&path)
+                        .first_or_octet_stream().to_string();
+                    let created_at = metadata.created()
+                        .map(|t| {
+                            let d = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                            Utc.timestamp_opt(d.as_secs() as i64, 0).unwrap()
+                        })
+                        .unwrap_or_else(|_| Utc::now());
+
+                    resources.push(StaticResource {
+                        path: relative_path.clone(),
+                        full_url: relative_path,
+                        file_name,
+                        file_type: normalize_file_type(subdir),
+                        file_size: metadata.len(),
+                        mime_type,
+                        created_at,
+                        usage: ResourceUsage::default(),
+                    });
+                }
+            }
         }
 
-        // Get usage information from database
+        // Get usage information from database and update.
+        // Match by normalized tail path (subfolder/filename) since full paths may differ
+        // e.g. R2 key: "uploads/covers/xxx.jpg", DB URL: "https://asset.blog.chuyi.uk/covers/xxx.jpg"
         let usage_map = self.get_resource_usage().await?;
 
-        // Update usage status for each resource
         for resource in &mut resources {
+            // Direct match first
             if let Some(usage) = usage_map.get(&resource.path) {
                 resource.usage = usage.clone();
+                continue;
+            }
+            // Extract subfolder/filename from resource path
+            let resource_tail = Self::extract_tail_path(&resource.path);
+            if resource_tail.is_empty() { continue; }
+
+            for (url, usage) in &usage_map {
+                let url_tail = Self::extract_tail_path(url);
+                if !url_tail.is_empty() && resource_tail == url_tail {
+                    resource.usage = usage.clone();
+                    break;
+                }
             }
         }
 
         Ok(resources)
+    }
+
+    /// Extract the tail "subfolder/filename" from a URL or path.
+    /// e.g. "https://asset.blog.chuyi.uk/covers/xxx.jpg" -> "covers/xxx.jpg"
+    ///      "uploads/covers/xxx.jpg" -> "covers/xxx.jpg"
+    ///      "/uploads/images/xxx.png" -> "images/xxx.png"
+    fn extract_tail_path(url: &str) -> String {
+        for dir in crate::config::constants::UPLOAD_SUBFOLDERS {
+            if let Some(pos) = url.find(&format!("{}/", dir)) {
+                return url[pos..].to_string();
+            }
+        }
+        // Fallback: last two segments
+        let parts: Vec<&str> = url.rsplitn(3, '/').collect();
+        if parts.len() >= 2 {
+            format!("{}/{}", parts[1], parts[0])
+        } else {
+            String::new()
+        }
+    }
+
+    /// Guess file type from URL path
+    fn guess_file_type_from_url(url: &str) -> String {
+        if url.contains("/covers/") { return "cover".to_string(); }
+        if url.contains("/music_covers/") { return "music_cover".to_string(); }
+        if url.contains("/music/") { return "music".to_string(); }
+        if url.contains("/pdfs/") { return "pdf".to_string(); }
+        if url.contains("/downloads/") { return "download".to_string(); }
+        "image".to_string()
     }
 
     /// Get resource usage map from database
@@ -318,23 +379,104 @@ impl ResourceService {
         Ok(stats)
     }
 
-    /// Delete a resource by path
-    pub async fn delete_resource(&self, path: &str) -> Result<bool> {
-        // First check if resource is used
-        let resources = self.list_resources().await?;
-        let resource = resources.iter().find(|r| r.path == path);
+    /// Check if a specific resource path is used in any DB record (without listing all resources)
+    async fn is_resource_used(&self, path: &str) -> Result<bool> {
+        let pool = self.database.pool.as_ref();
+        let tail = Self::extract_tail_path(path);
+        let like_pattern = format!("%{}", tail);
 
-        if let Some(res) = resource {
-            if res.usage.is_used {
-                return Err(AppError::BadRequest(
-                    "Cannot delete resource that is in use".to_string()
-                ));
+        // Helper: check a single table/column for exact or tail match
+        async fn check_col(pool: &crate::database::DatabasePool, table_where: &str, col: &str, path: &str, like: &str) -> bool {
+            let q = format!("SELECT 1 FROM {} WHERE {} = ? OR {} LIKE ? LIMIT 1", table_where, col, col);
+            sqlx::query_scalar::<_, i64>(&q)
+                .bind(path).bind(like)
+                .fetch_optional(pool).await.ok().flatten().is_some()
+        }
+
+        if check_col(pool, "posts WHERE status != 2", "cover_url", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "music WHERE status != 2", "music_url", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "music WHERE status != 2", "music_cover_url", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "downloads", "file_url", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "pdf_documents", "file_path", path, &like_pattern).await { return Ok(true); }
+        if check_col(pool, "about", "photo_url", path, &like_pattern).await { return Ok(true); }
+
+        // Check post content for embedded image URLs
+        if !tail.is_empty() {
+            let found: Option<i64> = sqlx::query_scalar(
+                "SELECT 1 FROM posts WHERE content LIKE ? AND status != 2 LIMIT 1"
+            ).bind(format!("%{}%", tail)).fetch_optional(pool).await.ok().flatten();
+            if found.is_some() { return Ok(true); }
+        }
+
+        Ok(false)
+    }
+
+    /// Delete a resource by path — removes the file (local/R2) and any orphan DB records
+    pub async fn delete_resource(&self, path: &str) -> Result<bool> {
+        if self.is_resource_used(path).await? {
+            return Err(AppError::BadRequest("Cannot delete resource that is in use".to_string()));
+        }
+
+        self.file_handler.delete_file(path).await?;
+        self.delete_db_references(path).await?;
+        Ok(true)
+    }
+
+    /// Remove database records that reference a given resource path
+    async fn delete_db_references(&self, path: &str) -> Result<()> {
+        let pool = self.database.pool.as_ref();
+
+        // pdf_documents
+        sqlx::query("DELETE FROM pdf_documents WHERE file_path = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        // downloads
+        sqlx::query("DELETE FROM downloads WHERE file_url = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        // Clear post cover_url if it matches (set to empty)
+        sqlx::query("UPDATE posts SET cover_url = '' WHERE cover_url = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        // Clear about photo_url if it matches
+        sqlx::query("UPDATE about SET photo_url = '' WHERE photo_url = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        // Clear music URLs
+        sqlx::query("UPDATE music SET music_cover_url = NULL WHERE music_cover_url = ?")
+            .bind(path)
+            .execute(pool).await.ok();
+        sqlx::query("DELETE FROM music WHERE music_url = ? AND status = 2")
+            .bind(path)
+            .execute(pool).await.ok();
+
+        Ok(())
+    }
+
+    /// Delete all unused resources in one pass (avoids N+1 listing)
+    pub async fn delete_all_unused(&self) -> Result<(u32, u32, u32)> {
+        let resources = self.list_resources().await?;
+        let unused: Vec<_> = resources.iter().filter(|r| !r.usage.is_used).collect();
+        let total = unused.len() as u32;
+        let mut deleted = 0u32;
+        let mut failed = 0u32;
+
+        for resource in &unused {
+            match self.file_handler.delete_file(&resource.path).await {
+                Ok(()) => {
+                    self.delete_db_references(&resource.path).await.ok();
+                    deleted += 1;
+                }
+                Err(_) => failed += 1,
             }
         }
 
-        // Delete the file
-        self.file_handler.delete_file(path).await?;
-        Ok(true)
+        tracing::info!("Bulk cleanup: {} deleted, {} failed out of {} unused", deleted, failed, total);
+        Ok((total, deleted, failed))
     }
 
     /// Batch optimize images in a directory

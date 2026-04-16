@@ -4,38 +4,40 @@ import { BaseApiService } from './base';
 import type { LoginCredentials, LoginResponse, ApiResponse } from '../types';
 
 export class AuthApiService extends BaseApiService {
-    // Authentication APIs
     async login(credentials: LoginCredentials): Promise<ApiResponse<LoginResponse>> {
-        // Directly use the provided token
-        const mockUser = {
-            id: '1',
-            username: 'admin',
-            role: 'admin' as const,
-            lastLogin: new Date().toISOString(),
-        };
+        // Store token so subsequent requests include it in headers
+        localStorage.setItem('admin_token', credentials.token);
+
+        const verified = await this.verifyToken();
+        if (!verified.success || !verified.data?.valid) {
+            localStorage.removeItem('admin_token');
+            return {
+                success: false,
+                error: 'Invalid token',
+            };
+        }
 
         return {
             success: true,
             data: {
                 success: true,
                 token: credentials.token,
-                user: mockUser,
+                user: {
+                    id: '1',
+                    username: 'admin',
+                    role: 'admin' as const,
+                    lastLogin: new Date().toISOString(),
+                },
             },
         };
     }
 
     async verifyToken(): Promise<ApiResponse<{ valid: boolean }>> {
         try {
-            const response = await this.request('/health');
-            return {
-                success: true,
-                data: { valid: response.success }
-            };
+            const response = await this.request<{ code: number }>('/health');
+            return { success: true, data: { valid: response.success } };
         } catch {
-            return {
-                success: true,
-                data: { valid: false }
-            };
+            return { success: false, error: 'Token verification failed' };
         }
     }
 }

@@ -42,7 +42,7 @@
   gap: 20px;
   position: relative;
   z-index: 2;
-  background: #efeed4; /* Brad Frost card color */
+  background: #F3F2E8; /* Brad Frost card color */
   border: 3px solid #3a2e1f; /* Dark brown border like Brad Frost */
   border-radius: 0; /* No border radius for Brad Frost style */
 }
@@ -66,7 +66,7 @@
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
-  background: #f6f5de; /* Match page background */
+  background: #FAF9F0; /* Match page background */
   border: 2px solid #3a2e1f; /* Dark brown border */
   display: flex;
   align-items: center;

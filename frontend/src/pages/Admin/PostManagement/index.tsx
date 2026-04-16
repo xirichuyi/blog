@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../../services/api';
+import { logger } from '../../../utils/logger';
 import { useNotification } from '../../../contexts/NotificationContext';
 import type { Article, Category } from '../../../services/types';
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
@@ -45,7 +46,7 @@ const PostManagement: React.FC = () => {
           setCategories(response.data.filter(cat => cat.id !== 'all'));
         }
       } catch (error) {
-        console.error('Error loading categories:', error);
+        logger.error('Error loading categories:', error);
       }
     };
     loadCategories();
@@ -88,14 +89,16 @@ const PostManagement: React.FC = () => {
       cancelText: 'Cancel',
       onOk: async () => {
         try {
-          const response = await apiService.bulkDeletePosts(selectedRowKeys as number[]);
-          if (response.success) {
-            message.success(`${selectedRowKeys.length} posts deleted successfully`);
-            setSelectedRowKeys([]);
-            actionRef.current?.reload();
-          } else {
-            throw new Error(response.error || 'Failed to delete posts');
+          let successCount = 0;
+          for (const id of selectedRowKeys) {
+            const response = await apiService.deletePost(String(id));
+            if (response.success) {
+              successCount++;
+            }
           }
+          message.success(`${successCount} posts deleted successfully`);
+          setSelectedRowKeys([]);
+          actionRef.current?.reload();
         } catch (err) {
           message.error(err instanceof Error ? err.message : 'Failed to delete posts');
         }

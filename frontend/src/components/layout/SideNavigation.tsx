@@ -33,6 +33,12 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ className = '' }) => {
       path: '/articles'
     },
     {
+      id: 'archives',
+      label: 'Archives',
+      icon: 'schedule',
+      path: '/archives'
+    },
+    {
       id: 'about',
       label: 'About',
       icon: 'person',

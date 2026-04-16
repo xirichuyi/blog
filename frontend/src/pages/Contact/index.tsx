@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { logger } from '../../utils/logger';
 import './style.css';
 
 // 表单数据接口
@@ -83,12 +84,12 @@ const Contact: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // 这里应该调用实际的API
-      console.log('Contact form submitted:', formData);
+      logger.debug('Contact form submitted:', formData);
 
       setSubmitStatus('success');
       setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error) {
-      console.error('Form submission error:', error);
+      logger.error('Form submission error:', error);
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);

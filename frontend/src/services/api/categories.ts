@@ -1,16 +1,8 @@
 // Categories API service
 
 import { BaseApiService } from './base';
-import type { Category, Article, ApiResponse } from '../types';
-import { CacheKeys, generateCacheKey } from '../../utils/cacheManager';
-
-// Backend response typing helpers
-interface BackendListResponse<T> {
-    data: T[];
-    total?: number;
-    page?: number;
-    page_size?: number;
-}
+import type { Category, Article, ApiResponse, BackendListResponse } from '../types';
+import { generateCacheKey } from '../../utils/cacheManager';
 
 // 缓存有效期：10分钟（分类变化不频繁）
 const CATEGORIES_CACHE_TTL = 10 * 60 * 1000;
@@ -23,7 +15,7 @@ export class CategoriesApiService extends BaseApiService {
 
     // Public Categories API - 带缓存
     async getPublicCategories(forceRefresh = false): Promise<ApiResponse<Category[]>> {
-        const cacheKey = CacheKeys.CATEGORIES;
+        const cacheKey = 'categories';
 
         // 检查缓存（除非强制刷新）
         if (!forceRefresh) {

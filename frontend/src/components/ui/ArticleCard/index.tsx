@@ -55,14 +55,22 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
             tabIndex={0}
             onKeyDown={handleKeyDown}
         >
-            {coverImage && !imageError && (
+            {coverImage && (
                 <div className="article-card-image">
-                    <img
-                        src={coverImage}
-                        alt={title}
-                        className="article-card-img"
-                        onError={handleImageError}
-                    />
+                    {!imageError ? (
+                        <img
+                            src={coverImage}
+                            alt={title}
+                            className="article-card-img"
+                            onError={handleImageError}
+                        />
+                    ) : (
+                        <div className="article-card-fallback">
+                            <div className="article-fallback-content">
+                                <md-icon class="fallback-icon" style={{ fontSize: '48px' }}>image_not_supported</md-icon>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
             <div className="article-card-content">

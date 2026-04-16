@@ -6,18 +6,28 @@ import compression from 'vite-plugin-compression'
 // https://vite.dev/config/
 export default defineConfig({
   server: {
-    host: '0.0.0.0', // 监听所有网络接口
+    host: '0.0.0.0',
     port: 5173,
-    strictPort: true, // 端口被占用时不尝试其他端口
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3006',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:3006',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [
     react(),
     compression({
       algorithm: 'gzip',
       ext: '.gz',
-      threshold: 10240, // 只有大于10kb的文件才会被压缩
-      deleteOriginFile: false, // 保留原始文件
-      verbose: true, // 在控制台中输出压缩结果
+      threshold: 10240,
+      deleteOriginFile: false,
+      verbose: true,
     }),
     compression({
       algorithm: 'brotliCompress',
@@ -28,24 +38,15 @@ export default defineConfig({
     }),
   ],
   optimizeDeps: {
-    // 预构建依赖项
     include: [
       'react',
       'react-dom',
       'react-router-dom',
-      'framer-motion',
       'lucide-react',
-      'react-markdown',
-      'remark-gfm',
-      'rehype-slug',
-      'rehype-autolink-headings'
     ],
-    // 排除有问题的依赖项
     exclude: [
       '@material/web'
     ],
-    // 强制预构建
-    force: true
   },
   resolve: {
     alias: {
@@ -53,12 +54,10 @@ export default defineConfig({
     },
   },
   esbuild: {
-    // 跳过TypeScript类型检查
     target: 'es2020',
     logOverride: { 'this-is-undefined-in-esm': 'silent' }
   },
   build: {
-    // 紧急性能优化
     target: 'es2020',
     minify: 'esbuild',
     sourcemap: false,
@@ -68,15 +67,8 @@ export default defineConfig({
         if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
         warn(warning);
       },
-      output: {
-        // 最简化的代码分割策略
-        manualChunks: {
-          'vendor': ['react', 'react-dom', 'react-router-dom']
-        }
-      }
     },
     chunkSizeWarningLimit: 500,
     assetsInlineLimit: 1024,
-    reportCompressedSize: false
   }
 })

@@ -2,6 +2,7 @@
 
 import { BaseApiService } from './base';
 import type { MusicTrack, ApiResponse } from '../types';
+import { logger } from '../../utils/logger';
 
 interface BackendMusic {
     id: number;
@@ -69,7 +70,7 @@ export class MusicApiService extends BaseApiService {
                 throw new Error(result.message || 'Failed to fetch music tracks');
             }
         } catch (error) {
-            console.error('Failed to fetch music tracks:', error);
+            logger.error('Failed to fetch music tracks:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Failed to fetch music tracks',
@@ -85,7 +86,7 @@ export class MusicApiService extends BaseApiService {
             const musicFile = formData.get('music') as File;
             const coverFile = formData.get('cover') as File;
 
-            console.log('Uploading music:', { title, artist, musicFile: musicFile?.name, coverFile: coverFile?.name });
+            logger.debug('Uploading music:', { title, artist, musicFile: musicFile?.name, coverFile: coverFile?.name });
 
             if (!title || !artist || !musicFile) {
                 throw new Error('Title, artist, and music file are required');
@@ -95,7 +96,7 @@ export class MusicApiService extends BaseApiService {
             const musicUploadFormData = new FormData();
             musicUploadFormData.append('file', musicFile);
 
-            console.log('Music upload FormData:', musicUploadFormData);
+            logger.debug('Music upload FormData:', musicUploadFormData);
 
             const musicUploadResponse = await fetch(`${this.baseURL}/music/upload_music`, {
                 method: 'POST',
@@ -105,7 +106,7 @@ export class MusicApiService extends BaseApiService {
 
             if (!musicUploadResponse.ok) {
                 const errorText = await musicUploadResponse.text();
-                console.error('Music upload failed:', musicUploadResponse.status, errorText);
+                logger.error('Music upload failed:', musicUploadResponse.status, errorText);
                 throw new Error(`Music upload failed: ${musicUploadResponse.status} - ${errorText}`);
             }
 
@@ -162,22 +163,21 @@ export class MusicApiService extends BaseApiService {
             // Convert to frontend format
             const music = createResult.data;
             const newTrack: MusicTrack = {
-                id: music.id.toString(),
+                id: music.id,
                 title: music.music_name,
                 artist: music.music_author,
                 album: undefined,
                 genre: undefined,
-                duration: 0, // Will be extracted later
+                duration: 0,
                 file_url: music.music_url,
                 cover_url: music.music_cover_url,
-                upload_date: music.created_at,
-                file_size: musicFile.size / (1024 * 1024), // Convert to MB
-                status: music.status === 1 ? 'active' : 'inactive',
+                created_at: music.created_at,
+                updated_at: music.updated_at || music.created_at,
             };
 
             return { success: true, data: newTrack };
         } catch (error) {
-            console.error('Music upload failed:', error);
+            logger.error('Music upload failed:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Upload failed',
@@ -203,7 +203,7 @@ export class MusicApiService extends BaseApiService {
                 throw new Error(result.message || 'Delete music failed');
             }
         } catch (error) {
-            console.error('Delete music failed:', error);
+            logger.error('Delete music failed:', error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Failed to delete music track',

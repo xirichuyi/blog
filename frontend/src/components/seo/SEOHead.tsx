@@ -38,7 +38,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({
     const allKeywords = [...keywords, ...tags].join(', ');
 
     // 构建结构化数据
-    const structuredData = {
+    const structuredData: Record<string, unknown> = {
         "@context": "https://schema.org",
         "@type": type === 'article' ? "BlogPosting" : "WebSite",
         "name": fullTitle,
@@ -179,8 +179,6 @@ const SEOHead: React.FC<SEOHeadProps> = ({
             <meta name="apple-mobile-web-app-title" content={siteTitle} />
 
             {/* 预连接重要域名 */}
-            <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
-            <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
             <link rel="dns-prefetch" href="https://blog.chuyi.uk" />
         </Helmet>
     );

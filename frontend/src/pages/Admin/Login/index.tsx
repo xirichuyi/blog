@@ -1,8 +1,7 @@
-// Admin Login Page Component with Ant Design
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { apiService } from '../../../services/api';
 import {
   Form,
   Input,
@@ -12,12 +11,15 @@ import {
   Space,
   Alert,
   Spin,
+  Divider,
 } from 'antd';
 import {
   KeyOutlined,
   LoginOutlined,
   ArrowLeftOutlined,
+  ScanOutlined,
 } from '@ant-design/icons';
+import { base64urlToBuffer } from '../../../utils/webauthn';
 import './style.css';
 
 const { Title, Text } = Typography;
@@ -31,16 +33,37 @@ const Login: React.FC = () => {
   const { login, isAuthenticated, error, isLoading, clearError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [hasPasskeys, setHasPasskeys] = useState(false);
+  const [webauthnLoading, setWebauthnLoading] = useState(false);
+  const [webauthnError, setWebauthnError] = useState<string | null>(null);
+  const [checkingPasskeys, setCheckingPasskeys] = useState(true);
+
+  // Check if passkeys are registered
+  useEffect(() => {
+    const checkPasskeys = async () => {
+      try {
+        const res = await apiService.webauthnHasCredentials();
+        if (res.success && res.data?.data?.has_credentials) {
+          setHasPasskeys(true);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setCheckingPasskeys(false);
+      }
+    };
+    checkPasskeys();
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+      const state = location.state as { from?: { pathname?: string } } | null;
+      const from = state?.from?.pathname || '/admin/dashboard';
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate, location]);
 
-  // Clear error when component unmounts
   useEffect(() => {
     return () => clearError();
   }, [clearError]);
@@ -52,20 +75,82 @@ const Login: React.FC = () => {
       });
 
       if (success) {
-        const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+        const state = location.state as { from?: { pathname?: string } } | null;
+        const from = state?.from?.pathname || '/admin/dashboard';
         navigate(from, { replace: true });
       }
-    } catch (err) {
-      console.error('Login failed:', err);
+    } catch {
+      // Login error is handled by AuthContext
     }
   };
 
+  const handleWebAuthnLogin = useCallback(async () => {
+    setWebauthnError(null);
+    setWebauthnLoading(true);
+
+    try {
+      // 1. Get challenge from server
+      const startRes = await apiService.webauthnAuthStart();
+      if (!startRes.success || !startRes.data?.data) {
+        throw new Error(startRes.data?.message || 'Failed to start authentication');
+      }
+
+      const options = startRes.data.data;
+      const challengeId = options.challenge_id;
+
+      // 2. Convert server options to PublicKeyCredentialRequestOptions
+      const publicKeyOptions: PublicKeyCredentialRequestOptions = {
+        challenge: base64urlToBuffer(options.publicKey.challenge),
+        rpId: options.publicKey.rpId,
+        timeout: options.publicKey.timeout,
+        userVerification: options.publicKey.userVerification || 'preferred',
+        allowCredentials: (options.publicKey.allowCredentials || []).map((c: any) => ({
+          id: base64urlToBuffer(c.id),
+          type: c.type,
+          transports: c.transports,
+        })),
+      };
+
+      // 3. Call browser WebAuthn API
+      const credential = await navigator.credentials.get({
+        publicKey: publicKeyOptions,
+      });
+
+      if (!credential) {
+        throw new Error('Authentication cancelled');
+      }
+
+      // 4. Send credential to server with challenge_id
+      const finishRes = await apiService.webauthnAuthFinish(credential as PublicKeyCredential, challengeId);
+      if (!finishRes.success || !finishRes.data?.data?.token) {
+        throw new Error(finishRes.data?.message || 'Authentication failed');
+      }
+
+      // 5. Use the returned token to complete login
+      const token = finishRes.data.data.token;
+      const success = await login({ token });
+
+      if (success) {
+        const state = location.state as { from?: { pathname?: string } } | null;
+        const from = state?.from?.pathname || '/admin/dashboard';
+        navigate(from, { replace: true });
+      }
+    } catch (err: any) {
+      const msg = err?.name === 'NotAllowedError'
+        ? '认证被取消或超时'
+        : err?.message || 'WebAuthn 认证失败';
+      setWebauthnError(msg);
+    } finally {
+      setWebauthnLoading(false);
+    }
+  }, [login, navigate, location]);
+
   const handleValuesChange = () => {
     if (error) clearError();
+    if (webauthnError) setWebauthnError(null);
   };
 
-  // Show loading state while checking authentication
-  if (isLoading) {
+  if (isLoading || checkingPasskeys) {
     return (
       <div className="login-page">
         <div className="login-container">
@@ -91,8 +176,38 @@ const Login: React.FC = () => {
               <KeyOutlined style={{ fontSize: 48, color: '#1890ff' }} />
             </div>
             <Title level={2} style={{ marginBottom: 8 }}>Admin Login</Title>
-            <Text type="secondary">请输入管理Token登录</Text>
+            <Text type="secondary">请输入管理Token或使用Passkey登录</Text>
           </div>
+
+          {/* WebAuthn Login Button */}
+          {hasPasskeys && (
+            <>
+              <Button
+                type="primary"
+                size="large"
+                icon={<ScanOutlined />}
+                loading={webauthnLoading}
+                onClick={handleWebAuthnLogin}
+                block
+                style={{ height: 48, fontSize: 16, borderRadius: 8 }}
+              >
+                使用 Passkey 登录
+              </Button>
+
+              {webauthnError && (
+                <Alert
+                  message={webauthnError}
+                  type="error"
+                  showIcon
+                  style={{ marginTop: 12 }}
+                />
+              )}
+
+              <Divider plain>
+                <Text type="secondary">或使用 Token</Text>
+              </Divider>
+            </>
+          )}
 
           <Form
             form={form}

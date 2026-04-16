@@ -22,6 +22,7 @@ export type {
 // API types
 export type {
   ApiResponse,
+  BackendListResponse,
   DashboardStats,
   ApiError,
   PaginationParams,

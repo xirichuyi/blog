@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiService } from '../../services/api';
+import { logger } from '../../utils/logger';
 import './style.css';
 
 const About: React.FC = () => {
@@ -20,12 +21,12 @@ const About: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const resp = await apiService.getAbout();
-      
+
       if (resp.success && resp.data) {
-        setTitle(resp.data.title || title);
-        setSubtitle(resp.data.subtitle || subtitle);
+        setTitle(prev => resp.data!.title || prev);
+        setSubtitle(prev => resp.data!.subtitle || prev);
         setContent(resp.data.content || '');
         const url = resp.data.photo_url || '';
         setPhotoUrl(url ? apiService.getImageUrl(url) : '');
@@ -33,12 +34,12 @@ const About: React.FC = () => {
         setError('Failed to load about information');
       }
     } catch (error) {
-      console.error('Error loading about data:', error);
+      logger.error('Error loading about data:', error);
       setError(error instanceof Error ? error.message : 'Failed to load about information');
     } finally {
       setLoading(false);
     }
-  }, [title, subtitle]);
+  }, []);
 
   // 初始数据加载
   useEffect(() => {
@@ -52,7 +53,8 @@ const About: React.FC = () => {
   // 图片加载错误处理
   const handleImageError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const target = e.target as HTMLImageElement;
-    target.src = '/api/placeholder/300/400';
+    target.style.display = 'none';
+    setPhotoUrl('');
   }, []);
 
   // 重试加载数据

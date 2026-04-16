@@ -19,14 +19,6 @@ pub struct UpdateTagRequest {
     pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct PostTag {
-    pub id: i64,
-    pub post_id: i64,
-    pub tag_id: i64,
-    pub created_at: DateTime<Utc>,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct UpdatePostTagsRequest {
     pub tag_ids: Vec<i64>,

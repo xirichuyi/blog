@@ -29,37 +29,17 @@ import '@material/web/textfield/outlined-text-field.js';
 import { styles as typescaleStyles } from '@material/web/typography/md-typescale-styles.js';
 
 // Apply typography styles to document
-if (typeof document !== 'undefined') {
-  if (typescaleStyles.styleSheet) {
-    document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+try {
+  if (typeof document !== 'undefined' && typescaleStyles.styleSheet) {
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, typescaleStyles.styleSheet];
   }
-}
+} catch (_) { /* ignore */ }
 
 // Note: TypeScript declarations are centralized in services/types/material-web.d.ts
 
-// Material Icons Setup
+// Material Icons Setup - no external font loading needed (using system fonts)
 export const loadMaterialIcons = () => {
-  if (typeof document !== 'undefined') {
-    // Check if Material Icons are already loaded
-    const existingLink = document.querySelector('link[href*="Material+Icons"]');
-    if (!existingLink) {
-      const link = document.createElement('link');
-      link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
-      link.rel = 'stylesheet';
-      link.crossOrigin = 'anonymous';
-      document.head.appendChild(link);
-    }
-
-    // Also load Material Symbols for better icon support
-    const existingSymbols = document.querySelector('link[href*="Material+Symbols"]');
-    if (!existingSymbols) {
-      const symbolsLink = document.createElement('link');
-      symbolsLink.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200';
-      symbolsLink.rel = 'stylesheet';
-      symbolsLink.crossOrigin = 'anonymous';
-      document.head.appendChild(symbolsLink);
-    }
-  }
+  // No-op: removed Google Fonts loading to avoid blocked requests in China
 };
 
 // Theme Configuration Helper

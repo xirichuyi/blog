@@ -195,19 +195,6 @@ pub async fn get_post_tags(
     }
 }
 
-pub async fn get_post_tags_public(
-    State(services): State<Services>,
-    Path(id): Path<i64>,
-) -> Result<Json<ApiResponse<Vec<crate::models::Tag>>>, StatusCode> {
-    match services.post.get_post_tags(id).await {
-        Ok(tags) => Ok(Json(ApiResponse::success(tags))),
-        Err(e) => {
-            tracing::error!("Failed to get post tags: {}", e);
-            Ok(Json(ApiResponse::internal_error("Failed to get post tags")))
-        }
-    }
-}
-
 pub async fn update_post_tags(
     State(services): State<Services>,
     Path(id): Path<i64>,

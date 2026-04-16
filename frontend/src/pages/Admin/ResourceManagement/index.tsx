@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { apiService } from '../../../services/api';
+import { logger } from '../../../utils/logger';
 import { API_BASE_URL } from '../../../services/api/base';
-import type { StaticResource, ResourceStats } from '../../../services/api';
+import type { StaticResource, ResourceStats } from '../../../services/api/resources';
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
 import { ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
@@ -38,6 +39,7 @@ import {
   ReloadOutlined,
   PictureOutlined,
   HddOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import './style.css';
 
@@ -65,7 +67,7 @@ const ResourceManagement: React.FC = () => {
         setStats(statsData);
       }
     } catch (error) {
-      console.error('Error loading resource stats:', error);
+      logger.error('Error loading resource stats:', error);
     } finally {
       setStatsLoading(false);
     }
@@ -181,6 +183,47 @@ const ResourceManagement: React.FC = () => {
           message.error(err instanceof Error ? err.message : 'Failed to optimize images');
         } finally {
           setOptimizing(false);
+        }
+      },
+    });
+  };
+
+  const handleCleanupUnused = async () => {
+    const unusedCount = stats?.unused_count || 0;
+    if (unusedCount === 0) {
+      message.info('没有未使用的资源需要清理');
+      return;
+    }
+
+    Modal.confirm({
+      title: '清理未使用资源',
+      icon: <ExclamationCircleOutlined />,
+      content: `确定要删除 ${unusedCount} 个未使用的资源吗？此操作不可撤销。`,
+      okText: '确定清理',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          const response = await apiService.cleanupUnusedResources();
+          if (response.success && response.data) {
+            const result = (response.data as any).data || response.data;
+            Modal.success({
+              title: '清理完成',
+              content: (
+                <div>
+                  <p>未使用资源: {result.total_unused} 个</p>
+                  <p>已删除: {result.deleted} 个</p>
+                  {result.failed > 0 && <p>失败: {result.failed} 个</p>}
+                </div>
+              ),
+            });
+            actionRef.current?.reload();
+            loadStats();
+          } else {
+            throw new Error(response.error || 'Failed to cleanup');
+          }
+        } catch (err) {
+          message.error(err instanceof Error ? err.message : '清理失败');
         }
       },
     });
@@ -511,6 +554,15 @@ const ResourceManagement: React.FC = () => {
             subTitle: 'Manage uploaded files and images',
           }}
           toolBarRender={() => [
+            <Button
+              key="cleanup"
+              danger
+              icon={<ClearOutlined />}
+              onClick={handleCleanupUnused}
+              disabled={!stats || stats.unused_count === 0}
+            >
+              清理未使用 ({stats?.unused_count || 0})
+            </Button>,
             <Button
               key="optimize"
               icon={<ThunderboltOutlined />}

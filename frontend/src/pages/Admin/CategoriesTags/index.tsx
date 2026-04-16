@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../../../services/api';
+import { logger } from '../../../utils/logger';
 import AdminLayout from '../../../components/adminLayout/AdminLayout';
 import {
   Card,
@@ -37,16 +38,12 @@ interface Category {
   description?: string;
   icon?: string;
   count?: number;
-  created_at: string;
-  updated_at: string;
 }
 
 interface Tag {
   id: string;
   name: string;
   count?: number;
-  created_at: string;
-  updated_at: string;
 }
 
 const CategoriesTagsManagement: React.FC = () => {
@@ -82,7 +79,7 @@ const CategoriesTagsManagement: React.FC = () => {
         setCategories(response.data);
       }
     } catch (error) {
-      console.error('Failed to load categories:', error);
+      logger.error('Failed to load categories:', error);
       message.error('Failed to load categories');
     } finally {
       setCategoriesLoading(false);
@@ -114,7 +111,7 @@ const CategoriesTagsManagement: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Category operation failed:', error);
+      logger.error('Category operation failed:', error);
       message.error('Operation failed');
     }
   };
@@ -129,7 +126,7 @@ const CategoriesTagsManagement: React.FC = () => {
         message.error(response.message || 'Failed to delete category');
       }
     } catch (error) {
-      console.error('Failed to delete category:', error);
+      logger.error('Failed to delete category:', error);
       message.error('Failed to delete category');
     }
   };
@@ -159,7 +156,7 @@ const CategoriesTagsManagement: React.FC = () => {
         setTags(response.data);
       }
     } catch (error) {
-      console.error('Failed to load tags:', error);
+      logger.error('Failed to load tags:', error);
       message.error('Failed to load tags');
     } finally {
       setTagsLoading(false);
@@ -191,7 +188,7 @@ const CategoriesTagsManagement: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Tag operation failed:', error);
+      logger.error('Tag operation failed:', error);
       message.error('Operation failed');
     }
   };
@@ -206,7 +203,7 @@ const CategoriesTagsManagement: React.FC = () => {
         message.error(response.message || 'Failed to delete tag');
       }
     } catch (error) {
-      console.error('Failed to delete tag:', error);
+      logger.error('Failed to delete tag:', error);
       message.error('Failed to delete tag');
     }
   };

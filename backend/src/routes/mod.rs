@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
     about_handler, category_handler, download_handler, health_handler, music_handler, pdf_handler,
-    post_handler, resource_handler, tag_handler,
+    post_handler, resource_handler, rss_handler, tag_handler, upload_handler, webauthn_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
@@ -52,11 +52,30 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
     let file_handler = Arc::new(FileHandler::new(
         config.storage.upload_dir.clone(),
         config.storage.max_file_size,
+        Some(&config.s3),
     ));
+
+    // Initialize WebAuthn service
+    let webauthn_service = match crate::services::WebauthnService::new(
+        database.clone(),
+        &config.webauthn.rp_id,
+        &config.webauthn.rp_origin,
+    ) {
+        Ok(svc) => {
+            tracing::info!("WebAuthn initialized (rp_id: {}, origin: {})", config.webauthn.rp_id, config.webauthn.rp_origin);
+            Some(svc)
+        }
+        Err(e) => {
+            tracing::warn!("WebAuthn initialization failed: {} — passkey login disabled", e);
+            None
+        }
+    };
+
     let services = Services::new(
         database.clone(),
         file_handler.clone(),
         config.storage.upload_dir.clone(),
+        webauthn_service,
     );
     let app_state = AppState {
         database,
@@ -104,10 +123,18 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         // Post tags public routes
         .route(
             "/api/post/:id/tags",
-            get(post_handler::get_post_tags_public),
+            get(post_handler::get_post_tags),
         )
         // About public route
-        .route("/api/about/get", get(about_handler::get_about));
+        .route("/api/about/get", get(about_handler::get_about))
+        // RSS feed
+        .route("/api/rss", get(rss_handler::rss_feed))
+        .route("/rss", get(rss_handler::rss_feed))
+        .route("/feed.xml", get(rss_handler::rss_feed))
+        // WebAuthn public routes (authentication)
+        .route("/api/webauthn/has-credentials", get(webauthn_handler::has_credentials))
+        .route("/api/webauthn/auth-start", get(webauthn_handler::auth_start))
+        .route("/api/webauthn/auth-finish", post(webauthn_handler::auth_finish));
 
     // Admin routes (authentication required)
     let admin_routes = Router::new()
@@ -193,6 +220,17 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             "/api/admin/resources/optimize",
             post(resource_handler::optimize_all_images),
         )
+        .route(
+            "/api/admin/resources/cleanup",
+            post(resource_handler::delete_unused_resources),
+        )
+        // Presigned upload route
+        .route("/api/admin/upload/presign", post(upload_handler::presign_upload))
+        // WebAuthn admin routes (credential management)
+        .route("/api/admin/webauthn/register-start", get(webauthn_handler::register_start))
+        .route("/api/admin/webauthn/register-finish", post(webauthn_handler::register_finish))
+        .route("/api/admin/webauthn/credentials", get(webauthn_handler::list_credentials))
+        .route("/api/admin/webauthn/credentials", delete(webauthn_handler::delete_credential))
         // Apply admin authentication middleware
         .layer(middleware::from_fn_with_state(
             app_state.clone(),

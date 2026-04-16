@@ -16,6 +16,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   FolderOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import './AdminLayout.css';
 
@@ -53,6 +54,11 @@ const menuItems = [
     path: '/admin/about',
     name: 'About',
     icon: <UserOutlined />,
+  },
+  {
+    path: '/admin/security',
+    name: 'Security',
+    icon: <SafetyOutlined />,
   },
 ];
 

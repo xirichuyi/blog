@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import MarkdownIt from 'markdown-it';
 import { apiService } from '../../../services/api'
 import type { Article } from '../../../services/types';
-// import ArticleCard from '../../../components/blog/ArticleCard'; // Temporarily commented
 import MarkdownRenderer, { generateHeadingId } from '../../../components/ui/MarkdownRenderer';
+import { logger } from '../../../utils/logger';
+import Comments from '../../../components/ui/Comments';
 import './ArticleDetail.css';
+
+// Hoist MarkdownIt instance — it's stateless, no need to recreate per render
+const md = new MarkdownIt();
 
 interface ArticleDetailProps {
     articleId?: string;
@@ -23,11 +27,10 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
     const [error, setError] = useState<string | null>(null);
     const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
     const [tocBottomOffset, setTocBottomOffset] = useState<number>(0);
-    const [activeHeading, setActiveHeading] = useState<string>(''); // 只用于点击高亮，不自动跟随
+    const [activeHeading, setActiveHeading] = useState<string>(''); // 滚动自动跟随 + 点击高亮
     const [imageLoaded, setImageLoaded] = useState<boolean>(false);
     const [imageError, setImageError] = useState<boolean>(false);
     const mountedRef = useRef(true);
-    const imageRef = useRef<HTMLImageElement>(null);
 
     // ===================================================================
     // B区 - 核心逻辑：所有事件处理函数和业务逻辑
@@ -50,9 +53,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
                 setArticle(fetchedArticle);
 
                 // Load related articles (same category, excluding current article)
-                if (fetchedArticle.category) {
+                if (fetchedArticle.categoryId) {
                     const relatedResponse = await apiService.getArticles({
-                        category: fetchedArticle.category,
+                        category: fetchedArticle.categoryId,
                         status: 'published'
                     });
 
@@ -71,7 +74,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
         } catch (err) {
             if (!mountedRef.current) return;
             setError('Failed to load article');
-            console.error('Error loading article:', err);
+            logger.error('Error loading article:', err);
         } finally {
             if (mountedRef.current) {
                 setIsLoading(false);
@@ -79,30 +82,79 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
         }
     }, [articleId]);
 
-    // 安全的状态更新函数
-    const safeSetState = useCallback((updater: (prev: any) => any, setter: (value: any) => void) => {
-        if (!mountedRef.current) return;
-        setter(updater);
+    // 从markdown内容提取标题
+    const extractHeadings = useCallback((content: string) => {
+        const tokens = md.parse(content, {});
+        const headings = [];
+
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+            if (token.type === 'heading_open') {
+                const level = parseInt(token.tag.substring(1));
+                const nextToken = tokens[i + 1];
+
+                if (nextToken && nextToken.type === 'inline') {
+                    const title = nextToken.content.trim();
+                    const id = generateHeadingId(title);
+                    headings.push({ level, title, id });
+                }
+            }
+        }
+
+        return headings;
     }, []);
 
-    // TOC底部偏移滚动监听
+    const headings = useMemo(() => {
+        return article?.content ? extractHeadings(article.content) : [];
+    }, [article, extractHeadings]);
+
+    // Combined scroll handler — rAF throttled, guards setState
+    const activeHeadingRef = useRef('');
+    const tocOffsetRef = useRef(0);
+
     useEffect(() => {
+        let rafId = 0;
+
         const handleScroll = () => {
-            if (!mountedRef.current) return;
+            cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                if (!mountedRef.current) return;
+                const scrollTop = window.pageYOffset;
 
-            const scrollTop = window.pageYOffset;
-            const windowHeight = window.innerHeight;
-            const documentHeight = document.documentElement.scrollHeight;
-            const scrollBottom = scrollTop + windowHeight;
-            const distanceFromBottom = documentHeight - scrollBottom;
+                // TOC bottom offset
+                const windowHeight = window.innerHeight;
+                const documentHeight = document.documentElement.scrollHeight;
+                const distanceFromBottom = documentHeight - (scrollTop + windowHeight);
+                const newOffset = distanceFromBottom <= 72 ? Math.max(0, 72 - distanceFromBottom) : 0;
+                if (newOffset !== tocOffsetRef.current) {
+                    tocOffsetRef.current = newOffset;
+                    setTocBottomOffset(newOffset);
+                }
 
-            const newTocOffset = distanceFromBottom <= 72 ? Math.max(0, 72 - distanceFromBottom) : 0;
-            setTocBottomOffset(newTocOffset);
+                // Heading highlight
+                if (headings.length > 0) {
+                    let currentId = '';
+                    for (let i = headings.length - 1; i >= 0; i--) {
+                        const el = document.getElementById(headings[i].id);
+                        if (el && el.offsetTop - 120 <= scrollTop) {
+                            currentId = headings[i].id;
+                            break;
+                        }
+                    }
+                    if (currentId && currentId !== activeHeadingRef.current) {
+                        activeHeadingRef.current = currentId;
+                        setActiveHeading(currentId);
+                    }
+                }
+            });
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            cancelAnimationFrame(rafId);
+        };
+    }, [headings]);
 
     // 文章数据加载
     useEffect(() => {
@@ -127,35 +179,11 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
         setImageError(false);
     }, [article?.id]);
 
-    // 从markdown内容提取标题 - 使用markdown-it准确解析
-    const extractHeadings = useCallback((content: string) => {
-        const md = new MarkdownIt();
-        const tokens = md.parse(content, {});
-        const headings = [];
-
-        for (let i = 0; i < tokens.length; i++) {
-            const token = tokens[i];
-            if (token.type === 'heading_open') {
-                const level = parseInt(token.tag.substring(1)); // h1 -> 1, h2 -> 2, etc.
-                const nextToken = tokens[i + 1];
-
-                if (nextToken && nextToken.type === 'inline') {
-                    const title = nextToken.content.trim();
-                    // 使用与MarkdownRenderer相同的ID生成函数
-                    const id = generateHeadingId(title);
-                    headings.push({ level, title, id });
-                }
-            }
-        }
-
-        return headings;
-    }, []);
-
     // 点击滚动功能 + 高亮设置
     const scrollToHeading = useCallback((headingId: string) => {
         const element = document.getElementById(headingId);
         if (!element) {
-            console.warn(`Element with id "${headingId}" not found`);
+            logger.warn(`Element with id "${headingId}" not found`);
             return;
         }
 
@@ -212,11 +240,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
         setImageLoaded(true);
         setImageError(true);
     }, []);
-
-    // 计算衍生数据
-    const headings = useMemo(() => {
-        return article?.content ? extractHeadings(article.content) : [];
-    }, [article, extractHeadings]);
 
     const readingTime = useMemo(() => {
         return article?.content ? calculateReadingTime(article.content) : 0;
@@ -329,7 +352,6 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
                                 </div>
                             )}
                             <img
-                                ref={imageRef}
                                 src={article.coverImage || article.imageUrl}
                                 alt={article.title}
                                 onLoad={handleImageLoad}
@@ -357,6 +379,9 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
                         </md-outlined-button>
                     </div>
                 </footer>
+
+                {/* Comments */}
+                <Comments term={article.title} />
 
                 {/* Related Articles */}
                 {relatedArticles.length > 0 && (

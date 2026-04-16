@@ -13,24 +13,19 @@ const AdminLogin = lazy(() => import('../pages/Admin/Login'));
 const AdminDashboard = lazy(() => import('../pages/Admin/Dashboard'));
 const ProtectedRoute = lazy(() => import('../pages/Admin/ProtectedRoute'));
 
+// Lazy load public pages
+const SearchResults = lazy(() => import('../pages/Search'));
+const Archives = lazy(() => import('../pages/Archives'));
+
 // Lazy load admin components directly
 const LazyPostManagement = lazy(() => import('../pages/Admin/PostManagement'));
 const LazyPostEditor = lazy(() => import('../pages/Admin/PostEditor'));
 const LazyCategoriesTagsManagement = lazy(() => import('../pages/Admin/CategoriesTags'));
 const LazyAboutManagement = lazy(() => import('../pages/Admin/About'));
 const LazyResourceManagement = lazy(() => import('../pages/Admin/ResourceManagement'));
+const LazySecurityManagement = lazy(() => import('../pages/Admin/Security'));
 import NotificationContainer from '../components/ui/NotificationContainer';
 import '../styles/page-placeholder.css';
-
-// ArticlesPage is now imported from components
-
-// CategoriesPage is now imported from components
-
-// TagsPage is now imported from components
-
-// AboutPage is now imported from components
-
-// ContactPage is now imported from components
 
 const NotFoundPage: React.FC = () => (
   <div className="page-placeholder">
@@ -59,13 +54,6 @@ const ArticleDetailRoute: React.FC = () => {
   );
 };
 
-// Admin placeholder components with lazy loading
-
-const AdminPosts: React.FC = () => <LazyPostManagement />;
-
-// const AdminMusic: React.FC = () => <LazyMusicManagement />;
-
-const AdminCategoriesTags: React.FC = () => <LazyCategoriesTagsManagement />;
 
 const AppRouter: React.FC = () => {
   return (
@@ -91,7 +79,7 @@ const AppRouter: React.FC = () => {
               <Route path="/search" element={
                 <ResponsiveLayout title="搜索结果 - Chuyi的博客">
                   <Suspense fallback={<LoadingSpinner />}>
-                    {/* <SearchResults /> TODO: add search results page */}
+                    <SearchResults />
                   </Suspense>
                 </ResponsiveLayout>
               } />
@@ -104,6 +92,14 @@ const AppRouter: React.FC = () => {
                 >
                   <Suspense fallback={<LoadingSpinner />}>
                     <ArticleDetailRoute />
+                  </Suspense>
+                </ResponsiveLayout>
+              } />
+
+              <Route path="/archives" element={
+                <ResponsiveLayout title="文章归档 - Chuyi的博客">
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <Archives />
                   </Suspense>
                 </ResponsiveLayout>
               } />
@@ -139,7 +135,7 @@ const AppRouter: React.FC = () => {
               <Route path="/admin/posts" element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <ProtectedRoute>
-                    <AdminPosts />
+                    <LazyPostManagement />
                   </ProtectedRoute>
                 </Suspense>
               } />
@@ -167,7 +163,7 @@ const AppRouter: React.FC = () => {
               <Route path="/admin/categories-tags" element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <ProtectedRoute>
-                    <AdminCategoriesTags />
+                    <LazyCategoriesTagsManagement />
                   </ProtectedRoute>
                 </Suspense>
               } />
@@ -184,6 +180,14 @@ const AppRouter: React.FC = () => {
                 <Suspense fallback={<LoadingSpinner />}>
                   <ProtectedRoute>
                     <LazyResourceManagement />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+
+              <Route path="/admin/security" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ProtectedRoute>
+                    <LazySecurityManagement />
                   </ProtectedRoute>
                 </Suspense>
               } />

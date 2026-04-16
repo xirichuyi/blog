@@ -19,7 +19,6 @@ interface CoverUploadProps {
   className?: string;
   placeholder?: string;
   maxSize?: number;
-  accept?: string;
   supportPaste?: boolean;
   supportDragDrop?: boolean;
 }
@@ -107,8 +106,7 @@ const CoverUpload: React.FC<CoverUploadProps> = ({
 
       if (result.success && result.data?.file_url) {
         const fullCoverUrl = apiService.getImageUrl(result.data.file_url);
-        const cacheBustedUrl = `${fullCoverUrl}?t=${Date.now()}`;
-        onChange?.(cacheBustedUrl);
+        onChange?.(fullCoverUrl);
         message.success('Cover image uploaded successfully');
       } else {
         throw new Error(result.error || 'Failed to upload cover');

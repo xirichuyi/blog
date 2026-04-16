@@ -56,10 +56,6 @@ mime_guess = "2.0"
 image = { version = "0.24", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 webp = "0.3"
 
-# Authentication & Security
-jsonwebtoken = "9.2"
-bcrypt = "0.15"
-
 # Configuration
 config = "0.14"
 dotenvy = "0.15"
@@ -81,16 +77,29 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 rand = "0.8"
 
 # HTTP client for AI API
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 
 # Error handling
 anyhow = "1.0"
 thiserror = "1.0"
 
+# S3-compatible object storage (Cloudflare R2) — uses reqwest directly, no heavy SDK
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+urlencoding = "2"
+
+# Vendored OpenSSL for cross-compilation (needed by webauthn-rs)
+openssl = { version = "0.10", features = ["vendored"] }
+
+# WebAuthn authentication
+webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation"] }
+webauthn-rs-proto = "0.5"
+url = "2"
+base64url = "0.1"
+
 # Utilities
 slug = "0.1"
-regex = "1.10"
-num_cpus = "1.16"
 sysinfo = "0.30"
 
 # Performance monitoring

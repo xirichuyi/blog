@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Github, Linkedin, MessageCircle, Code } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { logger } from '../../utils/logger';
 import './MobileContact.css';
 
 // 表单数据接口
@@ -82,11 +83,11 @@ const MobileContact: React.FC = () => {
 
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Contact form submitted:', formData);
+      logger.debug('Contact form submitted:', formData);
       setSubmitStatus('success');
       setFormData({ name: '', email: '', message: '' });
     } catch (error) {
-      console.error('Form submission error:', error);
+      logger.error('Form submission error:', error);
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);

@@ -2,12 +2,13 @@
 
 import { globalCache } from '../../utils/cacheManager';
 import type { ApiResponse } from '../types';
+import { logger } from '../../utils/logger';
 
 // API Configuration
-// Use environment variable for API URL, fallback to local development server
-// In production, use relative URL to connect to the same server
-export const API_BASE_URL = import.meta.env.VITE_API_URL ||
-    (import.meta.env.MODE === 'production' ? '' : 'http://localhost:8085');
+// VITE_API_URL: set to the backend origin when frontend and backend are on different domains.
+// Leave unset (or empty) to use relative URLs — works with the Vite dev proxy and with
+// an nginx reverse proxy in production that forwards /api and /uploads to the backend.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 export const API_PREFIX = '/api';
 
 export class BaseApiService {
@@ -98,14 +99,27 @@ export class BaseApiService {
         this.setCachedData(key, data, ttl);
     }
 
+    // Ensure token only contains ASCII-safe characters for HTTP headers
+    private getSafeToken(): string | null {
+        const token = localStorage.getItem('admin_token');
+        if (!token) return null;
+        // HTTP headers must be ISO-8859-1; if token has non-ASCII chars, clear it
+        // eslint-disable-next-line no-control-regex
+        if (/[^\x00-\xFF]/.test(token)) {
+            logger.warn('Stored token contains non-ASCII characters, clearing invalid token');
+            localStorage.removeItem('admin_token');
+            return null;
+        }
+        return token;
+    }
+
     // Get headers for API requests
     protected getHeaders(): Record<string, string> {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
         };
 
-        // Add auth token if available
-        const token = localStorage.getItem('admin_token');
+        const token = this.getSafeToken();
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
@@ -115,7 +129,7 @@ export class BaseApiService {
 
     // Helper method to get auth headers for file uploads (without Content-Type)
     protected getUploadHeaders(): HeadersInit {
-        const token = localStorage.getItem('admin_token');
+        const token = this.getSafeToken();
         return {
             ...(token && { 'Authorization': `Bearer ${token}` }),
         };
@@ -123,7 +137,7 @@ export class BaseApiService {
 
     // Helper method to get auth headers
     protected getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('admin_token');
+        const token = this.getSafeToken();
         return {
             'Content-Type': 'application/json',
             ...(token && { 'Authorization': `Bearer ${token}` }),

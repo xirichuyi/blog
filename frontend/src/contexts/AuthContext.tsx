@@ -104,19 +104,17 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Check authentication on mount
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('admin_token');
+  const checkAuth = useCallback(async (): Promise<boolean> => {
+    const token = localStorage.getItem('admin_token');
 
-      if (!token) {
-        dispatch({ type: 'CHECK_AUTH_FAILURE' });
-        return;
-      }
+    if (!token) {
+      dispatch({ type: 'CHECK_AUTH_FAILURE' });
+      return false;
+    }
 
-      try {
-        // For now, if token exists, consider user authenticated
-        // In real implementation, verify token with backend
+    try {
+      const verifyResult = await apiService.verifyToken();
+      if (verifyResult.success && verifyResult.data?.valid) {
         const user: AdminUser = {
           id: '1',
           username: 'admin',
@@ -128,14 +126,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           type: 'CHECK_AUTH_SUCCESS',
           payload: { user, token },
         });
-      } catch (error) {
+
+        return true;
+      } else {
         localStorage.removeItem('admin_token');
         dispatch({ type: 'CHECK_AUTH_FAILURE' });
+        return false;
       }
-    };
-
-    initAuth();
+    } catch {
+      localStorage.removeItem('admin_token');
+      dispatch({ type: 'CHECK_AUTH_FAILURE' });
+      return false;
+    }
   }, []);
+
+  // Check authentication on mount — reuses checkAuth
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const login = useCallback(async (credentials: LoginCredentials): Promise<boolean> => {
     dispatch({ type: 'LOGIN_START' });
@@ -145,9 +153,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (response.success && response.data?.success && response.data.token && response.data.user) {
         const { token, user } = response.data;
-
-        // Store token in localStorage
-        localStorage.setItem('admin_token', token);
 
         dispatch({
           type: 'LOGIN_SUCCESS',
@@ -170,37 +175,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(() => {
     localStorage.removeItem('admin_token');
     dispatch({ type: 'LOGOUT' });
-  }, []);
-
-  const checkAuth = useCallback(async (): Promise<boolean> => {
-    const token = localStorage.getItem('admin_token');
-
-    if (!token) {
-      dispatch({ type: 'CHECK_AUTH_FAILURE' });
-      return false;
-    }
-
-    try {
-      // For now, if token exists, consider user authenticated
-      // In real implementation, verify token with backend
-      const user: AdminUser = {
-        id: '1',
-        username: 'admin',
-        email: 'admin@chuyi.blog',
-        role: 'admin',
-      };
-
-      dispatch({
-        type: 'CHECK_AUTH_SUCCESS',
-        payload: { user, token },
-      });
-
-      return true;
-    } catch (error) {
-      localStorage.removeItem('admin_token');
-      dispatch({ type: 'CHECK_AUTH_FAILURE' });
-      return false;
-    }
   }, []);
 
   const clearError = useCallback(() => {
