@@ -34,9 +34,8 @@ pub async fn rss_feed(
                 .map(|post| {
                     let pub_date = post.created_at.to_rfc2822();
                     let description = truncate_utf8(&post.content, 300);
-                    // Escape XML special characters
-                    let title = escape_xml(&post.title);
-                    let description = escape_xml(&description);
+                    // CDATA handles escaping — no need for escape_xml
+                    let title = &post.title;
 
                     format!(
                         r#"    <item>
@@ -96,10 +95,3 @@ fn truncate_utf8(s: &str, max_bytes: usize) -> String {
     format!("{}...", &s[..end])
 }
 
-fn escape_xml(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-        .replace('\'', "&apos;")
-}

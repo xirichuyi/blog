@@ -23,7 +23,12 @@ pub async fn admin_middleware(
         .strip_prefix(BEARER_PREFIX)
         .ok_or_else(|| AppError::Unauthorized("Invalid Authorization header format".to_string()))?;
 
-    if token != app_state.config.jwt.admin_token {
+    // Constant-time comparison to prevent timing attacks
+    let expected = app_state.config.jwt.admin_token.as_bytes();
+    let provided = token.as_bytes();
+    if expected.len() != provided.len()
+        || expected.iter().zip(provided.iter()).fold(0u8, |acc, (a, b)| acc | (a ^ b)) != 0
+    {
         return Err(AppError::Unauthorized("Invalid admin token".to_string()));
     }
 

@@ -19,24 +19,13 @@ import {
   ArrowLeftOutlined,
   ScanOutlined,
 } from '@ant-design/icons';
+import { base64urlToBuffer } from '../../../utils/webauthn';
 import './style.css';
 
 const { Title, Text } = Typography;
 
 interface LoginFormValues {
   token: string;
-}
-
-/** Convert base64url string to ArrayBuffer */
-function base64urlToBuffer(base64url: string): ArrayBuffer {
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
-  const binary = atob(base64 + pad);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
 }
 
 const Login: React.FC = () => {
@@ -107,6 +96,7 @@ const Login: React.FC = () => {
       }
 
       const options = startRes.data.data;
+      const challengeId = options.challenge_id;
 
       // 2. Convert server options to PublicKeyCredentialRequestOptions
       const publicKeyOptions: PublicKeyCredentialRequestOptions = {
@@ -130,8 +120,8 @@ const Login: React.FC = () => {
         throw new Error('Authentication cancelled');
       }
 
-      // 4. Send credential to server
-      const finishRes = await apiService.webauthnAuthFinish(credential as PublicKeyCredential);
+      // 4. Send credential to server with challenge_id
+      const finishRes = await apiService.webauthnAuthFinish(credential as PublicKeyCredential, challengeId);
       if (!finishRes.success || !finishRes.data?.data?.token) {
         throw new Error(finishRes.data?.message || 'Authentication failed');
       }

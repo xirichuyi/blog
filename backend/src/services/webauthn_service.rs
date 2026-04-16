@@ -6,6 +6,9 @@ use uuid::Uuid;
 use webauthn_rs::prelude::*;
 use webauthn_rs::Webauthn;
 
+/// Fixed admin user UUID (derived from "admin@chuyi.blog" so it's stable across registrations)
+const ADMIN_USER_ID: &str = "00000000-0000-4000-a000-000000000001";
+
 #[derive(Clone)]
 pub struct WebauthnService {
     db: Database,
@@ -53,11 +56,11 @@ impl WebauthnService {
         Ok(creds)
     }
 
-    /// Start registration ceremony
-    pub async fn start_registration(&self) -> Result<CreationChallengeResponse> {
-        let user_unique_id = Uuid::new_v4();
+    /// Start registration ceremony — returns (challenge_response, challenge_id)
+    pub async fn start_registration(&self) -> Result<(CreationChallengeResponse, String)> {
+        let user_unique_id = Uuid::parse_str(ADMIN_USER_ID)
+            .unwrap_or_else(|_| Uuid::new_v4());
 
-        // Load existing credentials to exclude
         let existing = self.load_all_passkeys().await?;
         let exclude: Vec<CredentialID> = existing.iter().map(|p| p.cred_id().clone()).collect();
 
@@ -66,16 +69,11 @@ impl WebauthnService {
             .start_passkey_registration(user_unique_id, "admin", "Admin", Some(exclude))
             .map_err(|e| AppError::Internal(format!("WebAuthn registration start error: {}", e)))?;
 
-        // Store challenge state
         let state_json = serde_json::to_string(&reg_state)
             .map_err(|e| AppError::Internal(format!("Serialization error: {}", e)))?;
         let challenge_id = Uuid::new_v4().to_string();
 
-        // Clean old challenges first
-        sqlx::query("DELETE FROM webauthn_challenges WHERE created_at < datetime('now', '-5 minutes')")
-            .execute(&*self.db.pool)
-            .await
-            .ok();
+        self.cleanup_old_challenges().await;
 
         sqlx::query("INSERT INTO webauthn_challenges (id, challenge_type, state_json) VALUES (?, 'registration', ?)")
             .bind(&challenge_id)
@@ -84,25 +82,23 @@ impl WebauthnService {
             .await
             .map_err(|e| AppError::Internal(format!("DB error: {}", e)))?;
 
-        Ok(ccr)
+        Ok((ccr, challenge_id))
     }
 
     /// Finish registration ceremony
     pub async fn finish_registration(
         &self,
+        challenge_id: &str,
         reg: &RegisterPublicKeyCredential,
         credential_name: &str,
     ) -> Result<()> {
-        // Load the most recent registration challenge
-        let row = sqlx::query(
-            "SELECT id, state_json FROM webauthn_challenges WHERE challenge_type = 'registration' ORDER BY created_at DESC LIMIT 1"
-        )
+        let row = sqlx::query("SELECT state_json FROM webauthn_challenges WHERE id = ? AND challenge_type = 'registration'")
+            .bind(challenge_id)
             .fetch_optional(&*self.db.pool)
             .await
             .map_err(|e| AppError::Internal(format!("DB error: {}", e)))?
-            .ok_or_else(|| AppError::BadRequest("No pending registration challenge found".to_string()))?;
+            .ok_or_else(|| AppError::BadRequest("Invalid or expired challenge".to_string()))?;
 
-        let challenge_id: String = row.get("id");
         let state_json: String = row.get("state_json");
 
         let reg_state: PasskeyRegistration = serde_json::from_str(&state_json)
@@ -130,9 +126,8 @@ impl WebauthnService {
             .await
             .map_err(|e| AppError::Internal(format!("DB error: {}", e)))?;
 
-        // Clean up challenge
         sqlx::query("DELETE FROM webauthn_challenges WHERE id = ?")
-            .bind(&challenge_id)
+            .bind(challenge_id)
             .execute(&*self.db.pool)
             .await
             .ok();
@@ -141,8 +136,8 @@ impl WebauthnService {
         Ok(())
     }
 
-    /// Start authentication ceremony
-    pub async fn start_authentication(&self) -> Result<RequestChallengeResponse> {
+    /// Start authentication ceremony — returns (challenge_response, challenge_id)
+    pub async fn start_authentication(&self) -> Result<(RequestChallengeResponse, String)> {
         let passkeys = self.load_all_passkeys().await?;
         if passkeys.is_empty() {
             return Err(AppError::BadRequest("No WebAuthn credentials registered".to_string()));
@@ -153,16 +148,11 @@ impl WebauthnService {
             .start_passkey_authentication(&passkeys)
             .map_err(|e| AppError::Internal(format!("WebAuthn auth start error: {}", e)))?;
 
-        // Store challenge state
         let state_json = serde_json::to_string(&auth_state)
             .map_err(|e| AppError::Internal(format!("Serialization error: {}", e)))?;
         let challenge_id = Uuid::new_v4().to_string();
 
-        // Clean old challenges
-        sqlx::query("DELETE FROM webauthn_challenges WHERE created_at < datetime('now', '-5 minutes')")
-            .execute(&*self.db.pool)
-            .await
-            .ok();
+        self.cleanup_old_challenges().await;
 
         sqlx::query("INSERT INTO webauthn_challenges (id, challenge_type, state_json) VALUES (?, 'authentication', ?)")
             .bind(&challenge_id)
@@ -171,25 +161,23 @@ impl WebauthnService {
             .await
             .map_err(|e| AppError::Internal(format!("DB error: {}", e)))?;
 
-        Ok(rcr)
+        Ok((rcr, challenge_id))
     }
 
     /// Finish authentication ceremony — returns the admin token on success
     pub async fn finish_authentication(
         &self,
+        challenge_id: &str,
         auth: &PublicKeyCredential,
         admin_token: &str,
     ) -> Result<String> {
-        // Load the most recent auth challenge
-        let row = sqlx::query(
-            "SELECT id, state_json FROM webauthn_challenges WHERE challenge_type = 'authentication' ORDER BY created_at DESC LIMIT 1"
-        )
+        let row = sqlx::query("SELECT state_json FROM webauthn_challenges WHERE id = ? AND challenge_type = 'authentication'")
+            .bind(challenge_id)
             .fetch_optional(&*self.db.pool)
             .await
             .map_err(|e| AppError::Internal(format!("DB error: {}", e)))?
-            .ok_or_else(|| AppError::BadRequest("No pending authentication challenge found".to_string()))?;
+            .ok_or_else(|| AppError::BadRequest("Invalid or expired challenge".to_string()))?;
 
-        let challenge_id: String = row.get("id");
         let state_json: String = row.get("state_json");
 
         let auth_state: PasskeyAuthentication = serde_json::from_str(&state_json)
@@ -222,16 +210,13 @@ impl WebauthnService {
             }
         }
 
-        // Clean up challenge
         sqlx::query("DELETE FROM webauthn_challenges WHERE id = ?")
-            .bind(&challenge_id)
+            .bind(challenge_id)
             .execute(&*self.db.pool)
             .await
             .ok();
 
         tracing::info!("WebAuthn authentication successful for credential: {}", cred_id_b64);
-
-        // Return the admin token so the frontend can use it for subsequent requests
         Ok(admin_token.to_string())
     }
 
@@ -250,7 +235,13 @@ impl WebauthnService {
         Ok(())
     }
 
-    /// Load all stored passkeys
+    async fn cleanup_old_challenges(&self) {
+        sqlx::query("DELETE FROM webauthn_challenges WHERE created_at < datetime('now', '-5 minutes')")
+            .execute(&*self.db.pool)
+            .await
+            .ok();
+    }
+
     async fn load_all_passkeys(&self) -> Result<Vec<Passkey>> {
         let rows = sqlx::query("SELECT credential_json FROM webauthn_credentials")
             .fetch_all(&*self.db.pool)

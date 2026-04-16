@@ -92,10 +92,9 @@ export const apiService = {
   // WebAuthn
   webauthnHasCredentials: () => webauthn.hasCredentials(),
   webauthnAuthStart: () => webauthn.authStart(),
-  webauthnAuthFinish: (credential: PublicKeyCredential) => webauthn.authFinish(credential),
+  webauthnAuthFinish: (credential: PublicKeyCredential, challengeId: string) => webauthn.authFinish(credential, challengeId),
   webauthnRegisterStart: () => webauthn.registerStart(),
-  webauthnRegisterFinish: (credential: PublicKeyCredential, name: string) => webauthn.registerFinish(credential, name),
-  webauthnRegisterFinishRaw: (credentialData: any, name: string) => webauthn.registerFinishRaw(credentialData, name),
+  webauthnRegisterFinishRaw: (credentialData: any, name: string, challengeId: string) => webauthn.registerFinishRaw(credentialData, name, challengeId),
   webauthnListCredentials: () => webauthn.listCredentials(),
   webauthnDeleteCredential: (id: string) => webauthn.deleteCredential(id),
 };

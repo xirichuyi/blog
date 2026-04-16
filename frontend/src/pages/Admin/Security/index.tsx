@@ -22,6 +22,7 @@ import {
   CheckCircleOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
+import { base64urlToBuffer, bufferToBase64url } from '../../../utils/webauthn';
 
 const { Text, Paragraph } = Typography;
 
@@ -32,34 +33,13 @@ interface PasskeyCredential {
   last_used_at: string | null;
 }
 
-/** Convert base64url string to ArrayBuffer */
-function base64urlToBuffer(base64url: string): ArrayBuffer {
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
-  const binary = atob(base64 + pad);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-/** Convert ArrayBuffer to base64url string */
-function bufferToBase64url(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
 const SecurityManagement: React.FC = () => {
   const [credentials, setCredentials] = useState<PasskeyCredential[]>([]);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [pendingCredentialData, setPendingCredentialData] = useState<any>(null);
+  const [pendingChallengeId, setPendingChallengeId] = useState<string>('');
   const [credentialName, setCredentialName] = useState('');
 
   const loadCredentials = useCallback(async () => {
@@ -91,6 +71,7 @@ const SecurityManagement: React.FC = () => {
       }
 
       const options = startRes.data.data;
+      const challengeId = options.challenge_id;
 
       // 2. Convert server options to PublicKeyCredentialCreationOptions
       const publicKeyOptions: PublicKeyCredentialCreationOptions = {
@@ -132,6 +113,7 @@ const SecurityManagement: React.FC = () => {
           clientDataJSON: bufferToBase64url(attestResp.clientDataJSON),
         },
       });
+      setPendingChallengeId(challengeId);
       setCredentialName('');
       setNameModalOpen(true);
     } catch (err: any) {
@@ -148,7 +130,7 @@ const SecurityManagement: React.FC = () => {
 
     try {
       const name = credentialName.trim() || 'My Passkey';
-      const finishRes = await apiService.webauthnRegisterFinishRaw(pendingCredentialData, name);
+      const finishRes = await apiService.webauthnRegisterFinishRaw(pendingCredentialData, name, pendingChallengeId);
       if (!finishRes.success || !finishRes.data?.data?.registered) {
         throw new Error(finishRes.data?.message || 'Registration failed');
       }

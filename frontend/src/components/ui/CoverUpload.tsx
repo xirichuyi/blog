@@ -19,7 +19,6 @@ interface CoverUploadProps {
   className?: string;
   placeholder?: string;
   maxSize?: number;
-  accept?: string;
   supportPaste?: boolean;
   supportDragDrop?: boolean;
 }
