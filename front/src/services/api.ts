@@ -33,8 +33,11 @@ export interface About {
 }
 export interface HealthStatus {
   status: string
-  checks?: { memory?: { details?: { usage_percent?: number } }; disk?: { details?: { usage_percent?: number } } }
-  metrics?: { cpu_usage_percent?: number }
+  uptime_seconds?: number
+  checks?: {
+    memory?: { details?: { usage_percent?: number; memory_usage_mb?: number; total_memory_mb?: number } }
+    disk?: { details?: { usage_percent?: number } }
+  }
 }
 
 interface Envelope<T> {

@@ -78,6 +78,23 @@ export function ArticleRow({ article, index }: { article: Article; index: number
   )
 }
 
+/** Thin labelled progress bar (server metrics). */
+export function MetricBar({ label, value, icon: Icon }: { label: string; value: number; icon?: LucideIcon }) {
+  const v = Math.min(100, Math.max(0, value))
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center gap-2 text-xs">
+        {Icon && <Icon className="size-3.5 text-muted-foreground" />}
+        <span className="text-muted-foreground">{label}</span>
+        <span className="ml-auto font-medium tabular-nums">{v.toFixed(0)}%</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-foreground/70 transition-all duration-500" style={{ width: `${v}%` }} />
+      </div>
+    </div>
+  )
+}
+
 /** Simple labelled row with a numeric value (categories / tags). */
 export function StatRow({ label, value, onClick, active }: { label: string; value: number; onClick?: () => void; active?: boolean }) {
   return (
