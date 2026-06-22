@@ -8,17 +8,17 @@ import type { Article } from '@/services/api'
 const SPRING = 'cubic-bezier(.25,1.22,.45,1.04)'
 const PREVIEW_W = 288
 
-/** cai.im-style list: sliding highlight pill, sibling dimming, and a
- *  cover-image preview that springs to align with the hovered row. */
+/** cai.im-style list: title + meta stacked, left-aligned. The highlight pill
+ *  sizes to each row's content width and springs between rows. */
 export function HoverList({ articles }: { articles: Article[] }) {
   const listRef = useRef<HTMLDivElement>(null)
-  const [pill, setPill] = useState({ top: 0, height: 0, on: false })
+  const [pill, setPill] = useState({ x: 0, y: 0, w: 0, h: 0, on: false })
   const [preview, setPreview] = useState<{ src: string; left: number; top: number } | null>(null)
   const [shown, setShown] = useState(false)
 
   const enter = (e: React.MouseEvent<HTMLAnchorElement>, a: Article) => {
     const el = e.currentTarget
-    setPill({ top: el.offsetTop, height: el.offsetHeight, on: true })
+    setPill({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight, on: true })
     if (a.coverImage) {
       const r = el.getBoundingClientRect()
       const listR = listRef.current?.getBoundingClientRect()
@@ -38,15 +38,16 @@ export function HoverList({ articles }: { articles: Article[] }) {
   }
 
   return (
-    <div ref={listRef} className="hover-list relative" onMouseLeave={leave}>
-      {/* sliding highlight pill */}
+    <div ref={listRef} className="hover-list relative flex flex-col items-start gap-1" onMouseLeave={leave}>
+      {/* highlight pill — sized to the hovered row's content */}
       <div
-        className="pointer-events-none absolute inset-x-0 -z-10 rounded-xl bg-accent"
+        className="pointer-events-none absolute left-0 top-0 -z-10 rounded-xl bg-accent"
         style={{
-          height: pill.height,
-          transform: `translateY(${pill.top}px)`,
+          width: pill.w,
+          height: pill.h,
+          transform: `translate(${pill.x}px, ${pill.y}px)`,
           opacity: pill.on ? 1 : 0,
-          transition: `transform .45s ${SPRING}, height .4s ${SPRING}, opacity .25s ease`,
+          transition: `transform .45s ${SPRING}, width .4s ${SPRING}, height .4s ${SPRING}, opacity .25s ease`,
         }}
       />
 
@@ -55,20 +56,16 @@ export function HoverList({ articles }: { articles: Article[] }) {
           key={a.id}
           to={`/article/${a.id}`}
           onMouseEnter={(e) => enter(e, a)}
-          className="relative flex items-baseline justify-between gap-6 rounded-xl px-3 py-3"
+          className="relative flex w-fit max-w-full flex-col gap-0.5 rounded-xl px-3 py-2.5"
         >
-          <span className="min-w-0">
-            <span className="block truncate text-[15px] font-medium text-foreground">{a.title}</span>
-            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-              {a.category}
-              {a.tags.length > 0 && ` · ${a.tags.slice(0, 2).join(' · ')}`}
-            </span>
+          <span className="truncate text-[15px] font-medium text-foreground">{a.title}</span>
+          <span className="truncate text-xs text-muted-foreground">
+            {a.category}
+            {a.tags.length > 0 && ` · ${a.tags.slice(0, 2).join(' · ')}`} · {a.date}
           </span>
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{a.date}</span>
         </Link>
       ))}
 
-      {/* right-side cover preview that springs to the hovered row */}
       {preview &&
         createPortal(
           <div
