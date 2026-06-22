@@ -82,3 +82,31 @@
 .hover-list:has(a:hover) a:not(:hover) {
   opacity: 0.3;
 }
+
+/* cai.im-style heading level markers (H2/H3/H4) in the left gutter,
+   pure CSS via ::before — only on large screens where the gutter exists. */
+@media (min-width: 1024px) {
+  .prose :where(h2, h3, h4) {
+    position: relative;
+  }
+  .prose :where(h2, h3, h4)::before {
+    position: absolute;
+    left: -3rem;
+    top: 0.5em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: hsl(var(--muted-foreground) / 0.4);
+    pointer-events: none;
+  }
+  .prose h2::before {
+    content: 'H2';
+  }
+  .prose h3::before {
+    content: 'H3';
+  }
+  .prose h4::before {
+    content: 'H4';
+  }
+}
