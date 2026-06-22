@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { FileText, FolderOpen, Hash, Clock } from 'lucide-react'
 import { listArticles, getCategories, getTags, type Article, type Category, type Tag } from '@/services/api'
-import { StatCard, ListCard, ArticleRow, StatRow } from '@/components/dashboard'
+import { StatCard, ListCard, StatRow } from '@/components/dashboard'
+import { HoverList } from '@/components/HoverList'
 import { ActivityChart, monthlyActivity } from '@/components/ActivityChart'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -86,9 +87,9 @@ export default function Home() {
                 {!arts ? (
                   <RowsSkeleton />
                 ) : recent.length === 0 ? (
-                  <p className="px-3 py-6 text-sm text-muted-foreground">No posts yet.</p>
+                  <p className="py-6 text-sm text-muted-foreground">No posts yet.</p>
                 ) : (
-                  recent.map((a, i) => <ArticleRow key={a.id} article={a} index={i} />)
+                  <HoverList articles={recent} />
                 )}
               </ListCard>
             </div>

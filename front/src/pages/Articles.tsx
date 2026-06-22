@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Calendar } from 'lucide-react'
 import { listArticles, getCategories, getTags, type Article, type Category, type Tag } from '@/services/api'
-import { ListCard, ArticleRow } from '@/components/dashboard'
+import { ListCard } from '@/components/dashboard'
+import { HoverList } from '@/components/HoverList'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
@@ -110,9 +111,7 @@ export default function Articles() {
         <div className="space-y-6">
           {groups.map((g) => (
             <ListCard key={g.year} title={g.year} icon={Calendar} count={g.items.length}>
-              {g.items.map((a, i) => (
-                <ArticleRow key={a.id} article={a} index={i} />
-              ))}
+              <HoverList articles={g.items} />
             </ListCard>
           ))}
         </div>
