@@ -19,6 +19,10 @@
   --sc-muted-foreground: 240 3.8% 46.1%;
   --sc-accent: 240 4.8% 95.9%;
   --sc-accent-foreground: 240 5.9% 10%;
+  --sc-destructive: 0 84.2% 60.2%;
+  --sc-destructive-foreground: 0 0% 98%;
+  --sc-popover: 0 0% 100%;
+  --sc-popover-foreground: 240 10% 3.9%;
   --sc-border: 240 5.9% 90%;
   --sc-input: 240 5.9% 90%;
   --sc-ring: 240 5.9% 10%;
@@ -38,6 +42,10 @@
   --sc-muted-foreground: 240 5% 64.9%;
   --sc-accent: 240 3.7% 15.9%;
   --sc-accent-foreground: 0 0% 98%;
+  --sc-destructive: 0 62.8% 30.6%;
+  --sc-destructive-foreground: 0 0% 98%;
+  --sc-popover: 240 10% 5.5%;
+  --sc-popover-foreground: 0 0% 98%;
   --sc-border: 240 3.7% 18%;
   --sc-input: 240 3.7% 15.9%;
   --sc-ring: 240 4.9% 83.9%;

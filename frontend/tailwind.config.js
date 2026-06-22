@@ -32,6 +32,14 @@ export default {
           DEFAULT: 'hsl(var(--sc-accent))',
           foreground: 'hsl(var(--sc-accent-foreground))',
         },
+        destructive: {
+          DEFAULT: 'hsl(var(--sc-destructive))',
+          foreground: 'hsl(var(--sc-destructive-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--sc-popover))',
+          foreground: 'hsl(var(--sc-popover-foreground))',
+        },
         card: {
           DEFAULT: 'hsl(var(--sc-card))',
           foreground: 'hsl(var(--sc-card-foreground))',
