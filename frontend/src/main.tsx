@@ -1,6 +1,5 @@
 import { createRoot } from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
-import { HeroUIProvider } from '@heroui/react'
 import { logger } from './utils/logger'
 // import { initPreloading } from './utils/preloadResources'
 // import { initAdminPreloading } from './utils/adminPreload'
@@ -9,7 +8,6 @@ import { logger } from './utils/logger'
 import './material-web.ts'
 import './styles/theme.css'
 import './styles/global.css'
-import './styles/heroui.css'
 import './index.css'
 import './styles/mobile.css'
 import './styles/responsive.css'
@@ -60,8 +58,6 @@ initializeMaterialDesign()
 
 createRoot(document.getElementById('root')!).render(
   <HelmetProvider>
-    <HeroUIProvider>
-      <App />
-    </HeroUIProvider>
+    <App />
   </HelmetProvider>,
 )
