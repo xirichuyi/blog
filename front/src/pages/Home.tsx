@@ -4,6 +4,8 @@ import { Helmet } from 'react-helmet-async'
 import { FileText, FolderOpen, Hash, Clock } from 'lucide-react'
 import { listArticles, getCategories, getTags, type Article, type Category, type Tag } from '@/services/api'
 import { StatCard, ListCard, ArticleRow, StatRow } from '@/components/dashboard'
+import { ActivityChart, monthlyActivity } from '@/components/ActivityChart'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -33,6 +35,7 @@ export default function Home() {
   }, [])
 
   const recent = useMemo(() => (arts ?? []).slice(0, 8), [arts])
+  const chartData = useMemo(() => monthlyActivity(arts ?? []), [arts])
   const catCounts = useMemo(
     () =>
       cats
@@ -62,6 +65,14 @@ export default function Home() {
             <StatCard label="标签" value={tags.length || '—'} sub="个标签" icon={Hash} />
             <StatCard label="最近更新" value={arts?.[0]?.date ?? '—'} icon={Clock} />
           </div>
+
+          <Card className="mt-6 p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">发文趋势</h3>
+              <span className="text-xs text-muted-foreground">近 12 个月</span>
+            </div>
+            {!arts ? <Skeleton className="h-[260px] w-full" /> : <ActivityChart data={chartData} />}
+          </Card>
 
           <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
