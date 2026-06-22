@@ -22,6 +22,12 @@ const PROJECTS: Project[] = [
     internal: '/tools/gitbook2epub',
     tags: ['Tool', 'Online'],
   },
+  {
+    name: 'Proxy 节点',
+    description: '自用代理节点，打开后填写口令 YJM2026 即可使用。',
+    url: 'https://zhoumaosen.top/proxy',
+    tags: ['Proxy', 'VPN'],
+  },
 ]
 
 export default function Projects() {
