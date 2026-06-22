@@ -6,6 +6,17 @@ import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/pris
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
+function HeadingMarker({ level }: { level: number }) {
+  return (
+    <span
+      aria-hidden
+      className="absolute -left-12 top-[0.45em] hidden select-none font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40 lg:inline"
+    >
+      H{level}
+    </span>
+  )
+}
+
 export function Markdown({ content, className }: { content: string; className?: string }) {
   const { theme } = useTheme()
   const codeTheme = theme === 'dark' ? oneDark : oneLight
@@ -24,6 +35,24 @@ export function Markdown({ content, className }: { content: string; className?: 
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSlug]}
         components={{
+          h2: ({ node: _n, children, ...props }) => (
+            <h2 {...props} className="relative">
+              <HeadingMarker level={2} />
+              {children}
+            </h2>
+          ),
+          h3: ({ node: _n, children, ...props }) => (
+            <h3 {...props} className="relative">
+              <HeadingMarker level={3} />
+              {children}
+            </h3>
+          ),
+          h4: ({ node: _n, children, ...props }) => (
+            <h4 {...props} className="relative">
+              <HeadingMarker level={4} />
+              {children}
+            </h4>
+          ),
           // SyntaxHighlighter renders its own block element, so unwrap <pre>.
           pre: ({ children }) => <>{children}</>,
           code({ className: cls, children, ...props }) {
