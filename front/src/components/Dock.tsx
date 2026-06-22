@@ -1,13 +1,14 @@
 import { useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, useMotionValue, useSpring, useTransform, type MotionValue } from 'framer-motion'
-import { Home, FileText, Moon, Sun, type LucideIcon } from 'lucide-react'
+import { Home, FileText, Wrench, Moon, Sun, type LucideIcon } from 'lucide-react'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/articles', label: 'Articles', icon: FileText },
+  { to: '/projects', label: 'Projects', icon: Wrench },
 ]
 
 const BASE = 38
