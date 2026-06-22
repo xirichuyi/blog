@@ -1,12 +1,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Home, FileText, User, Mail, type LucideIcon } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
 import './SideNavigation.css';
 
 interface NavigationItem {
   id: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
   path: string;
   badge?: number;
 }
@@ -20,37 +21,15 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ className = '' }) => {
   const location = useLocation();
 
   const navigationItems: NavigationItem[] = [
-    {
-      id: 'home',
-      label: 'Home',
-      icon: 'home',
-      path: '/'
-    },
-    {
-      id: 'articles',
-      label: 'Articles',
-      icon: 'article',
-      path: '/articles'
-    },
-    {
-      id: 'about',
-      label: 'About',
-      icon: 'person',
-      path: '/about'
-    },
-    {
-      id: 'contact',
-      label: 'Contact',
-      icon: 'mail',
-      path: '/contact'
-    }
+    { id: 'home', label: 'Home', icon: Home, path: '/' },
+    { id: 'articles', label: 'Articles', icon: FileText, path: '/articles' },
+    { id: 'about', label: 'About', icon: User, path: '/about' },
+    { id: 'contact', label: 'Contact', icon: Mail, path: '/contact' },
   ];
 
   const handleItemClick = (item: NavigationItem) => {
     navigate(item.path);
   };
-
-
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -62,24 +41,27 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ className = '' }) => {
   return (
     <nav className={`side-navigation ${className}`}>
       <div className="side-navigation-content">
-        {navigationItems.map((item) => (
-          <div
-            key={item.id}
-            className={`side-navigation-item ${isActive(item.path) ? 'active' : ''}`}
-            onClick={() => handleItemClick(item)}
-            role="button"
-            tabIndex={0}
-            aria-label={item.label}
-          >
-            <div className="side-navigation-icon-container">
-              <md-icon className="side-navigation-icon">{item.icon}</md-icon>
-              {item.badge && (
-                <md-badge value={item.badge.toString()} className="side-navigation-badge" />
-              )}
+        {navigationItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.id}
+              className={`side-navigation-item ${isActive(item.path) ? 'active' : ''}`}
+              onClick={() => handleItemClick(item)}
+              role="button"
+              tabIndex={0}
+              aria-label={item.label}
+            >
+              <div className="side-navigation-icon-container">
+                <Icon className="size-6" strokeWidth={isActive(item.path) ? 2.4 : 2} />
+                {item.badge && (
+                  <span className="side-navigation-badge">{item.badge}</span>
+                )}
+              </div>
+              <span className="side-navigation-label">{item.label}</span>
             </div>
-            <span className="side-navigation-label">{item.label}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Theme Toggle at Bottom */}
