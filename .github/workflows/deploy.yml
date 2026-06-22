@@ -47,6 +47,9 @@ jobs:
     # (glibc 2.39). openssl 3.x is ABI-compatible across both.
     runs-on: ubuntu-22.04
     timeout-minutes: 45
+    env:
+      # sqlx::query! macros are compile-time checked against this DB's schema.
+      DATABASE_URL: sqlite:/tmp/blog-build.db
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +58,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend
+
+      - name: Prepare schema DB for sqlx compile-time checks
+        working-directory: backend
+        # Apply migrations to a throwaway SQLite DB so sqlx::query!/query_as!
+        # can verify queries at build time (no live DB, no committed .sqlx cache).
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends sqlite3
+          rm -f /tmp/blog-build.db
+          for f in $(ls migrations/*.sql | sort); do
+            echo "applying $f"
+            sqlite3 /tmp/blog-build.db < "$f"
+          done
 
       - name: Build release binary
         working-directory: backend
