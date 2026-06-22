@@ -5,7 +5,6 @@ import { FileText, FolderOpen, Hash, Clock } from 'lucide-react'
 import { listArticles, getCategories, getTags, type Article, type Category, type Tag } from '@/services/api'
 import { StatCard, ListCard, ArticleRow, StatRow } from '@/components/dashboard'
 import { ActivityChart, monthlyActivity } from '@/components/ActivityChart'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -58,22 +57,22 @@ export default function Home() {
         <p className="text-sm text-destructive">Failed to load: {error}</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-4">
             <StatCard label="Posts" value={arts?.length ?? '—'} sub="published" icon={FileText} />
             <StatCard label="Categories" value={cats.length || '—'} sub="total" icon={FolderOpen} />
             <StatCard label="Tags" value={tags.length || '—'} sub="total" icon={Hash} />
             <StatCard label="Last updated" value={arts?.[0]?.date ?? '—'} icon={Clock} />
           </div>
 
-          <Card className="mt-6 p-5">
-            <div className="mb-4 flex items-center justify-between">
+          <section className="mt-12">
+            <div className="mb-4 flex items-center justify-between border-b border-border pb-2">
               <h3 className="text-sm font-semibold">Posting activity</h3>
               <span className="text-xs text-muted-foreground">Last 12 months</span>
             </div>
             {!arts ? <Skeleton className="h-[260px] w-full" /> : <ActivityChart data={chartData} />}
-          </Card>
+          </section>
 
-          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <ListCard
                 title="Recent posts"

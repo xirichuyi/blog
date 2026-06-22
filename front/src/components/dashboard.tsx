@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { Article } from '@/services/api'
 
-/** cdk-style stat card: label + big number + icon. */
+/** Minimal stat: label + big number + icon, no box. */
 export function StatCard({
   label,
   value,
@@ -17,18 +16,18 @@ export function StatCard({
   icon?: LucideIcon
 }) {
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
+    <div>
+      <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{label}</span>
-        {Icon && <Icon className="size-4 text-muted-foreground" />}
+        {Icon && <Icon className="size-4 text-muted-foreground/50" />}
       </div>
-      <div className="mt-3 text-3xl font-bold tracking-tight tabular-nums">{value}</div>
-      {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
-    </Card>
+      <div className="mt-2 text-3xl font-bold tracking-tight tabular-nums">{value}</div>
+      {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
+    </div>
   )
 }
 
-/** cdk-style list card: header (icon + title + count) over a list of rows. */
+/** Minimal list section: header with a hairline divider, rows below — no box. */
 export function ListCard({
   title,
   icon: Icon,
@@ -43,8 +42,8 @@ export function ListCard({
   children: React.ReactNode
 }) {
   return (
-    <Card className="overflow-hidden p-0">
-      <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
+    <section>
+      <div className="mb-1 flex items-center gap-2 border-b border-border pb-2">
         {Icon && <Icon className="size-4 text-muted-foreground" />}
         <h3 className="text-sm font-semibold">{title}</h3>
         <div className="ml-auto flex items-center gap-2">
@@ -52,8 +51,8 @@ export function ListCard({
           {action}
         </div>
       </div>
-      <div className="p-2">{children}</div>
-    </Card>
+      <div className="py-1">{children}</div>
+    </section>
   )
 }
 
