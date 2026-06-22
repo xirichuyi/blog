@@ -99,19 +99,6 @@ export default function ArticleDetail() {
             </div>
           )}
 
-          {article.coverImage && (
-            <div className="mt-6 overflow-hidden rounded-xl border border-border">
-              <img
-                src={article.coverImage}
-                alt={article.title}
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-                className="w-full object-cover"
-              />
-            </div>
-          )}
-
           <Separator className="my-8" />
 
           <div ref={contentRef}>
