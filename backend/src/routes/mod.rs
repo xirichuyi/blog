@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
     about_handler, category_handler, download_handler, health_handler, music_handler, pdf_handler,
-    post_handler, resource_handler, tag_handler,
+    post_handler, resource_handler, tag_handler, tools_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
@@ -107,7 +107,12 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             get(post_handler::get_post_tags_public),
         )
         // About public route
-        .route("/api/about/get", get(about_handler::get_about));
+        .route("/api/about/get", get(about_handler::get_about))
+        // Online tools
+        .route(
+            "/api/tools/gitbook2epub",
+            post(tools_handler::gitbook2epub),
+        );
 
     // Admin routes (authentication required)
     let admin_routes = Router::new()

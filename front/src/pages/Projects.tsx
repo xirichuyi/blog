@@ -1,10 +1,13 @@
 import { Helmet } from 'react-helmet-async'
-import { ExternalLink, Github } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ExternalLink, Github, ArrowRight } from 'lucide-react'
 
 interface Project {
   name: string
   description: string
-  /** 主链接（在线地址 / 演示） */
+  /** 站内页面（在线工具等），优先级最高 */
+  internal?: string
+  /** 主链接（外部在线地址 / 演示） */
   url?: string
   /** 源码仓库 */
   repo?: string
@@ -14,17 +17,10 @@ interface Project {
 // ↓↓↓ 在这里增删你的项目 / 小工具。改完保存即可。 ↓↓↓
 const PROJECTS: Project[] = [
   {
-    name: '示例工具 · Demo Tool',
-    description: '一句话介绍这个工具是做什么的、解决了什么问题。',
-    url: 'https://example.com',
-    repo: 'https://github.com/xirichuyi',
-    tags: ['Web', 'Tool'],
-  },
-  {
-    name: '示例脚本 · Demo Script',
-    description: '另一个小工具/脚本的简短说明。',
-    repo: 'https://github.com/xirichuyi',
-    tags: ['CLI', 'Python'],
+    name: 'GitBook → EPUB',
+    description: '输入在线书（GitBook / bookdown 等）的链接，一键导出干净的 EPUB 离线阅读。',
+    internal: '/tools/gitbook2epub',
+    tags: ['Tool', 'Online'],
   },
 ]
 
@@ -45,12 +41,18 @@ export default function Projects() {
       ) : (
         <div className="hover-list flex flex-col">
           {PROJECTS.map((p) => {
-            const href = p.url || p.repo
-            const Wrapper: React.ElementType = href ? 'a' : 'div'
+            const href = p.internal || p.url || p.repo
+            const isInternal = Boolean(p.internal)
+            const Wrapper: React.ElementType = !href ? 'div' : isInternal ? Link : 'a'
+            const wrapperProps = !href
+              ? {}
+              : isInternal
+                ? { to: p.internal! }
+                : { href, target: '_blank', rel: 'noopener noreferrer' }
             return (
               <Wrapper
                 key={p.name}
-                {...(href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {})}
+                {...wrapperProps}
                 className="group block rounded-xl px-3 py-3 transition-colors hover:bg-accent"
               >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -62,9 +64,12 @@ export default function Projects() {
                       {t}
                     </span>
                   ))}
-                  {href && (
-                    <ExternalLink className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                  )}
+                  {href &&
+                    (isInternal ? (
+                      <ArrowRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                    ) : (
+                      <ExternalLink className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                    ))}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
                 {p.url && p.repo && (

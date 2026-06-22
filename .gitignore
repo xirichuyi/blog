@@ -60,3 +60,6 @@ backend/uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# gitbook2epub runtime cache (never commit)
+backend/tools/gitbook2epub/.cache_*

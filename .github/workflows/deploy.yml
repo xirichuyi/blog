@@ -88,6 +88,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: frontend-dist
@@ -111,6 +113,12 @@ jobs:
           rsync -az --delete \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
             dist/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/frontend/dist/"
+
+      - name: Deploy tools (gitbook2epub python scripts)
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            backend/tools/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/backend/tools/"
 
       - name: Deploy backend (upload binary, atomic swap, restart)
         run: |

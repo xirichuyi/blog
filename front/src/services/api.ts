@@ -184,6 +184,30 @@ export async function getAbout(): Promise<About> {
   }
 }
 
+/** Convert an online GitBook/bookdown book to EPUB. Returns the file blob. */
+export async function gitbook2epub(url: string): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(`${API_BASE}${PREFIX}/tools/gitbook2epub`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) {
+    let message = `Request failed: ${res.status}`
+    try {
+      const body = (await res.json()) as { message?: string }
+      if (body?.message) message = body.message
+    } catch {
+      /* non-JSON error */
+    }
+    throw new Error(message)
+  }
+  const blob = await res.blob()
+  // Prefer the server-provided filename, fall back to a sane default.
+  const cd = res.headers.get('Content-Disposition') || ''
+  const match = /filename="?([^"]+)"?/.exec(cd)
+  return { blob, filename: match?.[1] || 'book.epub' }
+}
+
 export async function getHealth(): Promise<HealthStatus> {
   // Health endpoint returns the object directly, NOT wrapped in {code,message,data}.
   const res = await fetch(`${API_BASE}${PREFIX}/health/detailed`)
