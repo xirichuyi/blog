@@ -58,7 +58,7 @@ export function HoverList({ articles }: { articles: Article[] }) {
           className="relative flex items-baseline justify-between gap-6 rounded-xl px-3 py-3"
         >
           <span className="min-w-0">
-            <span className="block truncate text-[15px] font-medium text-foreground/85">{a.title}</span>
+            <span className="block truncate text-[15px] font-medium text-foreground">{a.title}</span>
             <span className="mt-0.5 block truncate text-xs text-muted-foreground">
               {a.category}
               {a.tags.length > 0 && ` · ${a.tags.slice(0, 2).join(' · ')}`}

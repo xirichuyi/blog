@@ -68,10 +68,11 @@
   content: none;
 }
 
-/* cai.im-style list: dim sibling rows while hovering one. */
+/* cai.im-style list: strongly dim sibling rows while hovering one,
+   so the focused row stands out sharply. */
 .hover-list a {
-  transition: opacity 0.3s ease, color 0.2s ease;
+  transition: opacity 0.35s ease;
 }
 .hover-list:has(a:hover) a:not(:hover) {
-  opacity: 0.45;
+  opacity: 0.3;
 }
