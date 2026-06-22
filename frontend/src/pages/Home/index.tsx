@@ -1,13 +1,35 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import './style.css';
 import AuthorCard from './components/AuthorCard';
-import { CustomButton } from '../../components/ui/CustomButton';
-import ArticleCard from '../../components/ui/ArticleCard';
+import { BlogCard } from '@/components/blog/BlogCard';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { cn } from '@/lib/utils';
 import { apiService } from '../../services/api';
 import type { Article } from '../../services/types';
 import { logger } from '../../utils/logger';
 import { getGradientForIndex, PAGE_SIZE } from '../../constants';
+import { Search, X, Loader2, FileSearch, Server, Cpu, MemoryStick, HardDrive } from 'lucide-react';
+
+// 服务器指标进度条
+function StatusMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2 text-xs">
+        {icon}
+        <span className="text-muted-foreground">{label}</span>
+        <span className="ml-auto font-medium tabular-nums text-foreground">{value.toFixed(0)}%</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+        <div
+          className="h-full rounded-full bg-primary transition-all"
+          style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 // 服务器状态接口
 interface ServerStatus {
@@ -325,20 +347,10 @@ const Home: React.FC = () => {
   // 卫语句：加载状态
   if (isLoading && articles.length === 0) {
     return (
-      <div className="blog-home">
-        <div className="blog-main-content">
-          <div className="section-header">
-            <h2 className="section-title">Featured</h2>
-          </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '400px',
-            color: '#e8eaed'
-          }}>
-            Loading articles...
-          </div>
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground">Featured</h2>
+        <div className="flex h-96 items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" /> Loading articles…
         </div>
       </div>
     );
@@ -347,20 +359,10 @@ const Home: React.FC = () => {
   // 卫语句：错误状态
   if (error) {
     return (
-      <div className="blog-home">
-        <div className="blog-main-content">
-          <div className="section-header">
-            <h2 className="section-title">Featured</h2>
-          </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '400px',
-            color: '#f28b82'
-          }}>
-            Error loading articles: {error}
-          </div>
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground">Featured</h2>
+        <div className="flex h-96 items-center justify-center text-destructive">
+          Error loading articles: {error}
         </div>
       </div>
     );
@@ -369,95 +371,60 @@ const Home: React.FC = () => {
 
   // 主要渲染
   return (
-    <div className="blog-home">
-      <div className="blog-main-content">
-        {/* 页面标题和搜索 */}
-        <div className={`section-header ${isContentReady ? 'header--visible' : 'header--hidden'}`}>
-          <h2 className="section-title">Featured</h2>
-          <div className="search-container" style={{ position: 'relative' }}>
-            <md-outlined-text-field
-              label="Search articles..."
+    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_320px] lg:px-8">
+      {/* 主内容区 */}
+      <div className="min-w-0">
+        {/* 标题 + 搜索 */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">Featured</h2>
+          <div className="relative w-full sm:w-80">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
               value={searchQuery}
-              onInput={handleSearchInput}
+              onChange={handleSearchInput}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
-              style={{ width: '300px' }}
-            >
-              <md-icon slot="leading-icon">search</md-icon>
-              {searchQuery && (
-                <md-icon-button
-                  slot="trailing-icon"
-                  onClick={handleClearSearch}
-                  aria-label="Clear search"
-                >
-                  <md-icon>close</md-icon>
-                </md-icon-button>
-              )}
-            </md-outlined-text-field>
+              placeholder="Search articles…"
+              className="pl-9 pr-9"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            )}
 
             {/* 搜索结果下拉 */}
             {showSearchResults && (
-              <div className="search-results-dropdown" style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                zIndex: 1000,
-                backgroundColor: 'var(--md-sys-color-surface-container)',
-                borderRadius: '12px',
-                marginTop: '4px',
-                maxHeight: '400px',
-                overflowY: 'auto',
-                boxShadow: 'var(--md-sys-elevation-level3)'
-              }}>
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
                 {isSearching ? (
-                  <div style={{ padding: '16px', textAlign: 'center' }}>
-                    <md-circular-progress indeterminate style={{ '--md-circular-progress-size': '24px' } as React.CSSProperties}></md-circular-progress>
-                    <div style={{ marginTop: '8px', color: 'var(--md-sys-color-on-surface-variant)' }}>
-                      Searching...
-                    </div>
+                  <div className="flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" /> Searching…
                   </div>
                 ) : searchResults.length > 0 ? (
-                  <div>
-                    {searchResults.map((article, index) => (
-                      <md-list-item
-                        key={article.id}
-                        onClick={() => handleArticleClick(article.id)}
-                        style={{
-                          cursor: 'pointer',
-                          borderBottom: index < searchResults.length - 1 ? '1px solid var(--md-sys-color-outline-variant)' : 'none'
-                        }}
-                      >
-                        <div slot="headline" style={{ fontWeight: '500' }}>
-                          {article.title}
-                        </div>
-                        <div slot="supporting-text" style={{
-                          color: 'var(--md-sys-color-on-surface-variant)',
-                          fontSize: '0.875rem',
-                          lineHeight: '1.25rem',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          {article.excerpt}
-                        </div>
-                        <div slot="trailing-supporting-text" style={{
-                          color: 'var(--md-sys-color-primary)',
-                          fontSize: '0.75rem'
-                        }}>
-                          {article.category}
-                        </div>
-                        <md-icon slot="start">article</md-icon>
-                      </md-list-item>
+                  <ul className="py-1">
+                    {searchResults.map((article) => (
+                      <li key={article.id}>
+                        <button
+                          type="button"
+                          onMouseDown={() => handleArticleClick(article.id)}
+                          className="flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left transition-colors hover:bg-accent"
+                        >
+                          <span className="line-clamp-1 text-sm font-medium text-foreground">{article.title}</span>
+                          <span className="line-clamp-1 text-xs text-muted-foreground">{article.excerpt}</span>
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{article.category}</span>
+                        </button>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 ) : searchQuery.trim() ? (
-                  <div style={{ padding: '16px', textAlign: 'center', color: 'var(--md-sys-color-on-surface-variant)' }}>
-                    <md-icon style={{ fontSize: '48px', opacity: 0.5 }}>search_off</md-icon>
-                    <div style={{ marginTop: '8px' }}>
-                      No articles found for "{searchQuery}"
-                    </div>
+                  <div className="flex flex-col items-center gap-2 p-6 text-center text-sm text-muted-foreground">
+                    <FileSearch className="size-8 opacity-50" />
+                    No articles found for “{searchQuery}”
                   </div>
                 ) : null}
               </div>
@@ -465,166 +432,75 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* 主要内容网格 */}
-        <section className={`blog-featured-section ${isContentReady ? 'featured--visible' : 'featured--hidden'}`}>
-          <div className="blog-featured-grid">
-            {/* 特色文章 */}
-            {featuredArticles.map((article, index) => {
-              const hasCoverImage = article.coverImage;
-              
-              return (
-                <div
-                  key={article.id}
-                  className={`featured-article-card ${!hasCoverImage ? 'featured-article-card--no-image' : ''} ${isContentReady ? 'featured-card--visible' : 'featured-card--hidden'}`}
-                  onClick={() => handleArticleClick(article.id)}
-                  style={{
-                    cursor: 'pointer',
-                    animationDelay: isContentReady ? `${index * 100}ms` : '0ms'
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleArticleClick(article.id);
-                    }
-                  }}
-                >
-                  {hasCoverImage && (
-                    <div className="featured-article-image-area">
-                      <img
-                        src={article.coverImage}
-                        alt={article.title}
-                        className="featured-article-image"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          // XSS fix: Don't use innerHTML, update the article state instead
-                          setArticles(prev => prev.map(a =>
-                            a.id === article.id ? { ...a, coverImage: null } : a
-                          ));
-                        }}
-                      />
-                    </div>
-                  )}
-                  <div className="featured-article-content">
-                    <div className="featured-article-meta">
-                      <span className="featured-article-date">{article.date}</span>
-                    </div>
-                    <h2 className="featured-article-title">{article.title}</h2>
-                    <p className="featured-article-description">{article.description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 次要文章网格 */}
-          <div className={`blog-secondary-grid ${isContentReady ? 'secondary--visible' : 'secondary--hidden'}`}>
-            {secondaryArticles.slice(0, 6).map((article, index) => (
-              <ArticleCard
-                key={article.id}
-                id={article.id}
-                title={article.title}
-                description={article.description}
-                date={article.date}
-                tag={article.tag}
-                coverImage={article.coverImage}
-                gradient={article.gradient}
-                onClick={handleArticleClick}
-                variant="default"
-                className={`${isContentReady ? 'secondary-card--visible' : 'secondary-card--hidden'}`}
-                style={{
-                  animationDelay: isContentReady ? `${(index + 1) * 100}ms` : '0ms'
-                }}
-              />
+        {/* 特色文章 */}
+        {featuredArticles.length > 0 && (
+          <div className="mb-6">
+            {featuredArticles.map((article) => (
+              <BlogCard key={article.id} {...article} featured onClick={handleArticleClick} />
             ))}
           </div>
-        </section>
+        )}
 
-        {/* 查看更多按钮 */}
-        <div className={`see-more-section ${isContentReady ? 'see-more--visible' : 'see-more--hidden'}`}>
-          <CustomButton
-            variant="filled"
-            size="large"
-            className="see-more-button"
-            onClick={handleSeeMoreArticles}
-          >
+        {/* 次要文章网格 */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {secondaryArticles.slice(0, 6).map((article) => (
+            <BlogCard key={article.id} {...article} onClick={handleArticleClick} />
+          ))}
+        </div>
+
+        {/* 查看更多 */}
+        <div className="mt-10 flex justify-center">
+          <Button size="lg" onClick={handleSeeMoreArticles}>
             See More Articles
-          </CustomButton>
+          </Button>
         </div>
       </div>
 
       {/* 右侧边栏 */}
-      <aside className={`blog-sidebar ${isContentReady ? 'sidebar--visible' : 'sidebar--hidden'}`}>
-        <div className={`sidebar-section ${isContentReady ? 'sidebar-item--visible' : 'sidebar-item--hidden'}`} style={{
-          animationDelay: isContentReady ? '400ms' : '0ms'
-        }}>
-          <AuthorCard />
-        </div>
+      <aside className="space-y-6">
+        <AuthorCard />
 
-        <div className={`sidebar-section ${isContentReady ? 'sidebar-item--visible' : 'sidebar-item--hidden'}`} style={{
-          animationDelay: isContentReady ? '500ms' : '0ms'
-        }}>
-          <div className="server-status-card">
-            <div className="server-status-content">
-              <div className="server-status-header">
-                <md-icon className="server-status-icon">dns</md-icon>
-                <h3 className="server-status-title">Server</h3>
-                <div className="server-status-indicator">
-                  <div className={`status-dot ${serverStatus?.status === 'healthy' ? 'status-online' : 'status-offline'}`}></div>
-                  <span className={`status-text ${serverStatus?.status === 'healthy' ? '' : 'status-error'}`}>
-                    {serverStatus?.status === 'healthy' ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-              </div>
-
-              {serverStatus ? (
-                <div className="server-metrics">
-                  <div className="metric-item">
-                    <div className="metric-header">
-                      <md-icon className="metric-icon">memory</md-icon>
-                      <span className="metric-label">Memory</span>
-                      <span className="metric-value">{serverStatus.checks.memory.details.usage_percent.toFixed(0)}%</span>
-                    </div>
-                    <md-linear-progress
-                      value={serverStatus.checks.memory.details.usage_percent / 100}
-                      className="memory-progress"
-                    ></md-linear-progress>
-                  </div>
-
-                  <div className="metric-item">
-                    <div className="metric-header">
-                      <md-icon className="metric-icon">developer_board</md-icon>
-                      <span className="metric-label">CPU</span>
-                      <span className="metric-value">{serverStatus.metrics.cpu_usage_percent.toFixed(0)}%</span>
-                    </div>
-                    <md-linear-progress
-                      value={serverStatus.metrics.cpu_usage_percent / 100}
-                      className="cpu-progress"
-                    ></md-linear-progress>
-                  </div>
-
-                  <div className="metric-item">
-                    <div className="metric-header">
-                      <md-icon className="metric-icon">storage</md-icon>
-                      <span className="metric-label">Disk</span>
-                      <span className="metric-value">{serverStatus.checks.disk.details.usage_percent.toFixed(0)}%</span>
-                    </div>
-                    <md-linear-progress
-                      value={serverStatus.checks.disk.details.usage_percent / 100}
-                      className="disk-progress"
-                    ></md-linear-progress>
-                  </div>
-                </div>
-              ) : (
-                <div className="server-metrics">
-                  <div className="metric-loading">Loading server status...</div>
-                </div>
-              )}
+        <Card>
+          <CardContent className="p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Server className="size-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-foreground">Server</h3>
+              <span className="ml-auto flex items-center gap-1.5 text-xs">
+                <span
+                  className={cn(
+                    'size-2 rounded-full',
+                    serverStatus?.status === 'healthy' ? 'bg-emerald-500' : 'bg-red-500'
+                  )}
+                />
+                <span className={serverStatus?.status === 'healthy' ? 'text-muted-foreground' : 'text-destructive'}>
+                  {serverStatus?.status === 'healthy' ? 'Online' : 'Offline'}
+                </span>
+              </span>
             </div>
-          </div>
-        </div>
+
+            {serverStatus ? (
+              <div className="space-y-3">
+                <StatusMetric
+                  icon={<MemoryStick className="size-3.5 text-muted-foreground" />}
+                  label="Memory"
+                  value={serverStatus.checks.memory.details.usage_percent}
+                />
+                <StatusMetric
+                  icon={<Cpu className="size-3.5 text-muted-foreground" />}
+                  label="CPU"
+                  value={serverStatus.metrics.cpu_usage_percent}
+                />
+                <StatusMetric
+                  icon={<HardDrive className="size-3.5 text-muted-foreground" />}
+                  label="Disk"
+                  value={serverStatus.checks.disk.details.usage_percent}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading server status…</p>
+            )}
+          </CardContent>
+        </Card>
       </aside>
     </div>
   );

@@ -5,7 +5,12 @@ import { apiService } from '../../../services/api'
 import type { Article } from '../../../services/types';
 // import ArticleCard from '../../../components/blog/ArticleCard'; // Temporarily commented
 import MarkdownRenderer, { generateHeadingId } from '../../../components/ui/MarkdownRenderer';
-import './ArticleDetail.css';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Card } from '@/components/ui/shadcn/card';
+import { Separator } from '@/components/ui/shadcn/separator';
+import { cn } from '@/lib/utils';
+import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
 
 interface ArticleDetailProps {
     articleId?: string;
@@ -234,11 +239,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
     // 卫语句：加载状态
     if (isLoading) {
         return (
-            <div className="article-detail">
-                <div className="article-loading">
-                    <md-circular-progress indeterminate></md-circular-progress>
-                    <p>Loading article...</p>
-                </div>
+            <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-24 text-muted-foreground">
+                <Loader2 className="size-5 animate-spin" /> Loading article…
             </div>
         );
     }
@@ -246,136 +248,128 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ articleId, article: initi
     // 卫语句：错误状态
     if (error || !article) {
         return (
-            <div className="article-detail">
-                <div className="article-error">
-                    <md-icon className="error-icon">error_outline</md-icon>
-                    <h2>Article Not Found</h2>
-                    <p>{error || 'The article you\'re looking for doesn\'t exist.'}</p>
-                    <md-filled-button onClick={handleBackClick}>
-                        <md-icon slot="icon">arrow_back</md-icon>
-                        Back to Articles
-                    </md-filled-button>
+            <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-24 text-center">
+                <AlertCircle className="size-12 text-destructive" />
+                <div>
+                    <h2 className="text-xl font-semibold text-foreground">Article Not Found</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {error || "The article you're looking for doesn't exist."}
+                    </p>
                 </div>
+                <Button onClick={handleBackClick}>
+                    <ArrowLeft />
+                    Back to Articles
+                </Button>
             </div>
         );
     }
 
     // 主要渲染
-
     return (
-        <div className="article-detail">
-            {/* Table of Contents Sidebar */}
-            {headings.length > 0 && (
-                <aside
-                    className="article-toc-sidebar"
-                    style={{
-                        transform: `translateY(-${tocBottomOffset}px)`,
-                        transition: 'transform 0.3s ease-out'
-                    }}
-                >
-                    <div className="toc-sticky">
-                        <h3 className="toc-title">Table of Contents</h3>
-                        <nav className="toc-nav">
-                            {headings.map((heading, index) => (
-                                <button
-                                    key={index}
-                                    className={`toc-item toc-level-${heading.level} ${activeHeading === heading.id ? 'active' : ''}`}
-                                    onClick={() => scrollToHeading(heading.id)}
-                                >
-                                    {heading.title}
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
-                </aside>
-            )}
-
-            <div className="article-detail-container">
-                {/* Article Header */}
-                <header className="article-header">
-                    <div className="article-meta">
-                        <span className="article-category">{article.category}</span>
-                        <span className="article-date">{formattedDate}</span>
-                        <span className="article-reading-time">{readingTime} min read</span>
-                    </div>
-
-                    <h1 className="article-title">{article.title}</h1>
-
-                    {article.excerpt && (
-                        <p className="article-excerpt">{article.excerpt}</p>
-                    )}
-
-                    <div className="article-tags">
-                        {article.tags.map((tag, index) => (
-                            <span key={index} className="article-tag">
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-
-                    {/* Article Image */}
-                    {(article.coverImage || article.imageUrl) && (
-                        <div className={`article-image ${!imageLoaded ? 'loading' : ''} ${imageError ? 'error' : ''}`}>
-                            {!imageLoaded && !imageError && (
-                                <div className="image-placeholder">
-                                    <md-circular-progress indeterminate></md-circular-progress>
-                                    <span>Loading image...</span>
-                                </div>
-                            )}
-                            {imageError && (
-                                <div className="image-error">
-                                    <md-icon>broken_image</md-icon>
-                                    <span>Failed to load image</span>
-                                </div>
-                            )}
-                            <img
-                                ref={imageRef}
-                                src={article.coverImage || article.imageUrl}
-                                alt={article.title}
-                                onLoad={handleImageLoad}
-                                onError={handleImageError}
-                                style={{
-                                    opacity: imageLoaded && !imageError ? 1 : 0,
-                                    transition: 'opacity 0.3s ease-in-out'
-                                }}
-                            />
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+            <div className={cn('grid grid-cols-1 gap-10', headings.length > 0 && 'lg:grid-cols-[220px_1fr]')}>
+                {/* Table of Contents Sidebar */}
+                {headings.length > 0 && (
+                    <aside className="hidden lg:block">
+                        <div className="sticky top-24">
+                            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Table of Contents
+                            </h3>
+                            <nav className="space-y-1 border-l border-border">
+                                {headings.map((heading, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => scrollToHeading(heading.id)}
+                                        className={cn(
+                                            '-ml-px block w-full border-l-2 py-1 pl-3 text-left text-sm transition-colors',
+                                            activeHeading === heading.id
+                                                ? 'border-primary font-medium text-foreground'
+                                                : 'border-transparent text-muted-foreground hover:text-foreground',
+                                            heading.level >= 3 && 'pl-6'
+                                        )}
+                                    >
+                                        {heading.title}
+                                    </button>
+                                ))}
+                            </nav>
                         </div>
-                    )}
-                </header>
-
-                {/* Article Content */}
-                <main className="article-content">
-                    <MarkdownRenderer content={article.content || ''} />
-                </main>
-
-                {/* Article Footer */}
-                <footer className="article-footer">
-                    <div className="article-actions">
-                        <md-outlined-button onClick={handleBackClick}>
-                            <md-icon slot="icon">arrow_back</md-icon>
-                            Back to Articles
-                        </md-outlined-button>
-                    </div>
-                </footer>
-
-                {/* Related Articles */}
-                {relatedArticles.length > 0 && (
-                    <section className="related-articles">
-                        <h2 className="related-title">Related Articles</h2>
-                        <div className="related-grid">
-                            {relatedArticles.map((relatedArticle) => (
-                                <div
-                                    key={relatedArticle.id}
-                                    className="related-article-item"
-                                    onClick={() => handleRelatedArticleClick(relatedArticle.id)}
-                                >
-                                    <h3>{relatedArticle.title}</h3>
-                                    <p>{relatedArticle.excerpt}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
+                    </aside>
                 )}
+
+                <article className="min-w-0">
+                    {/* Article Header */}
+                    <header className="mb-8">
+                        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                            <Badge variant="secondary">{article.category}</Badge>
+                            <span>{formattedDate}</span>
+                            <span>·</span>
+                            <span>{readingTime} min read</span>
+                        </div>
+
+                        <h1 className="text-4xl font-bold tracking-tight text-foreground">{article.title}</h1>
+
+                        {article.excerpt && (
+                            <p className="mt-4 text-lg text-muted-foreground">{article.excerpt}</p>
+                        )}
+
+                        {article.tags.length > 0 && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {article.tags.map((tag, index) => (
+                                    <Badge key={index} variant="outline">{tag}</Badge>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Article Image */}
+                        {(article.coverImage || article.imageUrl) && !imageError && (
+                            <div className="mt-6 overflow-hidden rounded-xl border border-border">
+                                <img
+                                    ref={imageRef}
+                                    src={article.coverImage || article.imageUrl}
+                                    alt={article.title}
+                                    onLoad={handleImageLoad}
+                                    onError={handleImageError}
+                                    className="w-full object-cover"
+                                    style={{
+                                        opacity: imageLoaded && !imageError ? 1 : 0,
+                                        transition: 'opacity 0.3s ease-in-out'
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </header>
+
+                    <Separator className="my-8" />
+
+                    {/* Article Content */}
+                    <MarkdownRenderer content={article.content || ''} />
+
+                    {/* Article Footer */}
+                    <Separator className="my-8" />
+                    <Button variant="outline" onClick={handleBackClick}>
+                        <ArrowLeft />
+                        Back to Articles
+                    </Button>
+
+                    {/* Related Articles */}
+                    {relatedArticles.length > 0 && (
+                        <section className="mt-12">
+                            <h2 className="mb-4 text-xl font-semibold text-foreground">Related Articles</h2>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {relatedArticles.map((relatedArticle) => (
+                                    <Card
+                                        key={relatedArticle.id}
+                                        onClick={() => handleRelatedArticleClick(relatedArticle.id)}
+                                        className="cursor-pointer p-4 transition-colors hover:bg-accent"
+                                    >
+                                        <h3 className="line-clamp-1 font-medium text-foreground">{relatedArticle.title}</h3>
+                                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{relatedArticle.excerpt}</p>
+                                    </Card>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+                </article>
             </div>
         </div>
     );
