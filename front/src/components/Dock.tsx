@@ -33,32 +33,36 @@ function DockItem({
     const b = ref.current?.getBoundingClientRect() ?? { x: 0, width: BASE }
     return val - b.x - b.width / 2
   })
-  const sizeTarget = useTransform(distance, [-RANGE, 0, RANGE], [BASE, MAX, BASE])
-  const size = useSpring(sizeTarget, { mass: 0.1, stiffness: 170, damping: 14 })
+  const widthTarget = useTransform(distance, [-RANGE, 0, RANGE], [BASE, MAX, BASE])
+  const width = useSpring(widthTarget, { mass: 0.1, stiffness: 170, damping: 14 })
+  // Icon scales from the bottom — the bar's height stays fixed; magnified
+  // icons rise above the bar and push neighbours apart horizontally.
+  const scale = useTransform(width, [BASE, MAX], [1, MAX / BASE])
 
   return (
     <motion.button
       ref={ref}
-      style={{ width: size, height: size }}
+      style={{ width, height: BASE }}
       onClick={onClick}
       aria-label={label}
-      className="group/item relative grid aspect-square shrink-0 place-items-center"
+      className="group/item relative flex shrink-0 items-end justify-center"
     >
       {/* tooltip */}
-      <span className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity group-hover/item:opacity-100">
+      <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity group-hover/item:opacity-100">
         {label}
       </span>
-      {/* icon tile — cdk-style circular grey tile */}
-      <span
+      {/* icon tile — fixed box, scaled via transform from the bottom */}
+      <motion.span
+        style={{ width: BASE, height: BASE, scale, transformOrigin: 'bottom center' }}
         className={cn(
-          'grid h-full w-full place-items-center rounded-full transition-colors [&>svg]:h-[42%] [&>svg]:w-[42%]',
+          'grid place-items-center rounded-full transition-colors [&>svg]:size-[42%]',
           active
             ? 'bg-foreground/10 text-foreground'
             : 'bg-secondary text-muted-foreground group-hover/item:bg-foreground/10 group-hover/item:text-foreground'
         )}
       >
         <Icon />
-      </span>
+      </motion.span>
       {/* active dot */}
       <span
         className={cn(
