@@ -58,7 +58,7 @@
   --md-sys-color-surface-tint: #BE6700;
 
   /* Background Colors - Brad Frost cream */
-  --md-sys-color-background: #F6F5DE;
+  --md-sys-color-background: #FAFAFA;
   --md-sys-color-on-background: #1A1A1A;
 
   /* Outline Colors - Dark brown */
@@ -331,7 +331,7 @@ html[data-theme="light"],
   --md-sys-color-surface-tint: #BE6700;
 
   /* Background Colors - Brad Frost cream */
-  --md-sys-color-background: #F6F5DE;
+  --md-sys-color-background: #FAFAFA;
   --md-sys-color-on-background: #1A1A1A;
 
   /* Outline Colors - Dark brown */
