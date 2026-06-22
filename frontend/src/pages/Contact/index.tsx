@@ -1,5 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import './style.css';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Textarea } from '@/components/ui/shadcn/textarea';
+import { Label } from '@/components/ui/shadcn/label';
+import { CheckCircle2, AlertCircle, Send, Github, Linkedin, MessageCircle } from 'lucide-react';
 
 // 表单数据接口
 interface ContactForm {
@@ -115,99 +120,109 @@ const Contact: React.FC = () => {
   // C区 - 渲染：纯声明式渲染
   // ===================================================================
 
+  // 社交平台图标
+  const getSocialIcon = (name: string) => {
+    switch (name) {
+      case 'GitHub': return <Github className="size-4" />;
+      case 'LinkedIn': return <Linkedin className="size-4" />;
+      case 'Telegram': return <Send className="size-4" />;
+      default: return <MessageCircle className="size-4" />;
+    }
+  };
+
   return (
-    <div className="contact-page">
+    <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      {/* Header */}
+      <header className="mb-10">
+        <h1 className="text-4xl font-bold tracking-tight text-foreground">Get in Touch</h1>
+        <p className="mt-3 text-base text-muted-foreground">
+          Have a question or just want to say hi? Send me a message below.
+        </p>
+      </header>
 
+      {/* 联系表单 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Send a Message</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="grid gap-2">
+              <Label htmlFor="contact-name">Your Name *</Label>
+              <Input
+                id="contact-name"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder="Jane Doe"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
 
-      <div className="contact-content">
+            <div className="grid gap-2">
+              <Label htmlFor="contact-email">Email Address *</Label>
+              <Input
+                id="contact-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="jane@example.com"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
 
-
-        {/* 联系表单 */}
-        <section className="contact-form-section">
-          <h2 className="section-title md-typescale-headline-large">Send a Message</h2>
-
-          <form className="contact-form" onSubmit={handleSubmit}>
-            <md-outlined-text-field
-              label="Your Name*"
-              value={formData.name}
-              onInput={(e: any) => handleInputChange('name', e.target.value)}
-              required
-              className="form-field"
-              disabled={isSubmitting}
-            />
-
-            <md-outlined-text-field
-              label="Email Address*"
-              type="email"
-              value={formData.email}
-              onInput={(e: any) => handleInputChange('email', e.target.value)}
-              required
-              className="form-field"
-              disabled={isSubmitting}
-            />
-
-            <md-outlined-text-field
-              label="Your Message*"
-              type="textarea"
-              value={formData.message}
-              onInput={(e: any) => handleInputChange('message', e.target.value)}
-              required
-              className="form-field"
-              disabled={isSubmitting}
-              style={{ '--md-outlined-text-field-textarea-rows': '4' } as any}
-            />
+            <div className="grid gap-2">
+              <Label htmlFor="contact-message">Your Message *</Label>
+              <Textarea
+                id="contact-message"
+                rows={5}
+                value={formData.message}
+                onChange={(e) => handleInputChange('message', e.target.value)}
+                placeholder="Write your message here…"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
 
             {/* 提交状态消息 */}
             {submitStatus === 'success' && (
-              <div className="form-message success">
-                <md-icon>check_circle</md-icon>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground">
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
                 <span>Message sent successfully! I'll get back to you soon.</span>
               </div>
             )}
-
             {submitStatus === 'error' && (
-              <div className="form-message error">
-                <md-icon>error</md-icon>
+              <div className="flex items-center gap-2 rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="size-4 shrink-0" />
                 <span>Failed to send message. Please try again or contact me directly.</span>
               </div>
             )}
 
-            {/* 表单操作按钮 */}
-            <div className="form-actions">
-              <md-filled-button
-                onClick={(e: any) => {
-                  if (!isFormValid || isSubmitting) return;
-                  e.preventDefault();
-                  handleSubmit(e);
-                }}
-                style={{
-                  opacity: (!isFormValid || isSubmitting) ? 0.6 : 1,
-                  pointerEvents: (!isFormValid || isSubmitting) ? 'none' : 'auto'
-                }}
-              >
-                {isSubmitting ? 'Sending...' : 'Send Message'}
-              </md-filled-button>
-            </div>
+            <Button type="submit" disabled={!isFormValid || isSubmitting}>
+              <Send />
+              {isSubmitting ? 'Sending…' : 'Send Message'}
+            </Button>
           </form>
-        </section>
+        </CardContent>
+      </Card>
 
-        {/* 社交链接 */}
-        <section className="social-section">
-          <h2 className="section-title md-typescale-headline-large">Find Me Online</h2>
-          <div className="social-links">
-            {socialLinks.map((social, index) => (
-              <button
-                key={index}
-                onClick={() => handleSocialClick(social.url)}
-                className="social-link"
-              >
-                {social.name}
-              </button>
-            ))}
-          </div>
-        </section>
-
-      </div>
+      {/* 社交链接 */}
+      <section className="mt-10">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Find Me Online</h2>
+        <div className="flex flex-wrap gap-3">
+          {socialLinks.map((social, index) => (
+            <Button
+              key={index}
+              variant="outline"
+              onClick={() => handleSocialClick(social.url)}
+            >
+              {getSocialIcon(social.name)}
+              {social.name}
+            </Button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };

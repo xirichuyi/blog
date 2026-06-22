@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiService } from '../../services/api';
-import './style.css';
+import { Button } from '@/components/ui/shadcn/button';
+import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 
 const About: React.FC = () => {
   // ===================================================================
@@ -67,13 +68,8 @@ const About: React.FC = () => {
   // 卫语句：加载状态
   if (loading) {
     return (
-      <div className="about-page" style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '50vh' 
-      }}>
-        <md-circular-progress indeterminate></md-circular-progress>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -81,61 +77,47 @@ const About: React.FC = () => {
   // 卫语句：错误状态
   if (error) {
     return (
-      <div className="about-page" style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '50vh',
-        gap: '16px'
-      }}>
-        <md-icon style={{ fontSize: '48px', color: 'var(--md-sys-color-error)' }}>error</md-icon>
-        <div style={{ color: 'var(--md-sys-color-on-surface-variant)', textAlign: 'center' }}>
-          <h3>Failed to load about information</h3>
-          <p>{error}</p>
+      <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
+        <AlertCircle className="size-12 text-destructive" />
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">Failed to load about information</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{error}</p>
         </div>
-        <md-filled-button onClick={handleRetryLoad}>
-          <md-icon slot="icon">refresh</md-icon>
+        <Button onClick={handleRetryLoad}>
+          <RefreshCw />
           Retry
-        </md-filled-button>
+        </Button>
       </div>
     );
   }
 
   // 主要渲染
   return (
-    <div className="about-page">
-      <section className="about-hero">
-        <div className="about-hero-content">
-          {/* 左侧内容 */}
-          <div className="about-content">
-            <h1 className="about-title md-typescale-display-medium">
-              {title}
-            </h1>
-            <p className="about-subtitle md-typescale-headline-small">
-              {subtitle}
-            </p>
-            <p className="about-description md-typescale-body-large">
-              {content || 'Passionate about creating innovative web applications and sharing knowledge through this blog.'}
-            </p>
-          </div>
+    <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-1 items-center gap-12 md:grid-cols-[1fr_auto]">
+        {/* 左侧内容 */}
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+            {title}
+          </h1>
+          <p className="mt-4 text-xl text-muted-foreground">{subtitle}</p>
+          <p className="mt-6 max-w-prose text-base leading-relaxed text-foreground/80">
+            {content || 'Passionate about creating innovative web applications and sharing knowledge through this blog.'}
+          </p>
+        </div>
 
-          {/* 右侧照片 */}
-          <div className="about-photo">
-            <div className="photo-container">
-              <img
-                src={photoUrl || '/api/placeholder/300/400'}
-                alt="chuyi - Full-Stack Developer"
-                className="profile-photo"
-                onError={handleImageError}
-              />
-              <div className="photo-overlay">
-                <md-icon className="camera-icon">photo_camera</md-icon>
-              </div>
-            </div>
+        {/* 右侧照片 */}
+        <div className="justify-self-center">
+          <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
+            <img
+              src={photoUrl || '/api/placeholder/300/400'}
+              alt="chuyi - Full-Stack Developer"
+              onError={handleImageError}
+              className="h-80 w-64 object-cover"
+            />
           </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 };
