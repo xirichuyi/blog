@@ -1,7 +1,8 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Dock } from '@/components/Dock'
 
 export function Layout() {
+  const location = useLocation()
   return (
     <div className="min-h-dvh pb-28">
       {/* Minimal brand, top-left */}
@@ -12,7 +13,8 @@ export function Layout() {
         chuyi<span className="text-muted-foreground">'s blog</span>
       </Link>
 
-      <main>
+      {/* keyed by route → subtle fade-up transition on every navigation */}
+      <main key={location.pathname} className="duration-500 animate-in fade-in slide-in-from-bottom-2">
         <Outlet />
       </main>
 
