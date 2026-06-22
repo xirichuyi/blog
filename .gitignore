@@ -17,7 +17,7 @@
 /target/
 **/target/
 backend/target/
-Cargo.lock
+# Cargo.lock is committed for reproducible CI/CD binary builds
 **/*.rs.bk
 
 # production
