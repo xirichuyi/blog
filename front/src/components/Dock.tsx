@@ -50,13 +50,13 @@ function DockItem({
       <span className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity group-hover/item:opacity-100">
         {label}
       </span>
-      {/* icon tile */}
+      {/* icon tile — cdk-style circular grey tile */}
       <span
         className={cn(
-          'grid h-full w-full place-items-center rounded-2xl border transition-colors [&>svg]:h-[45%] [&>svg]:w-[45%]',
+          'grid h-full w-full place-items-center rounded-full transition-colors [&>svg]:h-[42%] [&>svg]:w-[42%]',
           active
-            ? 'border-border bg-accent text-foreground'
-            : 'border-transparent text-muted-foreground group-hover/item:bg-accent group-hover/item:text-foreground'
+            ? 'bg-foreground/10 text-foreground'
+            : 'bg-secondary text-muted-foreground group-hover/item:bg-foreground/10 group-hover/item:text-foreground'
         )}
       >
         <Icon />
