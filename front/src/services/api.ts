@@ -185,6 +185,8 @@ export async function getAbout(): Promise<About> {
 }
 
 export async function getHealth(): Promise<HealthStatus> {
-  const env = await req<HealthStatus>(`/health/detailed`)
-  return env.data
+  // Health endpoint returns the object directly, NOT wrapped in {code,message,data}.
+  const res = await fetch(`${API_BASE}${PREFIX}/health/detailed`)
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+  return (await res.json()) as HealthStatus
 }
