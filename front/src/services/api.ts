@@ -185,11 +185,14 @@ export async function getAbout(): Promise<About> {
 }
 
 /** Convert an online GitBook/bookdown book to EPUB. Returns the file blob. */
-export async function gitbook2epub(url: string): Promise<{ blob: Blob; filename: string }> {
+export async function gitbook2epub(
+  url: string,
+  includeImages = false,
+): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API_BASE}${PREFIX}/tools/gitbook2epub`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, include_images: includeImages }),
   })
   if (!res.ok) {
     let message = `Request failed: ${res.status}`

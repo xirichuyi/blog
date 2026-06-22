@@ -14,6 +14,7 @@ type Status =
 
 export default function Gitbook2Epub() {
   const [url, setUrl] = useState('')
+  const [includeImages, setIncludeImages] = useState(false)
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
 
   const loading = status.kind === 'loading'
@@ -24,7 +25,7 @@ export default function Gitbook2Epub() {
     if (!target || loading) return
     setStatus({ kind: 'loading' })
     try {
-      const { blob, filename } = await gitbook2epub(target)
+      const { blob, filename } = await gitbook2epub(target, includeImages)
       // Trigger a browser download from the returned blob.
       const href = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -87,6 +88,18 @@ export default function Gitbook2Epub() {
           )}
         </Button>
       </form>
+
+      {/* Options */}
+      <label className="mt-3 inline-flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={includeImages}
+          onChange={(e) => setIncludeImages(e.target.checked)}
+          disabled={loading}
+          className="size-4 accent-foreground"
+        />
+        Include images <span className="text-xs text-muted-foreground/70">(slower; large books may time out)</span>
+      </label>
 
       {/* Status line */}
       <div className="mt-4 min-h-5 text-sm">

@@ -25,6 +25,10 @@ const HARD_TIMEOUT_SECS: u64 = 95;
 #[derive(Deserialize)]
 pub struct Gitbook2EpubRequest {
     url: String,
+    /// 是否下载并内嵌图片。默认 false：图片是这台小内存机器的主要内存压力来源，
+    /// 默认跳过可保证转换又快又稳，需要图文版时再显式开启。
+    #[serde(default)]
+    include_images: bool,
 }
 
 fn json_err(code: StatusCode, msg: &str) -> Response {
@@ -147,6 +151,9 @@ pub async fn gitbook2epub(Json(req): Json<Gitbook2EpubRequest>) -> Response {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
+    if !req.include_images {
+        cmd.arg("--no-images"); // 默认纯文字，省内存、避免拖垮小机器
+    }
 
     let result = tokio::time::timeout(Duration::from_secs(HARD_TIMEOUT_SECS), cmd.output()).await;
 
