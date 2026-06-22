@@ -1,10 +1,15 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSlug from 'rehype-slug'
-import rehypeHighlight from 'rehype-highlight'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
 export function Markdown({ content, className }: { content: string; className?: string }) {
+  const { theme } = useTheme()
+  const codeTheme = theme === 'dark' ? oneDark : oneLight
+
   return (
     <div
       className={cn(
@@ -15,7 +20,43 @@ export function Markdown({ content, className }: { content: string; className?: 
         className
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug, rehypeHighlight]}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeSlug]}
+        components={{
+          // SyntaxHighlighter renders its own block element, so unwrap <pre>.
+          pre: ({ children }) => <>{children}</>,
+          code({ className: cls, children, ...props }) {
+            const match = /language-(\w+)/.exec(cls || '')
+            const text = String(children).replace(/\n$/, '')
+            if (match) {
+              return (
+                <SyntaxHighlighter
+                  language={match[1]}
+                  style={codeTheme}
+                  PreTag="div"
+                  customStyle={{
+                    margin: 0,
+                    padding: '1rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid hsl(var(--border))',
+                    background: 'hsl(var(--muted))',
+                    fontSize: 13,
+                  }}
+                  codeTagProps={{ style: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' } }}
+                >
+                  {text}
+                </SyntaxHighlighter>
+              )
+            }
+            return (
+              <code className={cn('rounded bg-muted px-1.5 py-0.5 text-[0.85em] font-normal', cls)} {...props}>
+                {children}
+              </code>
+            )
+          },
+        }}
+      >
         {content}
       </ReactMarkdown>
     </div>

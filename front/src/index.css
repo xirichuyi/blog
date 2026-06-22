@@ -61,91 +61,9 @@
   }
 }
 
-/* ---- Code blocks (theme-aware) ---- */
-.prose pre {
-  @apply overflow-x-auto rounded-lg border border-border bg-muted/60 p-4 leading-relaxed;
-  font-size: 13px;
-}
-.prose pre code {
-  @apply bg-transparent p-0 font-normal text-foreground;
-  font-size: inherit;
-}
-/* inline code */
-.prose :where(code):not(:where(pre code)) {
-  @apply rounded bg-muted px-1.5 py-0.5 font-normal;
-  font-size: 0.85em;
-}
+/* Inline code: drop the typography plugin's backtick pseudo-elements
+   (block code is handled by react-syntax-highlighter). */
 .prose :where(code):not(:where(pre code))::before,
 .prose :where(code):not(:where(pre code))::after {
   content: none;
-}
-
-/* highlight.js token colors — GitHub-style, light + dark via tokens */
-:root {
-  --hl-base: #1f2328;
-  --hl-comment: #6e7781;
-  --hl-keyword: #cf222e;
-  --hl-string: #0a3069;
-  --hl-number: #0550ae;
-  --hl-title: #8250df;
-  --hl-attr: #0550ae;
-}
-[data-theme='dark'] {
-  --hl-base: #e6edf3;
-  --hl-comment: #8b949e;
-  --hl-keyword: #ff7b72;
-  --hl-string: #a5d6ff;
-  --hl-number: #79c0ff;
-  --hl-title: #d2a8ff;
-  --hl-attr: #79c0ff;
-}
-.hljs {
-  color: var(--hl-base);
-  background: transparent;
-}
-.hljs-comment,
-.hljs-quote {
-  color: var(--hl-comment);
-  font-style: italic;
-}
-.hljs-keyword,
-.hljs-selector-tag,
-.hljs-built_in,
-.hljs-name,
-.hljs-tag,
-.hljs-literal,
-.hljs-type {
-  color: var(--hl-keyword);
-}
-.hljs-string,
-.hljs-meta .hljs-string,
-.hljs-regexp,
-.hljs-addition {
-  color: var(--hl-string);
-}
-.hljs-number,
-.hljs-variable,
-.hljs-template-variable,
-.hljs-symbol,
-.hljs-bullet {
-  color: var(--hl-number);
-}
-.hljs-title,
-.hljs-section,
-.hljs-function .hljs-title,
-.hljs-selector-id,
-.hljs-selector-class {
-  color: var(--hl-title);
-}
-.hljs-attr,
-.hljs-attribute,
-.hljs-property,
-.hljs-meta {
-  color: var(--hl-attr);
-}
-.hljs-emphasis {
-  font-style: italic;
-}
-.hljs-strong {
-  font-weight: 600;
 }
