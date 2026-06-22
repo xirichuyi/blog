@@ -438,16 +438,18 @@ const Articles: React.FC = () => {
                                         onClick={() => handleArticleClick(card.id)}
                                         className="group flex cursor-pointer flex-col overflow-hidden p-0 transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
                                     >
-                                        <div className="aspect-[16/10] w-full overflow-hidden">
-                                            {card.coverImage ? (
+                                        <div
+                                            className="aspect-[16/10] w-full overflow-hidden"
+                                            style={{ background: card.gradient }}
+                                        >
+                                            {card.coverImage && (
                                                 <img
                                                     src={card.coverImage}
                                                     alt={card.title}
                                                     loading="lazy"
+                                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                 />
-                                            ) : (
-                                                <div className="h-full w-full" style={{ background: card.gradient }} />
                                             )}
                                         </div>
                                         <CardHeader className="gap-2 p-5">
