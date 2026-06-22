@@ -110,3 +110,36 @@
     content: 'H4';
   }
 }
+
+/* Artistic prose polish: blockquotes, tables, rules */
+.prose blockquote {
+  border-left: 3px solid hsl(var(--primary) / 0.4);
+  background: hsl(var(--muted) / 0.5);
+  border-radius: 0 0.5rem 0.5rem 0;
+  padding: 0.5rem 1rem;
+  font-style: normal;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+}
+.prose blockquote p:first-of-type::before,
+.prose blockquote p:last-of-type::after {
+  content: none;
+}
+.prose hr {
+  border-color: hsl(var(--border));
+}
+.prose :where(th, td) {
+  border-color: hsl(var(--border)) !important;
+}
+.prose thead {
+  border-bottom-color: hsl(var(--border));
+}
+.prose tbody tr {
+  border-bottom-color: hsl(var(--border));
+}
+.prose tbody tr:nth-child(even) {
+  background: hsl(var(--muted) / 0.35);
+}
+.prose a {
+  text-decoration-color: hsl(var(--muted-foreground) / 0.4);
+}
