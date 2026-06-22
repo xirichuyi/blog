@@ -1,0 +1,44 @@
+/* shadcn/ui design tokens + Tailwind utilities.
+   Scoped with --sc-* prefix so it never collides with the existing
+   --md-sys-* / --apple-* token systems. Tailwind preflight is disabled
+   (see tailwind.config.js) so this does NOT restyle existing pages. */
+
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sc-background: 0 0% 100%;
+  --sc-foreground: 240 10% 3.9%;
+  --sc-card: 0 0% 100%;
+  --sc-card-foreground: 240 10% 3.9%;
+  --sc-primary: 240 5.9% 10%;
+  --sc-primary-foreground: 0 0% 98%;
+  --sc-secondary: 240 4.8% 95.9%;
+  --sc-secondary-foreground: 240 5.9% 10%;
+  --sc-muted: 240 4.8% 95.9%;
+  --sc-muted-foreground: 240 3.8% 46.1%;
+  --sc-accent: 240 4.8% 95.9%;
+  --sc-accent-foreground: 240 5.9% 10%;
+  --sc-border: 240 5.9% 90%;
+  --sc-input: 240 5.9% 90%;
+  --sc-ring: 240 5.9% 10%;
+  --sc-radius: 0.625rem;
+}
+
+[data-theme='dark'] {
+  --sc-background: 240 10% 3.9%;
+  --sc-foreground: 0 0% 98%;
+  --sc-card: 240 10% 5.5%;
+  --sc-card-foreground: 0 0% 98%;
+  --sc-primary: 0 0% 98%;
+  --sc-primary-foreground: 240 5.9% 10%;
+  --sc-secondary: 240 3.7% 15.9%;
+  --sc-secondary-foreground: 0 0% 98%;
+  --sc-muted: 240 3.7% 15.9%;
+  --sc-muted-foreground: 240 5% 64.9%;
+  --sc-accent: 240 3.7% 15.9%;
+  --sc-accent-foreground: 0 0% 98%;
+  --sc-border: 240 3.7% 18%;
+  --sc-input: 240 3.7% 15.9%;
+  --sc-ring: 240 4.9% 83.9%;
+}

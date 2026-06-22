@@ -4,9 +4,11 @@ import { apiService } from '../../services/api';
 import type { Article, Category, Tag } from '../../services/types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ErrorMessage from '../../components/ui/ErrorMessage';
-import ArticleCard from '../../components/ui/ArticleCard';
-
-import './style.css';
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { cn } from '@/lib/utils';
+import { LayoutGrid, Folder, Hash, Calendar, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 
 // 常量定义
 const ARTICLES_PER_PAGE = 12;
@@ -285,136 +287,6 @@ const Articles: React.FC = () => {
         });
     }, []);
 
-    // 获取分类图标
-    const getCategoryIcon = useCallback((categoryName: string): string => {
-        const categoryIcons: Record<string, string> = {
-            'Web': 'web',
-            'web': 'web',
-            'linuxDo攻略': 'terminal',
-            'linux': 'terminal',
-            'linuxdo': 'terminal',
-            '个人乱谈': 'chat',
-            '个人': 'person',
-            '作品集': 'work',
-            '作品': 'work',
-            '教程': 'school',
-            'tutorial': 'school',
-            'tech': 'code',
-            'technology': 'code',
-            'programming': 'code',
-            'frontend': 'web',
-            'backend': 'dns',
-            'database': 'storage',
-            'mobile': 'phone_android',
-            'design': 'palette',
-            'ai': 'smart_toy',
-            'machine learning': 'psychology',
-            'data': 'analytics',
-            'security': 'security',
-            'devops': 'settings',
-            'cloud': 'cloud',
-            'javascript': 'code',
-            'react': 'code',
-            'vue': 'code',
-            'angular': 'code',
-            'node': 'code',
-            'python': 'code',
-            'java': 'code',
-            'golang': 'code',
-            'rust': 'code',
-            'php': 'code'
-        };
-
-        const lowerName = categoryName.toLowerCase();
-        return categoryIcons[lowerName] || categoryIcons[categoryName] || 'folder';
-    }, []);
-
-    // 获取标签图标
-    const getTagIcon = useCallback((tagName: string): string => {
-        const tagIcons: Record<string, string> = {
-            'Go': 'code',
-            'go': 'code',
-            'python': 'code',
-            'Python': 'code',
-            'Rust': 'memory',
-            'rust': 'memory',
-            '前端': 'web',
-            'frontend': 'web',
-            '杂七杂八': 'category',
-            '爬虫': 'bug_report',
-            'crawler': 'bug_report',
-            'javascript': 'code',
-            'js': 'code',
-            'typescript': 'code',
-            'ts': 'code',
-            'react': 'code',
-            'vue': 'code',
-            'angular': 'code',
-            'node': 'code',
-            'nodejs': 'code',
-            'express': 'code',
-            'fastapi': 'speed',
-            'django': 'code',
-            'flask': 'code',
-            'database': 'storage',
-            'sql': 'storage',
-            'mongodb': 'storage',
-            'redis': 'storage',
-            'docker': 'inventory',
-            'kubernetes': 'inventory',
-            'aws': 'cloud',
-            'azure': 'cloud',
-            'gcp': 'cloud',
-            'linux': 'terminal',
-            'ubuntu': 'terminal',
-            'centos': 'terminal',
-            'nginx': 'dns',
-            'apache': 'dns',
-            'git': 'source',
-            'github': 'source',
-            'gitlab': 'source',
-            'ci/cd': 'sync',
-            'testing': 'bug_report',
-            'security': 'security',
-            'performance': 'speed',
-            'optimization': 'tune',
-            'api': 'api',
-            'rest': 'api',
-            'graphql': 'api',
-            'microservices': 'account_tree',
-            'architecture': 'account_tree',
-            'design pattern': 'pattern',
-            'algorithm': 'psychology',
-            'data structure': 'psychology',
-            'machine learning': 'smart_toy',
-            'ai': 'smart_toy',
-            'blockchain': 'link',
-            'crypto': 'lock',
-            'mobile': 'phone_android',
-            'ios': 'phone_iphone',
-            'android': 'phone_android',
-            'flutter': 'phone_android',
-            'react native': 'phone_android',
-            'ui': 'palette',
-            'ux': 'palette',
-            'design': 'palette',
-            'css': 'palette',
-            'sass': 'palette',
-            'less': 'palette',
-            'tailwind': 'palette',
-            'bootstrap': 'palette',
-            'webpack': 'build',
-            'vite': 'build',
-            'rollup': 'build',
-            'babel': 'build',
-            'eslint': 'build',
-            'prettier': 'build'
-        };
-
-        const lowerName = tagName.toLowerCase();
-        return tagIcons[lowerName] || tagIcons[tagName] || 'label';
-    }, []);
-
     // 分页计算
     const paginationInfo = useMemo(() => {
         const totalPages = Math.ceil(state.totalArticles / ARTICLES_PER_PAGE);
@@ -470,11 +342,9 @@ const Articles: React.FC = () => {
     // 卫语句：加载状态
     if (!state.isDataLoaded) {
         return (
-            <div className="articles-page">
-                <div className="articles-loading">
-                    <LoadingSpinner />
-                    <p>Loading articles...</p>
-                </div>
+            <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-24 sm:px-6 lg:px-8">
+                <LoadingSpinner />
+                <p className="text-sm text-muted-foreground">Loading articles...</p>
             </div>
         );
     }
@@ -482,7 +352,7 @@ const Articles: React.FC = () => {
     // 卫语句：错误状态
     if (state.error) {
         return (
-            <div className="articles-page">
+            <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
                 <ErrorMessage message={state.error} />
             </div>
         );
@@ -490,150 +360,159 @@ const Articles: React.FC = () => {
 
     // 主要渲染
     return (
-        <div className="articles-page">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
             {/* Header */}
-            <div className="articles-header">
-                <h1 className="articles-title">Articles</h1>
-                <p className="articles-subtitle">
+            <header className="mb-10">
+                <h1 className="text-4xl font-bold tracking-tight text-foreground">Articles</h1>
+                <p className="mt-3 max-w-2xl text-base text-muted-foreground">
                     Discover insights, tutorials, and thoughts on web development and technology
                 </p>
-            </div>
+            </header>
 
-            <div className="articles-layout">
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[240px_1fr]">
                 {/* Sidebar Filters */}
-                <aside className="articles-sidebar">
+                <aside className="space-y-8 lg:sticky lg:top-24 lg:self-start">
                     {/* Category Filters */}
-                    <div className="filter-section">
-                        <h3 className="filter-title">Categories</h3>
-                        <div className="filter-options">
-                            <div
-                                className={`filter-option ${state.activeFilter.type === null ? 'filter-option--selected' : ''}`}
+                    <div>
+                        <h3 className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Categories
+                        </h3>
+                        <div className="space-y-1">
+                            <FilterItem
+                                icon={<LayoutGrid className="size-4 shrink-0" />}
+                                label="All Articles"
+                                count={state.totalArticles}
+                                active={state.activeFilter.type === null}
                                 onClick={() => handleFilter(null, null)}
-                                style={{
-                                    '--filter-animation-delay': '0s'
-                                } as React.CSSProperties}
-                            >
-                                <md-icon>folder</md-icon>
-                                <span>All Articles ({state.totalArticles})</span>
-                            </div>
+                            />
                             {state.categories
                                 .filter(category => category.name !== 'All Articles')
-                                .map((category, index) => (
-                                    <div
+                                .map(category => (
+                                    <FilterItem
                                         key={category.id}
-                                        className={`filter-option ${state.activeFilter.type === 'category' && state.activeFilter.id === category.id ? 'filter-option--selected' : ''}`}
+                                        icon={<Folder className="size-4 shrink-0" />}
+                                        label={category.name}
+                                        count={category.count || 0}
+                                        active={state.activeFilter.type === 'category' && state.activeFilter.id === category.id}
                                         onClick={() => handleFilter('category', category.id)}
-                                        style={{
-                                            '--filter-animation-delay': `${(index + 1) * 0.05}s`
-                                        } as React.CSSProperties}
-                                    >
-                                        <md-icon>{getCategoryIcon(category.name)}</md-icon>
-                                        <span>{category.name} ({category.count || 0})</span>
-                                    </div>
+                                    />
                                 ))}
                         </div>
                     </div>
 
                     {/* Tag Filters */}
-                    <div className="filter-section">
-                        <h3 className="filter-title">Tags</h3>
-                        <div className="filter-options">
-                            {state.tags.slice(0, 10).map((tag, index) => (
-                                <div
+                    <div>
+                        <h3 className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Tags
+                        </h3>
+                        <div className="space-y-1">
+                            {state.tags.slice(0, 10).map(tag => (
+                                <FilterItem
                                     key={tag.id}
-                                    className={`filter-option ${state.activeFilter.type === 'tag' && state.activeFilter.id === tag.id ? 'filter-option--selected' : ''}`}
+                                    icon={<Hash className="size-4 shrink-0" />}
+                                    label={tag.name}
+                                    count={tag.count || 0}
+                                    active={state.activeFilter.type === 'tag' && state.activeFilter.id === tag.id}
                                     onClick={() => handleFilter('tag', tag.id)}
-                                    style={{
-                                        '--filter-animation-delay': `${index * 0.05}s`
-                                    } as React.CSSProperties}
-                                >
-                                    <md-icon>{getTagIcon(tag.name)}</md-icon>
-                                    <span>{tag.name} ({tag.count || 0})</span>
-                                </div>
+                                />
                             ))}
                         </div>
                     </div>
                 </aside>
 
                 {/* Main Content */}
-                <main className="articles-main">
+                <main>
                     {/* Articles Grid */}
-                    <div className={`articles-grid ${isTransitioning ? 'articles-grid--transitioning' : ''} ${hasInitialLoaded ? 'articles-grid--loaded' : ''}`}>
-                        {state.articles.length > 0 ? (
-                            state.articles.map((article, index) => {
-                                const cardData = convertArticleToCardFormat(article, index);
+                    {state.articles.length > 0 ? (
+                        <div
+                            className={cn(
+                                'grid grid-cols-1 gap-6 transition-opacity duration-200 sm:grid-cols-2 xl:grid-cols-3',
+                                isTransitioning && 'opacity-50'
+                            )}
+                        >
+                            {state.articles.map((article, index) => {
+                                const card = convertArticleToCardFormat(article, index);
                                 return (
-                                    <div
+                                    <Card
                                         key={article.id}
-                                        className="article-card-wrapper"
-                                        style={{
-                                            '--animation-delay': `${index * 0.1 + 0.3}s`
-                                        } as React.CSSProperties}
+                                        onClick={() => handleArticleClick(card.id)}
+                                        className="group flex cursor-pointer flex-col overflow-hidden p-0 transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
                                     >
-                                        <ArticleCard
-                                            id={cardData.id}
-                                            title={cardData.title}
-                                            description={cardData.description}
-                                            date={cardData.date}
-                                            tag={cardData.tag}
-                                            coverImage={cardData.coverImage}
-                                            gradient={cardData.gradient}
-                                            onClick={handleArticleClick}
-                                            variant="default"
-                                        />
-                                    </div>
+                                        <div className="aspect-[16/10] w-full overflow-hidden">
+                                            {card.coverImage ? (
+                                                <img
+                                                    src={card.coverImage}
+                                                    alt={card.title}
+                                                    loading="lazy"
+                                                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                />
+                                            ) : (
+                                                <div className="h-full w-full" style={{ background: card.gradient }} />
+                                            )}
+                                        </div>
+                                        <CardHeader className="gap-2 p-5">
+                                            <Badge variant="secondary" className="w-fit">{card.tag}</Badge>
+                                            <CardTitle className="line-clamp-2 text-lg transition-colors group-hover:text-primary">
+                                                {card.title}
+                                            </CardTitle>
+                                            <CardDescription className="line-clamp-2">
+                                                {card.description}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardFooter className="mt-auto gap-2 px-5 pb-5 text-xs text-muted-foreground">
+                                            <Calendar className="size-3.5" />
+                                            <span>{card.date}</span>
+                                        </CardFooter>
+                                    </Card>
                                 );
-                            })
-                        ) : (
-                            <div className="no-articles">
-                                <md-icon className="no-articles-icon">article</md-icon>
-                                <h3>No articles found</h3>
-                                <p>Try adjusting your filters or check back later for new content.</p>
-                            </div>
-                        )}
-                    </div>
+                            })}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-24 text-center">
+                            <FileText className="size-10 text-muted-foreground" />
+                            <h3 className="mt-4 text-lg font-semibold text-foreground">No articles found</h3>
+                            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                                Try adjusting your filters or check back later for new content.
+                            </p>
+                        </div>
+                    )}
 
                     {/* Pagination */}
                     {paginationInfo.totalPages > 1 && (
-                        <div className="articles-pagination">
-                            <div className="pagination-info">
-                                <span>
-                                    Showing {((state.currentPage - 1) * ARTICLES_PER_PAGE) + 1} to{' '}
-                                    {Math.min(state.currentPage * ARTICLES_PER_PAGE, state.totalArticles)} of {state.totalArticles} articles
-                                </span>
-                            </div>
-                            <div className="pagination-controls">
-                                <md-icon-button
+                        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
+                            <p className="text-sm text-muted-foreground">
+                                Showing {((state.currentPage - 1) * ARTICLES_PER_PAGE) + 1} to{' '}
+                                {Math.min(state.currentPage * ARTICLES_PER_PAGE, state.totalArticles)} of {state.totalArticles} articles
+                            </p>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={!paginationInfo.hasPrevPage}
                                     onClick={() => handlePageChange(state.currentPage - 1)}
                                     aria-label="Previous page"
-                                    style={{
-                                        opacity: !paginationInfo.hasPrevPage ? 0.5 : 1,
-                                        pointerEvents: !paginationInfo.hasPrevPage ? 'none' : 'auto'
-                                    }}
                                 >
-                                    <md-icon>chevron_left</md-icon>
-                                </md-icon-button>
-
-                                {paginationInfo.pageNumbers.map((pageNum) => (
-                                    <md-text-button
+                                    <ChevronLeft />
+                                </Button>
+                                {paginationInfo.pageNumbers.map(pageNum => (
+                                    <Button
                                         key={pageNum}
-                                        className={state.currentPage === pageNum ? 'current-page' : ''}
+                                        variant={state.currentPage === pageNum ? 'default' : 'ghost'}
+                                        size="icon"
                                         onClick={() => handlePageChange(pageNum)}
                                     >
                                         {pageNum}
-                                    </md-text-button>
+                                    </Button>
                                 ))}
-
-                                <md-icon-button
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    disabled={!paginationInfo.hasNextPage}
                                     onClick={() => handlePageChange(state.currentPage + 1)}
                                     aria-label="Next page"
-                                    style={{
-                                        opacity: !paginationInfo.hasNextPage ? 0.5 : 1,
-                                        pointerEvents: !paginationInfo.hasNextPage ? 'none' : 'auto'
-                                    }}
                                 >
-                                    <md-icon>chevron_right</md-icon>
-                                </md-icon-button>
+                                    <ChevronRight />
+                                </Button>
                             </div>
                         </div>
                     )}
@@ -642,5 +521,33 @@ const Articles: React.FC = () => {
         </div>
     );
 };
+
+// 侧边栏筛选项（shadcn 风格）
+interface FilterItemProps {
+    icon: React.ReactNode;
+    label: string;
+    count: number;
+    active: boolean;
+    onClick: () => void;
+}
+
+const FilterItem: React.FC<FilterItemProps> = ({ icon, label, count, active, onClick }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+            'flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors',
+            active
+                ? 'bg-secondary font-medium text-secondary-foreground'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+        )}
+    >
+        <span className="flex min-w-0 items-center gap-2">
+            {icon}
+            <span className="truncate">{label}</span>
+        </span>
+        <span className="shrink-0 tabular-nums text-xs text-muted-foreground">{count}</span>
+    </button>
+);
 
 export default Articles;

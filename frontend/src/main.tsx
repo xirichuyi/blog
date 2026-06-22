@@ -12,6 +12,7 @@ import './index.css'
 import './styles/mobile.css'
 import './styles/responsive.css'
 import './styles/apple-design-tokens.css'
+import './styles/shadcn.css'
 import initializeMaterialDesign from './components/material/material-setup'
 
 import App from './App.tsx'
