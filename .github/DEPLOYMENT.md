@@ -38,7 +38,12 @@
 
 ## HTTPS
 
-域名 `blog.chuyi.uk` 走 Cloudflare 代理。证书配置见单独步骤（Cloudflare Origin 证书 或 certbot）。当前 vhost 仅 HTTP（80），Cloudflare 边缘可先提供 HTTPS。
+域名 `blog.chuyi.uk` 走 Cloudflare 代理，采用 **Cloudflare Origin 证书**（Full/strict）：
+
+- 证书/私钥在服务器 `/etc/ssl/blog.chuyi.uk/{origin.crt,origin.key}`（`origin.key` chmod 600，**不在仓库**），有效期至 2041。
+- nginx vhost `blog.chuyi.uk-ssl`：80 端口 301 跳转到 443；443 用 Origin 证书，反代规则同上。
+- Cloudflare 侧：`blog.chuyi.uk` DNS A 记录指向 `152.69.199.25`（橙云代理），SSL/TLS 模式 Full (strict)。
+- 续期：Origin 证书 15 年有效，到期前在 CF 重新生成并替换 `origin.crt`/`origin.key` 后 `sudo systemctl reload nginx`。
 
 ## 常用运维
 
