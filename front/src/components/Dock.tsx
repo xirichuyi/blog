@@ -10,9 +10,9 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/articles', label: 'Articles', icon: FileText },
 ]
 
-const BASE = 44
-const MAX = 76
-const RANGE = 150 // px proximity falloff
+const BASE = 38
+const MAX = 58
+const RANGE = 140 // px proximity falloff
 
 function DockItem({
   mouseX,
@@ -83,7 +83,7 @@ export function Dock() {
       <motion.div
         onMouseMove={(e) => mouseX.set(e.clientX)}
         onMouseLeave={() => mouseX.set(Infinity)}
-        className="flex items-end gap-2 rounded-[1.75rem] border border-border bg-background/60 px-3 pb-2 pt-1 shadow-xl backdrop-blur-2xl"
+        className="flex items-end gap-1.5 rounded-[1.5rem] border border-border bg-background/60 px-2.5 pb-1.5 pt-1 shadow-xl backdrop-blur-2xl"
       >
         {NAV.map((n) => (
           <DockItem key={n.to} mouseX={mouseX} icon={n.icon} label={n.label} active={isActive(n.to)} onClick={() => navigate(n.to)} />
