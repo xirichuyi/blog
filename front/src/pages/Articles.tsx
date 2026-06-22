@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
+import { Calendar } from 'lucide-react'
 import { listArticles, getCategories, getTags, type Article, type Category, type Tag } from '@/services/api'
-import { ArchiveList } from '@/components/ArchiveList'
+import { ListCard, ArticleRow } from '@/components/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 type Filter = { type: 'category' | 'tag' | null; value: string | null }
 
-function Pill({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
+function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
@@ -55,18 +48,33 @@ export default function Articles() {
     return l
   }, [all, filter])
 
+  const groups = useMemo(() => {
+    const g: { year: string; items: Article[] }[] = []
+    for (const a of filtered) {
+      const y = a.rawDate ? String(new Date(a.rawDate).getFullYear()) : '—'
+      let x = g.find((z) => z.year === y)
+      if (!x) {
+        x = { year: y, items: [] }
+        g.push(x)
+      }
+      x.items.push(a)
+    }
+    g.sort((a, b) => b.year.localeCompare(a.year))
+    return g
+  }, [filtered])
+
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12 sm:px-10">
+    <div className="mx-auto max-w-4xl px-6 py-10 sm:px-10">
       <Helmet>
         <title>Archive · chuyi's blog</title>
       </Helmet>
 
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Archive</h1>
-        <p className="mt-3 text-muted-foreground">共 {all?.length ?? 0} 篇文章，可按分类或标签筛选。</p>
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">归档</h1>
+        <p className="mt-2 text-muted-foreground">共 {all?.length ?? 0} 篇文章，可按分类或标签筛选。</p>
       </header>
 
-      <div className="mb-8 flex flex-wrap gap-2">
+      <div className="mb-6 flex flex-wrap gap-2">
         <Pill active={filter.type === null} onClick={() => setFilter({ type: null, value: null })}>
           全部
         </Pill>
@@ -92,14 +100,22 @@ export default function Articles() {
 
       {!all ? (
         <div className="space-y-3">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full" />
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full rounded-xl" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-muted-foreground">没有符合条件的文章。</p>
       ) : (
-        <ArchiveList articles={filtered} />
+        <div className="space-y-6">
+          {groups.map((g) => (
+            <ListCard key={g.year} title={g.year} icon={Calendar} count={g.items.length}>
+              {g.items.map((a, i) => (
+                <ArticleRow key={a.id} article={a} index={i} />
+              ))}
+            </ListCard>
+          ))}
+        </div>
       )}
     </div>
   )
