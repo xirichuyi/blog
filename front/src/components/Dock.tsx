@@ -96,7 +96,7 @@ export function Dock() {
         <DockItem
           mouseX={mouseX}
           icon={theme === 'dark' ? Sun : Moon}
-          label={theme === 'dark' ? '浅色' : '深色'}
+          label={theme === 'dark' ? 'Light' : 'Dark'}
           onClick={toggle}
         />
       </motion.div>

@@ -52,11 +52,11 @@ export default function ArticleDetail() {
       <div className="container mx-auto flex max-w-md flex-col items-center gap-4 py-24 text-center">
         <AlertCircle className="size-12 text-destructive" />
         <div>
-          <h2 className="text-xl font-semibold">文章未找到</h2>
+          <h2 className="text-xl font-semibold">Article not found</h2>
           <p className="mt-1 text-sm text-muted-foreground">{error}</p>
         </div>
         <Button onClick={() => navigate('/articles')}>
-          <ArrowLeft /> 返回文章列表
+          <ArrowLeft /> Back to articles
         </Button>
       </div>
     )
@@ -65,7 +65,7 @@ export default function ArticleDetail() {
   if (!article) {
     return (
       <div className="container flex items-center justify-center gap-2 py-24 text-muted-foreground">
-        <Loader2 className="size-5 animate-spin" /> 加载中…
+        <Loader2 className="size-5 animate-spin" /> Loading…
       </div>
     )
   }
@@ -79,7 +79,7 @@ export default function ArticleDetail() {
       <div className={cn('grid grid-cols-1 gap-10', headings.length > 0 && 'lg:grid-cols-[1fr_220px]')}>
         <article className="mx-auto w-full min-w-0 max-w-3xl">
           <Button variant="ghost" size="sm" className="-ml-2 mb-6" onClick={() => navigate(-1)}>
-            <ArrowLeft /> 返回
+            <ArrowLeft /> Back
           </Button>
 
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -109,7 +109,7 @@ export default function ArticleDetail() {
         {headings.length > 0 && (
           <aside className="hidden lg:block">
             <div className="sticky top-20">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">目录</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">On this page</h3>
               <nav className="space-y-1 border-l border-border">
                 {headings.map((h) => (
                   <a

@@ -70,13 +70,13 @@ export default function Articles() {
       </Helmet>
 
       <header className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">归档</h1>
-        <p className="mt-2 text-muted-foreground">共 {all?.length ?? 0} 篇文章，可按分类或标签筛选。</p>
+        <h1 className="text-3xl font-bold tracking-tight">Archive</h1>
+        <p className="mt-2 text-muted-foreground">{all?.length ?? 0} posts · filter by category or tag.</p>
       </header>
 
       <div className="mb-6 flex flex-wrap gap-2">
         <Pill active={filter.type === null} onClick={() => setFilter({ type: null, value: null })}>
-          全部
+          All
         </Pill>
         {cats.map((c) => (
           <Pill
@@ -105,7 +105,7 @@ export default function Articles() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <p className="text-muted-foreground">没有符合条件的文章。</p>
+        <p className="text-muted-foreground">No posts match this filter.</p>
       ) : (
         <div className="space-y-6">
           {groups.map((g) => (

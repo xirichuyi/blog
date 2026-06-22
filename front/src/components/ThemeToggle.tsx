@@ -5,7 +5,7 @@ import { useTheme } from '@/lib/theme'
 export function ThemeToggle() {
   const { theme, toggle } = useTheme()
   return (
-    <Button variant="ghost" size="icon" onClick={toggle} aria-label="切换主题">
+    <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
       {theme === 'dark' ? <Sun /> : <Moon />}
     </Button>
   )

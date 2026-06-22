@@ -44,7 +44,7 @@ export default function Contact() {
 
       <header className="mb-10">
         <h1 className="text-4xl font-bold tracking-tight">Get in touch</h1>
-        <p className="mt-3 text-muted-foreground">有问题或想聊聊？给我留个言，或在下面找到我。</p>
+        <p className="mt-3 text-muted-foreground">Got a question or just want to say hi? Drop a message, or find me below.</p>
       </header>
 
       <Card>
@@ -63,18 +63,18 @@ export default function Contact() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="message">Message *</Label>
-              <Textarea id="message" rows={5} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="写点什么…" disabled={sending} />
+              <Textarea id="message" rows={5} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Write something…" disabled={sending} />
             </div>
 
             {sent && (
               <div className="flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-sm">
                 <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
-                已发送，感谢留言！
+                Sent — thanks for reaching out!
               </div>
             )}
 
             <Button type="submit" disabled={!valid || sending}>
-              <Send /> {sending ? '发送中…' : 'Send message'}
+              <Send /> {sending ? 'Sending…' : 'Send message'}
             </Button>
           </form>
         </CardContent>

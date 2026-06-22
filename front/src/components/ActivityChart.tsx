@@ -9,7 +9,11 @@ export function monthlyActivity(articles: Article[]): { label: string; count: nu
   const buckets: { key: string; label: string; count: number }[] = []
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    buckets.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: `${d.getMonth() + 1}月`, count: 0 })
+    buckets.push({
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      label: d.toLocaleString('en-US', { month: 'short' }),
+      count: 0,
+    })
   }
   for (const a of articles) {
     if (!a.rawDate) continue
@@ -57,7 +61,7 @@ export function ActivityChart({ data }: { data: { label: string; count: number }
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           }}
           labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
-          formatter={(v: number) => [`${v} 篇`, '发文']}
+          formatter={(v: number) => [`${v} posts`, 'Posts']}
         />
         <Area type="monotone" dataKey="count" stroke={ACCENT} strokeWidth={2} fill="url(#activityFill)" />
       </AreaChart>

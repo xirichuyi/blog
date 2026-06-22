@@ -16,12 +16,12 @@ export default function About() {
   }, [])
 
   if (error) {
-    return <div className="container py-24 text-center text-sm text-destructive">加载失败：{error}</div>
+    return <div className="container py-24 text-center text-sm text-destructive">Failed to load: {error}</div>
   }
   if (!data) {
     return (
       <div className="container flex items-center justify-center gap-2 py-24 text-muted-foreground">
-        <Loader2 className="size-5 animate-spin" /> 加载中…
+        <Loader2 className="size-5 animate-spin" /> Loading…
       </div>
     )
   }

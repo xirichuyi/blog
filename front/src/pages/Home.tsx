@@ -11,11 +11,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 function greeting() {
   const h = new Date().getHours()
-  if (h < 6) return '凌晨好'
-  if (h < 11) return '早上好'
-  if (h < 13) return '中午好'
-  if (h < 18) return '下午好'
-  return '晚上好'
+  if (h < 5) return 'Good night'
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
 }
 
 export default function Home() {
@@ -51,25 +50,25 @@ export default function Home() {
       </Helmet>
 
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">{greeting()}，xirichuyi</h1>
-        <p className="mt-2 text-muted-foreground">欢迎回来，这里是我的博客与笔记。</p>
+        <h1 className="text-3xl font-bold tracking-tight">{greeting()}, xirichuyi</h1>
+        <p className="mt-2 text-muted-foreground">Welcome back — my blog &amp; notes.</p>
       </header>
 
       {error ? (
-        <p className="text-sm text-destructive">加载失败：{error}</p>
+        <p className="text-sm text-destructive">Failed to load: {error}</p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard label="文章总数" value={arts?.length ?? '—'} sub="已发布" icon={FileText} />
-            <StatCard label="分类" value={cats.length || '—'} sub="个分类" icon={FolderOpen} />
-            <StatCard label="标签" value={tags.length || '—'} sub="个标签" icon={Hash} />
-            <StatCard label="最近更新" value={arts?.[0]?.date ?? '—'} icon={Clock} />
+            <StatCard label="Posts" value={arts?.length ?? '—'} sub="published" icon={FileText} />
+            <StatCard label="Categories" value={cats.length || '—'} sub="total" icon={FolderOpen} />
+            <StatCard label="Tags" value={tags.length || '—'} sub="total" icon={Hash} />
+            <StatCard label="Last updated" value={arts?.[0]?.date ?? '—'} icon={Clock} />
           </div>
 
           <Card className="mt-6 p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">发文趋势</h3>
-              <span className="text-xs text-muted-foreground">近 12 个月</span>
+              <h3 className="text-sm font-semibold">Posting activity</h3>
+              <span className="text-xs text-muted-foreground">Last 12 months</span>
             </div>
             {!arts ? <Skeleton className="h-[260px] w-full" /> : <ActivityChart data={chartData} />}
           </Card>
@@ -77,25 +76,25 @@ export default function Home() {
           <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <ListCard
-                title="最新文章"
+                title="Recent posts"
                 icon={FileText}
                 action={
                   <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-                    <Link to="/articles">全部 →</Link>
+                    <Link to="/articles">All →</Link>
                   </Button>
                 }
               >
                 {!arts ? (
                   <RowsSkeleton />
                 ) : recent.length === 0 ? (
-                  <p className="px-3 py-6 text-sm text-muted-foreground">还没有文章。</p>
+                  <p className="px-3 py-6 text-sm text-muted-foreground">No posts yet.</p>
                 ) : (
                   recent.map((a, i) => <ArticleRow key={a.id} article={a} index={i} />)
                 )}
               </ListCard>
             </div>
 
-            <ListCard title="分类" icon={FolderOpen} count={cats.length}>
+            <ListCard title="Categories" icon={FolderOpen} count={cats.length}>
               {!arts ? (
                 <RowsSkeleton n={5} />
               ) : (
