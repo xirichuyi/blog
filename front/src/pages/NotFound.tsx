@@ -1,0 +1,15 @@
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+
+export default function NotFound() {
+  return (
+    <div className="container flex flex-col items-center justify-center gap-4 py-32 text-center">
+      <p className="text-6xl font-bold tracking-tight text-muted-foreground">404</p>
+      <h1 className="text-2xl font-semibold">页面不存在</h1>
+      <p className="text-muted-foreground">你访问的页面可能已被移动或删除。</p>
+      <Button asChild>
+        <Link to="/">返回首页</Link>
+      </Button>
+    </div>
+  )
+}
