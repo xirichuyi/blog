@@ -25,8 +25,16 @@ export function HoverList({ articles }: { articles: Article[] }) {
       let left = (listR?.right ?? r.right) + 28
       if (left + PREVIEW_W > window.innerWidth - 16) left = window.innerWidth - PREVIEW_W - 16
       const top = Math.max(96, Math.min(r.top + r.height / 2, window.innerHeight - 130))
-      setPreview({ src: a.coverImage, left, top })
-      setShown(true)
+      // Preload: only reveal the preview once the image actually loads,
+      // so broken cover URLs never show an empty frame.
+      const src = a.coverImage
+      const img = new Image()
+      img.onload = () => {
+        setPreview({ src, left, top })
+        setShown(true)
+      }
+      img.onerror = () => setShown(false)
+      img.src = src
     } else {
       setShown(false)
     }
