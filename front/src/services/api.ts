@@ -108,10 +108,16 @@ export function stripMarkdown(md: string, maxLength = 140): string {
     .replace(/^[\s]*[-*+]\s+/gm, '')
     .replace(/^[\s]*\d+\.\s+/gm, '')
     .replace(/<[^>]*>/g, '')
+    .replace(/https?:\/\/\S+/g, '') // strip bare URLs — they read terribly as a subtitle
     .replace(/\n+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
   return text.length > maxLength ? text.slice(0, maxLength).trimEnd() + '…' : text
+}
+
+/** Clean a stored excerpt for display (drop bare URLs); '' if nothing meaningful remains. */
+function cleanExcerpt(s?: string): string {
+  return (s ?? '').replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim()
 }
 
 function toArticle(post: RawPost): Article {
@@ -120,7 +126,7 @@ function toArticle(post: RawPost): Article {
     id: String(post.id),
     title: post.title,
     content,
-    excerpt: post.excerpt?.trim() || stripMarkdown(content, 140),
+    excerpt: cleanExcerpt(post.excerpt) || stripMarkdown(content, 140),
     date: formatDate(post.created_at),
     rawDate: post.created_at,
     category: post.category_name || 'Uncategorized',
