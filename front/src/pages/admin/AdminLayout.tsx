@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, FileText, Tags, User, LogOut, ExternalLink } from 'lucide-react'
+import { LayoutDashboard, FileText, Tags, User, LogOut, ExternalLink, Activity } from 'lucide-react'
 import { clearToken } from '@/services/admin'
 import { cn } from '@/lib/utils'
 
@@ -42,6 +42,14 @@ export default function AdminLayout() {
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-1 border-t border-border pt-3">
+          <a
+            href="https://monitor.chuyi.uk/"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+          >
+            <Activity className="size-4" /> 服务器监控
+          </a>
           <a
             href="/"
             target="_blank"
