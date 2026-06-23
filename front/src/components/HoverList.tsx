@@ -6,7 +6,7 @@ import type { Article } from '@/services/api'
 
 // cai.im's springy easing.
 const SPRING = 'cubic-bezier(.25,1.22,.45,1.04)'
-const PREVIEW_W = 288
+const PREVIEW_W = 232
 
 /** cai.im-style list: title + meta stacked, left-aligned. The highlight pill
  *  sizes to each row's content width and springs between rows. */
@@ -21,11 +21,10 @@ export function HoverList({ articles }: { articles: Article[] }) {
     setPill({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight, on: true })
     if (a.coverImage) {
       const r = el.getBoundingClientRect()
-      const listR = listRef.current?.getBoundingClientRect()
-      let left = (listR?.right ?? r.right) + 24
+      // hug the hovered row's own right edge (cai.im-style), kept on-screen
+      let left = r.right + 18
       if (left + PREVIEW_W > window.innerWidth - 16) left = window.innerWidth - PREVIEW_W - 16
-      // vertically center the preview on the hovered row, kept fully on-screen
-      const top = Math.max(100, Math.min(r.top + r.height / 2, window.innerHeight - 100))
+      const top = Math.max(90, Math.min(r.top + r.height / 2, window.innerHeight - 90))
       // Preload: only reveal the preview once the image actually loads,
       // so broken cover URLs never show an empty frame.
       const src = a.coverImage
@@ -78,7 +77,7 @@ export function HoverList({ articles }: { articles: Article[] }) {
       {preview &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-[60] hidden w-72 -translate-y-1/2 lg:block"
+            className="pointer-events-none fixed z-[60] hidden w-[232px] -translate-y-1/2 lg:block"
             style={{
               left: preview.left,
               top: preview.top,
