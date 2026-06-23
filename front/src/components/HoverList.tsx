@@ -6,6 +6,10 @@ import type { Article } from '@/services/api'
 
 // cai.im's springy easing.
 const SPRING = 'cubic-bezier(.25,1.22,.45,1.04)'
+// 液滴感:位置回弹更快更弹,宽高回弹更慢且过冲更大 —— 移动时高亮块会先被
+// 「拉伸」再回弹收住,像一滴水。两条曲线时长/过冲故意错开。
+const MOVE = 'cubic-bezier(.34,1.56,.5,1)'
+const MORPH = 'cubic-bezier(.5,1.8,.45,.92)'
 const PREVIEW_W = 232
 
 /** cai.im-style list: title + meta stacked, left-aligned. The highlight pill
@@ -48,15 +52,15 @@ export function HoverList({ articles }: { articles: Article[] }) {
 
   return (
     <div ref={listRef} className="hover-list relative flex w-fit max-w-full flex-col items-start gap-1" onMouseLeave={leave}>
-      {/* highlight pill — sized to the hovered row's content */}
+      {/* highlight pill — 苹果液态玻璃:半透明磨砂 + 高光描边,液滴感回弹 */}
       <div
-        className="pointer-events-none absolute left-0 top-0 -z-10 rounded-xl bg-accent"
+        className="pointer-events-none absolute left-0 top-0 -z-10 rounded-2xl bg-accent/50 shadow-sm ring-1 ring-inset ring-foreground/[0.06] backdrop-blur-md"
         style={{
           width: pill.w,
           height: pill.h,
           transform: `translate(${pill.x}px, ${pill.y}px)`,
           opacity: pill.on ? 1 : 0,
-          transition: `transform .45s ${SPRING}, width .4s ${SPRING}, height .4s ${SPRING}, opacity .25s ease`,
+          transition: `transform .5s ${MOVE}, width .56s ${MORPH}, height .56s ${MORPH}, opacity .25s ease`,
         }}
       />
 
@@ -67,7 +71,7 @@ export function HoverList({ articles }: { articles: Article[] }) {
           onMouseEnter={(e) => enter(e, a)}
           className="group relative flex w-fit max-w-full flex-col gap-0.5 rounded-xl px-3 py-2.5"
         >
-          <span className="max-w-[34rem] truncate text-[15px] font-medium text-foreground">{a.title}</span>
+          <span className="max-w-[34rem] truncate text-[15px] font-medium text-foreground/55 transition-colors duration-300 group-hover:text-foreground">{a.title}</span>
           <span className="truncate text-xs text-muted-foreground transition-colors group-hover:text-foreground/60">
             {a.category}
             {a.tags.length > 0 && ` · ${a.tags.slice(0, 2).join(' · ')}`} · {a.date}
