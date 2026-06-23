@@ -49,7 +49,7 @@ export function HoverList({ articles }: { articles: Article[] }) {
   }
 
   return (
-    <div ref={listRef} className="hover-list relative flex w-fit max-w-full flex-col items-start gap-2" onMouseLeave={leave}>
+    <div ref={listRef} className="hover-list relative flex w-fit max-w-full flex-col items-start gap-1" onMouseLeave={leave}>
       {/* highlight pill — sized to the hovered row's content */}
       <div
         className="pointer-events-none absolute left-0 top-0 -z-10 rounded-xl bg-accent"
@@ -67,11 +67,12 @@ export function HoverList({ articles }: { articles: Article[] }) {
           key={a.id}
           to={`/article/${a.id}`}
           onMouseEnter={(e) => enter(e, a)}
-          className="group relative flex w-fit max-w-full flex-col gap-1 rounded-xl px-3 py-2"
+          className="group relative flex w-fit max-w-full flex-col gap-0.5 rounded-xl px-3 py-2.5"
         >
           <span className="max-w-[34rem] truncate text-[15px] font-medium text-foreground">{a.title}</span>
-          <span className="max-w-[34rem] truncate text-[13px] text-muted-foreground/80 transition-colors group-hover:text-foreground/70">
-            {a.excerpt?.trim() || `${a.category} · ${a.date}`}
+          <span className="truncate text-xs text-muted-foreground transition-colors group-hover:text-foreground/60">
+            {a.category}
+            {a.tags.length > 0 && ` · ${a.tags.slice(0, 2).join(' · ')}`} · {a.date}
           </span>
         </Link>
       ))}
