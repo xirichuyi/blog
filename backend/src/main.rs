@@ -52,6 +52,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = routes::create_app(database.clone(), &config)
         .await
         .nest_service("/uploads", ServeDir::new(&config.storage.upload_dir))
+        // axum 默认请求体上限 2MB，会截断稍大的图片导致 multipart 解析失败；
+        // 放宽到 20MB（仍高于 MAX_FILE_SIZE=10MB，留足余量）。
+        .layer(axum::extract::DefaultBodyLimit::max(20 * 1024 * 1024))
         .layer(cors)
         .layer(compression);
 
