@@ -80,7 +80,7 @@
   transition: opacity 0.35s ease;
 }
 .hover-list:has(a:hover) a:not(:hover) {
-  opacity: 0.3;
+  opacity: 0.55;
 }
 
 /* cai.im-style heading level markers (H2/H3/H4) in the left gutter,
