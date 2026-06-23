@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { Mail, Github, Send } from 'lucide-react'
+import { Mail, Github, Send, Linkedin } from 'lucide-react'
 import {
   listArticles,
   getAbout,
@@ -19,6 +19,7 @@ const CONTACTS = [
   { label: 'xrcy123@gmail.com', icon: Mail, href: 'mailto:xrcy123@gmail.com' },
   { label: 'GitHub', icon: Github, href: 'https://github.com/xirichuyi' },
   { label: 'Telegram', icon: Send, href: 'https://t.me/xrcy97' },
+  { label: 'LinkedIn', icon: Linkedin, href: 'https://www.linkedin.com/in/%E5%88%9D%E4%B8%80-%E6%98%94%E6%97%A5-223012366/' },
 ]
 
 function fmtUptime(s?: number) {
