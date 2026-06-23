@@ -32,6 +32,12 @@ const TOOLS: Tool[] = [
     url: 'https://zhoumaosen.top/proxy',
     tags: ['Proxy'],
   },
+  {
+    name: '服务器监控 · Beszel',
+    description: '服务器实时状态面板：CPU / 内存 / 磁盘 / 网络 / 在线时长。',
+    url: 'https://monitor.chuyi.uk/',
+    tags: ['Monitor'],
+  },
 ]
 
 // 语言对应的小圆点颜色（GitHub 风格）。
