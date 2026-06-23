@@ -65,15 +65,12 @@ export default function Articles() {
   }, [filtered])
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10 sm:px-10">
+    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-20">
       <Helmet>
         <title>Archive · chuyi's blog</title>
       </Helmet>
 
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Archive</h1>
-        <p className="mt-2 text-muted-foreground">{all?.length ?? 0} posts · filter by category or tag.</p>
-      </header>
+      <p className="mb-6 text-sm text-muted-foreground">{all?.length ?? 0} posts · filter by category or tag.</p>
 
       <div className="mb-6 flex flex-wrap gap-2">
         <Pill active={filter.type === null} onClick={() => setFilter({ type: null, value: null })}>
