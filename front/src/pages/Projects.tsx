@@ -21,6 +21,12 @@ const TOOLS: Tool[] = [
     tags: ['Tool', 'Online'],
   },
   {
+    name: '见微 · 账单分析',
+    description: '上传微信账单，一键生成看得懂的财务报告：健康评分、消费分类、月度走势、商户分析。数据全程在浏览器本地处理，不上传服务器。',
+    url: 'https://bill.chuyi.uk/',
+    tags: ['Tool', 'Online'],
+  },
+  {
     name: 'Proxy 节点',
     description: '自用代理节点，打开后填写口令 YJM2026 即可使用。',
     url: 'https://zhoumaosen.top/proxy',
