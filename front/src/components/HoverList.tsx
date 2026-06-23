@@ -22,9 +22,10 @@ export function HoverList({ articles }: { articles: Article[] }) {
     if (a.coverImage) {
       const r = el.getBoundingClientRect()
       const listR = listRef.current?.getBoundingClientRect()
-      let left = (listR?.right ?? r.right) + 28
+      let left = (listR?.right ?? r.right) + 24
       if (left + PREVIEW_W > window.innerWidth - 16) left = window.innerWidth - PREVIEW_W - 16
-      const top = Math.max(96, Math.min(r.top + r.height / 2, window.innerHeight - 130))
+      // vertically center the preview on the hovered row, kept fully on-screen
+      const top = Math.max(100, Math.min(r.top + r.height / 2, window.innerHeight - 100))
       // Preload: only reveal the preview once the image actually loads,
       // so broken cover URLs never show an empty frame.
       const src = a.coverImage
@@ -46,7 +47,7 @@ export function HoverList({ articles }: { articles: Article[] }) {
   }
 
   return (
-    <div ref={listRef} className="hover-list relative flex flex-col items-start gap-1" onMouseLeave={leave}>
+    <div ref={listRef} className="hover-list relative flex w-fit max-w-full flex-col items-start gap-1" onMouseLeave={leave}>
       {/* highlight pill — sized to the hovered row's content */}
       <div
         className="pointer-events-none absolute left-0 top-0 -z-10 rounded-xl bg-accent"
