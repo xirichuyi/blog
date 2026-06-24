@@ -39,6 +39,12 @@ const TOOLS: Tool[] = [
     url: 'https://monitor.chuyi.uk/',
     tags: ['Monitor'],
   },
+  {
+    name: 'USDTPay · 收款网关',
+    description: '非托管多链 USDT 收款网关：款项直达自己的钱包，平台零手续费、不碰资金；自动监听链上到账并签名回调，REST API 一键接入。',
+    url: 'https://pay.chuyi.uk/',
+    tags: ['Tool', 'Online'],
+  },
 ]
 
 // 语言对应的小圆点颜色（GitHub 风格）。
