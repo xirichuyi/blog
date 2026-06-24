@@ -2,6 +2,7 @@ pub mod about_handler;
 pub mod category_handler;
 pub mod download_handler;
 pub mod health_handler;
+pub mod mail_handler;
 pub mod music_handler;
 pub mod pdf_handler;
 pub mod post_handler;
