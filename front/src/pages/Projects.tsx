@@ -56,6 +56,12 @@ const TOOLS: Tool[] = [
     url: 'https://pay.chuyi.uk/',
     tags: ['Tool', 'Online'],
   },
+  {
+    name: 'Sub2API · AI 网关',
+    description: '统一的 AI API 网关：把多家 AI 服务聚合成一个入口，集中管理与转发请求。',
+    url: 'https://sub2api.chuyi.uk',
+    tags: ['Tool', 'AI'],
+  },
 ]
 
 // 语言对应的小圆点颜色（GitHub 风格）。
