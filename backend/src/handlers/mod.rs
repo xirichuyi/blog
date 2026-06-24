@@ -7,6 +7,7 @@ pub mod music_handler;
 pub mod pdf_handler;
 pub mod post_handler;
 pub mod quant_handler;
+pub mod seo_handler;
 pub mod resource_handler;
 pub mod tag_handler;
 pub mod tools_handler;

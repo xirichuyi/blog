@@ -2,8 +2,8 @@ use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
     about_handler, category_handler, download_handler, health_handler, mail_handler,
-    music_handler, pdf_handler, post_handler, quant_handler, resource_handler, tag_handler,
-    tools_handler,
+    music_handler, pdf_handler, post_handler, quant_handler, resource_handler, seo_handler,
+    tag_handler, tools_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
@@ -210,9 +210,10 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             admin_middleware,
         ));
 
-    // Combine all routes
+    // Combine all routes；fallback 负责动态 SEO(SPA 外壳注入 meta + sitemap/robots)。
     Router::new()
         .merge(public_routes)
         .merge(admin_routes)
+        .fallback(seo_handler::spa_fallback)
         .with_state(app_state)
 }
