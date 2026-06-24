@@ -3,24 +3,28 @@
 //! 浏览器无法直接说 IMAP（原始 TCP），所以由后端临时中转一次：
 //! 用请求里**当场传入**的「邮箱 + 应用专用密码」连一次 IMAP，拉回邮件后立即返回。
 //!
+//! 这是一个**公开工具**：任何访客填自己的「邮箱 + 应用专用密码/授权码」即可读信。
+//!
 //! 安全要点：
 //! - **零存储**：凭据只在本次请求内存里存在，不落库、不写文件、不打日志。
-//! - **地址白名单**：只允许 `MAIL_ALLOWED_ADDRESSES`（.env）里列出的邮箱地址。
-//!   否则这个公开端点会变成「凭据校验预言机」——任何人都能拿它去验证盗来的
-//!   邮箱口令，还会让本机 IP 被各邮箱服务商标记为撞库来源。
-//! - **并发与超时**：信号量限制并发 + TCP 读写超时 + 整体超时，保护小内存机器。
+//! - **服务商白名单**：只会连已知服务商的 IMAP 服务器（见 `imap_host`），不会按
+//!   攻击者给的域名去连任意主机——防 SSRF / 把本机当任意外连跳板。
+//! - **每 IP 限流 + 全局并发上限**：每个 IP 在固定窗口内的登录尝试次数有上限，
+//!   再叠加全局信号量，压制「拿公开端点批量试盗号」的滥用、也保护小内存机器。
+//! - **超时**：TCP 读写超时 + 整体超时，避免卡死线程。
 
 use axum::{
     extract::Json,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
 use mailparse::ParsedMail;
 use native_tls::TlsConnector;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::net::{TcpStream, ToSocketAddrs};
-use std::sync::LazyLock;
-use std::time::Duration;
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
 
 /// 同时只允许少量 IMAP 连接，保护小内存机器、并限制滥用速率。
@@ -35,6 +39,15 @@ const DEFAULT_LIMIT: usize = 20;
 const MAX_LIMIT: usize = 50;
 /// 返回给前端的正文最大长度（防止超大邮件撑爆小内存机器/前端）。
 const MAX_BODY_BYTES: usize = 200 * 1024;
+
+/// 每 IP 限流：固定窗口内最多 RATE_LIMIT 次登录尝试（list/body 都算一次登录）。
+/// 正常读信：1 次 list + 逐封 body，30 次/10 分钟足够；批量试盗号会被卡住。
+const RATE_WINDOW: Duration = Duration::from_secs(600);
+const RATE_LIMIT: u32 = 30;
+
+/// 每 IP 的（窗口起点, 已用次数）。内存态，重启即清零；超量时整体修剪过期项。
+static RATE: LazyLock<Mutex<HashMap<String, (Instant, u32)>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Deserialize)]
 pub struct ListReq {
@@ -71,34 +84,69 @@ fn json_ok(data: serde_json::Value) -> Response {
 fn imap_host(email: &str) -> Option<&'static str> {
     let domain = email.rsplit('@').next()?.to_lowercase();
     let host = match domain.as_str() {
-        "yahoo.com" | "yahoo.com.cn" | "ymail.com" | "rocketmail.com" => "imap.mail.yahoo.com",
+        "yahoo.com" | "yahoo.com.cn" | "yahoo.co.jp" | "ymail.com" | "rocketmail.com" => {
+            "imap.mail.yahoo.com"
+        }
         "gmail.com" | "googlemail.com" => "imap.gmail.com",
-        "outlook.com" | "hotmail.com" | "live.com" | "msn.com" => "outlook.office365.com",
+        "outlook.com" | "hotmail.com" | "live.com" | "msn.com" | "office365.com" => {
+            "outlook.office365.com"
+        }
         "icloud.com" | "me.com" | "mac.com" => "imap.mail.me.com",
-        "qq.com" | "foxmail.com" => "imap.qq.com",
+        "aol.com" => "imap.aol.com",
+        "gmx.com" | "gmx.net" | "gmx.de" => "imap.gmx.com",
+        "yandex.com" | "yandex.ru" => "imap.yandex.com",
+        "zoho.com" => "imap.zoho.com",
+        "fastmail.com" => "imap.fastmail.com",
+        "qq.com" | "foxmail.com" | "vip.qq.com" => "imap.qq.com",
         "163.com" => "imap.163.com",
         "126.com" => "imap.126.com",
+        "yeah.net" => "imap.yeah.net",
+        "139.com" => "imap.139.com",
+        "sina.com" | "sina.cn" => "imap.sina.com",
+        "sohu.com" => "imap.sohu.com",
+        "aliyun.com" => "imap.aliyun.com",
         _ => return None,
     };
     Some(host)
 }
 
-/// 邮箱是否在 .env 的 `MAIL_ALLOWED_ADDRESSES` 白名单内（逗号分隔，大小写不敏感）。
-/// 未配置则一律拒绝（fail-closed）。
-fn is_allowed(email: &str) -> bool {
-    let target = email.trim().to_lowercase();
-    if target.is_empty() {
-        return false;
+/// 取真实访客 IP：站点在 Cloudflare + nginx 后面，套接字对端是本机，
+/// 所以优先信 Cloudflare 注入的 `CF-Connecting-IP`，退而取 `X-Forwarded-For` 首段。
+fn client_ip(headers: &HeaderMap) -> String {
+    if let Some(ip) = headers.get("cf-connecting-ip").and_then(|v| v.to_str().ok()) {
+        let t = ip.trim();
+        if !t.is_empty() {
+            return t.to_string();
+        }
     }
-    std::env::var("MAIL_ALLOWED_ADDRESSES")
-        .ok()
-        .map(|raw| {
-            raw.split(',')
-                .map(|s| s.trim().to_lowercase())
-                .filter(|s| !s.is_empty())
-                .any(|allowed| allowed == target)
-        })
-        .unwrap_or(false)
+    if let Some(xff) = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()) {
+        if let Some(first) = xff.split(',').next() {
+            let t = first.trim();
+            if !t.is_empty() {
+                return t.to_string();
+            }
+        }
+    }
+    "unknown".to_string()
+}
+
+/// 固定窗口限流。返回 true 表示放行；false 表示该 IP 本窗口内已超限。
+fn rate_ok(ip: &str) -> bool {
+    let now = Instant::now();
+    let mut map = match RATE.lock() {
+        Ok(m) => m,
+        Err(p) => p.into_inner(), // 锁中毒也继续（限流非关键路径）
+    };
+    // 修剪过期项，避免 map 无限增长。
+    if map.len() > 4096 {
+        map.retain(|_, (start, _)| now.duration_since(*start) < RATE_WINDOW);
+    }
+    let entry = map.entry(ip.to_string()).or_insert((now, 0));
+    if now.duration_since(entry.0) >= RATE_WINDOW {
+        *entry = (now, 0);
+    }
+    entry.1 += 1;
+    entry.1 <= RATE_LIMIT
 }
 
 /// 把 imap 的错误翻译成对用户友好、且不泄露内部细节的中文提示。
@@ -267,8 +315,8 @@ fn header_field_from_parsed(part: &ParsedMail, key: &str) -> String {
         .unwrap_or_default()
 }
 
-/// 公共校验 + 并发/超时包装，跑给定的阻塞闭包。
-async fn run_guarded<F>(email: String, token: String, job: F) -> Response
+/// 公共校验 + 限流 + 并发/超时包装，跑给定的阻塞闭包。
+async fn run_guarded<F>(ip: String, email: String, token: String, job: F) -> Response
 where
     F: FnOnce(String, String) -> Result<serde_json::Value, String> + Send + 'static,
 {
@@ -278,9 +326,14 @@ where
     if !email.contains('@') {
         return json_err(StatusCode::BAD_REQUEST, "邮箱地址格式不正确。");
     }
-    if !is_allowed(&email) {
-        // 故意笼统：不暴露白名单内容，也不区分「地址不在白名单」与「口令错误」。
-        return json_err(StatusCode::FORBIDDEN, "该邮箱不在允许列表内。");
+    if imap_host(&email).is_none() {
+        return json_err(StatusCode::BAD_REQUEST, "暂不支持该邮箱服务商。");
+    }
+    if !rate_ok(&ip) {
+        return json_err(
+            StatusCode::TOO_MANY_REQUESTS,
+            "尝试过于频繁，请稍后再试。",
+        );
     }
 
     let _permit = match MAIL_SEM.try_acquire() {
@@ -300,18 +353,20 @@ where
 }
 
 /// POST /api/mail/list —— 拉取最近邮件列表。
-pub async fn list(Json(req): Json<ListReq>) -> Response {
+pub async fn list(headers: HeaderMap, Json(req): Json<ListReq>) -> Response {
+    let ip = client_ip(&headers);
     let limit = req.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
-    run_guarded(req.email, req.token, move |email, token| {
+    run_guarded(ip, req.email, req.token, move |email, token| {
         list_blocking(email, token, limit)
     })
     .await
 }
 
 /// POST /api/mail/body —— 按 UID 拉取单封正文。
-pub async fn body(Json(req): Json<BodyReq>) -> Response {
+pub async fn body(headers: HeaderMap, Json(req): Json<BodyReq>) -> Response {
+    let ip = client_ip(&headers);
     let uid = req.uid;
-    run_guarded(req.email, req.token, move |email, token| {
+    run_guarded(ip, req.email, req.token, move |email, token| {
         body_blocking(email, token, uid)
     })
     .await

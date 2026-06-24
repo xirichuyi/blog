@@ -84,20 +84,20 @@ export default function MailReader() {
               id="mail-email"
               type="email"
               autoComplete="off"
-              placeholder="you@yahoo.com"
+              placeholder="you@yahoo.com / @gmail.com / @qq.com …"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="mail-token" className="text-xs text-muted-foreground">
-              IMAP 应用专用密码（App Password）
+              IMAP 应用专用密码 / 授权码（非登录密码）
             </Label>
             <Input
               id="mail-token"
               type="password"
               autoComplete="off"
-              placeholder="16 位应用专用密码，非邮箱登录密码"
+              placeholder="在邮箱设置里生成的 IMAP 授权码，非登录密码"
               value={token}
               onChange={(e) => setToken(e.target.value)}
             />
@@ -109,7 +109,9 @@ export default function MailReader() {
           {error && <p className="text-sm text-destructive">{error}</p>}
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
-            <span>密码只用于本次读取，前端不保存、服务端不落库；用完即丢。</span>
+            <span>
+              支持 Yahoo / Gmail / Outlook / iCloud / QQ / 163 / 126 等常见邮箱。授权码只用于本次读取，前端不保存、服务端不落库；用完即丢。
+            </span>
           </p>
         </form>
       )}
