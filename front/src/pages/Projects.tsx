@@ -3,7 +3,6 @@ import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
 import { ExternalLink, Github, ArrowRight, Star, Loader2 } from 'lucide-react'
 import { getGithubProjects, type GhRepo } from '@/services/github'
-import MailReader from '@/components/MailReader'
 
 interface Tool {
   name: string
@@ -19,6 +18,12 @@ const TOOLS: Tool[] = [
     name: 'GitBook → EPUB',
     description: '输入在线书（GitBook / bookdown 等）的链接，一键导出干净的 EPUB 离线阅读。',
     internal: '/tools/gitbook2epub',
+    tags: ['Tool', 'Online'],
+  },
+  {
+    name: '邮箱阅读 · IMAP',
+    description: '填入邮箱和 IMAP 授权码，在浏览器里读最近的邮件。支持 Yahoo / Gmail / Outlook / QQ / 163 等；凭据用完即丢，服务端不存储。',
+    internal: '/tools/mailbox',
     tags: ['Tool', 'Online'],
   },
   {
@@ -107,12 +112,6 @@ export default function Projects() {
             )
           })}
         </div>
-      </section>
-
-      {/* 邮箱阅读（IMAP）—— 凭据当场填写、用完即丢 */}
-      <section className="mt-12">
-        <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">邮箱阅读 · IMAP</h2>
-        <MailReader />
       </section>
 
       {/* 开源项目（GitHub 自动拉取） */}
