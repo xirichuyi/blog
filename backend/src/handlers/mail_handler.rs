@@ -22,7 +22,7 @@ use mailparse::ParsedMail;
 use native_tls::TlsConnector;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
@@ -206,14 +206,26 @@ fn connect_session(
 ) -> Result<imap::Session<native_tls::TlsStream<TcpStream>>, String> {
     let host = imap_host(email).ok_or_else(|| "暂不支持该邮箱服务商。".to_string())?;
 
-    let addr = (host, 993u16)
+    // 解析全部地址,**IPv4 优先**:本机 IPv6 出网不通,而 Gmail/Outlook 等会优先
+    // 返回 AAAA(IPv6),若直接连第一个地址会卡到超时。逐个尝试直到连上。
+    let mut addrs: Vec<SocketAddr> = (host, 993u16)
         .to_socket_addrs()
         .map_err(|_| "无法解析邮箱服务器地址。".to_string())?
-        .next()
-        .ok_or_else(|| "无法解析邮箱服务器地址。".to_string())?;
-
-    let tcp = TcpStream::connect_timeout(&addr, CONNECT_TIMEOUT)
-        .map_err(|_| "无法连接到邮箱服务器，请稍后再试。".to_string())?;
+        .collect();
+    addrs.sort_by_key(|a| a.is_ipv6()); // false(IPv4) 排在前
+    if addrs.is_empty() {
+        return Err("无法解析邮箱服务器地址。".to_string());
+    }
+    // 单地址给足超时;多地址时缩短每个的尝试时间,避免坏地址拖满整体超时。
+    let per_try = if addrs.len() > 1 {
+        Duration::from_secs(8)
+    } else {
+        CONNECT_TIMEOUT
+    };
+    let tcp = addrs
+        .iter()
+        .find_map(|a| TcpStream::connect_timeout(a, per_try).ok())
+        .ok_or_else(|| "无法连接到邮箱服务器，请稍后再试。".to_string())?;
     tcp.set_read_timeout(Some(IO_TIMEOUT)).ok();
     tcp.set_write_timeout(Some(IO_TIMEOUT)).ok();
 
