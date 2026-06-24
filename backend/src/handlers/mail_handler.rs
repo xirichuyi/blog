@@ -64,9 +64,13 @@ pub struct BodyReq {
     uid: u32,
 }
 
+/// 错误响应。**故意一律用 HTTP 200**：站点在 Cloudflare 后面,源站返回 5xx 会被
+/// CF 拦截换成它自己的「error code: 502」页面,前端就拿不到我们友好的中文提示
+/// (登录失败/超时都属常见情况)。所以把语义状态码放进 envelope 的 `code` 字段,
+/// 前端按 `code !== 0` 判断错误并展示 `message`。
 fn json_err(code: StatusCode, msg: &str) -> Response {
     (
-        code,
+        StatusCode::OK,
         Json(serde_json::json!({ "code": code.as_u16(), "message": msg, "data": null })),
     )
         .into_response()
@@ -80,31 +84,64 @@ fn json_ok(data: serde_json::Value) -> Response {
         .into_response()
 }
 
-/// 根据邮箱域名推断 IMAP 服务器（只覆盖常见服务商；未知域名直接拒绝）。
+/// 根据邮箱域名推断 IMAP 服务器（只覆盖常见服务商；未知域名直接拒绝，防 SSRF）。
+/// 同一服务商的各国后缀通常共用一个 IMAP 端点，所以大族用 starts_with 前缀匹配。
 fn imap_host(email: &str) -> Option<&'static str> {
     let domain = email.rsplit('@').next()?.to_lowercase();
-    let host = match domain.as_str() {
-        "yahoo.com" | "yahoo.com.cn" | "yahoo.co.jp" | "ymail.com" | "rocketmail.com" => {
+    let d = domain.as_str();
+    let host = match d {
+        // —— 国际主流 ——
+        // 微软消费版(所有 outlook./hotmail./live.* 国家后缀都走 office365 端点)
+        _ if d.starts_with("outlook.")
+            || d.starts_with("hotmail.")
+            || d.starts_with("live.")
+            || d == "msn.com"
+            || d == "passport.com"
+            || d == "windowslive.com" =>
+        {
+            "outlook.office365.com"
+        }
+        // 雅虎(所有国家后缀 yahoo.*)
+        _ if d.starts_with("yahoo.") || d == "ymail.com" || d == "rocketmail.com" => {
             "imap.mail.yahoo.com"
         }
         "gmail.com" | "googlemail.com" => "imap.gmail.com",
-        "outlook.com" | "hotmail.com" | "live.com" | "msn.com" | "office365.com" => {
-            "outlook.office365.com"
-        }
         "icloud.com" | "me.com" | "mac.com" => "imap.mail.me.com",
         "aol.com" => "imap.aol.com",
-        "gmx.com" | "gmx.net" | "gmx.de" => "imap.gmx.com",
-        "yandex.com" | "yandex.ru" => "imap.yandex.com",
-        "zoho.com" => "imap.zoho.com",
-        "fastmail.com" => "imap.fastmail.com",
+        // 注:Proton / Tutanota 不提供原生 IMAP(需本地 Bridge),故不在此列,
+        // 会落到 None → 友好提示「暂不支持该邮箱服务商」。
+        _ if d.starts_with("gmx.") => "imap.gmx.com",
+        "mail.com" => "imap.mail.com",
+        _ if d.starts_with("yandex.") => "imap.yandex.com",
+        "zoho.com" | "zohomail.com" => "imap.zoho.com",
+        "fastmail.com" | "fastmail.fm" => "imap.fastmail.com",
+        "web.de" => "imap.web.de",
+        "t-online.de" => "secureimap.t-online.de",
+        "mail.ru" | "bk.ru" | "list.ru" | "inbox.ru" | "internet.ru" => "imap.mail.ru",
+        "naver.com" => "imap.naver.com",
+        "daum.net" | "hanmail.net" => "imap.daum.net",
+        "seznam.cz" => "imap.seznam.cz",
+        "libero.it" => "imap.libero.it",
+        "comcast.net" => "imap.comcast.net",
+        "att.net" | "sbcglobal.net" | "bellsouth.net" | "ameritech.net" | "pacbell.net" => {
+            "imap.mail.att.net"
+        }
+        "verizon.net" => "imap.aol.com",
+        "btinternet.com" => "mail.btinternet.com",
+        // —— 国内主流 ——
         "qq.com" | "foxmail.com" | "vip.qq.com" => "imap.qq.com",
         "163.com" => "imap.163.com",
         "126.com" => "imap.126.com",
         "yeah.net" => "imap.yeah.net",
+        "vip.163.com" => "imap.vip.163.com",
         "139.com" => "imap.139.com",
-        "sina.com" | "sina.cn" => "imap.sina.com",
-        "sohu.com" => "imap.sohu.com",
+        "189.cn" => "imap.189.cn",
+        "sina.com" | "sina.cn" | "vip.sina.com" => "imap.sina.com",
+        "sohu.com" | "vip.sohu.com" => "imap.sohu.com",
         "aliyun.com" => "imap.aliyun.com",
+        "tom.com" => "imap.tom.com",
+        "21cn.com" => "imap.21cn.com",
+        "263.net" => "imap.263.net",
         _ => return None,
     };
     Some(host)
