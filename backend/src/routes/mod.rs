@@ -2,7 +2,8 @@ use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
     about_handler, category_handler, download_handler, health_handler, mail_handler,
-    music_handler, pdf_handler, post_handler, resource_handler, tag_handler, tools_handler,
+    music_handler, pdf_handler, post_handler, quant_handler, resource_handler, tag_handler,
+    tools_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
@@ -115,7 +116,9 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         )
         // 邮箱阅读（IMAP）：凭据由请求当场传入，服务端零存储、地址白名单。
         .route("/api/mail/list", post(mail_handler::list))
-        .route("/api/mail/body", post(mail_handler::body));
+        .route("/api/mail/body", post(mail_handler::body))
+        // 量化机器人收益快照（只读展示，数据由定时任务从 Vector 只读提取）。
+        .route("/api/quant", get(quant_handler::get_quant));
 
     // Admin routes (authentication required)
     let admin_routes = Router::new()

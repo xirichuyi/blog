@@ -27,6 +27,12 @@ const TOOLS: Tool[] = [
     tags: ['Tool', 'Online'],
   },
   {
+    name: '量化收益 · Barter',
+    description: '自建 BTC 做市机器人的实盘权益走势：总收益率 + 净值曲线。只读展示，仅收益数据。',
+    internal: '/tools/quant',
+    tags: ['Quant', 'Live'],
+  },
+  {
     name: '见微 · 账单分析',
     description: '上传微信账单，一键生成看得懂的财务报告：健康评分、消费分类、月度走势、商户分析。数据全程在浏览器本地处理，不上传服务器。',
     url: 'https://bill.chuyi.uk/',
