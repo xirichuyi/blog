@@ -1,251 +1,202 @@
-// Integration tests for the four critical logic fixes
+use chuyi_uk_back::database::repositories::{PostRepository, TagRepository};
+use chuyi_uk_back::database::Database;
+use chuyi_uk_back::models::{
+    CreatePostRequest, CreateTagRequest, NullablePatch, PostStatus, UpdatePostRequest,
+};
+use chuyi_uk_back::services::PostService;
+use chuyi_uk_back::utils::FileHandler;
+use sqlx::sqlite::SqlitePoolOptions;
+use std::path::PathBuf;
+use std::sync::Arc;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::database::repositories::{CategoryRepository, TagRepository, PostRepository};
-    use crate::database::Database;
-    use crate::models::{CreatePostRequest, CreateCategoryRequest, CreateTagRequest, PostStatus};
-    use sqlx::sqlite::SqlitePoolOptions;
-    use std::sync::Arc;
-    use tokio;
+async fn setup_test_db() -> Database {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("create test database");
+    let database = Database {
+        pool: Arc::new(pool),
+    };
+    database.migrate().await.expect("run migrations");
+    database
+}
 
-    async fn setup_test_db() -> Database {
-        let pool = SqlitePoolOptions::new()
-            .connect(":memory:")
-            .await
-            .expect("Failed to create test database");
+fn post_service(database: Database) -> PostService {
+    post_service_with_upload_dir(database, "/tmp/chuyi-blog-tests".to_string())
+}
 
-        let database = Database { pool: Arc::new(pool) };
-        
-        // Run migrations
-        database.migrate().await.expect("Failed to run migrations");
-        
-        database
-    }
+fn post_service_with_upload_dir(database: Database, upload_dir: String) -> PostService {
+    PostService::new(
+        database,
+        Arc::new(FileHandler::new(upload_dir, 1_000_000, None)),
+    )
+}
 
-    #[tokio::test]
-    async fn test_concurrent_category_deletion() {
-        let db = setup_test_db().await;
-        
-        // Create a test category
-        let category_request = CreateCategoryRequest {
-            name: "Test Category".to_string(),
-        };
-        let category = CategoryRepository::create(db.pool(), category_request)
-            .await
-            .expect("Failed to create category");
-
-        // Create a post using this category
-        let post_request = CreatePostRequest {
-            title: "Test Post".to_string(),
-            cover_url: None,
-            content: "Test content".to_string(),
-            category_id: Some(category.id),
-            status: Some(PostStatus::Published),
-            post_images: None,
-        };
-        let _post = PostRepository::create(db.pool(), post_request)
-            .await
-            .expect("Failed to create post");
-
-        // Try to delete the category (should fail because it's being used)
-        let result = CategoryRepository::delete(db.pool(), category.id).await;
-        
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Cannot delete category"));
-    }
-
-    #[tokio::test]
-    async fn test_concurrent_tag_deletion() {
-        let db = setup_test_db().await;
-        
-        // Create a test tag
-        let tag_request = CreateTagRequest {
-            name: "Test Tag".to_string(),
-        };
-        let tag = TagRepository::create(db.pool(), tag_request)
-            .await
-            .expect("Failed to create tag");
-
-        // Create a post
-        let post_request = CreatePostRequest {
-            title: "Test Post".to_string(),
-            cover_url: None,
-            content: "Test content".to_string(),
-            category_id: None,
-            status: Some(PostStatus::Published),
-            post_images: None,
-        };
-        let post = PostRepository::create(db.pool(), post_request)
-            .await
-            .expect("Failed to create post");
-
-        // Associate tag with post
-        TagRepository::update_post_tags(db.pool(), post.id, vec![tag.id])
-            .await
-            .expect("Failed to associate tag with post");
-
-        // Try to delete the tag (should fail because it's being used)
-        let result = TagRepository::delete(db.pool(), tag.id).await;
-        
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Cannot delete tag"));
-    }
-
-    #[tokio::test]
-    async fn test_transaction_rollback_on_invalid_tag() {
-        let db = setup_test_db().await;
-        
-        // Create a post
-        let post_request = CreatePostRequest {
-            title: "Test Post".to_string(),
-            cover_url: None,
-            content: "Test content".to_string(),
-            category_id: None,
-            status: Some(PostStatus::Published),
-            post_images: None,
-        };
-        let post = PostRepository::create(db.pool(), post_request)
-            .await
-            .expect("Failed to create post");
-
-        // Create a valid tag
-        let tag_request = CreateTagRequest {
-            name: "Valid Tag".to_string(),
-        };
-        let valid_tag = TagRepository::create(db.pool(), tag_request)
-            .await
-            .expect("Failed to create tag");
-
-        // Associate valid tag with post
-        TagRepository::update_post_tags(db.pool(), post.id, vec![valid_tag.id])
-            .await
-            .expect("Failed to associate tag with post");
-
-        // Verify tag is associated
-        let tags_before = TagRepository::get_post_tags(db.pool(), post.id)
-            .await
-            .expect("Failed to get post tags");
-        assert_eq!(tags_before.len(), 1);
-
-        // Try to update with invalid tag ID (should fail and rollback)
-        let invalid_tag_id = 99999;
-        let result = TagRepository::update_post_tags(
-            db.pool(), 
-            post.id, 
-            vec![valid_tag.id, invalid_tag_id]
-        ).await;
-        
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("do not exist"));
-
-        // Verify original tags are still there (transaction rolled back)
-        let tags_after = TagRepository::get_post_tags(db.pool(), post.id)
-            .await
-            .expect("Failed to get post tags");
-        assert_eq!(tags_after.len(), 1);
-        assert_eq!(tags_after[0].id, valid_tag.id);
-    }
-
-    #[tokio::test]
-    async fn test_soft_delete_consistency() {
-        let db = setup_test_db().await;
-        
-        // Create a post
-        let post_request = CreatePostRequest {
-            title: "Test Post".to_string(),
-            cover_url: Some("/uploads/test.jpg".to_string()),
-            content: "Test content".to_string(),
-            category_id: None,
-            status: Some(PostStatus::Published),
-            post_images: None,
-        };
-        let post = PostRepository::create(db.pool(), post_request)
-            .await
-            .expect("Failed to create post");
-
-        // Soft delete the post
-        let deleted = PostRepository::delete(db.pool(), post.id)
-            .await
-            .expect("Failed to delete post");
-        
-        assert!(deleted);
-
-        // Verify post still exists but is marked as deleted
-        let deleted_post = PostRepository::get_by_id(db.pool(), post.id)
-            .await
-            .expect("Failed to get post");
-        
-        assert!(deleted_post.is_some());
-        let post_data = deleted_post.unwrap();
-        assert_eq!(post_data.status, PostStatus::Deleted as i32);
-        
-        // Verify cover_url is still there (soft delete should preserve file references)
-        assert_eq!(post_data.cover_url, Some("/uploads/test.jpg".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_post_tags_update_with_nonexistent_post() {
-        let db = setup_test_db().await;
-        
-        // Create a tag
-        let tag_request = CreateTagRequest {
-            name: "Test Tag".to_string(),
-        };
-        let tag = TagRepository::create(db.pool(), tag_request)
-            .await
-            .expect("Failed to create tag");
-
-        // Try to update tags for non-existent post
-        let result = TagRepository::update_post_tags(db.pool(), 99999, vec![tag.id]).await;
-        
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Post not found"));
-    }
-
-    #[tokio::test]
-    async fn test_empty_tag_list_update() {
-        let db = setup_test_db().await;
-        
-        // Create a post
-        let post_request = CreatePostRequest {
-            title: "Test Post".to_string(),
-            cover_url: None,
-            content: "Test content".to_string(),
-            category_id: None,
-            status: Some(PostStatus::Published),
-            post_images: None,
-        };
-        let post = PostRepository::create(db.pool(), post_request)
-            .await
-            .expect("Failed to create post");
-
-        // Update with empty tag list (should succeed)
-        let result = TagRepository::update_post_tags(db.pool(), post.id, vec![]).await;
-        
-        assert!(result.is_ok());
-
-        // Verify no tags are associated
-        let tags = TagRepository::get_post_tags(db.pool(), post.id)
-            .await
-            .expect("Failed to get post tags");
-        assert_eq!(tags.len(), 0);
+fn create_request(title: &str, tag_ids: Option<Vec<i64>>) -> CreatePostRequest {
+    CreatePostRequest {
+        title: title.to_string(),
+        cover_url: None,
+        content: "content".to_string(),
+        category_id: None,
+        status: Some(PostStatus::Published),
+        post_images: None,
+        pdf_url: None,
+        tag_ids,
     }
 }
 
-// Helper function to run all tests
-#[tokio::main]
-async fn main() {
-    println!("Running logic fixes tests...");
-    
-    // Note: In a real test environment, you would use `cargo test` instead
-    // This is just a demonstration of how the tests would work
-    
-    println!("✅ All critical logic fixes have been implemented and tested!");
-    println!("🔧 Fixed issues:");
-    println!("   1. File update race conditions - Database updated before file deletion");
-    println!("   2. Concurrent deletion safety - Using transactions with proper locking");
-    println!("   3. Transaction completeness - Proper error handling and rollback");
-    println!("   4. Soft delete consistency - Preserving file references in soft delete");
+#[test]
+fn nullable_fields_distinguish_missing_null_and_value() {
+    let missing: UpdatePostRequest = serde_json::from_str("{}").expect("deserialize missing");
+    assert!(matches!(missing.cover_url, NullablePatch::Missing));
+
+    let null: UpdatePostRequest =
+        serde_json::from_str(r#"{"cover_url":null}"#).expect("deserialize null");
+    assert!(matches!(null.cover_url, NullablePatch::Null));
+
+    let value: UpdatePostRequest =
+        serde_json::from_str(r#"{"cover_url":"/cover.webp"}"#).expect("deserialize value");
+    assert!(matches!(
+        value.cover_url,
+        NullablePatch::Value(ref url) if url == "/cover.webp"
+    ));
+}
+
+#[tokio::test]
+async fn invalid_tags_roll_back_new_post() {
+    let database = setup_test_db().await;
+    let service = post_service(database.clone());
+
+    let result = service
+        .create_post(create_request("must roll back", Some(vec![99_999])))
+        .await;
+    assert!(result.is_err());
+
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM posts")
+        .fetch_one(database.pool())
+        .await
+        .expect("count posts");
+    assert_eq!(count, 0);
+}
+
+#[tokio::test]
+async fn update_can_clear_nullable_fields_and_save_tags_atomically() {
+    let database = setup_test_db().await;
+    let service = post_service(database.clone());
+    let tag = TagRepository::create(
+        database.pool(),
+        CreateTagRequest {
+            name: "rust".to_string(),
+        },
+    )
+    .await
+    .expect("create tag");
+
+    let mut request = create_request("clear fields", None);
+    request.cover_url = Some("/uploads/cover.webp".to_string());
+    request.pdf_url = Some("/uploads/post.pdf".to_string());
+    let post = service.create_post(request).await.expect("create post");
+
+    service
+        .update_post(
+            post.id,
+            UpdatePostRequest {
+                title: None,
+                cover_url: NullablePatch::Null,
+                content: None,
+                category_id: NullablePatch::Null,
+                status: None,
+                post_images: NullablePatch::Null,
+                pdf_url: NullablePatch::Null,
+                tag_ids: Some(vec![tag.id]),
+            },
+        )
+        .await
+        .expect("update post")
+        .expect("post exists");
+
+    let updated = PostRepository::get_by_id_with_complete_info(database.pool(), post.id)
+        .await
+        .expect("load post")
+        .expect("post exists");
+    assert_eq!(updated.cover_url, None);
+    assert_eq!(updated.pdf_url, None);
+    assert_eq!(updated.tags.len(), 1);
+    assert_eq!(updated.tags[0].id, tag.id);
+}
+
+#[tokio::test]
+async fn adjacent_posts_use_stable_timestamp_and_id_ordering() {
+    let database = setup_test_db().await;
+    let service = post_service(database);
+    let first = service
+        .create_post(create_request("first", None))
+        .await
+        .expect("first");
+    let middle = service
+        .create_post(create_request("middle", None))
+        .await
+        .expect("middle");
+    let last = service
+        .create_post(create_request("last", None))
+        .await
+        .expect("last");
+
+    let adjacent = service
+        .get_adjacent_posts(middle.id)
+        .await
+        .expect("load adjacent")
+        .expect("published post");
+    assert_eq!(adjacent.newer.expect("newer").id, last.id);
+    assert_eq!(adjacent.older.expect("older").id, first.id);
+}
+
+#[tokio::test]
+async fn updating_content_tracks_images_and_removes_unreferenced_assets() {
+    let database = setup_test_db().await;
+    let upload_dir = format!("/tmp/chuyi-blog-tests-{}", uuid::Uuid::new_v4());
+    let service = post_service_with_upload_dir(database.clone(), upload_dir.clone());
+    let relative_url = "/uploads/images/old.webp";
+    let file_path = PathBuf::from(&upload_dir).join("images/old.webp");
+    tokio::fs::create_dir_all(file_path.parent().expect("image parent"))
+        .await
+        .expect("create image directory");
+    tokio::fs::write(&file_path, b"old image")
+        .await
+        .expect("write old image");
+
+    let mut request = create_request("image lifecycle", None);
+    request.content = format!("Before\n\n![old]({relative_url})");
+    let post = service.create_post(request).await.expect("create post");
+    assert_eq!(
+        serde_json::from_str::<Vec<String>>(post.post_images.as_deref().expect("tracked images"))
+            .expect("valid image list"),
+        vec![relative_url]
+    );
+
+    service
+        .update_post(
+            post.id,
+            UpdatePostRequest {
+                title: None,
+                cover_url: NullablePatch::Missing,
+                content: Some("No images remain.".to_string()),
+                category_id: NullablePatch::Missing,
+                status: None,
+                post_images: NullablePatch::Missing,
+                pdf_url: NullablePatch::Missing,
+                tag_ids: None,
+            },
+        )
+        .await
+        .expect("update post")
+        .expect("post exists");
+
+    assert!(!file_path.exists());
+    let updated = PostRepository::get_by_id(database.pool(), post.id)
+        .await
+        .expect("load post")
+        .expect("post exists");
+    assert_eq!(updated.post_images.as_deref(), Some("[]"));
 }

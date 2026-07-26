@@ -48,13 +48,32 @@ pub async fn get_post(
     }
 }
 
+pub async fn get_adjacent_posts(
+    State(services): State<Services>,
+    Path(id): Path<i64>,
+) -> (StatusCode, Json<ApiResponse<crate::models::AdjacentPosts>>) {
+    match services.post.get_adjacent_posts(id).await {
+        Ok(Some(posts)) => (StatusCode::OK, Json(ApiResponse::success(posts))),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::not_found("Post not found")),
+        ),
+        Err(e) => {
+            tracing::error!("Failed to get adjacent posts: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::internal_error("Failed to get adjacent posts")),
+            )
+        }
+    }
+}
+
 pub async fn list_posts(
     State(services): State<Services>,
     Query(mut query): Query<PostListQuery>,
 ) -> Result<Json<ApiListResponse<crate::models::Post>>, StatusCode> {
     query.status = Some(PostStatus::Published);
-    let page = query.page.unwrap_or(1);
-    let page_size = query.page_size.unwrap_or(10);
+    let (page, page_size) = normalize_pagination(&mut query);
 
     match services.post.list_posts(query).await {
         Ok((posts, total)) => Ok(Json(ApiListResponse::success(
@@ -98,10 +117,9 @@ pub async fn admin_list_posts_with_details(
 
 async fn list_posts_with_details_inner(
     services: Services,
-    query: PostListQuery,
+    mut query: PostListQuery,
 ) -> Result<Json<ApiListResponse<crate::models::PostWithDetails>>, StatusCode> {
-    let page = query.page.unwrap_or(1);
-    let page_size = query.page_size.unwrap_or(10);
+    let (page, page_size) = normalize_pagination(&mut query);
 
     match services.post.list_posts_with_details(query).await {
         Ok((posts, total)) => Ok(Json(ApiListResponse::success(
@@ -115,6 +133,14 @@ async fn list_posts_with_details_inner(
             )))
         }
     }
+}
+
+fn normalize_pagination(query: &mut PostListQuery) -> (u32, u32) {
+    let page = query.page.unwrap_or(1).max(1);
+    let page_size = query.page_size.unwrap_or(10).clamp(1, 500);
+    query.page = Some(page);
+    query.page_size = Some(page_size);
+    (page, page_size)
 }
 
 pub async fn update_post(

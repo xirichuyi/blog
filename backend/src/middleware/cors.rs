@@ -1,5 +1,5 @@
 //! CORS (Cross-Origin Resource Sharing) 配置模块
-//! 
+//!
 //! 根据运行环境（开发/生产）提供不同的 CORS 策略：
 //! - 开发模式：允许所有来源，方便本地开发调试
 //! - 生产模式：只允许配置的特定来源
@@ -10,16 +10,16 @@ use tower_http::cors::CorsLayer;
 use crate::config::{Config, Environment};
 
 /// 创建 CORS 中间件层
-/// 
+///
 /// # 参数
 /// - `config`: 应用配置，包含环境和 CORS 来源设置
-/// 
+///
 /// # 返回
 /// - `Result<CorsLayer, String>`: 配置好的 CORS 层或错误信息
-/// 
+///
 /// # 行为
 /// - **开发模式**: 使用 `CorsLayer::permissive()` 允许所有来源
-/// - **生产模式**: 
+/// - **生产模式**:
 ///   - 如果配置了来源，只允许指定来源
 ///   - 如果未配置来源，使用宽松模式（不推荐）
 pub fn create_cors_layer(config: &Config) -> Result<CorsLayer, String> {
@@ -60,11 +60,7 @@ fn create_production_cors(config: &Config) -> Result<CorsLayer, String> {
             Method::DELETE,
             Method::OPTIONS,
         ])
-        .allow_headers([
-            header::CONTENT_TYPE,
-            header::AUTHORIZATION,
-            header::ACCEPT,
-        ])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT])
         .allow_credentials(true)
         .max_age(std::time::Duration::from_secs(3600)); // 预检请求缓存 1 小时
 

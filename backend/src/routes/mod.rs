@@ -53,6 +53,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
     let file_handler = Arc::new(FileHandler::new(
         config.storage.upload_dir.clone(),
         config.storage.max_file_size,
+        Some(&config.s3),
     ));
     let services = Services::new(
         database.clone(),
@@ -90,6 +91,10 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             get(post_handler::list_posts_with_details),
         )
         .route("/api/post/get/:id", get(post_handler::get_post))
+        .route(
+            "/api/post/adjacent/:id",
+            get(post_handler::get_adjacent_posts),
+        )
         // Music public routes
         .route("/api/music/list", get(music_handler::list_music))
         .route("/api/music/get/:id", get(music_handler::get_music))

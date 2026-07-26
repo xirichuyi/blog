@@ -93,7 +93,14 @@ impl ResourceService {
         let mut resources = Vec::new();
 
         // Scan all upload directories
-        let subdirs = ["images", "covers", "music", "music_covers", "pdfs", "downloads"];
+        let subdirs = [
+            "images",
+            "covers",
+            "music",
+            "music_covers",
+            "pdfs",
+            "downloads",
+        ];
 
         for subdir in subdirs {
             let dir_path = PathBuf::from(&self.upload_dir).join(subdir);
@@ -109,7 +116,8 @@ impl ResourceService {
                 }
 
                 let metadata = entry.metadata().await?;
-                let file_name = path.file_name()
+                let file_name = path
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("")
                     .to_string();
@@ -119,7 +127,8 @@ impl ResourceService {
                     .first_or_octet_stream()
                     .to_string();
 
-                let created_at = metadata.created()
+                let created_at = metadata
+                    .created()
                     .map(|t| {
                         let duration = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
                         Utc.timestamp_opt(duration.as_secs() as i64, 0).unwrap()
@@ -158,10 +167,10 @@ impl ResourceService {
 
         // Get post cover URLs
         let covers: Vec<(i64, String, Option<String>)> = sqlx::query_as(
-            "SELECT id, title, cover_url FROM posts WHERE cover_url IS NOT NULL AND status != 2"
+            "SELECT id, title, cover_url FROM posts WHERE cover_url IS NOT NULL AND status != 2",
         )
-            .fetch_all(self.database.pool.as_ref())
-            .await?;
+        .fetch_all(self.database.pool.as_ref())
+        .await?;
 
         for (id, title, cover_url) in covers {
             if let Some(url) = cover_url {
@@ -218,11 +227,10 @@ impl ResourceService {
         }
 
         // Get music file URLs
-        let music_files: Vec<(i64, String, String)> = sqlx::query_as(
-            "SELECT id, music_name, music_url FROM music WHERE status != 2"
-        )
-            .fetch_all(self.database.pool.as_ref())
-            .await?;
+        let music_files: Vec<(i64, String, String)> =
+            sqlx::query_as("SELECT id, music_name, music_url FROM music WHERE status != 2")
+                .fetch_all(self.database.pool.as_ref())
+                .await?;
 
         for (id, name, url) in music_files {
             let entry = usage_map.entry(url).or_default();
@@ -235,11 +243,10 @@ impl ResourceService {
         }
 
         // Get about photo URL
-        let about: Option<(Option<String>,)> = sqlx::query_as(
-            "SELECT photo_url FROM about WHERE id = 1"
-        )
-            .fetch_optional(self.database.pool.as_ref())
-            .await?;
+        let about: Option<(Option<String>,)> =
+            sqlx::query_as("SELECT photo_url FROM about WHERE id = 1")
+                .fetch_optional(self.database.pool.as_ref())
+                .await?;
 
         if let Some((Some(photo_url),)) = about {
             let entry = usage_map.entry(photo_url).or_default();
@@ -252,11 +259,10 @@ impl ResourceService {
         }
 
         // Get download file URLs
-        let downloads: Vec<(i64, String, String)> = sqlx::query_as(
-            "SELECT id, file_name, file_url FROM downloads"
-        )
-            .fetch_all(self.database.pool.as_ref())
-            .await?;
+        let downloads: Vec<(i64, String, String)> =
+            sqlx::query_as("SELECT id, file_name, file_url FROM downloads")
+                .fetch_all(self.database.pool.as_ref())
+                .await?;
 
         for (id, name, url) in downloads {
             let entry = usage_map.entry(url).or_default();
@@ -269,11 +275,10 @@ impl ResourceService {
         }
 
         // Get PDF file URLs
-        let pdfs: Vec<(i64, String, String)> = sqlx::query_as(
-            "SELECT id, file_name, file_path FROM pdf_documents"
-        )
-            .fetch_all(self.database.pool.as_ref())
-            .await?;
+        let pdfs: Vec<(i64, String, String)> =
+            sqlx::query_as("SELECT id, file_name, file_path FROM pdf_documents")
+                .fetch_all(self.database.pool.as_ref())
+                .await?;
 
         for (id, name, path) in pdfs {
             // Convert file_path to URL format
@@ -298,15 +303,15 @@ impl ResourceService {
     pub async fn get_stats(&self) -> Result<ResourceStats> {
         let resources = self.list_resources().await?;
 
-        let mut stats = ResourceStats::default();
-        stats.total_count = resources.len() as u64;
+        let mut stats = ResourceStats {
+            total_count: resources.len() as u64,
+            ..ResourceStats::default()
+        };
 
         for resource in &resources {
             stats.total_size += resource.file_size;
 
-            let type_stats = stats.by_type
-                .entry(resource.file_type.clone())
-                .or_default();
+            let type_stats = stats.by_type.entry(resource.file_type.clone()).or_default();
             type_stats.count += 1;
             type_stats.size += resource.file_size;
 
@@ -327,7 +332,7 @@ impl ResourceService {
         if let Some(res) = resource {
             if res.usage.is_used {
                 return Err(AppError::BadRequest(
-                    "Cannot delete resource that is in use".to_string()
+                    "Cannot delete resource that is in use".to_string(),
                 ));
             }
         }

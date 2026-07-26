@@ -18,4 +18,3 @@ pub struct UpdateAboutRequest {
     pub content: Option<String>,
     pub photo_url: Option<String>,
 }
-

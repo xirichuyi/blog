@@ -25,7 +25,10 @@ pub async fn upload_file(
         .map_err(|_| StatusCode::BAD_REQUEST)?
     {
         if let Some(file_name) = field.file_name() {
-            if let Err(e) = app_state.file_handler.validate_file_type(file_name, DOCUMENT_TYPES) {
+            if let Err(e) = app_state
+                .file_handler
+                .validate_file_type(file_name, DOCUMENT_TYPES)
+            {
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }
 
@@ -40,7 +43,12 @@ pub async fn upload_file(
                         file_size: file_size as i64,
                     };
 
-                    match app_state.services.download.create_download(create_request).await {
+                    match app_state
+                        .services
+                        .download
+                        .create_download(create_request)
+                        .await
+                    {
                         Ok(download) => return Ok(Json(ApiResponse::success(download))),
                         Err(e) => {
                             tracing::error!("Failed to create download record: {}", e);

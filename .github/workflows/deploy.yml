@@ -32,7 +32,9 @@ jobs:
         working-directory: front
         # VITE_API_URL is intentionally unset → production build uses same-origin
         # ('' + /api), which nginx reverse-proxies to the backend.
-        run: npm run build
+        run: |
+          npm run typecheck
+          npm run build
 
       - uses: actions/upload-artifact@v4
         with:
@@ -70,6 +72,18 @@ jobs:
             echo "applying $f"
             sqlite3 /tmp/blog-build.db < "$f"
           done
+
+      - name: Check Rust formatting
+        working-directory: backend
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        working-directory: backend
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Run backend tests
+        working-directory: backend
+        run: cargo test --locked
 
       - name: Build release binary
         working-directory: backend

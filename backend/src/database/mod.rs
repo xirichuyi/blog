@@ -1,5 +1,10 @@
-use sqlx::{sqlite::SqlitePool, Pool, Sqlite};
+use sqlx::{
+    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
+    Pool, Sqlite,
+};
+use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub mod repositories;
 
@@ -12,7 +17,15 @@ pub struct Database {
 
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self, sqlx::Error> {
-        let pool = SqlitePool::connect(database_url).await?;
+        let options = SqliteConnectOptions::from_str(database_url)?
+            .create_if_missing(true)
+            .foreign_keys(true)
+            .journal_mode(SqliteJournalMode::Wal)
+            .busy_timeout(Duration::from_secs(5));
+        let pool = SqlitePoolOptions::new()
+            .max_connections(5)
+            .connect_with(options)
+            .await?;
 
         Ok(Database {
             pool: Arc::new(pool),

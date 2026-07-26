@@ -20,7 +20,7 @@ fn main() {
 
 fn get_git_hash() -> Option<String> {
     Command::new("git")
-        .args(&["rev-parse", "--short", "HEAD"])
+        .args(["rev-parse", "--short", "HEAD"])
         .output()
         .ok()
         .and_then(|output| {
@@ -34,7 +34,7 @@ fn get_git_hash() -> Option<String> {
 
 fn get_git_branch() -> Option<String> {
     Command::new("git")
-        .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
         .output()
         .ok()
         .and_then(|output| {

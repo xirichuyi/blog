@@ -16,8 +16,9 @@ const QUANT_FILE: &str = "data/quant.json";
 /// GET /api/quant —— 返回量化收益快照;文件缺失时返回 data:null(前端显示空态)。
 pub async fn get_quant() -> Response {
     let data = match tokio::fs::read(QUANT_FILE).await {
-        Ok(bytes) => serde_json::from_slice::<serde_json::Value>(&bytes)
-            .unwrap_or(serde_json::Value::Null),
+        Ok(bytes) => {
+            serde_json::from_slice::<serde_json::Value>(&bytes).unwrap_or(serde_json::Value::Null)
+        }
         Err(_) => serde_json::Value::Null,
     };
     (

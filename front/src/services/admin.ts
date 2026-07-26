@@ -37,11 +37,16 @@ async function req<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
 }
 
 /** multipart upload (don't set Content-Type — browser adds the boundary). */
-async function upload<T>(path: string, file: File, field = 'file'): Promise<Envelope<T>> {
+async function upload<T>(
+  path: string,
+  file: File,
+  field = 'file',
+  method: 'POST' | 'PUT' = 'POST',
+): Promise<Envelope<T>> {
   const fd = new FormData()
   fd.append(field, file)
   const res = await fetch(`${API_BASE}${PREFIX}${path}`, {
-    method: 'POST',
+    method,
     credentials: 'include',
     body: fd,
   })
@@ -160,6 +165,7 @@ export interface PostPayload {
   cover_url?: string | null
   category_id?: number | null
   status: number
+  tag_ids?: number[]
 }
 
 export async function createPost(p: PostPayload): Promise<AdminPost> {
@@ -173,14 +179,16 @@ export async function updatePost(id: number, p: Partial<PostPayload>): Promise<A
 export async function deletePost(id: number): Promise<void> {
   await req(`/post/delete/${id}`, { method: 'DELETE' })
 }
-export async function setPostTags(id: number, tagIds: number[]): Promise<void> {
-  await req(`/post/update_tags/${id}`, { method: 'PUT', body: JSON.stringify({ tag_ids: tagIds }) })
-}
-
 /** Upload an image, returns its relative URL (/uploads/...). */
 export async function uploadImage(file: File): Promise<string> {
   const env = await upload<{ file_url: string }>(`/post/upload_post_image`, file)
   return env.data.file_url
+}
+
+/** Replace an existing post cover atomically; the backend removes the old asset. */
+export async function replacePostCover(id: number, file: File): Promise<AdminPost> {
+  const env = await upload<AdminPost>(`/post/update_cover/${id}`, file, 'file', 'PUT')
+  return env.data
 }
 
 // ---------- categories ----------

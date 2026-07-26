@@ -26,7 +26,7 @@ pub enum Environment {
 }
 
 impl Environment {
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse_lossy(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "dev" | "development" | "debug" => Environment::Development,
             "prod" | "production" | "release" => Environment::Production,
@@ -56,6 +56,7 @@ pub struct Config {
     pub ai: AiConfig,
     pub cors: CorsConfig,
     pub storage: StorageConfig,
+    pub s3: S3Config,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,6 +111,17 @@ pub struct StorageConfig {
     pub max_file_size: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct S3Config {
+    pub enabled: bool,
+    pub endpoint: String,
+    pub bucket: String,
+    pub access_key: String,
+    pub secret_key: String,
+    pub region: String,
+    pub public_url: String,
+}
+
 impl Config {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         dotenvy::dotenv().ok();
@@ -118,7 +130,7 @@ impl Config {
         let environment = env::var("ENV")
             .or_else(|_| env::var("RUST_ENV"))
             .or_else(|_| env::var("APP_ENV"))
-            .map(|s| Environment::from_str(&s))
+            .map(|s| Environment::parse_lossy(&s))
             .unwrap_or_else(|_| {
                 // 如果没有设置环境变量，根据编译模式判断
                 if cfg!(debug_assertions) {
@@ -204,6 +216,32 @@ impl Config {
             .parse::<u64>()
             .unwrap_or(constants::DEFAULT_MAX_FILE_SIZE);
 
+        let s3 = S3Config {
+            enabled: env::var("S3_ENABLED")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse::<bool>()
+                .unwrap_or(false),
+            endpoint: env::var("S3_ENDPOINT").unwrap_or_default(),
+            bucket: env::var("S3_BUCKET").unwrap_or_else(|_| "blog-assets".to_string()),
+            access_key: env::var("S3_ACCESS_KEY").unwrap_or_default(),
+            secret_key: env::var("S3_SECRET_KEY").unwrap_or_default(),
+            region: env::var("S3_REGION").unwrap_or_else(|_| "auto".to_string()),
+            public_url: env::var("S3_PUBLIC_URL").unwrap_or_default(),
+        };
+        if s3.enabled
+            && [
+                &s3.endpoint,
+                &s3.bucket,
+                &s3.access_key,
+                &s3.secret_key,
+                &s3.public_url,
+            ]
+            .iter()
+            .any(|value| value.trim().is_empty())
+        {
+            return Err("S3_ENABLED=true but one or more S3 settings are empty".into());
+        }
+
         Ok(Config {
             environment,
             database: DatabaseConfig { url: database_url },
@@ -229,6 +267,7 @@ impl Config {
                 blog_data_dir,
                 max_file_size,
             },
+            s3,
         })
     }
 }

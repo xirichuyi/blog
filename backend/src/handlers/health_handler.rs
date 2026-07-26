@@ -2,17 +2,18 @@ use crate::routes::AppState;
 use axum::{extract::State, http::StatusCode, response::Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::Instant;
 use sysinfo::{Disks, System};
-use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthStatus {
     pub status: String,
     pub timestamp: DateTime<Utc>,
     pub service: String,
+    pub uptime_seconds: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,6 +80,7 @@ pub async fn health_check() -> Result<Json<HealthStatus>, StatusCode> {
         status: "healthy".to_string(),
         timestamp: Utc::now(),
         service: "cyrus-blog-backend".to_string(),
+        uptime_seconds: get_uptime_seconds(),
     };
 
     Ok(Json(health_status))
@@ -149,6 +151,7 @@ pub async fn readiness_check(
             status: "ready".to_string(),
             timestamp: Utc::now(),
             service: "cyrus-blog-backend".to_string(),
+            uptime_seconds: get_uptime_seconds(),
         })),
         Err(_) => Err(StatusCode::SERVICE_UNAVAILABLE),
     }
@@ -160,6 +163,7 @@ pub async fn liveness_check() -> Result<Json<HealthStatus>, StatusCode> {
         status: "alive".to_string(),
         timestamp: Utc::now(),
         service: "cyrus-blog-backend".to_string(),
+        uptime_seconds: get_uptime_seconds(),
     }))
 }
 

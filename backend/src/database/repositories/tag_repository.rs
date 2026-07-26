@@ -174,65 +174,59 @@ impl TagRepository {
         tag_ids: Vec<i64>,
     ) -> Result<()> {
         let mut tx = pool.begin().await?;
+        Self::update_post_tags_in_tx(&mut tx, post_id, &tag_ids).await?;
+        tx.commit().await?;
+        Ok(())
+    }
 
-        let result = async {
-            // Verify post exists and is not deleted
-            let post_exists = sqlx::query!(
-                "SELECT id FROM posts WHERE id = ? AND status != 2",
-                post_id
+    pub async fn update_post_tags_in_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        post_id: i64,
+        tag_ids: &[i64],
+    ) -> Result<()> {
+        let post_exists =
+            sqlx::query!("SELECT id FROM posts WHERE id = ? AND status != 2", post_id)
+                .fetch_optional(&mut **tx)
+                .await?;
+
+        if post_exists.is_none() {
+            return Err(AppError::NotFound("Post not found or deleted".to_string()));
+        }
+
+        let mut unique_tag_ids = tag_ids.to_vec();
+        unique_tag_ids.sort_unstable();
+        unique_tag_ids.dedup();
+
+        if !unique_tag_ids.is_empty() {
+            let tag_ids_json = serde_json::to_string(&unique_tag_ids)?;
+            let existing_tags = sqlx::query!(
+                "SELECT COUNT(*) as count FROM tags WHERE id IN (SELECT value FROM json_each(?))",
+                tag_ids_json
             )
-            .fetch_optional(&mut *tx)
+            .fetch_one(&mut **tx)
             .await?;
 
-            if post_exists.is_none() {
-                return Err(AppError::NotFound("Post not found or deleted".to_string()));
-            }
-
-            // Batch verify all tags exist (more efficient than individual checks)
-            if !tag_ids.is_empty() {
-                let tag_ids_json = serde_json::to_string(&tag_ids)?;
-                let existing_tags = sqlx::query!(
-                    "SELECT COUNT(*) as count FROM tags WHERE id IN (SELECT value FROM json_each(?))",
-                    tag_ids_json
-                )
-                .fetch_one(&mut *tx)
-                .await?;
-
-                if existing_tags.count.unwrap_or(0) as usize != tag_ids.len() {
-                    return Err(AppError::BadRequest(
-                        "One or more tags do not exist".to_string(),
-                    ));
-                }
-            }
-
-            // Delete existing post-tag relationships
-            sqlx::query!("DELETE FROM post_tags WHERE post_id = ?", post_id)
-                .execute(&mut *tx)
-                .await?;
-
-            // Batch insert new post-tag relationships
-            for tag_id in tag_ids {
-                sqlx::query!(
-                    "INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)",
-                    post_id,
-                    tag_id
-                )
-                .execute(&mut *tx)
-                .await?;
-            }
-
-            Ok(())
-        }.await;
-
-        match result {
-            Ok(_) => {
-                tx.commit().await?;
-                Ok(())
-            }
-            Err(e) => {
-                tx.rollback().await?;
-                Err(e)
+            if existing_tags.count.unwrap_or(0) as usize != unique_tag_ids.len() {
+                return Err(AppError::BadRequest(
+                    "One or more tags do not exist".to_string(),
+                ));
             }
         }
+
+        sqlx::query!("DELETE FROM post_tags WHERE post_id = ?", post_id)
+            .execute(&mut **tx)
+            .await?;
+
+        for tag_id in unique_tag_ids {
+            sqlx::query!(
+                "INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)",
+                post_id,
+                tag_id
+            )
+            .execute(&mut **tx)
+            .await?;
+        }
+
+        Ok(())
     }
 }

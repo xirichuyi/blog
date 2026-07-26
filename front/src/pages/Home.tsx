@@ -39,7 +39,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    listArticles({ pageSize: 500 })
+    listArticles({ pageSize: 10 })
       .then((a) => setArts(a.articles))
       .catch((e) => setError(String(e)))
     getAbout().then(setAbout).catch(() => {})

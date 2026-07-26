@@ -135,13 +135,25 @@ pub async fn upload_music_cover(
         .map_err(|_| StatusCode::BAD_REQUEST)?
     {
         if let Some(file_name) = field.file_name() {
-            if let Err(e) = app_state.file_handler.validate_file_type(file_name, IMAGE_TYPES) {
+            if let Err(e) = app_state
+                .file_handler
+                .validate_file_type(file_name, IMAGE_TYPES)
+            {
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }
 
-            match app_state.file_handler.save_file(field, "music_covers").await {
+            match app_state
+                .file_handler
+                .save_file(field, "music_covers")
+                .await
+            {
                 Ok((file_url, _, _)) => {
-                    match app_state.services.music.update_music_cover(id, file_url).await {
+                    match app_state
+                        .services
+                        .music
+                        .update_music_cover(id, file_url)
+                        .await
+                    {
                         Ok(Some(music)) => return Ok(Json(ApiResponse::success(music))),
                         Ok(None) => return Ok(Json(ApiResponse::not_found("Music not found"))),
                         Err(e) => {

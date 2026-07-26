@@ -761,7 +761,7 @@
     border-radius: 0.5rem;
   }
 
-  .md-code-block pre {
+  .markdown-body .md-code-source {
     font-size: 12px !important;
   }
 

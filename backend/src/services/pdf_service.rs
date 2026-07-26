@@ -43,7 +43,7 @@ impl PdfService {
         .bind(&file_url)
         .bind(file_size as i64)
         .bind(request.post_id)
-        .fetch_one(&*self.database.pool())
+        .fetch_one(self.database.pool())
         .await
         .map_err(|e| {
             tracing::error!("Failed to insert PDF document: {}", e);
@@ -52,5 +52,4 @@ impl PdfService {
 
         Ok(pdf)
     }
-
 }

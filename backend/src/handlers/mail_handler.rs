@@ -150,7 +150,10 @@ fn imap_host(email: &str) -> Option<&'static str> {
 /// 取真实访客 IP：站点在 Cloudflare + nginx 后面，套接字对端是本机，
 /// 所以优先信 Cloudflare 注入的 `CF-Connecting-IP`，退而取 `X-Forwarded-For` 首段。
 fn client_ip(headers: &HeaderMap) -> String {
-    if let Some(ip) = headers.get("cf-connecting-ip").and_then(|v| v.to_str().ok()) {
+    if let Some(ip) = headers
+        .get("cf-connecting-ip")
+        .and_then(|v| v.to_str().ok())
+    {
         let t = ip.trim();
         if !t.is_empty() {
             return t.to_string();
@@ -237,9 +240,7 @@ fn connect_session(
         .map_err(|_| "无法与邮箱服务器建立安全连接。".to_string())?;
 
     let mut client = imap::Client::new(tls);
-    client
-        .read_greeting()
-        .map_err(|e| friendly_imap_err(&e))?;
+    client.read_greeting().map_err(|e| friendly_imap_err(&e))?;
 
     client
         .login(email, token)
@@ -334,7 +335,10 @@ fn body_blocking(email: String, token: String, uid: u32) -> Result<serde_json::V
     let fetches = session
         .uid_fetch(uid.to_string(), "BODY[]")
         .map_err(|e| friendly_imap_err(&e))?;
-    let msg = fetches.iter().next().ok_or_else(|| "邮件不存在。".to_string())?;
+    let msg = fetches
+        .iter()
+        .next()
+        .ok_or_else(|| "邮件不存在。".to_string())?;
     let raw = msg.body().ok_or_else(|| "邮件没有正文。".to_string())?;
 
     let parsed = mailparse::parse_mail(raw).map_err(|_| "邮件解析失败。".to_string())?;
@@ -379,24 +383,22 @@ where
         return json_err(StatusCode::BAD_REQUEST, "暂不支持该邮箱服务商。");
     }
     if !rate_ok(&ip) {
-        return json_err(
-            StatusCode::TOO_MANY_REQUESTS,
-            "尝试过于频繁，请稍后再试。",
-        );
+        return json_err(StatusCode::TOO_MANY_REQUESTS, "尝试过于频繁，请稍后再试。");
     }
 
     let _permit = match MAIL_SEM.try_acquire() {
         Ok(p) => p,
-        Err(_) => {
-            return json_err(StatusCode::TOO_MANY_REQUESTS, "服务器正忙，请稍后再试。")
-        }
+        Err(_) => return json_err(StatusCode::TOO_MANY_REQUESTS, "服务器正忙，请稍后再试。"),
     };
 
     let task = tokio::task::spawn_blocking(move || job(email, token));
     match tokio::time::timeout(HARD_TIMEOUT, task).await {
         Ok(Ok(Ok(data))) => json_ok(data),
         Ok(Ok(Err(msg))) => json_err(StatusCode::BAD_GATEWAY, &msg),
-        Ok(Err(_)) => json_err(StatusCode::INTERNAL_SERVER_ERROR, "读取邮箱失败，请稍后再试。"),
+        Ok(Err(_)) => json_err(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "读取邮箱失败，请稍后再试。",
+        ),
         Err(_) => json_err(StatusCode::GATEWAY_TIMEOUT, "读取邮箱超时，请稍后再试。"),
     }
 }

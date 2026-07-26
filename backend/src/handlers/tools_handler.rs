@@ -203,7 +203,10 @@ pub async fn gitbook2epub(Json(req): Json<Gitbook2EpubRequest>) -> Response {
                     Response::builder()
                         .status(StatusCode::OK)
                         .header(header::CONTENT_TYPE, "application/epub+zip")
-                        .header(header::CONTENT_DISPOSITION, "attachment; filename=\"book.epub\"")
+                        .header(
+                            header::CONTENT_DISPOSITION,
+                            "attachment; filename=\"book.epub\"",
+                        )
                         .body(Body::from(bytes))
                         .unwrap()
                 }

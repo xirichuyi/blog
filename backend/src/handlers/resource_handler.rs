@@ -39,7 +39,9 @@ pub async fn list_resources(
         }
         Err(e) => {
             tracing::error!("Failed to list resources: {}", e);
-            Ok(Json(ApiResponse::internal_error("Failed to list resources")))
+            Ok(Json(ApiResponse::internal_error(
+                "Failed to list resources",
+            )))
         }
     }
 }
@@ -52,7 +54,9 @@ pub async fn get_resource_stats(
         Ok(stats) => Ok(Json(ApiResponse::success(stats))),
         Err(e) => {
             tracing::error!("Failed to get resource stats: {}", e);
-            Ok(Json(ApiResponse::internal_error("Failed to get resource stats")))
+            Ok(Json(ApiResponse::internal_error(
+                "Failed to get resource stats",
+            )))
         }
     }
 }
@@ -91,7 +95,9 @@ pub async fn optimize_all_images(
         }
         Err(e) => {
             tracing::error!("Failed to optimize images: {}", e);
-            Ok(Json(ApiResponse::internal_error("Failed to optimize images")))
+            Ok(Json(ApiResponse::internal_error(
+                "Failed to optimize images",
+            )))
         }
     }
 }

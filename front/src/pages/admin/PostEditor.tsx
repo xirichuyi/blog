@@ -5,8 +5,8 @@ import {
   adminGetPost,
   createPost,
   updatePost,
-  setPostTags,
   uploadImage,
+  replacePostCover,
   listCategories,
   listTags,
   createTag,
@@ -75,17 +75,20 @@ export default function PostEditor() {
     setUploading(kind)
     setErr('')
     try {
-      const url = await uploadImage(file)
+      const updatedPost =
+        kind === 'cover' && editing ? await replacePostCover(Number(id), file) : null
+      const url = updatedPost?.cover_url ?? (await uploadImage(file))
       if (kind === 'cover') {
         setCoverUrl(url)
       } else {
         const snippet = `\n![](${url})\n`
         const ta = taRef.current
         if (ta) {
-          const pos = ta.selectionStart ?? content.length
-          setContent(content.slice(0, pos) + snippet + content.slice(pos))
+          const start = ta.selectionStart
+          const end = ta.selectionEnd
+          setContent((current) => current.slice(0, start) + snippet + current.slice(end))
         } else {
-          setContent(content + snippet)
+          setContent((current) => current + snippet)
         }
       }
     } catch (e) {
@@ -126,7 +129,14 @@ export default function PostEditor() {
     setErr('')
     setSaved(false)
     try {
-      const payload = { title: title.trim(), content, status, category_id: categoryId, cover_url: coverUrl }
+      const payload = {
+        title: title.trim(),
+        content,
+        status,
+        category_id: categoryId,
+        cover_url: coverUrl,
+        tag_ids: tagIds,
+      }
       let postId: number
       if (editing) {
         await updatePost(Number(id), payload)
@@ -135,7 +145,6 @@ export default function PostEditor() {
         const created = await createPost(payload)
         postId = created.id
       }
-      await setPostTags(postId, tagIds)
       setSaved(true)
       if (!editing) {
         navigate(`/admin/posts/${postId}`, { replace: true })

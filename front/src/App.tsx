@@ -1,66 +1,76 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
-import Home from '@/pages/Home'
-import Articles from '@/pages/Articles'
-import ArticleDetail from '@/pages/ArticleDetail'
-import Projects from '@/pages/Projects'
-import Gitbook2Epub from '@/pages/tools/Gitbook2Epub'
-import Mailbox from '@/pages/tools/Mailbox'
-import Quant from '@/pages/tools/Quant'
-import About from '@/pages/About'
-import NotFound from '@/pages/NotFound'
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute'
-import AdminLogin from '@/pages/admin/Login'
-import AdminLayout from '@/pages/admin/AdminLayout'
-import Dashboard from '@/pages/admin/Dashboard'
-import PostsList from '@/pages/admin/PostsList'
-import PostEditor from '@/pages/admin/PostEditor'
-import Taxonomy from '@/pages/admin/Taxonomy'
-import AboutEditor from '@/pages/admin/AboutEditor'
 import { AdminAuthProvider } from '@/lib/admin-auth'
+
+const Home = lazy(() => import('@/pages/Home'))
+const Articles = lazy(() => import('@/pages/Articles'))
+const ArticleDetail = lazy(() => import('@/pages/ArticleDetail'))
+const Projects = lazy(() => import('@/pages/Projects'))
+const Gitbook2Epub = lazy(() => import('@/pages/tools/Gitbook2Epub'))
+const Mailbox = lazy(() => import('@/pages/tools/Mailbox'))
+const Quant = lazy(() => import('@/pages/tools/Quant'))
+const About = lazy(() => import('@/pages/About'))
+const NotFound = lazy(() => import('@/pages/NotFound'))
+const AdminLogin = lazy(() => import('@/pages/admin/Login'))
+const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'))
+const Dashboard = lazy(() => import('@/pages/admin/Dashboard'))
+const PostsList = lazy(() => import('@/pages/admin/PostsList'))
+const PostEditor = lazy(() => import('@/pages/admin/PostEditor'))
+const Taxonomy = lazy(() => import('@/pages/admin/Taxonomy'))
+const AboutEditor = lazy(() => import('@/pages/admin/AboutEditor'))
 
 export default function App() {
   return (
-    <Routes>
-      {/* Admin — own chrome, no public Dock/Layout */}
-      <Route
-        path="/admin/login"
-        element={
-          <AdminAuthProvider>
-            <AdminLogin />
-          </AdminAuthProvider>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <AdminAuthProvider>
-            <ProtectedRoute>
-              <AdminLayout />
-            </ProtectedRoute>
-          </AdminAuthProvider>
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="posts" element={<PostsList />} />
-        <Route path="posts/new" element={<PostEditor />} />
-        <Route path="posts/:id" element={<PostEditor />} />
-        <Route path="taxonomy" element={<Taxonomy />} />
-        <Route path="about" element={<AboutEditor />} />
-      </Route>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
+          Loading…
+        </div>
+      }
+    >
+      <Routes>
+        {/* Admin — own chrome, no public Dock/Layout */}
+        <Route
+          path="/admin/login"
+          element={
+            <AdminAuthProvider>
+              <AdminLogin />
+            </AdminAuthProvider>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminAuthProvider>
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            </AdminAuthProvider>
+          }
+        >
+          <Route index element={<Dashboard />} />
+          <Route path="posts" element={<PostsList />} />
+          <Route path="posts/new" element={<PostEditor />} />
+          <Route path="posts/:id" element={<PostEditor />} />
+          <Route path="taxonomy" element={<Taxonomy />} />
+          <Route path="about" element={<AboutEditor />} />
+        </Route>
 
-      {/* Public */}
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/articles" element={<Articles />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/tools/gitbook2epub" element={<Gitbook2Epub />} />
-        <Route path="/tools/mailbox" element={<Mailbox />} />
-        <Route path="/tools/quant" element={<Quant />} />
-        <Route path="/article/:id" element={<ArticleDetail />} />
-        <Route path="/about" element={<About />} />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+        {/* Public */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/articles" element={<Articles />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/tools/gitbook2epub" element={<Gitbook2Epub />} />
+          <Route path="/tools/mailbox" element={<Mailbox />} />
+          <Route path="/tools/quant" element={<Quant />} />
+          <Route path="/article/:id" element={<ArticleDetail />} />
+          <Route path="/about" element={<About />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+    </Suspense>
   )
 }

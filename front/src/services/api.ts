@@ -16,6 +16,14 @@ export interface Article {
   coverImage?: string
   pdfUrl?: string
 }
+export interface AdjacentArticle {
+  id: string
+  title: string
+}
+export interface AdjacentArticles {
+  newer?: AdjacentArticle
+  older?: AdjacentArticle
+}
 export interface Category {
   id: string
   name: string
@@ -157,19 +165,31 @@ export async function listArticles(params: {
   }
 }
 
-export async function getArticle(id: string): Promise<Article> {
-  const env = await req<RawPost>(`/post/get/${id}`)
+export async function getArticle(id: string, signal?: AbortSignal): Promise<Article> {
+  const env = await req<RawPost>(`/post/get/${id}`, { signal })
   const article = toArticle(env.data)
   // If the post payload didn't include tags, fetch them separately.
   if (article.tags.length === 0) {
     try {
-      const t = await req<RawTag[]>(`/post/${id}/tags`)
+      const t = await req<RawTag[]>(`/post/${id}/tags`, { signal })
       article.tags = (t.data || []).map((x) => x.name)
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') throw error
       /* tags optional */
     }
   }
   return article
+}
+
+export async function getAdjacentArticles(id: string, signal?: AbortSignal): Promise<AdjacentArticles> {
+  const env = await req<{
+    newer?: { id: number; title: string } | null
+    older?: { id: number; title: string } | null
+  }>(`/post/adjacent/${id}`, { signal })
+  return {
+    newer: env.data.newer ? { ...env.data.newer, id: String(env.data.newer.id) } : undefined,
+    older: env.data.older ? { ...env.data.older, id: String(env.data.older.id) } : undefined,
+  }
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -221,7 +241,7 @@ export async function gitbook2epub(
 
 export async function getHealth(): Promise<HealthStatus> {
   // Health endpoint returns the object directly, NOT wrapped in {code,message,data}.
-  const res = await fetch(`${API_BASE}${PREFIX}/health/detailed`)
+  const res = await fetch(`${API_BASE}${PREFIX}/health`)
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)
   return (await res.json()) as HealthStatus
 }

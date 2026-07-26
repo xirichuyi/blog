@@ -1,5 +1,5 @@
 //! Cyrus Blog 后端服务入口
-//! 
+//!
 //! 启动流程：
 //! 1. 初始化日志系统
 //! 2. 加载配置
@@ -8,25 +8,16 @@
 //! 5. 构建路由
 //! 6. 启动 HTTP 服务器
 
-mod config;
-mod database;
-mod handlers;
-mod middleware;
-mod models;
-mod routes;
-mod services;
-mod utils;
-
 use std::net::SocketAddr;
 
+use chuyi_uk_back::config::Config;
+use chuyi_uk_back::database::Database;
+use chuyi_uk_back::handlers::health_handler;
+use chuyi_uk_back::middleware::cors::create_cors_layer;
+use chuyi_uk_back::routes;
 use tower_http::compression::{CompressionLayer, CompressionLevel};
 use tower_http::services::ServeDir;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-use config::Config;
-use database::Database;
-use handlers::health_handler;
-use middleware::cors::create_cors_layer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
