@@ -164,7 +164,7 @@ export default function ArticleDetail() {
   }
 
   return (
-    <div className="container py-12">
+    <div className="article-page container py-10 sm:py-14">
       <SEO
         title={article.title}
         description={stripMarkdown(article.content, 150)}
@@ -177,14 +177,28 @@ export default function ArticleDetail() {
         tags={article.tags}
       />
       <div
-        className="fixed inset-x-0 top-0 z-[70] h-0.5 origin-left bg-foreground transition-transform duration-150"
+        className="article-progress fixed inset-x-0 top-0 z-[70] h-0.5 origin-left transition-transform duration-150"
         style={{ transform: `scaleX(${progress / 100})` }}
         aria-hidden="true"
       />
 
-      <div className={cn('article-grid grid grid-cols-1 gap-10', headings.length > 0 && !zen && 'lg:grid-cols-[1fr_220px]')}>
-        <article className="mx-auto w-full min-w-0 max-w-3xl">
-          <div className="-ml-2 mb-6 flex items-center justify-between gap-2">
+      <div
+        className={cn(
+          'article-grid grid grid-cols-1 gap-10',
+          headings.length > 0 && !zen && 'lg:grid-cols-[minmax(0,760px)_220px] xl:grid-cols-[72px_minmax(0,760px)_220px]'
+        )}
+      >
+        {headings.length > 0 && !zen && (
+          <aside className="article-chapter-rail hidden xl:flex" aria-label="文章编号">
+            <span>ARTICLE</span>
+            <strong>{String(article.id).padStart(2, '0').slice(-2)}</strong>
+            <i aria-hidden="true" />
+            <span>CHUYI NOTES</span>
+          </aside>
+        )}
+
+        <article className="article-main mx-auto w-full min-w-0 max-w-[760px]">
+          <div className="article-actions -ml-2 mb-8 flex items-center justify-between gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
               <ArrowLeft /> Back
             </Button>
@@ -200,18 +214,19 @@ export default function ArticleDetail() {
             </div>
           </div>
 
-          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            <Badge variant="secondary">{article.category}</Badge>
+          <div className="article-kicker mb-5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>{article.category}</span>
+            <i aria-hidden="true" />
             <span>{article.date}</span>
             <span className="inline-flex items-center gap-1">
               <Clock3 className="size-3.5" /> {readMinutes} 分钟
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{article.title}</h1>
+          <h1 className="article-title">{article.title}</h1>
 
           {article.tags.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="article-tags mt-5 flex flex-wrap gap-2">
               {article.tags.map((t) => (
                 <Badge key={t} variant="outline">
                   {t}
@@ -220,19 +235,19 @@ export default function ArticleDetail() {
             </div>
           )}
 
-          <Separator className="my-8" />
+          <Separator className="article-separator my-9" />
 
           <div ref={contentRef}>
             <Markdown content={article.content} />
           </div>
 
           {(adjacent.newer || adjacent.older) && (
-            <nav className="mt-16 grid gap-3 border-t border-border pt-6 sm:grid-cols-2" aria-label="文章导航">
+            <nav className="article-pagination mt-20 grid gap-3 pt-7 sm:grid-cols-2" aria-label="文章导航">
               {adjacent.older ? (
                 <button
                   type="button"
                   onClick={() => navigate(`/article/${adjacent.older!.id}`)}
-                  className="group rounded-xl border border-border p-4 text-left transition-colors hover:bg-accent"
+                  className="group rounded-xl p-4 text-left transition-colors"
                 >
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <ChevronLeft className="size-3.5" /> 较旧一篇 · J
@@ -246,7 +261,7 @@ export default function ArticleDetail() {
                 <button
                   type="button"
                   onClick={() => navigate(`/article/${adjacent.newer!.id}`)}
-                  className="group rounded-xl border border-border p-4 text-right transition-colors hover:bg-accent"
+                  className="group rounded-xl p-4 text-right transition-colors"
                 >
                   <span className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
                     K · 较新一篇 <ChevronRight className="size-3.5" />
@@ -260,23 +275,49 @@ export default function ArticleDetail() {
 
         {headings.length > 0 && !zen && (
           <aside className="article-aside hidden lg:block">
-            <nav className="sticky top-24 space-y-0.5 border-l border-border/70">
+            <div className="sticky top-24">
+              <p className="article-aside-label">On this page</p>
+              <nav className="article-toc mt-4 space-y-1">
               {headings.map((h) => (
                 <button
                   key={h.id}
                   onClick={() => goTo(h.id)}
                   className={cn(
-                    '-ml-px block w-full border-l-2 py-1 pl-4 text-left text-[13px] leading-snug transition-all duration-300',
+                    'block w-full border-l-2 py-1.5 pl-4 text-left text-[13px] leading-snug transition-all duration-300',
                     activeId === h.id
-                      ? 'border-foreground font-medium text-foreground'
-                      : 'border-transparent text-muted-foreground/60 hover:text-foreground',
+                      ? 'active font-medium'
+                      : 'border-transparent',
                     h.level === 3 && 'pl-7 text-xs'
                   )}
                 >
                   {h.text}
                 </button>
               ))}
-            </nav>
+              </nav>
+
+              <div className="article-aside-meta">
+                <dl>
+                  <div>
+                    <dt>Category</dt>
+                    <dd>{article.category}</dd>
+                  </div>
+                  {article.tags.length > 0 && (
+                    <div>
+                      <dt>Tags</dt>
+                      <dd>{article.tags.join(', ')}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt>Reading time</dt>
+                    <dd>{readMinutes} min read</dd>
+                  </div>
+                  <div>
+                    <dt>Published</dt>
+                    <dd>{article.date}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
           </aside>
         )}
       </div>
