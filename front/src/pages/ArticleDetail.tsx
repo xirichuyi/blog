@@ -38,6 +38,7 @@ export default function ArticleDetail() {
   const [progress, setProgress] = useState(0)
   const [shared, setShared] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
+  const tocRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (!id) return
@@ -90,6 +91,18 @@ export default function ArticleDetail() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [headings])
+
+  useEffect(() => {
+    const toc = tocRef.current
+    const active = toc?.querySelector<HTMLElement>('button.active')
+    if (!toc || !active) return
+
+    const tocBounds = toc.getBoundingClientRect()
+    const activeBounds = active.getBoundingClientRect()
+    const activeCenter = activeBounds.top + activeBounds.height / 2
+    const tocCenter = tocBounds.top + tocBounds.height / 2
+    toc.scrollBy({ top: activeCenter - tocCenter, behavior: 'smooth' })
+  }, [activeId])
 
   useEffect(() => {
     const updateProgress = () => {
@@ -163,6 +176,8 @@ export default function ArticleDetail() {
     )
   }
 
+  const activeHeadingIndex = headings.findIndex((heading) => heading.id === activeId)
+
   return (
     <div className="article-page container py-10 sm:py-14">
       <SEO
@@ -184,8 +199,8 @@ export default function ArticleDetail() {
 
       <div
         className={cn(
-          'article-grid grid grid-cols-1 gap-10',
-          headings.length > 0 && !zen && 'lg:grid-cols-[minmax(0,760px)_220px] xl:grid-cols-[72px_minmax(0,760px)_220px]'
+          'article-grid grid grid-cols-1 gap-10 lg:gap-8',
+          headings.length > 0 && !zen && 'lg:grid-cols-[minmax(0,760px)_176px] xl:grid-cols-[64px_minmax(0,760px)_176px]'
         )}
       >
         {headings.length > 0 && !zen && (
@@ -275,48 +290,52 @@ export default function ArticleDetail() {
 
         {headings.length > 0 && !zen && (
           <aside className="article-aside hidden lg:block">
-            <div className="sticky top-24">
+            <div className="article-aside-inner sticky top-24">
               <p className="article-aside-label">On this page</p>
-              <nav className="article-toc mt-4 space-y-1">
-              {headings.map((h) => (
-                <button
-                  key={h.id}
-                  onClick={() => goTo(h.id)}
-                  className={cn(
-                    'block w-full border-l-2 py-1.5 pl-4 text-left text-[13px] leading-snug transition-all duration-300',
-                    activeId === h.id
-                      ? 'active font-medium'
-                      : 'border-transparent',
-                    h.level === 3 && 'pl-7 text-xs'
-                  )}
-                >
-                  {h.text}
-                </button>
-              ))}
+              <nav ref={tocRef} className="article-toc mt-3" aria-label="文章目录">
+                {headings.map((heading, index) => (
+                  <button
+                    key={heading.id}
+                    onClick={() => goTo(heading.id)}
+                    aria-current={activeId === heading.id ? 'location' : undefined}
+                    title={heading.text}
+                    className={cn(
+                      'article-toc-entry',
+                      index <= activeHeadingIndex && 'visited',
+                      index === activeHeadingIndex - 1 && 'previous',
+                      activeId === heading.id && 'active',
+                      heading.level === 3 && 'level-three'
+                    )}
+                  >
+                    <span>{heading.text}</span>
+                  </button>
+                ))}
               </nav>
 
-              <div className="article-aside-meta">
-                <dl>
-                  <div>
-                    <dt>Category</dt>
-                    <dd>{article.category}</dd>
-                  </div>
-                  {article.tags.length > 0 && (
+              {headings.length <= 8 && (
+                <div className="article-aside-meta">
+                  <dl>
                     <div>
-                      <dt>Tags</dt>
-                      <dd>{article.tags.join(', ')}</dd>
+                      <dt>Category</dt>
+                      <dd>{article.category}</dd>
                     </div>
-                  )}
-                  <div>
-                    <dt>Reading time</dt>
-                    <dd>{readMinutes} min read</dd>
-                  </div>
-                  <div>
-                    <dt>Published</dt>
-                    <dd>{article.date}</dd>
-                  </div>
-                </dl>
-              </div>
+                    {article.tags.length > 0 && (
+                      <div>
+                        <dt>Tags</dt>
+                        <dd>{article.tags.join(', ')}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt>Reading time</dt>
+                      <dd>{readMinutes} min read</dd>
+                    </div>
+                    <div>
+                      <dt>Published</dt>
+                      <dd>{article.date}</dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
             </div>
           </aside>
         )}

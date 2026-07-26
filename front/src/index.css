@@ -199,32 +199,84 @@
 }
 
 .article-aside {
-  border-left: 1px solid var(--hairline);
-  padding-left: 1.75rem;
+  min-width: 0;
+  padding-left: 0.35rem;
+}
+
+.article-aside-inner {
+  display: flex;
+  max-height: calc(100vh - 7rem);
+  min-height: 0;
+  flex-direction: column;
 }
 
 .article-aside-label {
-  padding-bottom: 0.9rem;
+  flex: none;
+  padding: 0 0.4rem 0.8rem 0.85rem;
   border-bottom: 1px solid var(--hairline);
+  font-size: 0.62rem;
 }
 
-.article-toc button {
-  border-color: transparent;
+.article-toc {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.25rem;
+  scrollbar-color: var(--hairline) transparent;
+  scrollbar-width: thin;
+}
+
+.article-toc-entry {
+  display: block;
+  width: 100%;
+  border-left: 3px dotted var(--hairline);
+  padding: 0.08rem 0 0.08rem 0.78rem;
   color: color-mix(in srgb, var(--graphite-soft) 70%, transparent);
+  font-size: 0.74rem;
+  line-height: 1.42;
+  text-align: left;
+  text-wrap: pretty;
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
 }
 
-.article-toc button:hover,
-.article-toc button:focus-visible {
+.article-toc-entry.level-three {
+  padding-left: 1.08rem;
+  font-size: 0.7rem;
+}
+
+.article-toc-entry > span {
+  display: block;
+  border-radius: 0.42rem;
+  padding: 0.43rem 0.5rem;
+}
+
+.article-toc-entry:hover,
+.article-toc-entry:focus-visible {
   color: var(--graphite);
 }
 
-.article-toc button.active {
+.article-toc-entry.visited {
   border-color: var(--sage);
+}
+
+.article-toc-entry.previous {
   color: var(--sage-deep);
 }
 
+.article-toc-entry.active {
+  border-color: var(--sage);
+  color: var(--sage-deep);
+  font-weight: 600;
+}
+
+.article-toc-entry.active > span {
+  background: var(--mist);
+}
+
 .article-aside-meta {
-  margin-top: clamp(3rem, 10vh, 7rem);
+  flex: none;
+  margin-top: clamp(2.5rem, 7vh, 5rem);
+  padding-left: 0.85rem;
 }
 
 .article-aside-meta dl {
@@ -277,9 +329,9 @@
   --tw-prose-td-borders: var(--hairline);
   color: var(--graphite-soft);
   font-family: 'Source Serif 4', 'Songti SC', 'STSong', 'Noto Serif CJK SC', ui-serif, Georgia, serif;
-  font-size: clamp(1.05rem, 0.35vw + 0.96rem, 1.18rem);
-  line-height: 1.9;
-  font-variation-settings: 'opsz' 18;
+  font-size: 1rem;
+  line-height: 1.84;
+  font-variation-settings: 'opsz' 16;
 }
 
 .markdown-body > :first-child {
@@ -294,8 +346,8 @@
 
 .markdown-body > p:first-child {
   color: var(--graphite);
-  font-size: 1.09em;
-  line-height: 1.78;
+  font-size: 1.03em;
+  line-height: 1.82;
 }
 
 .markdown-body :where(h1, h2, h3, h4, h5, h6) {
@@ -310,21 +362,21 @@
 .markdown-body h1 {
   margin-top: 1.8em;
   margin-bottom: 0.65em;
-  font-size: 2.15em;
+  font-size: 1.9em;
   line-height: 1.1;
 }
 
 .markdown-body h2 {
   margin-top: 2.6em;
   margin-bottom: 0.7em;
-  font-size: 1.62em;
+  font-size: 1.48em;
   line-height: 1.18;
 }
 
 .markdown-body h3 {
   margin-top: 2.2em;
   margin-bottom: 0.65em;
-  font-size: 1.28em;
+  font-size: 1.18em;
   line-height: 1.25;
 }
 
@@ -332,7 +384,7 @@
   margin-top: 1.9em;
   margin-bottom: 0.55em;
   color: var(--sage-deep);
-  font-size: 0.91em;
+  font-size: 0.86em;
   letter-spacing: 0.08em;
   line-height: 1.4;
   text-transform: uppercase;
@@ -473,7 +525,7 @@
   background: var(--mist);
   padding: 2.7rem 2.5rem 2.1rem 3.25rem;
   color: var(--graphite);
-  font-size: 1.16em;
+  font-size: 1.08em;
   font-style: normal;
   font-weight: 450;
   line-height: 1.72;
@@ -650,8 +702,8 @@
   }
 
   .markdown-body {
-    font-size: 1.04rem;
-    line-height: 1.85;
+    font-size: 1rem;
+    line-height: 1.82;
   }
 
   .markdown-body blockquote {
