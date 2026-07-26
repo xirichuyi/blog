@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -177,6 +177,9 @@ export default function ArticleDetail() {
   }
 
   const activeHeadingIndex = headings.findIndex((heading) => heading.id === activeId)
+  const tocProgress = headings.length <= 1
+    ? 1
+    : Math.max(0, activeHeadingIndex) / (headings.length - 1)
 
   return (
     <div className="article-page container py-10 sm:py-14">
@@ -290,25 +293,32 @@ export default function ArticleDetail() {
 
         {headings.length > 0 && !zen && (
           <aside className="article-aside hidden lg:block">
-            <div className="article-aside-inner sticky top-24">
+            <div className="article-aside-inner">
               <nav ref={tocRef} className="article-toc" aria-label="文章目录">
-                {headings.map((heading, index) => (
-                  <button
-                    key={heading.id}
-                    onClick={() => goTo(heading.id)}
-                    aria-current={activeId === heading.id ? 'location' : undefined}
-                    title={heading.text}
-                    className={cn(
-                      'article-toc-entry',
-                      index <= activeHeadingIndex && 'visited',
-                      index === activeHeadingIndex - 1 && 'previous',
-                      activeId === heading.id && 'active',
-                      heading.level === 3 && 'level-three'
-                    )}
-                  >
-                    <span>{heading.text}</span>
-                  </button>
-                ))}
+                <div
+                  className="article-toc-list"
+                  style={{
+                    '--toc-progress-clip': `${(1 - tocProgress) * 100}%`,
+                  } as CSSProperties}
+                >
+                  {headings.map((heading, index) => (
+                    <button
+                      key={heading.id}
+                      onClick={() => goTo(heading.id)}
+                      aria-current={activeId === heading.id ? 'location' : undefined}
+                      title={heading.text}
+                      className={cn(
+                        'article-toc-entry',
+                        index <= activeHeadingIndex && 'visited',
+                        index === activeHeadingIndex - 1 && 'previous',
+                        activeId === heading.id && 'active',
+                        heading.level === 3 && 'level-three'
+                      )}
+                    >
+                      <span>{heading.text}</span>
+                    </button>
+                  ))}
+                </div>
               </nav>
 
               {headings.length <= 8 && (
