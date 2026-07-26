@@ -8,7 +8,6 @@ import Gitbook2Epub from '@/pages/tools/Gitbook2Epub'
 import Mailbox from '@/pages/tools/Mailbox'
 import Quant from '@/pages/tools/Quant'
 import About from '@/pages/About'
-import Contact from '@/pages/Contact'
 import NotFound from '@/pages/NotFound'
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute'
 import AdminLogin from '@/pages/admin/Login'
@@ -18,18 +17,28 @@ import PostsList from '@/pages/admin/PostsList'
 import PostEditor from '@/pages/admin/PostEditor'
 import Taxonomy from '@/pages/admin/Taxonomy'
 import AboutEditor from '@/pages/admin/AboutEditor'
+import { AdminAuthProvider } from '@/lib/admin-auth'
 
 export default function App() {
   return (
     <Routes>
       {/* Admin — own chrome, no public Dock/Layout */}
-      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route
+        path="/admin/login"
+        element={
+          <AdminAuthProvider>
+            <AdminLogin />
+          </AdminAuthProvider>
+        }
+      />
       <Route
         path="/admin"
         element={
-          <ProtectedRoute>
-            <AdminLayout />
-          </ProtectedRoute>
+          <AdminAuthProvider>
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          </AdminAuthProvider>
         }
       >
         <Route index element={<Dashboard />} />
@@ -50,7 +59,6 @@ export default function App() {
         <Route path="/tools/quant" element={<Quant />} />
         <Route path="/article/:id" element={<ArticleDetail />} />
         <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

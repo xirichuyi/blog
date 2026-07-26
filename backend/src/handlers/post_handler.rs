@@ -1,5 +1,5 @@
 use crate::models::{
-    ApiListResponse, ApiResponse, CreatePostRequest, FileUploadResponse, PostListQuery,
+    ApiListResponse, ApiResponse, CreatePostRequest, FileUploadResponse, PostListQuery, PostStatus,
     UpdatePostRequest, UpdatePostTagsRequest,
 };
 use crate::routes::AppState;
@@ -29,26 +29,37 @@ pub async fn create_post(
 pub async fn get_post(
     State(services): State<Services>,
     Path(id): Path<i64>,
-) -> Result<Json<ApiResponse<crate::models::Post>>, StatusCode> {
+) -> (StatusCode, Json<ApiResponse<crate::models::Post>>) {
     match services.post.get_post_detail(id).await {
-        Ok(Some(post)) => Ok(Json(ApiResponse::success(post))),
-        Ok(None) => Ok(Json(ApiResponse::not_found("Post not found"))),
+        Ok(Some(post)) if post.status == PostStatus::Published as i32 => {
+            (StatusCode::OK, Json(ApiResponse::success(post)))
+        }
+        Ok(None) | Ok(Some(_)) => (
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::not_found("Post not found")),
+        ),
         Err(e) => {
             tracing::error!("Failed to get post: {}", e);
-            Ok(Json(ApiResponse::internal_error("Failed to get post")))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::internal_error("Failed to get post")),
+            )
         }
     }
 }
 
 pub async fn list_posts(
     State(services): State<Services>,
-    Query(query): Query<PostListQuery>,
+    Query(mut query): Query<PostListQuery>,
 ) -> Result<Json<ApiListResponse<crate::models::Post>>, StatusCode> {
+    query.status = Some(PostStatus::Published);
     let page = query.page.unwrap_or(1);
     let page_size = query.page_size.unwrap_or(10);
 
     match services.post.list_posts(query).await {
-        Ok((posts, total)) => Ok(Json(ApiListResponse::success(posts, total, page, page_size))),
+        Ok((posts, total)) => Ok(Json(ApiListResponse::success(
+            posts, total, page, page_size,
+        ))),
         Err(e) => {
             tracing::error!("Failed to list posts: {}", e);
             Ok(Json(ApiListResponse::error(500, "Failed to list posts")))
@@ -58,13 +69,44 @@ pub async fn list_posts(
 
 pub async fn list_posts_with_details(
     State(services): State<Services>,
+    Query(mut query): Query<PostListQuery>,
+) -> Result<Json<ApiListResponse<crate::models::PostWithDetails>>, StatusCode> {
+    query.status = Some(PostStatus::Published);
+    list_posts_with_details_inner(services, query).await
+}
+
+pub async fn admin_get_post(
+    State(services): State<Services>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<crate::models::Post>>, StatusCode> {
+    match services.post.get_post_detail(id).await {
+        Ok(Some(post)) => Ok(Json(ApiResponse::success(post))),
+        Ok(None) => Ok(Json(ApiResponse::not_found("Post not found"))),
+        Err(e) => {
+            tracing::error!("Failed to get admin post: {}", e);
+            Ok(Json(ApiResponse::internal_error("Failed to get post")))
+        }
+    }
+}
+
+pub async fn admin_list_posts_with_details(
+    State(services): State<Services>,
     Query(query): Query<PostListQuery>,
+) -> Result<Json<ApiListResponse<crate::models::PostWithDetails>>, StatusCode> {
+    list_posts_with_details_inner(services, query).await
+}
+
+async fn list_posts_with_details_inner(
+    services: Services,
+    query: PostListQuery,
 ) -> Result<Json<ApiListResponse<crate::models::PostWithDetails>>, StatusCode> {
     let page = query.page.unwrap_or(1);
     let page_size = query.page_size.unwrap_or(10);
 
     match services.post.list_posts_with_details(query).await {
-        Ok((posts, total)) => Ok(Json(ApiListResponse::success(posts, total, page, page_size))),
+        Ok((posts, total)) => Ok(Json(ApiListResponse::success(
+            posts, total, page, page_size,
+        ))),
         Err(e) => {
             tracing::error!("Failed to list posts with details: {}", e);
             Ok(Json(ApiListResponse::error(
@@ -122,7 +164,10 @@ pub async fn upload_post_image(
             }
 
             // Use optimized image upload (converts to WebP, resizes if needed)
-            match file_handler.save_optimized_image(field, "images", None).await {
+            match file_handler
+                .save_optimized_image(field, "images", None)
+                .await
+            {
                 Ok((file_url, file_name, file_size)) => {
                     let response = FileUploadResponse {
                         file_url,
@@ -153,14 +198,26 @@ pub async fn update_post_cover(
         .map_err(|_| StatusCode::BAD_REQUEST)?
     {
         if let Some(file_name) = field.file_name() {
-            if let Err(e) = app_state.file_handler.validate_file_type(file_name, IMAGE_TYPES) {
+            if let Err(e) = app_state
+                .file_handler
+                .validate_file_type(file_name, IMAGE_TYPES)
+            {
                 return Ok(Json(ApiResponse::bad_request(&e.to_string())));
             }
 
             // Use optimized image upload (converts to WebP, resizes if needed)
-            match app_state.file_handler.save_optimized_image(field, "covers", None).await {
+            match app_state
+                .file_handler
+                .save_optimized_image(field, "covers", None)
+                .await
+            {
                 Ok((file_url, _, _)) => {
-                    match app_state.services.post.update_post_cover(id, file_url).await {
+                    match app_state
+                        .services
+                        .post
+                        .update_post_cover(id, file_url)
+                        .await
+                    {
                         Ok(Some(post)) => return Ok(Json(ApiResponse::success(post))),
                         Ok(None) => return Ok(Json(ApiResponse::not_found("Post not found"))),
                         Err(e) => {
@@ -198,12 +255,32 @@ pub async fn get_post_tags(
 pub async fn get_post_tags_public(
     State(services): State<Services>,
     Path(id): Path<i64>,
-) -> Result<Json<ApiResponse<Vec<crate::models::Tag>>>, StatusCode> {
+) -> (StatusCode, Json<ApiResponse<Vec<crate::models::Tag>>>) {
+    match services.post.get_post_detail(id).await {
+        Ok(Some(post)) if post.status == PostStatus::Published as i32 => {}
+        Ok(None) | Ok(Some(_)) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::not_found("Post not found")),
+            )
+        }
+        Err(e) => {
+            tracing::error!("Failed to verify public post before loading tags: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::internal_error("Failed to get post tags")),
+            );
+        }
+    }
+
     match services.post.get_post_tags(id).await {
-        Ok(tags) => Ok(Json(ApiResponse::success(tags))),
+        Ok(tags) => (StatusCode::OK, Json(ApiResponse::success(tags))),
         Err(e) => {
             tracing::error!("Failed to get post tags: {}", e);
-            Ok(Json(ApiResponse::internal_error("Failed to get post tags")))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::internal_error("Failed to get post tags")),
+            )
         }
     }
 }

@@ -108,11 +108,11 @@ export default function AboutEditor() {
       <div className="mb-3 grid gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">标题</label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} className="text-base sm:text-sm" />
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">副标题</label>
-          <Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
+          <Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} className="text-base sm:text-sm" />
         </div>
       </div>
 
@@ -135,7 +135,7 @@ export default function AboutEditor() {
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="min-h-[40vh] w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-sm leading-relaxed outline-none focus:ring-1 focus:ring-ring"
+          className="min-h-[45vh] w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-base leading-relaxed outline-none focus:ring-1 focus:ring-ring md:min-h-[40vh] md:text-sm"
         />
       ) : (
         <div className="min-h-[40vh] rounded-lg border border-border p-4">

@@ -59,7 +59,7 @@ export default function PostsList() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3 sm:mb-8">
         <h1 className="text-2xl font-bold tracking-tight">文章 {posts && <span className="text-base font-normal text-muted-foreground">· {posts.length}</span>}</h1>
         <Button asChild size="sm">
           <Link to="/admin/posts/new">
@@ -78,7 +78,7 @@ export default function PostsList() {
       {posts && (
         <div className="divide-y divide-border rounded-xl border border-border">
           {posts.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+            <div key={p.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:py-3">
               <div className="min-w-0 flex-1">
                 <Link to={`/admin/posts/${p.id}`} className="block truncate text-sm font-medium hover:text-primary">
                   {p.title || '(无标题)'}
@@ -89,37 +89,39 @@ export default function PostsList() {
                   <span>· {p.created_at?.slice(0, 10)}</span>
                 </div>
               </div>
-              <button
-                onClick={() => togglePublish(p)}
-                disabled={busy === p.id}
-                className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-              >
-                {p.status === POST_STATUS.Published ? '转草稿' : '发布'}
-              </button>
-              <a
-                href={`/article/${p.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                title="查看"
-              >
-                <ExternalLink className="size-4" />
-              </a>
-              <Link
-                to={`/admin/posts/${p.id}`}
-                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                title="编辑"
-              >
-                <Pencil className="size-4" />
-              </Link>
-              <button
-                onClick={() => onDelete(p)}
-                disabled={busy === p.id}
-                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                title="删除"
-              >
-                {busy === p.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-              </button>
+              <div className="flex items-center justify-end gap-1 border-t border-border/60 pt-2 sm:border-0 sm:pt-0">
+                <button
+                  onClick={() => togglePublish(p)}
+                  disabled={busy === p.id}
+                  className="mr-auto min-h-9 shrink-0 rounded-md border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50 sm:mr-1"
+                >
+                  {p.status === POST_STATUS.Published ? '转草稿' : '发布'}
+                </button>
+                <a
+                  href={`/article/${p.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="查看"
+                >
+                  <ExternalLink className="size-4" />
+                </a>
+                <Link
+                  to={`/admin/posts/${p.id}`}
+                  className="grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="编辑"
+                >
+                  <Pencil className="size-4" />
+                </Link>
+                <button
+                  onClick={() => onDelete(p)}
+                  disabled={busy === p.id}
+                  className="grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                  title="删除"
+                >
+                  {busy === p.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                </button>
+              </div>
             </div>
           ))}
           {posts.length === 0 && <p className="px-4 py-12 text-center text-sm text-muted-foreground">还没有文章。</p>}

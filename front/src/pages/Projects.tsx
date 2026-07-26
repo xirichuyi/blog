@@ -40,7 +40,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'Proxy 节点',
-    description: '自用代理节点，打开后填写口令 YJM2026 即可使用。',
+    description: '自用代理节点与连接状态页，仅向授权设备开放。',
     url: 'https://zhoumaosen.top/proxy',
     tags: ['Proxy'],
   },

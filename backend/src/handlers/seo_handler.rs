@@ -40,6 +40,10 @@ fn esc(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
+fn cdata(s: &str) -> String {
+    s.replace("]]>", "]]]]><![CDATA[>")
+}
+
 /// Markdown/HTML → 纯文本摘要(给 description 用)。
 fn excerpt(content: &str, max: usize) -> String {
     let mut t = content.to_string();
@@ -55,7 +59,10 @@ fn excerpt(content: &str, max: usize) -> String {
         (r"https?://\S+", ""),
         (r"\s+", " "),
     ] {
-        t = regex::Regex::new(re).unwrap().replace_all(&t, rep).into_owned();
+        t = regex::Regex::new(re)
+            .unwrap()
+            .replace_all(&t, rep)
+            .into_owned();
     }
     let t = t.trim();
     let chars: Vec<char> = t.chars().collect();
@@ -84,6 +91,16 @@ struct Meta {
     image: Option<String>,
     og_type: &'static str,
     jsonld: String,
+    robots: &'static str,
+    status: StatusCode,
+    article: Option<ArticleMeta>,
+}
+
+struct ArticleMeta {
+    published_at: String,
+    modified_at: String,
+    section: Option<String>,
+    tags: Vec<String>,
 }
 
 fn website_jsonld() -> String {
@@ -97,16 +114,24 @@ fn website_jsonld() -> String {
 }
 
 fn article_jsonld(p: &Post, url: &str, image: &Option<String>) -> String {
+    let keywords: Vec<&str> = p.tags.iter().map(|tag| tag.name.as_str()).collect();
     let mut v = serde_json::json!({
         "@context": "https://schema.org",
         "@type": "Article",
         "headline": p.title,
+        "description": excerpt(&p.content, 150),
+        "inLanguage": "zh-CN",
+        "wordCount": p.content.chars().count(),
         "datePublished": p.created_at.to_rfc3339(),
         "dateModified": p.updated_at.to_rfc3339(),
         "author": { "@type": "Person", "name": "chuyi" },
         "publisher": { "@type": "Organization", "name": SITE_NAME },
-        "mainEntityOfPage": url,
+        "mainEntityOfPage": { "@type": "WebPage", "@id": url },
+        "keywords": keywords,
     });
+    if let Some(section) = &p.category_name {
+        v["articleSection"] = serde_json::Value::String(section.clone());
+    }
     if let Some(img) = image {
         v["image"] = serde_json::Value::String(img.clone());
     }
@@ -115,16 +140,61 @@ fn article_jsonld(p: &Post, url: &str, image: &Option<String>) -> String {
 
 /// 静态路由的标题/描述。
 fn static_meta(path: &str) -> Meta {
-    let (title, desc) = match path {
-        "/" => (SITE_NAME.to_string(), DEFAULT_DESC.to_string()),
-        "/articles" => (format!("文章归档 · {SITE_NAME}"), "全部技术文章与笔记归档。".to_string()),
+    let (title, desc, robots, status) = match path {
+        "/" => (
+            SITE_NAME.to_string(),
+            DEFAULT_DESC.to_string(),
+            "index,follow",
+            StatusCode::OK,
+        ),
+        "/articles" => (
+            format!("文章归档 · {SITE_NAME}"),
+            "全部技术文章与笔记归档。".to_string(),
+            "index,follow",
+            StatusCode::OK,
+        ),
         "/projects" => (
             format!("Projects · {SITE_NAME}"),
             "开源项目与自建在线工具。".to_string(),
+            "index,follow",
+            StatusCode::OK,
         ),
-        "/about" => (format!("About · {SITE_NAME}"), "关于 chuyi。".to_string()),
-        "/contact" => (format!("Contact · {SITE_NAME}"), "联系方式。".to_string()),
-        _ => (SITE_NAME.to_string(), DEFAULT_DESC.to_string()),
+        "/about" => (
+            format!("About · {SITE_NAME}"),
+            "关于 chuyi。".to_string(),
+            "index,follow",
+            StatusCode::OK,
+        ),
+        "/tools/gitbook2epub" => (
+            format!("GitBook 转 EPUB · {SITE_NAME}"),
+            "将在线 GitBook 或 bookdown 图书转换为可离线阅读的 EPUB。".to_string(),
+            "index,follow",
+            StatusCode::OK,
+        ),
+        "/tools/quant" => (
+            format!("量化收益 · {SITE_NAME}"),
+            "自建量化策略的只读收益快照与净值曲线。".to_string(),
+            "index,follow",
+            StatusCode::OK,
+        ),
+        "/tools/mailbox" => (
+            format!("邮箱阅读 · {SITE_NAME}"),
+            "临时读取支持 IMAP 的邮箱，凭据不在服务端保存。".to_string(),
+            "noindex,nofollow",
+            StatusCode::OK,
+        ),
+        _ if path.starts_with("/admin") => (
+            format!("Admin · {SITE_NAME}"),
+            "博客管理后台。".to_string(),
+            "noindex,nofollow",
+            StatusCode::OK,
+        ),
+        _ => (
+            format!("页面不存在 · {SITE_NAME}"),
+            "这个页面不存在，或者已经移动。".to_string(),
+            "noindex,nofollow",
+            StatusCode::NOT_FOUND,
+        ),
     };
     Meta {
         title,
@@ -133,6 +203,9 @@ fn static_meta(path: &str) -> Meta {
         image: None,
         og_type: "website",
         jsonld: website_jsonld(),
+        robots,
+        status,
+        article: None,
     }
 }
 
@@ -141,13 +214,26 @@ async fn build_meta(state: &AppState, path: &str) -> Meta {
     if let Some(rest) = path.strip_prefix("/article/") {
         if let Ok(id) = rest.trim_end_matches('/').parse::<i64>() {
             if let Ok(Some(post)) = state.services.post.get_post_detail(id).await {
+                if post.status != PostStatus::Published as i32 {
+                    return static_meta(path);
+                }
                 let url = format!("{SITE}/article/{id}");
                 let image = post.cover_url.as_deref().map(abs_url);
                 let desc = {
                     let e = excerpt(&post.content, 150);
-                    if e.is_empty() { DEFAULT_DESC.to_string() } else { e }
+                    if e.is_empty() {
+                        DEFAULT_DESC.to_string()
+                    } else {
+                        e
+                    }
                 };
                 let jsonld = article_jsonld(&post, &url, &image);
+                let article = ArticleMeta {
+                    published_at: post.created_at.to_rfc3339(),
+                    modified_at: post.updated_at.to_rfc3339(),
+                    section: post.category_name.clone(),
+                    tags: post.tags.iter().map(|tag| tag.name.clone()).collect(),
+                };
                 return Meta {
                     title: format!("{} · {SITE_NAME}", post.title),
                     description: desc,
@@ -155,6 +241,9 @@ async fn build_meta(state: &AppState, path: &str) -> Meta {
                     image,
                     og_type: "article",
                     jsonld,
+                    robots: "index,follow",
+                    status: StatusCode::OK,
+                    article: Some(article),
                 };
             }
         }
@@ -163,27 +252,99 @@ async fn build_meta(state: &AppState, path: &str) -> Meta {
 }
 
 fn inject(html: &str, m: &Meta) -> String {
-    let html = TITLE_RE.replace(html, format!("<title>{}</title>", esc(&m.title)).as_str());
+    let html = TITLE_RE.replace(
+        html,
+        format!("<title data-rh=\"true\">{}</title>", esc(&m.title)).as_str(),
+    );
     let html = DESC_RE.replace(&html, "");
-    let card = if m.image.is_some() { "summary_large_image" } else { "summary" };
+    let card = if m.image.is_some() {
+        "summary_large_image"
+    } else {
+        "summary"
+    };
     let mut h = String::new();
-    h.push_str(&format!("<meta name=\"description\" content=\"{}\">", esc(&m.description)));
-    h.push_str(&format!("<link rel=\"canonical\" href=\"{}\">", esc(&m.url)));
-    h.push_str(&format!("<meta property=\"og:type\" content=\"{}\">", m.og_type));
-    h.push_str(&format!("<meta property=\"og:site_name\" content=\"{}\">", esc(SITE_NAME)));
-    h.push_str(&format!("<meta property=\"og:title\" content=\"{}\">", esc(&m.title)));
-    h.push_str(&format!("<meta property=\"og:description\" content=\"{}\">", esc(&m.description)));
-    h.push_str(&format!("<meta property=\"og:url\" content=\"{}\">", esc(&m.url)));
-    h.push_str(&format!("<meta name=\"twitter:card\" content=\"{card}\">"));
-    h.push_str(&format!("<meta name=\"twitter:title\" content=\"{}\">", esc(&m.title)));
-    h.push_str(&format!("<meta name=\"twitter:description\" content=\"{}\">", esc(&m.description)));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" name=\"description\" content=\"{}\">",
+        esc(&m.description)
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" name=\"robots\" content=\"{}\">",
+        m.robots
+    ));
+    h.push_str(&format!(
+        "<link data-rh=\"true\" rel=\"alternate\" type=\"application/rss+xml\" title=\"{}\" href=\"{SITE}/rss.xml\">",
+        esc(SITE_NAME)
+    ));
+    h.push_str(&format!(
+        "<link data-rh=\"true\" rel=\"canonical\" href=\"{}\">",
+        esc(&m.url)
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" property=\"og:type\" content=\"{}\">",
+        m.og_type
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" property=\"og:site_name\" content=\"{}\">",
+        esc(SITE_NAME)
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" property=\"og:title\" content=\"{}\">",
+        esc(&m.title)
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" property=\"og:description\" content=\"{}\">",
+        esc(&m.description)
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" property=\"og:url\" content=\"{}\">",
+        esc(&m.url)
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" name=\"twitter:card\" content=\"{card}\">"
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" name=\"twitter:title\" content=\"{}\">",
+        esc(&m.title)
+    ));
+    h.push_str(&format!(
+        "<meta data-rh=\"true\" name=\"twitter:description\" content=\"{}\">",
+        esc(&m.description)
+    ));
     if let Some(img) = &m.image {
-        h.push_str(&format!("<meta property=\"og:image\" content=\"{}\">", esc(img)));
-        h.push_str(&format!("<meta name=\"twitter:image\" content=\"{}\">", esc(img)));
+        h.push_str(&format!(
+            "<meta data-rh=\"true\" property=\"og:image\" content=\"{}\">",
+            esc(img)
+        ));
+        h.push_str(&format!(
+            "<meta data-rh=\"true\" name=\"twitter:image\" content=\"{}\">",
+            esc(img)
+        ));
+    }
+    if let Some(article) = &m.article {
+        h.push_str(&format!(
+            "<meta data-rh=\"true\" property=\"article:published_time\" content=\"{}\">",
+            esc(&article.published_at)
+        ));
+        h.push_str(&format!(
+            "<meta data-rh=\"true\" property=\"article:modified_time\" content=\"{}\">",
+            esc(&article.modified_at)
+        ));
+        if let Some(section) = &article.section {
+            h.push_str(&format!(
+                "<meta data-rh=\"true\" property=\"article:section\" content=\"{}\">",
+                esc(section)
+            ));
+        }
+        for tag in &article.tags {
+            h.push_str(&format!(
+                "<meta data-rh=\"true\" property=\"article:tag\" content=\"{}\">",
+                esc(tag)
+            ));
+        }
     }
     // JSON-LD:防 </script> 提前闭合
     h.push_str(&format!(
-        "<script type=\"application/ld+json\">{}</script>",
+        "<script data-rh=\"true\" type=\"application/ld+json\">{}</script>",
         m.jsonld.replace("</", "<\\/")
     ));
     html.replacen("</head>", &format!("{h}</head>"), 1)
@@ -213,8 +374,9 @@ async fn sitemap(state: &AppState) -> Response {
         ("/", "daily"),
         ("/articles", "daily"),
         ("/projects", "weekly"),
+        ("/tools/gitbook2epub", "monthly"),
+        ("/tools/quant", "daily"),
         ("/about", "monthly"),
-        ("/contact", "monthly"),
     ] {
         xml.push_str(&format!(
             "<url><loc>{SITE}{loc}</loc><changefreq>{freq}</changefreq></url>"
@@ -235,8 +397,57 @@ async fn sitemap(state: &AppState) -> Response {
         .into_response()
 }
 
+async fn rss(state: &AppState) -> Response {
+    let query = PostListQuery {
+        page: Some(1),
+        page_size: Some(50),
+        category_id: None,
+        status: Some(PostStatus::Published),
+        search: None,
+        tag_id: None,
+    };
+    let posts = state
+        .services
+        .post
+        .list_posts(query)
+        .await
+        .map(|(posts, _)| posts)
+        .unwrap_or_default();
+
+    let mut xml = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
+         <rss version=\"2.0\"><channel>\
+         <title>{}</title><link>{SITE}</link><description>{}</description>\
+         <language>zh-CN</language><atom:link xmlns:atom=\"http://www.w3.org/2005/Atom\" \
+         href=\"{SITE}/rss.xml\" rel=\"self\" type=\"application/rss+xml\"/>",
+        esc(SITE_NAME),
+        esc(DEFAULT_DESC),
+    );
+
+    for post in posts {
+        let url = format!("{SITE}/article/{}", post.id);
+        xml.push_str(&format!(
+            "<item><title>{}</title><link>{url}</link><guid isPermaLink=\"true\">{url}</guid>\
+             <pubDate>{}</pubDate><description><![CDATA[{}]]></description></item>",
+            esc(&post.title),
+            post.created_at.to_rfc2822(),
+            cdata(&post.content),
+        ));
+    }
+    xml.push_str("</channel></rss>");
+
+    (
+        [(header::CONTENT_TYPE, "application/rss+xml; charset=utf-8")],
+        xml,
+    )
+        .into_response()
+}
+
 fn robots() -> Response {
-    let body = format!("User-agent: *\nAllow: /\nDisallow: /admin\nSitemap: {SITE}/sitemap.xml\n");
+    let body = format!(
+        "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /tools/mailbox\n\
+         Sitemap: {SITE}/sitemap.xml\n"
+    );
     ([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], body).into_response()
 }
 
@@ -245,6 +456,9 @@ pub async fn spa_fallback(State(state): State<AppState>, uri: Uri) -> Response {
     let path = uri.path().to_string();
     if path == "/sitemap.xml" {
         return sitemap(&state).await;
+    }
+    if path == "/rss.xml" {
+        return rss(&state).await;
     }
     if path == "/robots.txt" {
         return robots();
@@ -256,6 +470,7 @@ pub async fn spa_fallback(State(state): State<AppState>, uri: Uri) -> Response {
     };
     let meta = build_meta(&state, &path).await;
     (
+        meta.status,
         [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
         inject(&html, &meta),
     )

@@ -158,10 +158,10 @@ export default function PostEditor() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="sticky top-14 z-30 -mx-4 mb-5 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:mb-6 md:border-0 md:bg-transparent md:p-0">
         <button
           onClick={() => navigate('/admin/posts')}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex min-h-10 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" /> 文章
         </button>
@@ -171,7 +171,7 @@ export default function PostEditor() {
               <Check className="size-4" /> 已保存
             </span>
           )}
-          <Button onClick={save} disabled={saving} size="sm">
+          <Button onClick={save} disabled={saving} className="min-h-10 px-4" size="sm">
             {saving ? <Loader2 className="size-4 animate-spin" /> : '保存'}
           </Button>
         </div>
@@ -183,15 +183,15 @@ export default function PostEditor() {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="标题"
-        className="mb-4 h-12 border-0 bg-transparent px-0 text-2xl font-bold shadow-none focus-visible:ring-0"
+        className="mb-4 h-12 border-0 bg-transparent px-0 text-xl font-bold shadow-none focus-visible:ring-0 sm:text-2xl"
       />
 
       {/* meta row */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4 grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <select
           value={status}
           onChange={(e) => setStatus(Number(e.target.value))}
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+          className="h-11 min-w-0 rounded-md border border-border bg-background px-2 text-base sm:h-9 sm:text-sm"
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -202,7 +202,7 @@ export default function PostEditor() {
         <select
           value={categoryId ?? ''}
           onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+          className="h-11 min-w-0 rounded-md border border-border bg-background px-2 text-base sm:h-9 sm:text-sm"
         >
           <option value="">未分类</option>
           {cats.map((c) => (
@@ -213,7 +213,7 @@ export default function PostEditor() {
         </select>
 
         {/* cover */}
-        <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground">
+        <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground sm:h-9 sm:justify-start sm:px-2">
           {uploading === 'cover' ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
           封面
           <input
@@ -242,7 +242,7 @@ export default function PostEditor() {
               key={t.id}
               onClick={() => toggleTag(Number(t.id))}
               className={cn(
-                'rounded-full border px-2.5 py-0.5 text-xs transition-colors',
+                'min-h-9 rounded-full border px-3 py-1 text-xs transition-colors sm:min-h-0 sm:px-2.5 sm:py-0.5',
                 on ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:bg-accent'
               )}
             >
@@ -261,7 +261,7 @@ export default function PostEditor() {
             }
           }}
           placeholder="+ 新标签"
-          className="h-7 w-24 rounded-full border border-dashed border-border bg-transparent px-2.5 text-xs outline-none focus:border-primary"
+          className="h-9 w-28 rounded-full border border-dashed border-border bg-transparent px-3 text-base outline-none focus:border-primary sm:h-7 sm:w-24 sm:px-2.5 sm:text-xs"
         />
       </div>
 
@@ -279,7 +279,7 @@ export default function PostEditor() {
             {t === 'write' ? '编辑' : '预览'}
           </button>
         ))}
-        <label className="ml-auto inline-flex cursor-pointer items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground">
+        <label className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground">
           {uploading === 'inline' ? <Loader2 className="size-3.5 animate-spin" /> : <ImagePlus className="size-3.5" />}
           插入图片
           <input
@@ -297,7 +297,7 @@ export default function PostEditor() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="用 Markdown 写正文…"
-          className="min-h-[60vh] w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-sm leading-relaxed outline-none focus:ring-1 focus:ring-ring"
+          className="min-h-[calc(100dvh-22rem)] w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-base leading-relaxed outline-none focus:ring-1 focus:ring-ring md:min-h-[60vh] md:text-sm"
         />
       ) : (
         <div className="min-h-[60vh] rounded-lg border border-border p-4">

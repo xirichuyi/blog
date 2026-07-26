@@ -1,26 +1,16 @@
-// Admin API client. Auth is a single static bearer token (BLOG_ADMIN_TOKEN),
-// entered on the login page and kept in localStorage — there is no real login
-// endpoint on the backend, so we "log in" by verifying the token works.
+// Admin API client. Authentication is carried by a same-origin HttpOnly cookie.
 import type { Category, Tag, About } from './api'
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 const PREFIX = '/api'
-const TOKEN_KEY = 'blog_admin_token'
-
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
-}
-export function setToken(t: string) {
-  localStorage.setItem(TOKEN_KEY, t)
-}
-export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY)
-}
-export function isAuthed(): boolean {
-  return !!getToken()
-}
+export const ADMIN_AUTH_EXPIRED_EVENT = 'blog-admin-auth-expired'
 
 export class AuthError extends Error {}
+
+function authExpired(message: string): never {
+  window.dispatchEvent(new Event(ADMIN_AUTH_EXPIRED_EVENT))
+  throw new AuthError(message)
+}
 
 interface Envelope<T> {
   code: number
@@ -29,20 +19,15 @@ interface Envelope<T> {
   total?: number
 }
 
-function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  const t = getToken()
-  return { ...(t ? { Authorization: `Bearer ${t}` } : {}), ...(extra ?? {}) }
-}
-
 /** JSON request against an admin endpoint. Throws AuthError on 401. */
 async function req<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
   const res = await fetch(`${API_BASE}${PREFIX}${path}`, {
     ...init,
-    headers: authHeaders({ 'Content-Type': 'application/json', ...((init?.headers as Record<string, string>) ?? {}) }),
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...((init?.headers as Record<string, string>) ?? {}) },
   })
   if (res.status === 401) {
-    clearToken()
-    throw new AuthError('未授权，请重新登录')
+    authExpired('未授权，请重新登录')
   }
   const body = (await res.json().catch(() => ({}))) as Envelope<T>
   if (!res.ok || (typeof body.code === 'number' && body.code >= 400)) {
@@ -55,10 +40,13 @@ async function req<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
 async function upload<T>(path: string, file: File, field = 'file'): Promise<Envelope<T>> {
   const fd = new FormData()
   fd.append(field, file)
-  const res = await fetch(`${API_BASE}${PREFIX}${path}`, { method: 'POST', headers: authHeaders(), body: fd })
+  const res = await fetch(`${API_BASE}${PREFIX}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    body: fd,
+  })
   if (res.status === 401) {
-    clearToken()
-    throw new AuthError('未授权，请重新登录')
+    authExpired('未授权，请重新登录')
   }
   const body = (await res.json().catch(() => ({}))) as Envelope<T>
   if (!res.ok || (typeof body.code === 'number' && body.code >= 400)) {
@@ -97,20 +85,39 @@ export interface DashboardStats {
 }
 
 // ---------- auth ----------
-/** Verify a token by hitting a protected endpoint. Returns true if accepted. */
-export async function verifyToken(token: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE}${PREFIX}/admin/dashboard/stats`, {
-    headers: { Authorization: `Bearer ${token}` },
+export interface AdminSession {
+  email: string
+  name: string
+  picture?: string | null
+}
+
+export function googleLoginUrl(): string {
+  return `${API_BASE}${PREFIX}/auth/google/start`
+}
+
+export async function getAdminSession(): Promise<AdminSession | null> {
+  const res = await fetch(`${API_BASE}${PREFIX}/auth/session`, { credentials: 'include' })
+  if (res.status === 401) return null
+  if (!res.ok) throw new Error(`无法检查登录状态 (${res.status})`)
+  const body = (await res.json()) as Envelope<AdminSession>
+  return body.data ?? null
+}
+
+export async function logoutAdmin(): Promise<void> {
+  const res = await fetch(`${API_BASE}${PREFIX}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
   })
-  return res.ok
+  if (!res.ok) throw new Error(`退出失败 (${res.status})`)
 }
 
 export async function getDashboard(): Promise<DashboardStats> {
   // dashboard/stats returns the object directly (NOT wrapped).
-  const res = await fetch(`${API_BASE}${PREFIX}/admin/dashboard/stats`, { headers: authHeaders() })
+  const res = await fetch(`${API_BASE}${PREFIX}/admin/dashboard/stats`, {
+    credentials: 'include',
+  })
   if (res.status === 401) {
-    clearToken()
-    throw new AuthError('未授权')
+    authExpired('未授权')
   }
   if (!res.ok) throw new Error(`请求失败 (${res.status})`)
   return (await res.json()) as DashboardStats
@@ -125,7 +132,7 @@ interface RawDetail {
 
 /** List ALL posts (incl. drafts) — omit status. */
 export async function adminListPosts(): Promise<AdminPost[]> {
-  const env = await req<RawDetail[]>(`/post/list_with_details?page=1&page_size=500`)
+  const env = await req<RawDetail[]>(`/admin/posts?page=1&page_size=500`)
   return (env.data || []).map((d) => ({
     ...d.post,
     tags: d.tags ?? d.post.tags,
@@ -134,7 +141,7 @@ export async function adminListPosts(): Promise<AdminPost[]> {
 }
 
 export async function adminGetPost(id: number | string): Promise<AdminPost> {
-  const env = await req<AdminPost>(`/post/get/${id}`)
+  const env = await req<AdminPost>(`/admin/posts/${id}`)
   const post = env.data
   if (!post.tags) {
     try {

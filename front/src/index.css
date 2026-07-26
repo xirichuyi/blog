@@ -51,6 +51,15 @@
   }
 }
 
+[data-zen] .site-chrome {
+  opacity: 0;
+  pointer-events: none;
+}
+
+[data-zen] .article-grid {
+  display: block;
+}
+
 @layer base {
   * {
     @apply border-border;

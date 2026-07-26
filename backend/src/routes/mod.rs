@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
-    about_handler, category_handler, download_handler, health_handler, mail_handler,
+    about_handler, auth_handler, category_handler, download_handler, health_handler, mail_handler,
     music_handler, pdf_handler, post_handler, quant_handler, resource_handler, seo_handler,
     tag_handler, tools_handler,
 };
@@ -67,6 +67,14 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
     };
     // Public routes (no authentication required)
     let public_routes = Router::new()
+        // Google OAuth and cookie session routes
+        .route("/api/auth/google/start", get(auth_handler::google_start))
+        .route(
+            "/api/auth/google/callback",
+            get(auth_handler::google_callback),
+        )
+        .route("/api/auth/session", get(auth_handler::session))
+        .route("/api/auth/logout", post(auth_handler::logout))
         // Health check routes
         .route("/api/health", get(health_handler::health_check))
         .route(
@@ -110,10 +118,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         // About public route
         .route("/api/about/get", get(about_handler::get_about))
         // Online tools
-        .route(
-            "/api/tools/gitbook2epub",
-            post(tools_handler::gitbook2epub),
-        )
+        .route("/api/tools/gitbook2epub", post(tools_handler::gitbook2epub))
         // 邮箱阅读（IMAP）：凭据由请求当场传入，服务端零存储、地址白名单。
         .route("/api/mail/list", post(mail_handler::list))
         .route("/api/mail/body", post(mail_handler::body))
@@ -127,6 +132,11 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             "/api/admin/dashboard/stats",
             get(health_handler::get_dashboard_stats),
         )
+        .route(
+            "/api/admin/posts",
+            get(post_handler::admin_list_posts_with_details),
+        )
+        .route("/api/admin/posts/:id", get(post_handler::admin_get_post))
         // Post admin routes
         .route("/api/post/create", post(post_handler::create_post))
         .route("/api/post/update/:id", put(post_handler::update_post))

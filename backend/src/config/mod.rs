@@ -51,6 +51,7 @@ pub struct Config {
     pub environment: Environment,
     pub database: DatabaseConfig,
     pub jwt: JwtConfig,
+    pub google_auth: Option<GoogleAuthConfig>,
     pub server: ServerConfig,
     pub ai: AiConfig,
     pub cors: CorsConfig,
@@ -66,6 +67,22 @@ pub struct DatabaseConfig {
 pub struct JwtConfig {
     pub secret: String,
     pub admin_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoogleAuthConfig {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
+    pub allowed_emails: Vec<String>,
+}
+
+impl GoogleAuthConfig {
+    pub fn allows_email(&self, email: &str) -> bool {
+        self.allowed_emails
+            .iter()
+            .any(|allowed| allowed.eq_ignore_ascii_case(email))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,8 +130,8 @@ impl Config {
 
         tracing::info!("Running in {:?} mode", environment);
 
-        let database_url =
-            env::var("DATABASE_URL").unwrap_or_else(|_| constants::DEFAULT_DATABASE_URL.to_string());
+        let database_url = env::var("DATABASE_URL")
+            .unwrap_or_else(|_| constants::DEFAULT_DATABASE_URL.to_string());
 
         let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
             if environment.is_development() {
@@ -131,6 +148,7 @@ impl Config {
                 panic!("BLOG_ADMIN_TOKEN environment variable is required in production")
             }
         });
+        let google_auth = load_google_auth_config();
 
         let host = env::var("HOST").unwrap_or_else(|_| constants::DEFAULT_HOST.to_string());
 
@@ -146,8 +164,8 @@ impl Config {
 
         let deepseek_api_key = env::var("DEEPSEEK_API_KEY").unwrap_or_else(|_| "".to_string());
 
-        let deepseek_api_url =
-            env::var("DEEPSEEK_API_URL").unwrap_or_else(|_| constants::DEFAULT_DEEPSEEK_API_URL.to_string());
+        let deepseek_api_url = env::var("DEEPSEEK_API_URL")
+            .unwrap_or_else(|_| constants::DEFAULT_DEEPSEEK_API_URL.to_string());
 
         // CORS 配置：开发模式允许所有来源，生产模式需要明确配置
         let cors_origins = if environment.is_development() {
@@ -164,11 +182,10 @@ impl Config {
                 .collect()
         } else {
             // 生产模式：必须明确配置 CORS_ORIGINS
-            let origins = env::var("CORS_ORIGINS")
-                .unwrap_or_else(|_| {
-                    tracing::warn!("CORS_ORIGINS not set in production, using restrictive defaults");
-                    "".to_string()
-                });
+            let origins = env::var("CORS_ORIGINS").unwrap_or_else(|_| {
+                tracing::warn!("CORS_ORIGINS not set in production, using restrictive defaults");
+                "".to_string()
+            });
             origins
                 .split(',')
                 .map(|s| s.trim().to_string())
@@ -176,9 +193,11 @@ impl Config {
                 .collect()
         };
 
-        let upload_dir = env::var("UPLOAD_DIR").unwrap_or_else(|_| constants::DEFAULT_UPLOAD_DIR.to_string());
+        let upload_dir =
+            env::var("UPLOAD_DIR").unwrap_or_else(|_| constants::DEFAULT_UPLOAD_DIR.to_string());
 
-        let blog_data_dir = env::var("BLOG_DATA_DIR").unwrap_or_else(|_| constants::DEFAULT_BLOG_DATA_DIR.to_string());
+        let blog_data_dir = env::var("BLOG_DATA_DIR")
+            .unwrap_or_else(|_| constants::DEFAULT_BLOG_DATA_DIR.to_string());
 
         let max_file_size = env::var("MAX_FILE_SIZE")
             .unwrap_or_else(|_| constants::DEFAULT_MAX_FILE_SIZE.to_string())
@@ -192,6 +211,7 @@ impl Config {
                 secret: jwt_secret,
                 admin_token,
             },
+            google_auth,
             server: ServerConfig {
                 host,
                 port,
@@ -211,4 +231,23 @@ impl Config {
             },
         })
     }
+}
+
+fn load_google_auth_config() -> Option<GoogleAuthConfig> {
+    let client_id = env::var("GOOGLE_CLIENT_ID").ok()?;
+    let client_secret = env::var("GOOGLE_CLIENT_SECRET").ok()?;
+    let redirect_uri = env::var("GOOGLE_REDIRECT_URI").ok()?;
+    let allowed_emails = env::var("GOOGLE_ALLOWED_EMAILS")
+        .unwrap_or_default()
+        .split(',')
+        .map(|email| email.trim().to_lowercase())
+        .filter(|email| !email.is_empty())
+        .collect();
+
+    Some(GoogleAuthConfig {
+        client_id,
+        client_secret,
+        redirect_uri,
+        allowed_emails,
+    })
 }

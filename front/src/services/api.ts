@@ -10,6 +10,7 @@ export interface Article {
   content: string
   date: string
   rawDate: string
+  updatedAt?: string
   category: string
   tags: string[]
   coverImage?: string
@@ -129,6 +130,7 @@ function toArticle(post: RawPost): Article {
     excerpt: cleanExcerpt(post.excerpt) || stripMarkdown(content, 140),
     date: formatDate(post.created_at),
     rawDate: post.created_at,
+    updatedAt: post.updated_at,
     category: post.category_name || 'Uncategorized',
     tags: tagNames(post.tags),
     coverImage: imageUrl(post.cover_url),

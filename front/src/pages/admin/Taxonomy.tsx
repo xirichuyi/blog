@@ -54,7 +54,7 @@ function Section({
   }
 
   return (
-    <div className="rounded-xl border border-border p-5">
+    <div className="rounded-xl border border-border p-4 sm:p-5">
       <h2 className="mb-4 text-sm font-semibold">{title}</h2>
 
       <div className="mb-4 flex gap-2">
@@ -63,9 +63,10 @@ function Section({
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && name.trim() && run(async () => (await create(name.trim()), setName('')))}
           placeholder={`新增${title}`}
-          className="h-9"
+          className="h-11 text-base sm:h-9 sm:text-sm"
         />
         <Button
+          className="size-11 p-0 sm:size-9"
           size="sm"
           disabled={busy || !name.trim()}
           onClick={() => run(async () => (await create(name.trim()), setName('')))}
@@ -85,7 +86,7 @@ function Section({
                 <Input
                   value={editing.name}
                   onChange={(e) => setEditing({ id: it.id, name: e.target.value })}
-                  className="h-7 flex-1"
+                  className="h-10 flex-1 text-base sm:h-7 sm:text-sm"
                   autoFocus
                 />
                 <button
@@ -128,7 +129,7 @@ function Section({
 export default function Taxonomy() {
   return (
     <div>
-      <h1 className="mb-8 text-2xl font-bold tracking-tight">分类 / 标签</h1>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:mb-8">分类 / 标签</h1>
       <div className="grid gap-5 sm:grid-cols-2">
         <Section title="分类" load={listCategories} create={createCategory} rename={updateCategory} remove={deleteCategory} />
         <Section
