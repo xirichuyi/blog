@@ -20,7 +20,7 @@ function CodeBlock({ language, text, style }: { language: string; text: string; 
     }
   }
   return (
-    <div className="md-code-block group/code">
+    <div className="md-code-block not-prose group/code">
       <div className="md-code-toolbar">
         <span className="md-code-language">{language || 'text'}</span>
         <button
@@ -45,6 +45,7 @@ function CodeBlock({ language, text, style }: { language: string; text: string; 
           lineHeight: 1.75,
         }}
         codeTagProps={{
+          className: 'md-code-source',
           style: { fontFamily: '"SFMono-Regular", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace' },
         }}
       >
@@ -96,7 +97,7 @@ export function Markdown({ content, className }: { content: string; className?: 
             const text = String(children).replace(/\n$/, '')
             if (match) return <CodeBlock language={match[1]} text={text} style={codeTheme} />
             return (
-              <code className={cn('rounded bg-muted px-1.5 py-0.5 text-[0.85em] font-normal', cls)} {...props}>
+              <code className={cn('md-inline-code', cls)} {...props}>
                 {children}
               </code>
             )

@@ -77,10 +77,10 @@
   }
 }
 
-/* Inline code: drop the typography plugin's backtick pseudo-elements
-   (block code is handled by react-syntax-highlighter). */
-.prose :where(code):not(:where(pre code))::before,
-.prose :where(code):not(:where(pre code))::after {
+/* Inline code is explicitly classed so syntax-highlighted block code never
+   inherits inline borders, padding, or typography pseudo-elements. */
+.prose .md-inline-code::before,
+.prose .md-inline-code::after {
   content: none;
 }
 
@@ -223,18 +223,19 @@
 }
 
 .article-toc-list {
-  --toc-row-height: 3.35rem;
+  --toc-progress-clip: 100%;
   position: relative;
-  display: grid;
-  grid-auto-rows: var(--toc-row-height);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
   padding-left: 0.82rem;
 }
 
 .article-toc-list::before,
 .article-toc-list::after {
   position: absolute;
-  top: calc(var(--toc-row-height) / 2);
-  bottom: calc(var(--toc-row-height) / 2);
+  top: 0.72rem;
+  bottom: 0.72rem;
   left: 1px;
   border-left: 3px dotted var(--hairline);
   content: '';
@@ -249,12 +250,11 @@
 
 .article-toc-entry {
   display: flex;
-  height: 100%;
   width: 100%;
   align-items: center;
   padding-left: 0.28rem;
   color: color-mix(in srgb, var(--graphite-soft) 70%, transparent);
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   line-height: 1.42;
   text-align: left;
   text-wrap: pretty;
@@ -263,7 +263,7 @@
 
 .article-toc-entry.level-three {
   padding-left: 0.58rem;
-  font-size: 0.7rem;
+  font-size: 0.64rem;
 }
 
 .article-toc-entry > span {
@@ -271,7 +271,7 @@
   width: 100%;
   overflow: hidden;
   border-radius: 0.42rem;
-  padding: 0.43rem 0.5rem;
+  padding: 0.24rem 0.42rem;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   transition: color 240ms ease, background-color 240ms ease, transform 240ms ease;
@@ -488,7 +488,7 @@
   accent-color: var(--sage-deep);
 }
 
-.markdown-body :where(code):not(:where(pre code)) {
+.markdown-body .md-inline-code {
   border: 1px solid var(--hairline);
   border-radius: 0.35rem;
   background: var(--mist);
@@ -497,6 +497,16 @@
   font-family: 'SFMono-Regular', 'Cascadia Code', Menlo, Consolas, monospace;
   font-size: 0.82em;
   font-weight: 500;
+}
+
+.markdown-body .md-code-source {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .md-code-block {

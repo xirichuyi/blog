@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -97,6 +97,19 @@ export default function ArticleDetail() {
     const active = toc?.querySelector<HTMLElement>('button.active')
     if (!toc || !active) return
 
+    const list = toc.querySelector<HTMLElement>('.article-toc-list')
+    const entries = Array.from(toc.querySelectorAll<HTMLElement>('.article-toc-entry'))
+    const first = entries[0]
+    const last = entries.at(-1)
+    if (list && first && last) {
+      const firstCenter = first.offsetTop + first.offsetHeight / 2
+      const lastCenter = last.offsetTop + last.offsetHeight / 2
+      const activeCenter = active.offsetTop + active.offsetHeight / 2
+      const progressRange = Math.max(1, lastCenter - firstCenter)
+      const progress = Math.min(1, Math.max(0, (activeCenter - firstCenter) / progressRange))
+      list.style.setProperty('--toc-progress-clip', `${(1 - progress) * 100}%`)
+    }
+
     const tocBounds = toc.getBoundingClientRect()
     const activeBounds = active.getBoundingClientRect()
     const activeCenter = activeBounds.top + activeBounds.height / 2
@@ -177,9 +190,6 @@ export default function ArticleDetail() {
   }
 
   const activeHeadingIndex = headings.findIndex((heading) => heading.id === activeId)
-  const tocProgress = headings.length <= 1
-    ? 1
-    : Math.max(0, activeHeadingIndex) / (headings.length - 1)
 
   return (
     <div className="article-page container py-10 sm:py-14">
@@ -295,12 +305,7 @@ export default function ArticleDetail() {
           <aside className="article-aside hidden lg:block">
             <div className="article-aside-inner">
               <nav ref={tocRef} className="article-toc" aria-label="文章目录">
-                <div
-                  className="article-toc-list"
-                  style={{
-                    '--toc-progress-clip': `${(1 - tocProgress) * 100}%`,
-                  } as CSSProperties}
-                >
+                <div className="article-toc-list">
                   {headings.map((heading, index) => (
                     <button
                       key={heading.id}
