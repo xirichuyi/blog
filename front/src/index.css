@@ -250,7 +250,8 @@
 
 .article-toc-entry {
   display: flex;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
   padding-left: 0.28rem;
   color: color-mix(in srgb, var(--graphite-soft) 70%, transparent);
@@ -268,7 +269,8 @@
 
 .article-toc-entry > span {
   display: -webkit-box;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   overflow: hidden;
   border-radius: 0.42rem;
   padding: 0.24rem 0.42rem;
