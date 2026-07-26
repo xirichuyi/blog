@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useReducedMotion } from 'framer-motion'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -23,6 +24,7 @@ import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { useSiteUI } from '@/lib/site-ui'
 import { cn } from '@/lib/utils'
 
@@ -41,11 +43,16 @@ export default function ArticleDetail() {
   const [error, setError] = useState<string | null>(null)
   const [headings, setHeadings] = useState<Heading[]>([])
   const [activeId, setActiveId] = useState('')
+  const [hoveredHeadingId, setHoveredHeadingId] = useState<string | null>(null)
   const [shared, setShared] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const tocRef = useRef<HTMLElement>(null)
+  const tocPillRef = useRef<HTMLSpanElement>(null)
+  const tocProgressRef = useRef<HTMLDivElement>(null)
+  const tocPillReadyRef = useRef(false)
   const progressRef = useRef<HTMLDivElement>(null)
   const shareTimerRef = useRef<number | null>(null)
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     if (!id) return
@@ -54,6 +61,8 @@ export default function ArticleDetail() {
     setAdjacent({})
     setHeadings([])
     setActiveId('')
+    setHoveredHeadingId(null)
+    tocPillReadyRef.current = false
     setError(null)
     window.scrollTo(0, 0)
 
@@ -105,6 +114,7 @@ export default function ArticleDetail() {
     const headingElements = Array.from(content.querySelectorAll<HTMLElement>('h2, h3'))
     let headingOffsets: Array<{ id: string; top: number }> = []
     let contentStart = 0
+    let contentEnd = 1
     let contentDistance = 1
     let frame = 0
 
@@ -112,6 +122,7 @@ export default function ArticleDetail() {
       const scrollY = window.scrollY
       const contentRect = content.getBoundingClientRect()
       contentStart = contentRect.top + scrollY - 120
+      contentEnd = contentRect.top + scrollY + content.offsetHeight
       contentDistance = Math.max(1, content.offsetHeight - window.innerHeight * 0.45)
       headingOffsets = headingElements.map((element) => ({
         id: element.id,
@@ -141,7 +152,25 @@ export default function ArticleDetail() {
             high = middle - 1
           }
         }
-        setActiveId(headingOffsets[match].id)
+
+        const current = headingOffsets[match]
+        const nextTop = headingOffsets[match + 1]?.top ?? contentEnd
+        const sectionDistance = Math.max(1, nextTop - current.top)
+        const sectionProgress = Math.min(1, Math.max(0, (target - current.top) / sectionDistance))
+        const atPageEnd = window.innerHeight + scrollY >= document.documentElement.scrollHeight - 30
+        const activeHeading = atPageEnd ? headingOffsets.at(-1)! : current
+        const activeProgress = atPageEnd ? 1 : sectionProgress
+
+        setActiveId(activeHeading.id)
+
+        const tocEntries = Array.from(
+          tocRef.current?.querySelectorAll<HTMLElement>('.article-toc-entry') ?? [],
+        )
+        const tocEntry = tocEntries.find((entry) => entry.dataset.headingId === activeHeading.id)
+        if (tocEntry && tocProgressRef.current) {
+          const progressHeight = tocEntry.offsetTop + activeProgress * tocEntry.offsetHeight
+          tocProgressRef.current.style.height = `${progressHeight}px`
+        }
       }
     }
 
@@ -169,28 +198,48 @@ export default function ArticleDetail() {
 
   useEffect(() => {
     const toc = tocRef.current
-    const active = toc?.querySelector<HTMLElement>('button.active')
-    if (!toc || !active) return
+    const pill = tocPillRef.current
+    const targetId = hoveredHeadingId || activeId
+    const entries = Array.from(toc?.querySelectorAll<HTMLElement>('.article-toc-entry') ?? [])
+    const target = entries.find((entry) => entry.dataset.headingId === targetId)
+    const active = entries.find((entry) => entry.dataset.headingId === activeId)
 
-    const list = toc.querySelector<HTMLElement>('.article-toc-list')
-    const entries = Array.from(toc.querySelectorAll<HTMLElement>('.article-toc-entry'))
-    const first = entries[0]
-    const last = entries.at(-1)
-    if (list && first && last) {
-      const firstCenter = first.offsetTop + first.offsetHeight / 2
-      const lastCenter = last.offsetTop + last.offsetHeight / 2
-      const activeCenter = active.offsetTop + active.offsetHeight / 2
-      const progressRange = Math.max(1, lastCenter - firstCenter)
-      const progress = Math.min(1, Math.max(0, (activeCenter - firstCenter) / progressRange))
-      list.style.setProperty('--toc-progress-clip', `${(1 - progress) * 100}%`)
+    if (!toc || !pill || !target) {
+      if (pill) pill.style.opacity = '0'
+      return
     }
 
-    const tocBounds = toc.getBoundingClientRect()
-    const activeBounds = active.getBoundingClientRect()
-    const activeCenter = activeBounds.top + activeBounds.height / 2
-    const tocCenter = tocBounds.top + tocBounds.height / 2
-    toc.scrollBy({ top: activeCenter - tocCenter, behavior: 'smooth' })
-  }, [activeId])
+    const updatePill = () => {
+      if (!tocPillReadyRef.current) {
+        pill.style.transition = 'none'
+      }
+
+      pill.style.opacity = '1'
+      pill.style.top = `${target.offsetTop}px`
+      pill.style.height = `${target.offsetHeight}px`
+      pill.style.left = `${target.offsetLeft}px`
+      pill.style.width = `${target.offsetWidth}px`
+
+      if (!tocPillReadyRef.current) {
+        void pill.offsetHeight
+        pill.style.transition = ''
+        tocPillReadyRef.current = true
+      }
+    }
+
+    updatePill()
+    if (!hoveredHeadingId && active) {
+      const tocBounds = toc.getBoundingClientRect()
+      const activeBounds = active.getBoundingClientRect()
+      const activeCenter = activeBounds.top + activeBounds.height / 2
+      const tocCenter = tocBounds.top + tocBounds.height / 2
+      toc.scrollBy({ top: activeCenter - tocCenter, behavior: reduceMotion ? 'auto' : 'smooth' })
+    }
+
+    const resizeObserver = new ResizeObserver(updatePill)
+    resizeObserver.observe(toc)
+    return () => resizeObserver.disconnect()
+  }, [activeId, hoveredHeadingId, reduceMotion])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -206,7 +255,7 @@ export default function ArticleDetail() {
 
   const goTo = (hid: string) => {
     const el = document.getElementById(hid)
-    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 96, behavior: 'smooth' })
+    if (el) el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' })
   }
 
   const share = async () => {
@@ -249,8 +298,6 @@ export default function ArticleDetail() {
     )
   }
 
-  const activeHeadingIndex = headings.findIndex((heading) => heading.id === activeId)
-
   return (
     <div className="article-page container py-10 sm:py-14">
       <SEO
@@ -287,10 +334,8 @@ export default function ArticleDetail() {
         )}
 
         <article className="article-main mx-auto w-full min-w-0 max-w-[760px]">
-          <div className="article-actions -ml-2 mb-8 flex items-center justify-between gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeft /> Back
-            </Button>
+          <div className="article-actions article-reveal -ml-2 mb-8 flex items-center justify-between gap-2">
+            <MagneticBackButton onClick={() => navigate(-1)} />
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={share} aria-label="分享文章">
                 {shared ? <Check /> : <Share2 />}
@@ -303,7 +348,7 @@ export default function ArticleDetail() {
             </div>
           </div>
 
-          <div className="article-kicker mb-5 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="article-kicker article-reveal mb-5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>{article.category}</span>
             <i aria-hidden="true" />
             <span>{article.date}</span>
@@ -312,10 +357,10 @@ export default function ArticleDetail() {
             </span>
           </div>
 
-          <h1 className="article-title">{article.title}</h1>
+          <h1 className="article-title article-reveal">{article.title}</h1>
 
           {article.tags.length > 0 && (
-            <div className="article-tags mt-5 flex flex-wrap gap-2">
+            <div className="article-tags article-reveal mt-5 flex flex-wrap gap-2">
               {article.tags.map((t) => (
                 <Badge key={t} variant="outline">
                   {t}
@@ -324,7 +369,7 @@ export default function ArticleDetail() {
             </div>
           )}
 
-          <Separator className="article-separator my-9" />
+          <Separator className="article-separator article-reveal my-9" />
 
           <div ref={contentRef}>
             <Markdown content={article.content} />
@@ -367,16 +412,25 @@ export default function ArticleDetail() {
             <div className="article-aside-inner">
               <nav ref={tocRef} className="article-toc" aria-label="文章目录">
                 <div className="article-toc-list">
-                  {headings.map((heading, index) => (
+                  <span
+                    ref={tocPillRef}
+                    className="article-toc-pill"
+                    aria-hidden="true"
+                  />
+                  <span className="article-toc-progress-timeline" aria-hidden="true">
+                    <span ref={tocProgressRef} className="article-toc-progress-fill" />
+                  </span>
+                  {headings.map((heading) => (
                     <button
                       key={heading.id}
                       onClick={() => goTo(heading.id)}
+                      onMouseEnter={() => setHoveredHeadingId(heading.id)}
+                      onMouseLeave={() => setHoveredHeadingId(null)}
                       aria-current={activeId === heading.id ? 'location' : undefined}
+                      data-heading-id={heading.id}
                       title={heading.text}
                       className={cn(
                         'article-toc-entry',
-                        index <= activeHeadingIndex && 'visited',
-                        index === activeHeadingIndex - 1 && 'previous',
                         activeId === heading.id && 'active',
                         heading.level === 3 && 'level-three'
                       )}

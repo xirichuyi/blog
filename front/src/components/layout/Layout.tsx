@@ -1,9 +1,8 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { Dock } from '@/components/Dock'
 import { RouteSEO } from '@/components/SEO'
 
 export function Layout() {
-  const location = useLocation()
   return (
     <div className="min-h-dvh pb-28">
       <RouteSEO />
@@ -15,8 +14,7 @@ export function Layout() {
         chuyi<span className="text-muted-foreground">'s blog</span>
       </Link>
 
-      {/* keyed by route → subtle fade-up transition on every navigation */}
-      <main key={location.pathname} className="duration-500 animate-in fade-in slide-in-from-bottom-2">
+      <main>
         <Outlet />
       </main>
 

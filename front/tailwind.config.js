@@ -10,7 +10,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Instrument Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Bricolage Grotesque', 'Noto Sans SC', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['Fira Code', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
       colors: {
         border: 'hsl(var(--border))',

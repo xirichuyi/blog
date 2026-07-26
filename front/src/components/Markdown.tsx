@@ -1,4 +1,14 @@
-import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type CSSProperties,
+} from 'react'
+import PhotoSwipeLightbox from 'photoswipe/lightbox'
+import 'photoswipe/style.css'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSlug from 'rehype-slug'
@@ -25,7 +35,7 @@ import toml from 'react-syntax-highlighter/dist/esm/languages/prism/toml'
 import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
 import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
 import yaml from 'react-syntax-highlighter/dist/esm/languages/prism/yaml'
-import { Check, Copy, ExternalLink } from 'lucide-react'
+import { Check, Copy, ExternalLink, Link2 } from 'lucide-react'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
@@ -86,7 +96,7 @@ const CodeBlock = memo(function CodeBlock({
       await navigator.clipboard.writeText(text)
       setCopied(true)
       if (resetTimer.current !== null) window.clearTimeout(resetTimer.current)
-      resetTimer.current = window.setTimeout(() => setCopied(false), 1500)
+      resetTimer.current = window.setTimeout(() => setCopied(false), 2000)
     } catch {
       /* clipboard unavailable */
     }
@@ -99,9 +109,11 @@ const CodeBlock = memo(function CodeBlock({
           type="button"
           onClick={copy}
           aria-label={copied ? '代码已复制' : '复制代码'}
-          className="md-code-copy"
+          className={cn('md-code-copy', copied && 'copied')}
         >
-          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          <span aria-hidden="true">
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          </span>
           {copied ? '已复制' : '复制'}
         </button>
       </div>
@@ -118,7 +130,7 @@ const CodeBlock = memo(function CodeBlock({
         }}
         codeTagProps={{
           className: 'md-code-source',
-          style: { fontFamily: '"SFMono-Regular", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace' },
+          style: { fontFamily: 'var(--font-code)' },
         }}
       >
         {text}
@@ -127,12 +139,159 @@ const CodeBlock = memo(function CodeBlock({
   )
 })
 
+interface AnchoredHeadingProps extends ComponentPropsWithoutRef<'h2'> {
+  level: 2 | 3
+}
+
+const AnchoredHeading = memo(function AnchoredHeading({
+  level,
+  id,
+  children,
+  ...props
+}: AnchoredHeadingProps) {
+  const [copied, setCopied] = useState(false)
+  const resetTimer = useRef<number | null>(null)
+  const Heading = level === 2 ? 'h2' : 'h3'
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current)
+    },
+    [],
+  )
+
+  const copyHeadingLink = async () => {
+    if (!id) return
+    try {
+      await navigator.clipboard.writeText(`${window.location.href.split('#')[0]}#${id}`)
+      setCopied(true)
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current)
+      resetTimer.current = window.setTimeout(() => setCopied(false), 1400)
+    } catch {
+      // The heading link still works when clipboard access is unavailable.
+    }
+  }
+
+  return (
+    <Heading id={id} {...props} className={cn('md-heading', props.className)}>
+      <span className="md-heading-content">{children}</span>
+      <a
+        href={id ? `#${id}` : undefined}
+        className="md-heading-anchor"
+        onClick={copyHeadingLink}
+        aria-label={copied ? '链接已复制' : '复制标题链接'}
+      >
+        <span aria-hidden="true">
+          {copied ? <Check /> : <Link2 />}
+        </span>
+      </a>
+    </Heading>
+  )
+})
+
+const MarkdownImage = memo(function MarkdownImage({
+  src,
+  alt = '',
+  onLoad,
+  onError,
+  ...props
+}: ComponentPropsWithoutRef<'img'>) {
+  const [loaded, setLoaded] = useState(false)
+  const [size, setSize] = useState({ width: 0, height: 0 })
+  const imageHref = typeof src === 'string' ? src : undefined
+
+  return (
+    <span className="md-figure">
+      <a
+        href={imageHref}
+        target="_blank"
+        rel="noreferrer"
+        className={cn('md-image-frame', loaded && 'is-loaded')}
+        data-pswp-width={size.width || undefined}
+        data-pswp-height={size.height || undefined}
+        data-cropped="true"
+        data-zoomable="true"
+        aria-label={alt ? `查看大图：${alt}` : '查看大图'}
+      >
+        <img
+          src={imageHref}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          data-loaded={loaded ? 'true' : undefined}
+          onLoad={(event) => {
+            setLoaded(true)
+            setSize({
+              width: event.currentTarget.naturalWidth,
+              height: event.currentTarget.naturalHeight,
+            })
+            onLoad?.(event)
+          }}
+          onError={(event) => {
+            setLoaded(true)
+            onError?.(event)
+          }}
+          {...props}
+        />
+      </a>
+      {alt && <span className="md-figcaption">{alt}</span>}
+    </span>
+  )
+})
+
 export const Markdown = memo(function Markdown({ content, className }: { content: string; className?: string }) {
   const { theme } = useTheme()
+  const markdownRef = useRef<HTMLDivElement>(null)
   const codeTheme = (theme === 'dark' ? oneDark : oneLight) as Record<string, CSSProperties>
+
+  useEffect(() => {
+    const gallery = markdownRef.current
+    if (!gallery) return
+
+    const lightbox = new PhotoSwipeLightbox({
+      gallery,
+      children: "a[data-zoomable='true']",
+      pswpModule: () => import('photoswipe'),
+      arrowPrev: false,
+      arrowNext: false,
+      arrowKeys: false,
+      zoom: false,
+      close: false,
+      counter: false,
+      bgOpacity: 1,
+    })
+
+    lightbox.on('uiRegister', () => {
+      lightbox.pswp?.ui?.registerElement({
+        name: 'custom-caption',
+        order: 9,
+        isButton: false,
+        appendTo: 'root',
+        html: '',
+        onInit: (caption, pswp) => {
+          pswp.on('change', () => {
+            const trigger = pswp.currSlide?.data.element
+            const text = trigger?.closest('.md-figure')?.querySelector('.md-figcaption')?.innerHTML || ''
+            caption.innerHTML = text
+            caption.classList.toggle('hidden', !text)
+          })
+        },
+      })
+    })
+    lightbox.on('openingAnimationStart', () => document.body.classList.add('pswp-open'))
+    lightbox.on('closingAnimationEnd', () => document.body.classList.remove('pswp-open'))
+    lightbox.init()
+    return () => {
+      document.body.classList.remove('pswp-open')
+      lightbox.destroy()
+    }
+  }, [content])
+
   const components = useMemo<Components>(
     () => ({
       pre: ({ children }) => <>{children}</>,
+      h2: (props) => <AnchoredHeading level={2} {...props} />,
+      h3: (props) => <AnchoredHeading level={3} {...props} />,
       a: ({ href = '', children, ...props }) => {
         const external = /^https?:\/\//.test(href)
         return (
@@ -146,14 +305,7 @@ export const Markdown = memo(function Markdown({ content, className }: { content
           </a>
         )
       },
-      img: ({ src, alt = '', ...props }) => (
-        <span className="md-figure">
-          <span className="md-image-frame">
-            <img src={src} alt={alt} loading="lazy" decoding="async" {...props} />
-          </span>
-          {alt && <span className="md-figcaption">{alt}</span>}
-        </span>
-      ),
+      img: (props) => <MarkdownImage {...props} />,
       table: ({ children }) => (
         <div className="md-table-wrap" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
           <table>{children}</table>
@@ -183,7 +335,7 @@ export const Markdown = memo(function Markdown({ content, className }: { content
   )
 
   return (
-    <div className={cn('markdown-body prose max-w-none', className)}>
+    <div ref={markdownRef} className={cn('markdown-body prose max-w-none', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSlug]}
