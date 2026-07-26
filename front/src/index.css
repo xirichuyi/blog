@@ -122,7 +122,6 @@
 }
 
 .article-kicker,
-.article-aside-label,
 .article-aside-meta dt {
   color: var(--sage-deep);
   font-size: 0.68rem;
@@ -205,16 +204,9 @@
 
 .article-aside-inner {
   display: flex;
-  max-height: calc(100vh - 7rem);
+  max-height: calc(100vh - 6.5rem);
   min-height: 0;
   flex-direction: column;
-}
-
-.article-aside-label {
-  flex: none;
-  padding: 0 0.4rem 0.8rem 0.85rem;
-  border-bottom: 1px solid var(--hairline);
-  font-size: 0.62rem;
 }
 
 .article-toc {

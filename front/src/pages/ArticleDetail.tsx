@@ -200,7 +200,7 @@ export default function ArticleDetail() {
       <div
         className={cn(
           'article-grid grid grid-cols-1 gap-10 lg:gap-8',
-          headings.length > 0 && !zen && 'lg:grid-cols-[minmax(0,760px)_176px] xl:grid-cols-[64px_minmax(0,760px)_176px]'
+          headings.length > 0 && !zen && 'lg:grid-cols-[minmax(0,1fr)_160px] xl:grid-cols-[64px_minmax(0,1fr)_160px]'
         )}
       >
         {headings.length > 0 && !zen && (
@@ -291,8 +291,7 @@ export default function ArticleDetail() {
         {headings.length > 0 && !zen && (
           <aside className="article-aside hidden lg:block">
             <div className="article-aside-inner sticky top-24">
-              <p className="article-aside-label">On this page</p>
-              <nav ref={tocRef} className="article-toc mt-3" aria-label="文章目录">
+              <nav ref={tocRef} className="article-toc" aria-label="文章目录">
                 {headings.map((heading, index) => (
                   <button
                     key={heading.id}
