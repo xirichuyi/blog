@@ -14,10 +14,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // Dev proxy so the SPA can call the Rust API same-origin (avoids CORS in dev).
+    // Dev proxy so the SPA can call the API same-origin (avoids CORS in dev).
+    // Defaults to the deployed backend; set VITE_API_TARGET to a local backend
+    // (e.g. http://127.0.0.1:3006) when running one locally.
     proxy: {
-      '/api': { target: 'http://127.0.0.1:3006', changeOrigin: true },
-      '/uploads': { target: 'http://127.0.0.1:3006', changeOrigin: true },
+      '/api': { target: process.env.VITE_API_TARGET ?? 'https://blog.chuyi.uk', changeOrigin: true },
+      '/uploads': { target: process.env.VITE_API_TARGET ?? 'https://blog.chuyi.uk', changeOrigin: true },
     },
   },
   build: {

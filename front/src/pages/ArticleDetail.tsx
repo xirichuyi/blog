@@ -45,6 +45,7 @@ export default function ArticleDetail() {
   const [activeId, setActiveId] = useState('')
   const [hoveredHeadingId, setHoveredHeadingId] = useState<string | null>(null)
   const [shared, setShared] = useState(false)
+  const [coverFailed, setCoverFailed] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const tocRef = useRef<HTMLElement>(null)
   const tocPillRef = useRef<HTMLSpanElement>(null)
@@ -64,6 +65,7 @@ export default function ArticleDetail() {
     setHoveredHeadingId(null)
     tocPillReadyRef.current = false
     setError(null)
+    setCoverFailed(false)
     window.scrollTo(0, 0)
 
     Promise.all([
@@ -366,6 +368,17 @@ export default function ArticleDetail() {
                   {t}
                 </Badge>
               ))}
+            </div>
+          )}
+
+          {article.coverImage && !coverFailed && (
+            <div className="article-cover article-reveal mt-9 overflow-hidden rounded-xl">
+              <img
+                src={article.coverImage}
+                alt={article.title}
+                className="block max-h-[30rem] w-full object-cover"
+                onError={() => setCoverFailed(true)}
+              />
             </div>
           )}
 

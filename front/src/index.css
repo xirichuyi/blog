@@ -355,8 +355,14 @@
 }
 
 .article-separator,
-.article-pagination {
+.article-pagination,
+.article-cover {
   border-color: var(--hairline);
+}
+
+.article-cover {
+  border: 1px solid var(--hairline);
+  background: var(--paper-raised);
 }
 
 .article-chapter-rail {
