@@ -226,6 +226,14 @@
   }
 }
 
+/* 返回按钮停靠：始终显示在正文左侧空白处（left 由 JS 对齐正文左缘 - 134px，并钳制不越界）。
+   无水平位移 —— 永不扫过正文、永不盖住标题。 */
+.article-back-dock {
+  position: fixed;
+  top: 2rem;
+  z-index: 40;
+}
+
 .article-back-slot {
   --article-is-scrolled: 0;
   display: flex;
@@ -340,10 +348,10 @@
   max-width: 15ch;
   color: var(--graphite);
   font-family: var(--font-display);
-  font-size: clamp(2.45rem, 6vw, 4.5rem);
+  font-size: clamp(1.9rem, 4vw, 2.75rem);
   font-weight: 520;
   letter-spacing: -0.038em;
-  line-height: 0.98;
+  line-height: 1.05;
   text-wrap: balance;
 }
 
@@ -1044,12 +1052,17 @@
 
 @media (max-width: 767px) {
   .article-title {
-    font-size: clamp(2.35rem, 12vw, 3.55rem);
-    line-height: 1.02;
+    font-size: clamp(1.7rem, 6.5vw, 2.3rem);
+    line-height: 1.08;
   }
 
   .article-actions {
     margin-bottom: 1.5rem;
+  }
+
+  /* 移动端没有侧边距可避让，返回按钮停靠位置略下调。 */
+  .article-back-dock {
+    top: 2.5rem;
   }
 
   .markdown-body {

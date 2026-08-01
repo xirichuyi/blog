@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { useNavigate, useParams } from 'react-router-dom'
+import PhotoSwipeLightbox from 'photoswipe/lightbox'
 import {
   ArrowLeft,
   Check,
@@ -46,7 +47,11 @@ export default function ArticleDetail() {
   const [hoveredHeadingId, setHoveredHeadingId] = useState<string | null>(null)
   const [shared, setShared] = useState(false)
   const [coverFailed, setCoverFailed] = useState(false)
+  const [coverSize, setCoverSize] = useState({ width: 0, height: 0 })
   const contentRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+  const backDockRef = useRef<HTMLDivElement>(null)
+  const coverRef = useRef<HTMLDivElement>(null)
   const tocRef = useRef<HTMLElement>(null)
   const tocPillRef = useRef<HTMLSpanElement>(null)
   const tocProgressRef = useRef<HTMLDivElement>(null)
@@ -66,6 +71,7 @@ export default function ArticleDetail() {
     tocPillReadyRef.current = false
     setError(null)
     setCoverFailed(false)
+    setCoverSize({ width: 0, height: 0 })
     window.scrollTo(0, 0)
 
     Promise.all([
@@ -86,6 +92,39 @@ export default function ArticleDetail() {
 
     return () => controller.abort()
   }, [id])
+
+  // 让停靠点对齐正文左缘（正文列宽度/布局随视口与目录栏变化，需实测）。
+  useEffect(() => {
+    const main = mainRef.current
+    const dock = backDockRef.current
+    if (!main || !dock) return
+    const position = () => {
+      // 停靠点 = 正文左缘 - 134px，钳制到至少离左缘 12px，永不越界也永不横穿正文。
+      dock.style.left = `${Math.max(12, main.getBoundingClientRect().left - 134)}px`
+    }
+    position()
+    window.addEventListener('resize', position)
+    return () => window.removeEventListener('resize', position)
+  }, [article])
+
+  // 封面图灯箱（PhotoSwipe），与正文内图片的放大行为一致。
+  useEffect(() => {
+    const cover = coverRef.current
+    if (!cover || !article?.coverImage) return
+    const lightbox = new PhotoSwipeLightbox({
+      gallery: cover,
+      children: 'a[data-zoomable="true"]',
+      pswpModule: () => import('photoswipe'),
+      bgOpacity: 1,
+    })
+    lightbox.on('openingAnimationStart', () => document.body.classList.add('pswp-open'))
+    lightbox.on('closingAnimationEnd', () => document.body.classList.remove('pswp-open'))
+    lightbox.init()
+    return () => {
+      document.body.classList.remove('pswp-open')
+      lightbox.destroy()
+    }
+  }, [article?.coverImage])
 
   useEffect(
     () => () => {
@@ -302,6 +341,9 @@ export default function ArticleDetail() {
 
   return (
     <div className="article-page container py-10 sm:py-14">
+      <div ref={backDockRef} className="article-back-dock">
+        <MagneticBackButton onClick={() => navigate(-1)} />
+      </div>
       <SEO
         title={article.title}
         description={stripMarkdown(article.content, 150)}
@@ -335,9 +377,8 @@ export default function ArticleDetail() {
           </aside>
         )}
 
-        <article className="article-main mx-auto w-full min-w-0 max-w-[760px]">
-          <div className="article-actions article-reveal -ml-2 mb-8 flex items-center justify-between gap-2">
-            <MagneticBackButton onClick={() => navigate(-1)} />
+        <article ref={mainRef} className="article-main mx-auto w-full min-w-0 max-w-[760px]">
+          <div className="article-actions article-reveal -ml-2 mb-8 flex items-center justify-end gap-2">
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={share} aria-label="分享文章">
                 {shared ? <Check /> : <Share2 />}
@@ -372,13 +413,31 @@ export default function ArticleDetail() {
           )}
 
           {article.coverImage && !coverFailed && (
-            <div className="article-cover article-reveal mt-9 overflow-hidden rounded-xl">
-              <img
-                src={article.coverImage}
-                alt={article.title}
-                className="block max-h-[30rem] w-full object-cover"
-                onError={() => setCoverFailed(true)}
-              />
+            <div
+              ref={coverRef}
+              className="article-cover article-reveal mt-9 overflow-hidden rounded-xl"
+            >
+              <a
+                href={article.coverImage}
+                className="block cursor-zoom-in"
+                data-zoomable="true"
+                data-pswp-width={coverSize.width || undefined}
+                data-pswp-height={coverSize.height || undefined}
+                aria-label="查看大图"
+              >
+                <img
+                  src={article.coverImage}
+                  alt={article.title}
+                  className="block max-h-[30rem] w-full object-cover"
+                  onLoad={(event) =>
+                    setCoverSize({
+                      width: event.currentTarget.naturalWidth,
+                      height: event.currentTarget.naturalHeight,
+                    })
+                  }
+                  onError={() => setCoverFailed(true)}
+                />
+              </a>
             </div>
           )}
 
