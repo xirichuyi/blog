@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Loader2, ImagePlus, X, Check } from 'lucide-react'
 import {
@@ -13,7 +13,7 @@ import {
   POST_STATUS,
 } from '@/services/admin'
 import { imageUrl, type Category, type Tag } from '@/services/api'
-import { Markdown } from '@/components/Markdown'
+import { MarkdownEditor } from '@/components/admin/MarkdownEditor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -41,13 +41,11 @@ export default function PostEditor() {
   const [tags, setTags] = useState<Tag[]>([])
   const [newTag, setNewTag] = useState('')
 
-  const [tab, setTab] = useState<'write' | 'preview'>('write')
   const [loading, setLoading] = useState(editing)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState<'cover' | 'inline' | null>(null)
   const [err, setErr] = useState('')
   const [saved, setSaved] = useState(false)
-  const taRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     Promise.all([listCategories(), listTags()]).then(([c, t]) => {
@@ -71,28 +69,25 @@ export default function PostEditor() {
       .finally(() => setLoading(false))
   }, [id])
 
-  async function onPickImage(file: File, kind: 'cover' | 'inline') {
-    setUploading(kind)
+  async function onPickCover(file: File) {
+    setUploading('cover')
     setErr('')
     try {
-      const updatedPost =
-        kind === 'cover' && editing ? await replacePostCover(Number(id), file) : null
+      const updatedPost = editing ? await replacePostCover(Number(id), file) : null
       const url = updatedPost?.cover_url ?? (await uploadImage(file))
-      if (kind === 'cover') {
-        setCoverUrl(url)
-      } else {
-        const snippet = `\n![](${url})\n`
-        const ta = taRef.current
-        if (ta) {
-          const start = ta.selectionStart
-          const end = ta.selectionEnd
-          setContent((current) => current.slice(0, start) + snippet + current.slice(end))
-        } else {
-          setContent((current) => current + snippet)
-        }
-      }
+      setCoverUrl(url)
     } catch (e) {
       setErr('上传失败：' + (e as Error).message)
+    } finally {
+      setUploading(null)
+    }
+  }
+
+  async function uploadInlineImage(file: File): Promise<string> {
+    setUploading('inline')
+    setErr('')
+    try {
+      return await uploadImage(file)
     } finally {
       setUploading(null)
     }
@@ -166,7 +161,14 @@ export default function PostEditor() {
   }
 
   return (
-    <div>
+    <div
+      onKeyDown={(event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+          event.preventDefault()
+          void save()
+        }
+      }}
+    >
       <div className="sticky top-14 z-30 -mx-4 mb-5 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:mb-6 md:border-0 md:bg-transparent md:p-0">
         <button
           onClick={() => navigate('/admin/posts')}
@@ -229,7 +231,7 @@ export default function PostEditor() {
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && onPickImage(e.target.files[0], 'cover')}
+            onChange={(e) => e.target.files?.[0] && onPickCover(e.target.files[0])}
           />
         </label>
         {coverUrl && (
@@ -274,45 +276,12 @@ export default function PostEditor() {
         />
       </div>
 
-      {/* editor tabs */}
-      <div className="mb-2 flex items-center gap-1 border-b border-border">
-        {(['write', 'preview'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              '-mb-px border-b-2 px-3 py-1.5 text-sm transition-colors',
-              tab === t ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {t === 'write' ? '编辑' : '预览'}
-          </button>
-        ))}
-        <label className="ml-auto inline-flex min-h-10 cursor-pointer items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground">
-          {uploading === 'inline' ? <Loader2 className="size-3.5 animate-spin" /> : <ImagePlus className="size-3.5" />}
-          插入图片
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && onPickImage(e.target.files[0], 'inline')}
-          />
-        </label>
-      </div>
-
-      {tab === 'write' ? (
-        <textarea
-          ref={taRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="用 Markdown 写正文…"
-          className="min-h-[calc(100dvh-22rem)] w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-base leading-relaxed outline-none focus:ring-1 focus:ring-ring md:min-h-[60vh] md:text-sm"
-        />
-      ) : (
-        <div className="min-h-[60vh] rounded-lg border border-border p-4">
-          {content.trim() ? <Markdown content={content} /> : <p className="text-sm text-muted-foreground">没有内容。</p>}
-        </div>
-      )}
+      <MarkdownEditor
+        value={content}
+        onChange={setContent}
+        onUploadImage={uploadInlineImage}
+        uploadingImage={uploading === 'inline'}
+      />
     </div>
   )
 }

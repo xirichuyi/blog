@@ -1,18 +1,18 @@
 import { useEffect, useRef, type PointerEvent } from 'react'
 import { ArrowLeft } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 interface MagneticBackButtonProps {
-  onClick: () => void
+  to: string
 }
 
-const AVATAR_URL = 'https://avatars.githubusercontent.com/u/144898416'
 const POINTER_FACTOR = 0.1
 
 function supportsFinePointer() {
   return window.matchMedia('(hover: hover) and (pointer: fine)').matches
 }
 
-export function MagneticBackButton({ onClick }: MagneticBackButtonProps) {
+export function MagneticBackButton({ to }: MagneticBackButtonProps) {
   const parallaxRef = useRef<HTMLSpanElement>(null)
   const frameRef = useRef(0)
 
@@ -55,20 +55,12 @@ export function MagneticBackButton({ onClick }: MagneticBackButtonProps) {
         onPointerMove={handlePointerMove}
         onPointerLeave={leave}
       >
-        <button type="button" onClick={onClick} className="article-magnetic-back" aria-label="返回上一页">
+        <Link to={to} className="article-magnetic-back" aria-label="返回文章列表">
           <span className="article-magnetic-back-content" aria-hidden="true">
-            <img
-              src={AVATAR_URL}
-              alt=""
-              className="article-magnetic-back-avatar"
-              width="48"
-              height="48"
-            />
-            <span className="article-magnetic-back-arrow">
-              <ArrowLeft />
-            </span>
+            <ArrowLeft />
+            <span>返回文章</span>
           </span>
-        </button>
+        </Link>
       </span>
     </span>
   )

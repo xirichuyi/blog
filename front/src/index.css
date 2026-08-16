@@ -205,57 +205,17 @@
   background: var(--sage);
 }
 
-@property --article-is-scrolled {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 0;
-}
-
-@property --article-hover-trigger {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 0;
-}
-
-@keyframes article-back-button-scroll {
-  from {
-    --article-is-scrolled: 0;
-  }
-  to {
-    --article-is-scrolled: 1;
-  }
-}
-
-/* 返回按钮停靠：始终显示在正文左侧空白处（left 由 JS 对齐正文左缘 - 134px，并钳制不越界）。
-   无水平位移 —— 永不扫过正文、永不盖住标题。 */
-.article-back-dock {
-  position: fixed;
-  top: 2rem;
-  z-index: 40;
-}
-
 .article-back-slot {
-  --article-is-scrolled: 0;
-  display: flex;
-  width: 3rem;
-  height: 3rem;
+  display: inline-flex;
+  width: fit-content;
+  height: 2.75rem;
   flex: none;
-  align-items: flex-start;
-  justify-content: flex-start;
-}
-
-@supports (animation-timeline: scroll()) {
-  .article-back-slot {
-    animation: linear both article-back-button-scroll;
-    animation-range: 0 400px;
-    animation-timeline: scroll();
-  }
 }
 
 .article-back-parallax {
-  display: block;
-  width: calc(2rem + 1rem * var(--article-is-scrolled));
-  height: calc(2rem + 1rem * var(--article-is-scrolled));
+  display: inline-flex;
+  width: fit-content;
+  height: 100%;
   flex: none;
   transform: translate3d(0, 0, 0);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -263,21 +223,22 @@
 }
 
 .article-magnetic-back {
-  --article-hover-trigger: 0;
-  display: block;
-  width: 100%;
+  display: inline-flex;
+  min-width: 2.75rem;
   height: 100%;
-  overflow: hidden;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 9999px;
   background: color-mix(in oklab, var(--sage) 20%, transparent);
   color: var(--graphite);
-  backdrop-filter: blur(calc(var(--article-is-scrolled) * 12px));
-  transition: --article-hover-trigger 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 0 0.8rem;
+  text-decoration: none;
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
 .article-magnetic-back:hover {
-  --article-hover-trigger: 1;
+  background: color-mix(in oklab, var(--sage) 32%, transparent);
 }
 
 .article-magnetic-back:focus-visible {
@@ -286,44 +247,17 @@
 }
 
 .article-magnetic-back-content {
-  position: relative;
   display: inline-flex;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
   align-items: center;
+  gap: 0.4rem;
   justify-content: center;
-  border-radius: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
   pointer-events: none;
 }
 
-.article-magnetic-back-avatar,
-.article-magnetic-back-arrow {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.article-magnetic-back-avatar {
-  border-radius: inherit;
-  object-fit: cover;
-  opacity: calc((1 - var(--article-is-scrolled)) * (1 - var(--article-hover-trigger)));
-  user-select: none;
-}
-
-.article-magnetic-back-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: calc(
-    var(--article-is-scrolled) +
-    (1 - var(--article-is-scrolled)) * var(--article-hover-trigger)
-  );
-}
-
-.article-magnetic-back-arrow svg {
+.article-magnetic-back svg {
   width: 0.875rem;
   height: 0.875rem;
   stroke-width: 1.5;
@@ -345,13 +279,13 @@
 }
 
 .article-title {
-  max-width: 15ch;
+  max-width: 18ch;
   color: var(--graphite);
   font-family: var(--font-display);
-  font-size: clamp(1.9rem, 4vw, 2.75rem);
-  font-weight: 520;
-  letter-spacing: -0.038em;
-  line-height: 1.05;
+  font-size: clamp(1.8rem, 3.4vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
   text-wrap: balance;
 }
 
@@ -607,6 +541,84 @@
 
 .markdown-body > :first-child {
   margin-top: 0;
+}
+
+/* The admin editor uses the same reading typography on the editable
+   ProseMirror canvas, so authors never have to switch to a preview mode. */
+.wysiwyg-editor > .ProseMirror {
+  min-height: 30rem;
+  caret-color: var(--sage-deep);
+  outline: none;
+  animation: none;
+  filter: none;
+  opacity: 1;
+  transform: none;
+}
+
+.wysiwyg-editor > .ProseMirror > :first-child {
+  margin-top: 0;
+}
+
+.wysiwyg-editor > .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  height: 0;
+  float: left;
+  color: color-mix(in srgb, var(--graphite-soft) 55%, transparent);
+  pointer-events: none;
+}
+
+.wysiwyg-editor > .ProseMirror :where(code):not(pre code) {
+  border: 1px solid var(--hairline);
+  border-radius: 0.35rem;
+  background: var(--mist);
+  padding: 0.13em 0.38em;
+  color: var(--sage-deep);
+  font-family: var(--font-code);
+  font-size: 0.82em;
+  font-weight: 500;
+}
+
+.wysiwyg-editor > .ProseMirror :where(code):not(pre code)::before,
+.wysiwyg-editor > .ProseMirror :where(code):not(pre code)::after {
+  content: none;
+}
+
+.wysiwyg-editor > .ProseMirror pre {
+  overflow-x: auto;
+  margin: 2rem 0 2.35rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.65rem;
+  background: var(--mist);
+  padding: 1.25rem 1.35rem 1.4rem;
+  color: var(--graphite);
+  font-family: var(--font-code);
+  font-size: 0.82rem;
+  line-height: 1.75;
+}
+
+.wysiwyg-editor > .ProseMirror pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+}
+
+.wysiwyg-editor > .ProseMirror img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 2.7rem 0 2.8rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.35rem;
+  background: var(--mist);
+  cursor: grab;
+}
+
+.wysiwyg-editor > .ProseMirror img.ProseMirror-selectednode {
+  outline: 3px solid color-mix(in srgb, var(--sage) 65%, transparent);
+  outline-offset: 4px;
 }
 
 .markdown-body :where(p) {
@@ -898,7 +910,41 @@
   border: 1px solid var(--hairline);
   border-radius: 0.35rem;
   background: var(--mist);
+  cursor: zoom-in;
   transition: background 0.3s ease-in-out;
+}
+
+.md-image-frame::after {
+  content: '点击查看原图';
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  border: 1px solid color-mix(in oklab, white 18%, transparent);
+  border-radius: 9999px;
+  padding: 0.35rem 0.65rem;
+  background: color-mix(in oklab, black 55%, transparent);
+  color: white;
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(0.3rem);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+
+.md-image-frame:hover::after,
+.md-image-frame:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.md-image-frame.is-static {
+  cursor: default;
+}
+
+.md-image-frame.is-static::after {
+  content: none;
 }
 
 .md-image-frame.is-loaded {
@@ -1060,11 +1106,6 @@
     margin-bottom: 1.5rem;
   }
 
-  /* 移动端没有侧边距可避让，返回按钮停靠位置略下调。 */
-  .article-back-dock {
-    top: 2.5rem;
-  }
-
   .markdown-body {
     font-size: 1rem;
     line-height: 1.82;
@@ -1115,14 +1156,8 @@
     transform: none;
   }
 
-  .article-back-slot {
-    animation: none;
-  }
-
   .article-back-parallax,
   .article-magnetic-back,
-  .article-magnetic-back-avatar,
-  .article-magnetic-back-arrow,
   .article-toc-pill,
   .article-toc-progress-fill,
   .article-toc-entry,

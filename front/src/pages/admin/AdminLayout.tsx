@@ -148,8 +148,8 @@ export default function AdminLayout() {
         <main>
           <div
             className={cn(
-              'mx-auto max-w-4xl px-4 py-5 sm:px-6 md:px-8 md:py-10 md:pb-10',
-              editingPost ? 'pb-8' : 'pb-28',
+              'mx-auto px-4 py-5 sm:px-6 md:px-8 md:py-10 md:pb-10',
+              editingPost ? 'max-w-[1500px] pb-8' : 'max-w-4xl pb-28',
             )}
           >
             <Outlet />

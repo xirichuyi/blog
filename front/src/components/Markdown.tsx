@@ -189,13 +189,18 @@ const AnchoredHeading = memo(function AnchoredHeading({
   )
 })
 
+interface MarkdownImageProps extends ComponentPropsWithoutRef<'img'> {
+  interactive?: boolean
+}
+
 const MarkdownImage = memo(function MarkdownImage({
   src,
   alt = '',
   onLoad,
   onError,
+  interactive = true,
   ...props
-}: ComponentPropsWithoutRef<'img'>) {
+}: MarkdownImageProps) {
   const [loaded, setLoaded] = useState(false)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const imageHref = typeof src === 'string' ? src : undefined
@@ -204,14 +209,16 @@ const MarkdownImage = memo(function MarkdownImage({
     <span className="md-figure">
       <a
         href={imageHref}
-        target="_blank"
-        rel="noreferrer"
-        className={cn('md-image-frame', loaded && 'is-loaded')}
+        target={interactive ? '_blank' : undefined}
+        rel={interactive ? 'noreferrer' : undefined}
+        className={cn('md-image-frame', loaded && 'is-loaded', !interactive && 'is-static')}
         data-pswp-width={size.width || undefined}
         data-pswp-height={size.height || undefined}
         data-cropped="true"
-        data-zoomable="true"
-        aria-label={alt ? `查看大图：${alt}` : '查看大图'}
+        data-zoomable={interactive ? 'true' : undefined}
+        aria-label={interactive ? (alt ? `查看大图：${alt}` : '查看大图') : undefined}
+        tabIndex={interactive ? undefined : -1}
+        onClick={interactive ? undefined : (event) => event.preventDefault()}
       >
         <img
           src={imageHref}
@@ -239,26 +246,33 @@ const MarkdownImage = memo(function MarkdownImage({
   )
 })
 
-export const Markdown = memo(function Markdown({ content, className }: { content: string; className?: string }) {
+interface MarkdownProps {
+  content: string
+  className?: string
+  enableLightbox?: boolean
+}
+
+export const Markdown = memo(function Markdown({ content, className, enableLightbox = true }: MarkdownProps) {
   const { theme } = useTheme()
   const markdownRef = useRef<HTMLDivElement>(null)
   const codeTheme = (theme === 'dark' ? oneDark : oneLight) as Record<string, CSSProperties>
 
   useEffect(() => {
     const gallery = markdownRef.current
-    if (!gallery) return
+    if (!gallery || !enableLightbox) return
 
     const lightbox = new PhotoSwipeLightbox({
       gallery,
       children: "a[data-zoomable='true']",
       pswpModule: () => import('photoswipe'),
-      arrowPrev: false,
-      arrowNext: false,
-      arrowKeys: false,
-      zoom: false,
-      close: false,
-      counter: false,
-      bgOpacity: 1,
+      arrowPrev: true,
+      arrowNext: true,
+      arrowKeys: true,
+      zoom: true,
+      close: true,
+      counter: true,
+      wheelToZoom: true,
+      bgOpacity: 0.96,
     })
 
     lightbox.on('uiRegister', () => {
@@ -285,7 +299,7 @@ export const Markdown = memo(function Markdown({ content, className }: { content
       document.body.classList.remove('pswp-open')
       lightbox.destroy()
     }
-  }, [content])
+  }, [enableLightbox])
 
   const components = useMemo<Components>(
     () => ({
@@ -305,7 +319,7 @@ export const Markdown = memo(function Markdown({ content, className }: { content
           </a>
         )
       },
-      img: (props) => <MarkdownImage {...props} />,
+      img: (props) => <MarkdownImage {...props} interactive={enableLightbox} />,
       table: ({ children }) => (
         <div className="md-table-wrap" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
           <table>{children}</table>
@@ -331,7 +345,7 @@ export const Markdown = memo(function Markdown({ content, className }: { content
         )
       },
     }),
-    [codeTheme],
+    [codeTheme, enableLightbox],
   )
 
   return (
