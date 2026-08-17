@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FileText, FolderTree, Tags, Plus } from 'lucide-react'
+import { AlertCircle, FileText, FolderTree, Tags, Plus } from 'lucide-react'
 import { getDashboard, STATUS_NAME, type DashboardStats } from '@/services/admin'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 function Stat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number | string }) {
   return (
-    <div className="rounded-xl border border-border p-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Icon className="size-4" /> {label}
-      </div>
-      <div className="mt-2 text-2xl font-semibold">{value}</div>
-    </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        <Icon className="size-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent><div className="text-2xl font-semibold">{value}</div></CardContent>
+    </Card>
   )
 }
 
@@ -27,8 +31,11 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">概览</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">概览</h1>
+          <p className="mt-1 text-sm text-muted-foreground">博客内容与运行状态。</p>
+        </div>
         <Button asChild size="sm">
           <Link to="/admin/posts/new">
             <Plus className="size-4" /> 写文章
@@ -36,7 +43,19 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {err && <p className="text-sm text-destructive">{err}</p>}
+      {err && (
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertTitle>概览加载失败</AlertTitle>
+          <AlertDescription>{err}</AlertDescription>
+        </Alert>
+      )}
+
+      {!stats && !err && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[0, 1, 2].map((item) => <Skeleton key={item} className="h-32 rounded-xl" />)}
+        </div>
+      )}
 
       {stats && (
         <>
@@ -47,9 +66,9 @@ export default function Dashboard() {
           </div>
 
           {stats.recent_posts && stats.recent_posts.length > 0 && (
-            <div className="mt-8">
-              <h2 className="mb-3 text-sm font-medium text-muted-foreground">最近文章</h2>
-              <div className="divide-y divide-border rounded-xl border border-border">
+            <Card className="mt-8">
+              <CardHeader><CardTitle className="text-base">最近文章</CardTitle></CardHeader>
+              <CardContent className="divide-y divide-border p-0">
                 {stats.recent_posts.map((p) => (
                   <Link
                     key={p.id}
@@ -60,8 +79,8 @@ export default function Dashboard() {
                     <span className="shrink-0 text-xs text-muted-foreground">{STATUS_NAME[p.status] ?? p.status}</span>
                   </Link>
                 ))}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           {stats.system_info && (

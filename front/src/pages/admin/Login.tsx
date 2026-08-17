@@ -3,6 +3,9 @@ import { Helmet } from 'react-helmet-async'
 import { AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
 import { googleLoginUrl } from '@/services/admin'
 import { useAdminAuth } from '@/lib/admin-auth'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_configured: '服务器还没有配置 Google 登录。',
@@ -43,43 +46,42 @@ export default function AdminLogin() {
       </Helmet>
 
       <main className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mx-auto grid size-12 place-items-center rounded-2xl border border-border bg-secondary/60">
-            <ShieldCheck className="size-5" />
-          </div>
-          <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            chuyi / admin
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">登录博客后台</h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            使用已加入管理员白名单的 Google 账号。
-          </p>
-        </div>
+        <Card>
+          <CardHeader className="items-center text-center">
+            <div className="mx-auto grid size-12 place-items-center rounded-2xl border border-border bg-secondary/60">
+              <ShieldCheck className="size-5" />
+            </div>
+            <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              chuyi / admin
+            </p>
+            <CardTitle className="mt-2 text-2xl">登录博客后台</CardTitle>
+            <CardDescription className="leading-6">
+              使用已加入管理员白名单的 Google 账号。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-        {error && (
-          <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+            {loading ? (
+              <div className="flex h-12 items-center justify-center rounded-xl border border-border text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+              </div>
+            ) : (
+              <Button asChild variant="outline" className="h-12 w-full bg-white text-slate-800 hover:bg-slate-50 hover:text-slate-900">
+                <a href={googleLoginUrl()}><GoogleMark /> 使用 Google 账号继续</a>
+              </Button>
+            )}
 
-        {loading ? (
-          <div className="flex h-12 items-center justify-center rounded-xl border border-border text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-          </div>
-        ) : (
-          <a
-            href={googleLoginUrl()}
-            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <GoogleMark />
-            使用 Google 账号继续
-          </a>
-        )}
-
-        <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
-          登录状态通过安全 Cookie 保存，不会在浏览器中存储管理令牌。
-        </p>
+            <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
+              登录状态通过安全 Cookie 保存，不会在浏览器中存储管理令牌。
+            </p>
+          </CardContent>
+        </Card>
       </main>
     </div>
   )

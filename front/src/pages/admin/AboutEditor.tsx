@@ -1,44 +1,48 @@
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Check, ImagePlus } from 'lucide-react'
+import { AlertCircle, ImagePlus, Loader2, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { Markdown } from '@/components/Markdown'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 import { getAboutRaw, updateAbout, uploadImage } from '@/services/admin'
 import { imageUrl } from '@/services/api'
-import { Markdown } from '@/components/Markdown'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
 
 export default function AboutEditor() {
   const [title, setTitle] = useState('')
   const [subtitle, setSubtitle] = useState('')
   const [content, setContent] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [tab, setTab] = useState<'write' | 'preview'>('write')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [err, setErr] = useState('')
+  const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     getAboutRaw()
-      .then((a) => {
-        setTitle(a.title || '')
-        setSubtitle(a.subtitle || '')
-        setContent(a.content || '')
-        setPhotoUrl((a as { photo_url?: string }).photo_url ?? null)
+      .then((about) => {
+        setTitle(about.title || '')
+        setSubtitle(about.subtitle || '')
+        setContent(about.content || '')
+        setPhotoUrl((about as { photo_url?: string }).photo_url ?? null)
       })
-      .catch((e) => setErr(String(e.message || e)))
+      .catch((loadError) => setError(String(loadError.message || loadError)))
       .finally(() => setLoading(false))
   }, [])
 
-  async function onPhoto(file: File) {
+  async function uploadPhoto(file: File) {
     setUploading(true)
-    setErr('')
     try {
       setPhotoUrl(await uploadImage(file))
-    } catch (e) {
-      setErr('上传失败：' + (e as Error).message)
+      toast.success('头像已上传')
+    } catch (uploadError) {
+      toast.error('上传失败', { description: (uploadError as Error).message })
     } finally {
       setUploading(false)
     }
@@ -46,14 +50,12 @@ export default function AboutEditor() {
 
   async function save() {
     setSaving(true)
-    setErr('')
-    setSaved(false)
+    setError('')
     try {
       await updateAbout({ title, subtitle, content, photo_url: photoUrl })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (e) {
-      setErr('保存失败：' + (e as Error).message)
+      toast.success('关于页已保存')
+    } catch (saveError) {
+      toast.error('保存失败', { description: (saveError as Error).message })
     } finally {
       setSaving(false)
     }
@@ -62,86 +64,97 @@ export default function AboutEditor() {
   if (loading) {
     return (
       <div className="flex items-center gap-2 py-12 text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> 加载中…
+        <Loader2 className="animate-spin" /> 加载中…
       </div>
     )
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">关于页</h1>
-        <div className="flex items-center gap-2">
-          {saved && (
-            <span className="inline-flex items-center gap-1 text-sm text-emerald-500">
-              <Check className="size-4" /> 已保存
-            </span>
-          )}
-          <Button onClick={save} disabled={saving} size="sm">
-            {saving ? <Loader2 className="size-4 animate-spin" /> : '保存'}
-          </Button>
-        </div>
-      </div>
-
-      {err && <p className="mb-4 text-sm text-destructive">{err}</p>}
-
-      <div className="mb-4 flex items-center gap-3">
-        {photoUrl && <img src={imageUrl(photoUrl)} alt="" className="size-16 rounded-full object-cover" />}
-        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground">
-          {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
-          头像
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])}
-          />
-        </label>
-        {photoUrl && (
-          <button onClick={() => setPhotoUrl(null)} className="text-sm text-muted-foreground hover:text-destructive">
-            移除
-          </button>
-        )}
-      </div>
-
-      <div className="mb-3 grid gap-3 sm:grid-cols-2">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">标题</label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} className="text-base sm:text-sm" />
+          <h1 className="text-2xl font-bold tracking-tight">关于页</h1>
+          <p className="mt-1 text-sm text-muted-foreground">维护个人简介与头像。</p>
         </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">副标题</label>
-          <Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} className="text-base sm:text-sm" />
-        </div>
+        <Button onClick={() => void save()} disabled={saving} size="sm">
+          {saving && <Loader2 className="animate-spin" />} 保存
+        </Button>
       </div>
 
-      <label className="mb-1 block text-xs text-muted-foreground">正文（Markdown）</label>
-      <div className="mb-2 flex items-center gap-1 border-b border-border">
-        {(['write', 'preview'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              '-mb-px border-b-2 px-3 py-1.5 text-sm transition-colors',
-              tab === t ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {t === 'write' ? '编辑' : '预览'}
-          </button>
-        ))}
-      </div>
-      {tab === 'write' ? (
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className="min-h-[45vh] w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-base leading-relaxed outline-none focus:ring-1 focus:ring-ring md:min-h-[40vh] md:text-sm"
-        />
-      ) : (
-        <div className="min-h-[40vh] rounded-lg border border-border p-4">
-          {content.trim() ? <Markdown content={content} /> : <p className="text-sm text-muted-foreground">没有内容。</p>}
-        </div>
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle />
+          <AlertTitle>关于页加载失败</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>基本信息</CardTitle>
+          <CardDescription>这些内容会显示在公开的关于页面。</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <Avatar className="size-20 border">
+              <AvatarImage src={photoUrl ? imageUrl(photoUrl) : undefined} alt={title || '头像'} />
+              <AvatarFallback>{title.slice(0, 1).toUpperCase() || 'C'}</AvatarFallback>
+            </Avatar>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void uploadPhoto(file)
+                event.target.value = ''
+              }}
+            />
+            <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+              {photoUrl ? '更换头像' : '上传头像'}
+            </Button>
+            {photoUrl && (
+              <Button variant="ghost" onClick={() => setPhotoUrl(null)}><X /> 移除</Button>
+            )}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="about-title">标题</Label>
+              <Input id="about-title" value={title} onChange={(event) => setTitle(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="about-subtitle">副标题</Label>
+              <Input id="about-subtitle" value={subtitle} onChange={(event) => setSubtitle(event.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>正文（Markdown）</Label>
+            <Tabs defaultValue="write">
+              <TabsList>
+                <TabsTrigger value="write">编辑</TabsTrigger>
+                <TabsTrigger value="preview">预览</TabsTrigger>
+              </TabsList>
+              <TabsContent value="write">
+                <Textarea
+                  value={content}
+                  onChange={(event) => setContent(event.target.value)}
+                  className="min-h-[42vh] resize-y font-mono leading-relaxed"
+                  placeholder="输入关于页正文…"
+                />
+              </TabsContent>
+              <TabsContent value="preview">
+                <div className="min-h-[42vh] rounded-md border p-4">
+                  {content.trim() ? <Markdown content={content} /> : <p className="text-sm text-muted-foreground">没有内容。</p>}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

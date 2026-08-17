@@ -1,51 +1,54 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ExternalLink,
   FileText,
   LayoutDashboard,
   Loader2,
   LogOut,
+  MoreVertical,
   Tags,
   User,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from '@/components/ui/sidebar'
+import { Toaster } from '@/components/ui/sonner'
 import { useAdminAuth } from '@/lib/admin-auth'
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { to: '/admin', label: '概览', icon: LayoutDashboard, end: true },
-  { to: '/admin/posts', label: '文章', icon: FileText, end: false },
-  { to: '/admin/taxonomy', label: '分类', icon: Tags, end: false },
-  { to: '/admin/about', label: '关于', icon: User, end: false },
+  { to: '/admin', label: '概览', icon: LayoutDashboard, exact: true },
+  { to: '/admin/posts', label: '文章', icon: FileText },
+  { to: '/admin/taxonomy', label: '分类与标签', icon: Tags },
+  { to: '/admin/about', label: '关于页', icon: User },
 ]
 
-function AdminNav({ mobile = false }: { mobile?: boolean }) {
-  return (
-    <nav className={mobile ? 'grid grid-cols-4' : 'flex flex-col gap-1'}>
-      {NAV.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.end}
-          className={({ isActive }) =>
-            cn(
-              mobile
-                ? 'flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px]'
-                : 'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
-              isActive
-                ? mobile
-                  ? 'text-foreground'
-                  : 'bg-accent font-medium text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
-            )
-          }
-        >
-          <item.icon className={mobile ? 'size-5' : 'size-4'} />
-          {item.label}
-        </NavLink>
-      ))}
-    </nav>
-  )
+function pathIsActive(pathname: string, to: string, exact = false) {
+  return exact ? pathname === to : pathname === to || pathname.startsWith(`${to}/`)
 }
 
 export default function AdminLayout() {
@@ -63,105 +66,115 @@ export default function AdminLayout() {
       await signOut()
       navigate('/admin/login', { replace: true })
     } catch (error) {
-      window.alert((error as Error).message || '退出失败，请稍后重试。')
+      toast.error((error as Error).message || '退出失败，请稍后重试。')
     } finally {
       setSigningOut(false)
     }
   }
 
   return (
-    <div className="flex min-h-dvh bg-background text-foreground">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border p-4 md:flex">
-        <div className="mb-6 px-2 text-sm font-semibold">
-          chuyi <span className="text-muted-foreground">/ admin</span>
-        </div>
-        <AdminNav />
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild size="lg" tooltip="chuyi / admin">
+                <Link to="/admin">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
+                    C
+                  </span>
+                  <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">chuyi</span>
+                    <span className="truncate text-xs text-sidebar-foreground/60">博客后台</span>
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
 
-        <div className="mt-auto border-t border-border pt-3">
-          {session && (
-            <div className="mb-3 flex items-center gap-2 px-2">
-              {session.picture ? (
-                <img
-                  src={session.picture}
-                  alt=""
-                  referrerPolicy="no-referrer"
-                  className="size-8 rounded-full"
-                />
-              ) : (
-                <span className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-medium">
-                  {session.name.slice(0, 1).toUpperCase()}
-                </span>
-              )}
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium">{session.name}</p>
-                <p className="truncate text-[11px] text-muted-foreground">{session.email}</p>
-              </div>
-            </div>
-          )}
-          <a
-            href="/"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            <ExternalLink className="size-4" /> 查看网站
-          </a>
-          <button
-            type="button"
-            onClick={logout}
-            disabled={signingOut}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:opacity-50"
-          >
-            {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-            退出登录
-          </button>
-        </div>
-      </aside>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>管理</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {NAV.map((item) => (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathIsActive(location.pathname, item.to, item.exact)}
+                      tooltip={item.label}
+                    >
+                      <Link to={item.to}>
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-      <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur md:hidden">
-          <span className="text-sm font-semibold">
-            chuyi <span className="text-muted-foreground">/ admin</span>
-          </span>
-          <div className="flex items-center gap-1">
-            <a
-              href="/"
-              target="_blank"
-              rel="noreferrer"
-              className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
-              aria-label="查看网站"
-            >
-              <ExternalLink className="size-4" />
-            </a>
-            <button
-              type="button"
-              onClick={logout}
-              disabled={signingOut}
-              className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-              aria-label="退出登录"
-            >
-              {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-            </button>
-          </div>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton size="lg" tooltip={session?.name || '账号'}>
+                    <Avatar className="size-8 rounded-lg">
+                      <AvatarImage src={session?.picture ?? undefined} alt={session?.name || ''} referrerPolicy="no-referrer" />
+                      <AvatarFallback className="rounded-lg">
+                        {session?.name?.slice(0, 1).toUpperCase() || 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">{session?.name || '管理员'}</span>
+                      <span className="truncate text-xs text-sidebar-foreground/60">{session?.email}</span>
+                    </span>
+                    {signingOut ? <Loader2 className="animate-spin" /> : <MoreVertical />}
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <p className="truncate text-sm font-medium">{session?.name || '管理员'}</p>
+                    <p className="truncate text-xs text-muted-foreground">{session?.email}</p>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <a href="/" target="_blank" rel="noreferrer">
+                      <ExternalLink /> 查看网站
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={signingOut} onSelect={() => void logout()}>
+                    <LogOut /> 退出登录
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+
+      <SidebarInset>
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur">
+          <SidebarTrigger className="-ml-1" />
+          <span className="text-sm font-medium md:hidden">博客后台</span>
         </header>
-
-        <main>
+        <main className="flex-1">
           <div
             className={cn(
-              'mx-auto px-4 py-5 sm:px-6 md:px-8 md:py-10 md:pb-10',
-              editingPost ? 'max-w-[1500px] pb-8' : 'max-w-4xl pb-28',
+              'mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-10',
+              editingPost ? 'max-w-[1500px]' : 'max-w-5xl',
             )}
           >
             <Outlet />
           </div>
         </main>
-      </div>
-
-      {!editingPost && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-          <AdminNav mobile />
-        </div>
-      )}
-    </div>
+      </SidebarInset>
+      <Toaster richColors closeButton />
+    </SidebarProvider>
   )
 }

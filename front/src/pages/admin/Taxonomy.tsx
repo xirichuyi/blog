@@ -1,141 +1,236 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Loader2, Check, X, Pencil } from 'lucide-react'
+import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
-  listCategories,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import {
   createCategory,
-  updateCategory,
-  deleteCategory,
-  listTags,
   createTag,
-  updateTag,
+  deleteCategory,
   deleteTag,
+  listCategories,
+  listTags,
+  updateCategory,
+  updateTag,
 } from '@/services/admin'
 import type { Category, Tag } from '@/services/api'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 type Item = Category | Tag
 
-function Section({
-  title,
-  load,
-  create,
-  rename,
-  remove,
-}: {
+interface SectionProps {
   title: string
+  description: string
   load: () => Promise<Item[]>
   create: (name: string) => Promise<unknown>
   rename: (id: string, name: string) => Promise<unknown>
   remove: (id: string) => Promise<unknown>
-}) {
+}
+
+function Section({ title, description, load, create, rename, remove }: SectionProps) {
   const [items, setItems] = useState<Item[] | null>(null)
   const [name, setName] = useState('')
-  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
+  const [editing, setEditing] = useState<Item | null>(null)
+  const [editName, setEditName] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Item | null>(null)
   const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
 
-  const refresh = () => load().then(setItems).catch((e) => setErr(String(e.message || e)))
+  const refresh = async () => {
+    try {
+      setItems(await load())
+    } catch (error) {
+      toast.error(`${title}加载失败`, { description: (error as Error).message })
+    }
+  }
+
   useEffect(() => {
-    refresh()
+    void refresh()
   }, [])
 
-  async function run(fn: () => Promise<unknown>) {
+  async function createItem() {
+    const nextName = name.trim()
+    if (!nextName) return
     setBusy(true)
-    setErr('')
     try {
-      await fn()
+      await create(nextName)
+      setName('')
       await refresh()
-    } catch (e) {
-      setErr((e as Error).message)
+      toast.success(`${title}已添加`)
+    } catch (error) {
+      toast.error('添加失败', { description: (error as Error).message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function renameItem() {
+    const nextName = editName.trim()
+    if (!editing || !nextName) return
+    setBusy(true)
+    try {
+      await rename(String(editing.id), nextName)
+      setEditing(null)
+      await refresh()
+      toast.success(`${title}已更新`)
+    } catch (error) {
+      toast.error('更新失败', { description: (error as Error).message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deleteItem() {
+    if (!pendingDelete) return
+    setBusy(true)
+    try {
+      await remove(String(pendingDelete.id))
+      setPendingDelete(null)
+      await refresh()
+      toast.success(`${title}已删除`)
+    } catch (error) {
+      toast.error('删除失败', { description: (error as Error).message })
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="rounded-xl border border-border p-4 sm:p-5">
-      <h2 className="mb-4 text-sm font-semibold">{title}</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-5 flex gap-2">
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void createItem()
+            }}
+            placeholder={`新增${title}`}
+          />
+          <Button size="icon" disabled={busy || !name.trim()} onClick={() => void createItem()} aria-label={`新增${title}`}>
+            {busy ? <Loader2 className="animate-spin" /> : <Plus />}
+          </Button>
+        </div>
 
-      <div className="mb-4 flex gap-2">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && name.trim() && run(async () => (await create(name.trim()), setName('')))}
-          placeholder={`新增${title}`}
-          className="h-11 text-base sm:h-9 sm:text-sm"
-        />
-        <Button
-          className="size-11 p-0 sm:size-9"
-          size="sm"
-          disabled={busy || !name.trim()}
-          onClick={() => run(async () => (await create(name.trim()), setName('')))}
-        >
-          <Plus className="size-4" />
-        </Button>
-      </div>
+        <div className="divide-y divide-border rounded-md border">
+          {!items && (
+            <div className="flex h-20 items-center justify-center text-muted-foreground">
+              <Loader2 className="animate-spin" />
+            </div>
+          )}
+          {items?.map((item) => (
+            <div key={item.id} className="flex min-h-11 items-center gap-2 px-3 py-2">
+              <span className="min-w-0 flex-1 truncate text-sm">{item.name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setEditing(item)
+                  setEditName(item.name)
+                }}
+                aria-label={`重命名${item.name}`}
+              >
+                <Pencil />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setPendingDelete(item)} aria-label={`删除${item.name}`}>
+                <Trash2 />
+              </Button>
+            </div>
+          ))}
+          {items?.length === 0 && <p className="px-3 py-8 text-center text-sm text-muted-foreground">暂无内容</p>}
+        </div>
+      </CardContent>
 
-      {err && <p className="mb-3 text-xs text-destructive">{err}</p>}
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>重命名{title}</DialogTitle>
+            <DialogDescription>修改后，已关联内容会继续保留。</DialogDescription>
+          </DialogHeader>
+          <Input
+            value={editName}
+            onChange={(event) => setEditName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void renameItem()
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
+            <Button disabled={busy || !editName.trim()} onClick={() => void renameItem()}>
+              {busy && <Loader2 className="animate-spin" />} 保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <div className="flex flex-col gap-1">
-        {!items && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-        {items?.map((it) => (
-          <div key={it.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
-            {editing?.id === it.id ? (
-              <>
-                <Input
-                  value={editing.name}
-                  onChange={(e) => setEditing({ id: it.id, name: e.target.value })}
-                  className="h-10 flex-1 text-base sm:h-7 sm:text-sm"
-                  autoFocus
-                />
-                <button
-                  className="text-emerald-500 disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => run(async () => (await rename(it.id, editing.name.trim()), setEditing(null)))}
-                >
-                  <Check className="size-4" />
-                </button>
-                <button className="text-muted-foreground" onClick={() => setEditing(null)}>
-                  <X className="size-4" />
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="flex-1 text-sm">{it.name}</span>
-                <button
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => setEditing({ id: it.id, name: it.name })}
-                >
-                  <Pencil className="size-3.5" />
-                </button>
-                <button
-                  className="text-muted-foreground hover:text-destructive disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => confirm(`删除「${it.name}」？`) && run(() => remove(it.id))}
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </>
-            )}
-          </div>
-        ))}
-        {items?.length === 0 && <p className="px-2 py-2 text-xs text-muted-foreground">空</p>}
-      </div>
-    </div>
+      <AlertDialog open={Boolean(pendingDelete)} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除「{pendingDelete?.name}」？</AlertDialogTitle>
+            <AlertDialogDescription>这个操作无法撤销，请确认它没有被重要内容使用。</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={(event) => {
+                event.preventDefault()
+                void deleteItem()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {busy && <Loader2 className="animate-spin" />} 删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
   )
 }
 
 export default function Taxonomy() {
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:mb-8">分类 / 标签</h1>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Section title="分类" load={listCategories} create={createCategory} rename={updateCategory} remove={deleteCategory} />
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight">分类与标签</h1>
+        <p className="mt-1 text-sm text-muted-foreground">维护文章的内容组织方式。</p>
+      </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Section
+          title="分类"
+          description="每篇文章可以归入一个分类。"
+          load={listCategories}
+          create={createCategory}
+          rename={updateCategory}
+          remove={deleteCategory}
+        />
         <Section
           title="标签"
+          description="一篇文章可以使用多个标签。"
           load={listTags}
-          create={(n) => createTag(n)}
+          create={createTag}
           rename={updateTag}
           remove={deleteTag}
         />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { EditorContent, useEditor, type Editor } from '@tiptap/react'
+import { EditorContent, useEditor } from '@tiptap/react'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown as TiptapMarkdown } from '@tiptap/markdown'
@@ -19,7 +19,18 @@ import {
   Redo2,
   Undo2,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface MarkdownEditorProps {
   value: string
@@ -35,9 +46,6 @@ interface ToolbarButtonProps {
   onClick: () => void
   children: ReactNode
 }
-
-const TOOL_BUTTON =
-  'grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40'
 
 function imageFromFiles(files: FileList | null): File | null {
   return Array.from(files ?? []).find((file) => file.type.startsWith('image/')) ?? null
@@ -56,30 +64,25 @@ function normalizeLink(url: string): string {
 
 function ToolbarButton({ label, active, disabled, onClick, children }: ToolbarButtonProps) {
   return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      disabled={disabled}
-      className={cn(TOOL_BUTTON, active && 'bg-accent text-foreground')}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
-    >
-      {children}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant={active ? 'secondary' : 'ghost'}
+          size="icon"
+          aria-label={label}
+          aria-pressed={active}
+          disabled={disabled}
+          className="shrink-0"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onClick}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
-}
-
-function editLink(editor: Editor) {
-  const currentUrl = String(editor.getAttributes('link').href ?? '')
-  const nextUrl = window.prompt('输入链接地址；留空可移除链接', currentUrl)
-  if (nextUrl === null) return
-  if (!nextUrl.trim()) {
-    editor.chain().focus().extendMarkRange('link').unsetLink().run()
-    return
-  }
-  editor.chain().focus().extendMarkRange('link').setLink({ href: normalizeLink(nextUrl.trim()) }).run()
 }
 
 export function MarkdownEditor({
@@ -91,6 +94,8 @@ export function MarkdownEditor({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [linkValue, setLinkValue] = useState('')
 
   const editor = useEditor({
     extensions: [
@@ -139,6 +144,23 @@ export function MarkdownEditor({
     void insertImage(file)
   }
 
+  const openLinkDialog = () => {
+    if (!editor) return
+    setLinkValue(String(editor.getAttributes('link').href ?? ''))
+    setLinkDialogOpen(true)
+  }
+
+  const applyLink = () => {
+    if (!editor) return
+    const nextUrl = linkValue.trim()
+    if (nextUrl) {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: normalizeLink(nextUrl) }).run()
+    } else {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    }
+    setLinkDialogOpen(false)
+  }
+
   if (!editor) {
     return (
       <div className="grid min-h-72 place-items-center rounded-xl border border-border text-sm text-muted-foreground">
@@ -148,8 +170,9 @@ export function MarkdownEditor({
   }
 
   return (
-    <section
-      className="overflow-hidden rounded-xl border border-border bg-background shadow-sm"
+    <TooltipProvider delayDuration={300}>
+      <section
+        className="overflow-hidden rounded-xl border border-border bg-background shadow-sm"
       onPaste={handleImagePaste}
       onDragEnter={(event) => {
         if (!hasImageFile(event.dataTransfer)) return
@@ -203,7 +226,7 @@ export function MarkdownEditor({
         <ToolbarButton
           label="链接"
           active={editor.isActive('link')}
-          onClick={() => editLink(editor)}
+          onClick={openLinkDialog}
         >
           <Link2 className="size-4" />
         </ToolbarButton>
@@ -292,6 +315,35 @@ export function MarkdownEditor({
           </div>
         )}
       </div>
-    </section>
+      </section>
+      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑链接</DialogTitle>
+            <DialogDescription>输入完整地址；留空保存会移除当前链接。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="editor-link">链接地址</Label>
+            <Input
+              id="editor-link"
+              value={linkValue}
+              onChange={(event) => setLinkValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  applyLink()
+                }
+              }}
+              placeholder="https://example.com"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>取消</Button>
+            <Button onClick={applyLink}>保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   )
 }
