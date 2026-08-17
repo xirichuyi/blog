@@ -12,3 +12,4 @@ pub mod resource_handler;
 pub mod seo_handler;
 pub mod tag_handler;
 pub mod tools_handler;
+pub mod video_handler;

@@ -191,6 +191,59 @@ export async function replacePostCover(id: number, file: File): Promise<AdminPos
   return env.data
 }
 
+// ---------- direct R2 video uploads ----------
+export interface VideoUploadPart {
+  part_number: number
+  upload_url: string
+}
+
+export interface VideoMultipartSession {
+  upload_id: string
+  key: string
+  public_url: string
+  part_size: number
+  parts: VideoUploadPart[]
+}
+
+export interface CompletedVideoPart {
+  part_number: number
+  etag: string
+}
+
+export async function beginVideoUpload(file: File, contentType: string): Promise<VideoMultipartSession> {
+  const env = await req<VideoMultipartSession>('/admin/videos/multipart', {
+    method: 'POST',
+    body: JSON.stringify({
+      file_name: file.name,
+      content_type: contentType,
+      file_size: file.size,
+    }),
+  })
+  return env.data
+}
+
+export async function completeVideoUpload(
+  session: VideoMultipartSession,
+  parts: CompletedVideoPart[],
+): Promise<string> {
+  const env = await req<{ public_url: string }>('/admin/videos/multipart/complete', {
+    method: 'POST',
+    body: JSON.stringify({
+      key: session.key,
+      upload_id: session.upload_id,
+      parts,
+    }),
+  })
+  return env.data.public_url
+}
+
+export async function abortVideoUpload(session: VideoMultipartSession): Promise<void> {
+  await req('/admin/videos/multipart/abort', {
+    method: 'POST',
+    body: JSON.stringify({ key: session.key, upload_id: session.upload_id }),
+  })
+}
+
 // ---------- categories ----------
 export async function listCategories(): Promise<Category[]> {
   const env = await req<Array<{ id: number; name: string }>>(`/category/list`)

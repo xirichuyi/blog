@@ -3,11 +3,11 @@ use crate::database::Database;
 use crate::handlers::{
     about_handler, auth_handler, category_handler, download_handler, health_handler, mail_handler,
     music_handler, pdf_handler, post_handler, quant_handler, resource_handler, seo_handler,
-    tag_handler, tools_handler,
+    tag_handler, tools_handler, video_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
-use crate::utils::FileHandler;
+use crate::utils::{FileHandler, R2VideoStorage};
 use axum::{
     extract::FromRef,
     middleware,
@@ -21,6 +21,7 @@ pub struct AppState {
     pub database: Database,
     pub config: Arc<Config>,
     pub file_handler: Arc<FileHandler>,
+    pub video_storage: Arc<R2VideoStorage>,
     pub services: Services,
 }
 
@@ -42,6 +43,12 @@ impl FromRef<AppState> for Arc<FileHandler> {
     }
 }
 
+impl FromRef<AppState> for Arc<R2VideoStorage> {
+    fn from_ref(app_state: &AppState) -> Arc<R2VideoStorage> {
+        Arc::clone(&app_state.video_storage)
+    }
+}
+
 impl FromRef<AppState> for Services {
     fn from_ref(app_state: &AppState) -> Services {
         app_state.services.clone()
@@ -55,6 +62,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         config.storage.max_file_size,
         Some(&config.s3),
     ));
+    let video_storage = Arc::new(R2VideoStorage::new(&config.s3));
     let services = Services::new(
         database.clone(),
         file_handler.clone(),
@@ -64,6 +72,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         database,
         config,
         file_handler,
+        video_storage,
         services,
     };
     // Public routes (no authentication required)
@@ -142,6 +151,18 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             get(post_handler::admin_list_posts_with_details),
         )
         .route("/api/admin/posts/:id", get(post_handler::admin_get_post))
+        .route(
+            "/api/admin/videos/multipart",
+            post(video_handler::begin_video_upload),
+        )
+        .route(
+            "/api/admin/videos/multipart/complete",
+            post(video_handler::complete_video_upload),
+        )
+        .route(
+            "/api/admin/videos/multipart/abort",
+            post(video_handler::abort_video_upload),
+        )
         // Post admin routes
         .route("/api/post/create", post(post_handler::create_post))
         .route("/api/post/update/:id", put(post_handler::update_post))

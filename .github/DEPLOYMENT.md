@@ -34,6 +34,26 @@
 
 - **systemd**：`/etc/systemd/system/blog-backend.service`（`User=ubuntu`，`EnvironmentFile=.env`，沙箱加固）。后端监听 `127.0.0.1:3006`。
 - **nginx**：`/etc/nginx/sites-available/blog.chuyi.uk` → `server_name blog.chuyi.uk`，`/api/` 和 `/uploads/` 反代到后端，其余走 SPA 静态文件。
+
+## R2 视频直传 CORS
+
+文章视频由浏览器使用预签名 URL 分片直传 R2。为生产 Bucket 配置以下 CORS；`ETag` 必须暴露，否则浏览器无法完成 Multipart Upload：
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://blog.chuyi.uk"],
+    "AllowedMethods": ["GET", "HEAD", "PUT"],
+    "AllowedHeaders": ["content-type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+本地联调可临时把 `http://localhost:5173` 或实际 Vite 地址加入 `AllowedOrigins`，不要把通配来源用于生产。
+
+建议同时为 `videos/` 前缀设置生命周期规则，7 天后自动终止未完成的 Multipart Upload，清理断网或关闭页面遗留的分片。
 - `.env` 里的 `JWT_SECRET` / `BLOG_ADMIN_TOKEN` 在服务器本地用 `openssl rand -base64 32` 生成，**不在仓库/CI 中**。`DEEPSEEK_API_KEY` 留空（AI 功能未启用，需要时直接编辑 `.env` 后 `sudo systemctl restart blog-backend`）。
 
 ## HTTPS

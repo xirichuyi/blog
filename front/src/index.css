@@ -665,6 +665,22 @@
   outline-offset: 4px;
 }
 
+.wysiwyg-editor > .ProseMirror video {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 70vh;
+  margin: 2.7rem auto 2.8rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.5rem;
+  background: #000;
+}
+
+.wysiwyg-editor > .ProseMirror video.ProseMirror-selectednode {
+  outline: 3px solid color-mix(in srgb, var(--sage) 65%, transparent);
+  outline-offset: 4px;
+}
+
 .markdown-body :where(p) {
   margin-top: 1.25em;
   margin-bottom: 1.25em;
@@ -1059,6 +1075,39 @@
   height: 1px;
   margin-top: 0.68em;
   background: var(--hairline);
+}
+
+.md-video-figure {
+  width: 100%;
+  margin: 2.8rem 0 3rem;
+}
+
+.md-video-figure video {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: min(78vh, 56rem);
+  margin: 0 auto;
+  border: 1px solid var(--hairline);
+  border-radius: 0.5rem;
+  background: #000;
+  box-shadow: 0 18px 48px color-mix(in srgb, black 14%, transparent);
+}
+
+.md-video-figure figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  color: var(--graphite-soft);
+  font-size: 0.72rem;
+}
+
+.md-video-figure figcaption a {
+  color: var(--sage-deep);
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .md-table-wrap {

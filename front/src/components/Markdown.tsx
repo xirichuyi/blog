@@ -39,6 +39,10 @@ import { Check, Copy, ExternalLink, Link2 } from 'lucide-react'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
+const VIDEO_ALT_PREFIX = 'BLOGVIDEO:'
+const VIDEO_TAG_PATTERN = /<video\s+[^>]*data-blog-video="true"[^>]*><\/video>/gi
+const VIDEO_DIRECTIVE_PATTERN = /:::video(?:\s+\{([^}\r\n]*)\})?\s*:::/gi
+
 for (const [name, language] of Object.entries({
   bash,
   c,
@@ -246,6 +250,70 @@ const MarkdownImage = memo(function MarkdownImage({
   )
 })
 
+const MarkdownVideo = memo(function MarkdownVideo({
+  src,
+  title,
+}: ComponentPropsWithoutRef<'video'>) {
+  const videoSource = typeof src === 'string' ? src : undefined
+  return (
+    <figure className="md-video-figure not-prose">
+      <video
+        src={videoSource}
+        title={title}
+        controls
+        playsInline
+        preload="metadata"
+      />
+      <figcaption>
+        <span>{title || '视频'}</span>
+        <a href={videoSource} target="_blank" rel="noreferrer">打开原片</a>
+      </figcaption>
+    </figure>
+  )
+})
+
+function markdownWithVideoPlaceholders(content: string): string {
+  const withDirectives = content.replace(VIDEO_DIRECTIVE_PATTERN, (directive, attributes: string) => {
+    const src = directiveAttribute(attributes, 'src')
+    if (!src) return directive
+    return videoPlaceholder(src, directiveAttribute(attributes, 'title'))
+  })
+
+  return withDirectives.replace(VIDEO_TAG_PATTERN, (videoTag) => {
+    const src = videoTag.match(/\ssrc="([^"]+)"/i)?.[1]
+    if (!src) return videoTag
+    const title = videoTag.match(/\stitle="([^"]*)"/i)?.[1] || ''
+    return videoPlaceholder(decodeHtmlAttribute(src), decodeHtmlAttribute(title))
+  })
+}
+
+function directiveAttribute(attributes: string, name: string): string {
+  const match = attributes.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`))
+  return match?.[1] ?? ''
+}
+
+function videoPlaceholder(src: string, title: string): string {
+  const encodedTitle = encodeURIComponent(title)
+  return `\n\n![${VIDEO_ALT_PREFIX}${encodedTitle}](<${src}>)\n\n`
+}
+
+function decodeHtmlAttribute(value: string): string {
+  return value
+    .split('&quot;').join('"')
+    .split('&#39;').join("'")
+    .split('&lt;').join('<')
+    .split('&gt;').join('>')
+    .split('&amp;').join('&')
+}
+
+function decodeVideoTitle(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return '视频'
+  }
+}
+
 interface MarkdownProps {
   content: string
   className?: string
@@ -256,6 +324,7 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
   const { theme } = useTheme()
   const markdownRef = useRef<HTMLDivElement>(null)
   const codeTheme = (theme === 'dark' ? oneDark : oneLight) as Record<string, CSSProperties>
+  const renderContent = useMemo(() => markdownWithVideoPlaceholders(content), [content])
 
   useEffect(() => {
     const gallery = markdownRef.current
@@ -304,6 +373,13 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
   const components = useMemo<Components>(
     () => ({
       pre: ({ children }) => <>{children}</>,
+      p: ({ node, children, ...props }) => {
+        const onlyChild = node?.children.length === 1 ? node.children[0] : null
+        const isVideoPlaceholder = onlyChild?.type === 'element'
+          && onlyChild.tagName === 'img'
+          && String(onlyChild.properties?.alt ?? '').startsWith(VIDEO_ALT_PREFIX)
+        return isVideoPlaceholder ? <>{children}</> : <p {...props}>{children}</p>
+      },
       h2: (props) => <AnchoredHeading level={2} {...props} />,
       h3: (props) => <AnchoredHeading level={3} {...props} />,
       a: ({ href = '', children, ...props }) => {
@@ -319,7 +395,14 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
           </a>
         )
       },
-      img: (props) => <MarkdownImage {...props} interactive={enableLightbox} />,
+      img: (props) => {
+        const alt = props.alt || ''
+        if (alt.startsWith(VIDEO_ALT_PREFIX)) {
+          const encodedTitle = alt.slice(VIDEO_ALT_PREFIX.length)
+          return <MarkdownVideo src={props.src} title={decodeVideoTitle(encodedTitle)} />
+        }
+        return <MarkdownImage {...props} interactive={enableLightbox} />
+      },
       table: ({ children }) => (
         <div className="md-table-wrap" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
           <table>{children}</table>
@@ -355,7 +438,7 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
         rehypePlugins={[rehypeSlug]}
         components={components}
       >
-        {content}
+        {renderContent}
       </ReactMarkdown>
     </div>
   )

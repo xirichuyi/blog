@@ -20,6 +20,8 @@ import {
   Undo2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BlogVideo, type BlogVideoAttributes } from '@/components/admin/BlogVideo'
+import { VideoUploadControl } from '@/components/admin/VideoUploadControl'
 import {
   Dialog,
   DialogContent,
@@ -110,6 +112,7 @@ export function MarkdownEditor({
       Image.configure({
         HTMLAttributes: { loading: 'lazy', decoding: 'async' },
       }),
+      BlogVideo,
       Placeholder.configure({ placeholder: '开始写作…可以直接粘贴或拖入图片' }),
       TiptapMarkdown.configure({ markedOptions: { gfm: true, breaks: false } }),
     ],
@@ -159,6 +162,14 @@ export function MarkdownEditor({
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
     }
     setLinkDialogOpen(false)
+  }
+
+  const insertVideo = (video: BlogVideoAttributes) => {
+    editor
+      ?.chain()
+      .focus()
+      .insertContent({ type: BlogVideo.name, attrs: video })
+      .run()
   }
 
   if (!editor) {
@@ -266,6 +277,7 @@ export function MarkdownEditor({
         >
           {uploadingImage ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
         </ToolbarButton>
+        <VideoUploadControl onUploaded={insertVideo} />
         <input
           ref={fileInputRef}
           type="file"
