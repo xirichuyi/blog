@@ -237,7 +237,7 @@
   height: 2.75rem;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--hairline) 72%, transparent);
-  border-radius: inherit;
+  border-radius: 9999px;
   background: color-mix(in oklab, var(--paper-raised) 82%, var(--sage) 18%);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--graphite) 10%, transparent);
   backdrop-filter: blur(12px);
