@@ -49,6 +49,8 @@ export default function ArticleDetail() {
   const [coverFailed, setCoverFailed] = useState(false)
   const [coverSize, setCoverSize] = useState({ width: 0, height: 0 })
   const contentRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+  const backDockRef = useRef<HTMLDivElement>(null)
   const coverRef = useRef<HTMLDivElement>(null)
   const tocRef = useRef<HTMLElement>(null)
   const tocPillRef = useRef<HTMLSpanElement>(null)
@@ -90,6 +92,20 @@ export default function ArticleDetail() {
 
     return () => controller.abort()
   }, [id])
+
+  useEffect(() => {
+    const main = mainRef.current
+    const dock = backDockRef.current
+    if (!main || !dock) return
+
+    const position = () => {
+      dock.style.left = `${Math.max(12, main.getBoundingClientRect().left - 88)}px`
+    }
+
+    position()
+    window.addEventListener('resize', position)
+    return () => window.removeEventListener('resize', position)
+  }, [article])
 
   // 封面图灯箱（PhotoSwipe），与正文内图片的放大行为一致。
   useEffect(() => {
@@ -300,6 +316,15 @@ export default function ArticleDetail() {
     }
   }
 
+  const goBack = () => {
+    const historyIndex = window.history.state?.idx
+    if (typeof historyIndex === 'number' && historyIndex > 0) {
+      navigate(-1)
+      return
+    }
+    navigate('/articles', { replace: true })
+  }
+
   if (error) {
     return (
       <div className="container mx-auto flex max-w-md flex-col items-center gap-4 py-24 text-center">
@@ -325,6 +350,9 @@ export default function ArticleDetail() {
 
   return (
     <div className="article-page container py-10 sm:py-14">
+      <div ref={backDockRef} className="article-back-dock">
+        <MagneticBackButton onClick={goBack} />
+      </div>
       <SEO
         title={article.title}
         description={stripMarkdown(article.content, 150)}
@@ -358,9 +386,8 @@ export default function ArticleDetail() {
           </aside>
         )}
 
-        <article className="article-main mx-auto w-full min-w-0 max-w-[680px]">
-          <div className="article-actions article-reveal -ml-2 mb-8 flex items-center justify-between gap-2">
-            <MagneticBackButton to="/articles" />
+        <article ref={mainRef} className="article-main mx-auto w-full min-w-0 max-w-[680px]">
+          <div className="article-actions article-reveal mb-8 flex items-center justify-end gap-2">
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={share} aria-label="分享文章">
                 {shared ? <Check /> : <Share2 />}
