@@ -1,5 +1,7 @@
 pub mod about;
+pub mod book;
 pub mod category;
+pub mod changelog;
 pub mod download;
 pub mod music;
 pub mod pdf;
@@ -8,7 +10,9 @@ pub mod response;
 pub mod tag;
 
 pub use about::*;
+pub use book::*;
 pub use category::*;
+pub use changelog::*;
 pub use download::*;
 pub use music::*;
 pub use pdf::*;

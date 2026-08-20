@@ -126,13 +126,22 @@
   color: var(--graphite);
 }
 
-@property --article-reveal-progress {
-  syntax: '<number>';
-  inherits: false;
-  initial-value: 1;
+@keyframes article-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-@property --article-exit-progress {
+.article-enter {
+  animation: article-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@property --article-reveal-progress {
   syntax: '<number>';
   inherits: false;
   initial-value: 1;
@@ -147,50 +156,32 @@
   }
 }
 
-@keyframes article-exit-progress {
-  from {
-    --article-exit-progress: 1;
-  }
-  to {
-    --article-exit-progress: 1;
-  }
-}
-
 @supports (animation-timeline: view()) {
   .article-reveal,
   .markdown-body > * {
     --article-reveal-range: 4rem;
     --article-reveal-progress: 1;
-    --article-exit-progress: 1;
     --article-translate-amount: 10px;
-    --article-scale-amount: 0.95;
-    --article-blur-amount: 10px;
-    --article-visible-progress: min(
-      var(--article-reveal-progress),
-      var(--article-exit-progress)
-    );
-    opacity: var(--article-visible-progress);
+    --article-scale-amount: 0.985;
+    --article-blur-amount: 0px;
+    opacity: var(--article-reveal-progress);
     filter: blur(
-      calc((1 - var(--article-visible-progress)) * var(--article-blur-amount))
+      calc((1 - var(--article-reveal-progress)) * var(--article-blur-amount))
     );
     transform:
       translateY(
-        calc((1 - var(--article-visible-progress)) * var(--article-translate-amount))
+        calc((1 - var(--article-reveal-progress)) * var(--article-translate-amount))
       )
       scale(
         calc(
           var(--article-scale-amount) +
-          (1 - var(--article-scale-amount)) * var(--article-visible-progress)
+          (1 - var(--article-scale-amount)) * var(--article-reveal-progress)
         )
       );
     transform-origin: 50%;
-    animation:
-      linear both article-reveal-progress,
-      linear both article-exit-progress;
-    animation-range:
-      entry 0% entry var(--article-reveal-range),
-      exit calc(100% - var(--article-reveal-range)) exit 100%;
-    animation-timeline: view(), view();
+    animation: linear both article-reveal-progress;
+    animation-range: entry 0% entry var(--article-reveal-range);
+    animation-timeline: view();
     will-change: opacity, transform, filter;
   }
 }
@@ -200,8 +191,8 @@
     .article-reveal,
     .markdown-body > * {
       --article-reveal-range: 8rem;
-      --article-translate-amount: 20px;
-      --article-scale-amount: 0.9;
+      --article-translate-amount: 12px;
+      --article-scale-amount: 0.98;
     }
   }
 }
@@ -225,6 +216,7 @@
   position: fixed;
   top: clamp(4.5rem, 10vh, 7rem);
   z-index: 40;
+  transition: left 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .article-back-slot,
@@ -432,10 +424,10 @@
   opacity: 0;
   pointer-events: none;
   transition:
-    top 0.48s cubic-bezier(0.25, 1.22, 0.45, 1.04),
-    height 0.48s cubic-bezier(0.25, 1.22, 0.45, 1.04),
-    left 0.48s cubic-bezier(0.25, 1.22, 0.45, 1.04),
-    width 0.48s cubic-bezier(0.25, 1.22, 0.45, 1.04),
+    top 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    left 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.25s ease-out;
 }
 
@@ -493,33 +485,34 @@
   padding: 0 0.5rem;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  filter: blur(0.2px);
-  opacity: 0.3;
+  opacity: 0.52;
   transform-origin: left;
   transition: all 0.3s;
 }
 
-.article-toc-entry:hover,
 .article-toc-entry:focus-visible {
   color: var(--graphite);
 }
 
-.article-toc-list:hover .article-toc-entry > span {
-  filter: blur(0);
-  opacity: 1;
-}
-
-.article-toc-list:hover .article-toc-entry:not(:hover):not(.active) {
-  opacity: 0.5;
-}
-
-.article-toc-entry.active {
+.article-toc-entry.highlighted {
   color: var(--sage-deep);
 }
 
-.article-toc-entry.active > span {
-  filter: blur(0);
+.article-toc-entry.highlighted > span,
+.article-toc-entry:focus-visible > span {
   opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .article-enter,
+  .article-reveal,
+  .markdown-body > * {
+    animation: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    will-change: auto;
+  }
 }
 
 .article-aside-meta {
@@ -975,7 +968,7 @@
 }
 
 .md-image-frame::after {
-  content: '点击查看原图';
+  content: 'View original';
   position: absolute;
   right: 0.75rem;
   bottom: 0.75rem;

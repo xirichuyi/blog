@@ -112,13 +112,13 @@ const CodeBlock = memo(function CodeBlock({
         <button
           type="button"
           onClick={copy}
-          aria-label={copied ? '代码已复制' : '复制代码'}
+          aria-label={copied ? 'Code copied' : 'Copy code'}
           className={cn('md-code-copy', copied && 'copied')}
         >
           <span aria-hidden="true">
             {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           </span>
-          {copied ? '已复制' : '复制'}
+          {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
       <SyntaxHighlighter
@@ -183,7 +183,7 @@ const AnchoredHeading = memo(function AnchoredHeading({
         href={id ? `#${id}` : undefined}
         className="md-heading-anchor"
         onClick={copyHeadingLink}
-        aria-label={copied ? '链接已复制' : '复制标题链接'}
+        aria-label={copied ? 'Link copied' : 'Copy heading link'}
       >
         <span aria-hidden="true">
           {copied ? <Check /> : <Link2 />}
@@ -220,7 +220,7 @@ const MarkdownImage = memo(function MarkdownImage({
         data-pswp-height={size.height || undefined}
         data-cropped="true"
         data-zoomable={interactive ? 'true' : undefined}
-        aria-label={interactive ? (alt ? `查看大图：${alt}` : '查看大图') : undefined}
+        aria-label={interactive ? (alt ? `View full-size image: ${alt}` : 'View full-size image') : undefined}
         tabIndex={interactive ? undefined : -1}
         onClick={interactive ? undefined : (event) => event.preventDefault()}
       >
@@ -265,8 +265,8 @@ const MarkdownVideo = memo(function MarkdownVideo({
         preload="metadata"
       />
       <figcaption>
-        <span>{title || '视频'}</span>
-        <a href={videoSource} target="_blank" rel="noreferrer">打开原片</a>
+        <span>{title || 'Video'}</span>
+        <a href={videoSource} target="_blank" rel="noreferrer">Open original</a>
       </figcaption>
     </figure>
   )
@@ -310,7 +310,7 @@ function decodeVideoTitle(value: string): string {
   try {
     return decodeURIComponent(value)
   } catch {
-    return '视频'
+    return 'Video'
   }
 }
 
@@ -404,7 +404,7 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
         return <MarkdownImage {...props} interactive={enableLightbox} />
       },
       table: ({ children }) => (
-        <div className="md-table-wrap" tabIndex={0} role="region" aria-label="可横向滚动的数据表格">
+        <div className="md-table-wrap" tabIndex={0} role="region" aria-label="Horizontally scrollable data table">
           <table>{children}</table>
         </div>
       ),

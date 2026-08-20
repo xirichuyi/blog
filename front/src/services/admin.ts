@@ -1,5 +1,5 @@
 // Admin API client. Authentication is carried by a same-origin HttpOnly cookie.
-import type { Category, Tag, About } from './api'
+import type { Category, Tag, About, Book, BookFile, ChangelogEntry, ReadingStatus } from './api'
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 const PREFIX = '/api'
@@ -242,6 +242,120 @@ export async function abortVideoUpload(session: VideoMultipartSession): Promise<
     method: 'POST',
     body: JSON.stringify({ key: session.key, upload_id: session.upload_id }),
   })
+}
+
+// ---------- books ----------
+export interface BookPayload {
+  title: string
+  author: string
+  description: string
+  cover_url?: string | null
+  reading_status: ReadingStatus
+  progress: number
+  rating?: number | null
+  notes: string
+  started_at?: string | null
+  finished_at?: string | null
+  is_public: boolean
+  download_enabled: boolean
+}
+
+export async function adminListBooks(): Promise<Book[]> {
+  const env = await req<Book[]>('/admin/books')
+  return env.data || []
+}
+
+export async function createBook(payload: BookPayload): Promise<Book> {
+  const env = await req<Book>('/admin/books', { method: 'POST', body: JSON.stringify(payload) })
+  return env.data
+}
+
+export async function updateBook(id: number, payload: Partial<BookPayload>): Promise<Book> {
+  const env = await req<Book>(`/admin/books/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  return env.data
+}
+
+export async function deleteBook(id: number): Promise<void> {
+  await req(`/admin/books/${id}`, { method: 'DELETE' })
+}
+
+export async function beginBookUpload(bookId: number, file: File): Promise<VideoMultipartSession> {
+  const env = await req<VideoMultipartSession>(`/admin/books/${bookId}/files/multipart`, {
+    method: 'POST',
+    body: JSON.stringify({
+      file_name: file.name,
+      content_type: bookContentType(file),
+      file_size: file.size,
+    }),
+  })
+  return env.data
+}
+
+export async function completeBookUpload(
+  bookId: number,
+  file: File,
+  session: VideoMultipartSession,
+  parts: CompletedVideoPart[],
+): Promise<BookFile> {
+  const env = await req<{ file: BookFile }>(`/admin/books/${bookId}/files/multipart/complete`, {
+    method: 'POST',
+    body: JSON.stringify({
+      key: session.key,
+      upload_id: session.upload_id,
+      parts,
+      file_name: file.name,
+      content_type: bookContentType(file),
+      file_size: file.size,
+    }),
+  })
+  return env.data.file
+}
+
+export async function abortBookUpload(session: VideoMultipartSession): Promise<void> {
+  await req('/admin/books/files/multipart/abort', {
+    method: 'POST',
+    body: JSON.stringify({ key: session.key, upload_id: session.upload_id }),
+  })
+}
+
+export async function deleteBookFile(fileId: number): Promise<void> {
+  await req(`/admin/books/files/${fileId}`, { method: 'DELETE' })
+}
+
+function bookContentType(file: File): string {
+  if (file.type) return file.type
+  const extension = file.name.split('.').pop()?.toLowerCase()
+  if (extension === 'pdf') return 'application/pdf'
+  if (extension === 'epub') return 'application/epub+zip'
+  return 'application/octet-stream'
+}
+
+// ---------- changelog ----------
+export interface ChangelogPayload {
+  version: string
+  title: string
+  content: string
+  published_at?: string
+  status: number
+}
+
+export async function adminListChangelog(): Promise<ChangelogEntry[]> {
+  const env = await req<ChangelogEntry[]>('/admin/changelog')
+  return env.data || []
+}
+
+export async function createChangelog(payload: ChangelogPayload): Promise<ChangelogEntry> {
+  const env = await req<ChangelogEntry>('/admin/changelog', { method: 'POST', body: JSON.stringify(payload) })
+  return env.data
+}
+
+export async function updateChangelog(id: number, payload: Partial<ChangelogPayload>): Promise<ChangelogEntry> {
+  const env = await req<ChangelogEntry>(`/admin/changelog/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  return env.data
+}
+
+export async function deleteChangelog(id: number): Promise<void> {
+  await req(`/admin/changelog/${id}`, { method: 'DELETE' })
 }
 
 // ---------- categories ----------

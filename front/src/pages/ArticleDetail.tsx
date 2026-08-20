@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { useNavigate, useParams } from 'react-router-dom'
 import PhotoSwipeLightbox from 'photoswipe/lightbox'
@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { MagneticBackButton } from '@/components/MagneticBackButton'
+import { GiscusComments } from '@/components/GiscusComments'
 import { useSiteUI } from '@/lib/site-ui'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +35,9 @@ interface Heading {
   text: string
   level: number
 }
+
+const TOC_HOVER_INTENT_MS = 110
+const TOC_TEXT_HIGHLIGHT_DELAY_MS = 340
 
 export default function ArticleDetail() {
   const { id } = useParams<{ id: string }>()
@@ -45,6 +49,7 @@ export default function ArticleDetail() {
   const [headings, setHeadings] = useState<Heading[]>([])
   const [activeId, setActiveId] = useState('')
   const [hoveredHeadingId, setHoveredHeadingId] = useState<string | null>(null)
+  const [tocHighlightedHeadingId, setTocHighlightedHeadingId] = useState<string | null>(null)
   const [shared, setShared] = useState(false)
   const [coverFailed, setCoverFailed] = useState(false)
   const [coverSize, setCoverSize] = useState({ width: 0, height: 0 })
@@ -56,9 +61,16 @@ export default function ArticleDetail() {
   const tocPillRef = useRef<HTMLSpanElement>(null)
   const tocProgressRef = useRef<HTMLDivElement>(null)
   const tocPillReadyRef = useRef(false)
+  const tocHoverTimerRef = useRef<number | null>(null)
+  const tocHighlightTimerRef = useRef<number | null>(null)
   const progressRef = useRef<HTMLDivElement>(null)
   const shareTimerRef = useRef<number | null>(null)
   const reduceMotion = useReducedMotion()
+
+  useLayoutEffect(() => {
+    if (!id) return
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [id])
 
   useEffect(() => {
     if (!id) return
@@ -68,12 +80,11 @@ export default function ArticleDetail() {
     setHeadings([])
     setActiveId('')
     setHoveredHeadingId(null)
+    setTocHighlightedHeadingId(null)
     tocPillReadyRef.current = false
     setError(null)
     setCoverFailed(false)
     setCoverSize({ width: 0, height: 0 })
-    window.scrollTo(0, 0)
-
     Promise.all([
       getArticle(id, controller.signal),
       getAdjacentArticles(id, controller.signal).catch((error: unknown) => {
@@ -93,7 +104,7 @@ export default function ArticleDetail() {
     return () => controller.abort()
   }, [id])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const main = mainRef.current
     const dock = backDockRef.current
     if (!main || !dock) return
@@ -103,9 +114,14 @@ export default function ArticleDetail() {
     }
 
     position()
+    const resizeObserver = new ResizeObserver(position)
+    resizeObserver.observe(main)
     window.addEventListener('resize', position)
-    return () => window.removeEventListener('resize', position)
-  }, [article])
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', position)
+    }
+  }, [article, headings.length, zen])
 
   // 封面图灯箱（PhotoSwipe），与正文内图片的放大行为一致。
   useEffect(() => {
@@ -141,7 +157,7 @@ export default function ArticleDetail() {
   }, [article])
 
   // After markdown renders, read heading IDs (set by rehype-slug) from the DOM.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!article || !contentRef.current) return
     const nodes = Array.from(contentRef.current.querySelectorAll('h2, h3')) as HTMLElement[]
     setHeadings(nodes.map((h) => ({ id: h.id, text: h.textContent || '', level: h.tagName === 'H2' ? 2 : 3 })))
@@ -282,6 +298,29 @@ export default function ArticleDetail() {
     return () => resizeObserver.disconnect()
   }, [activeId, hoveredHeadingId, reduceMotion])
 
+  useEffect(() => () => {
+    if (tocHoverTimerRef.current !== null) window.clearTimeout(tocHoverTimerRef.current)
+  }, [])
+
+  useEffect(() => {
+    if (tocHighlightTimerRef.current !== null) {
+      window.clearTimeout(tocHighlightTimerRef.current)
+    }
+
+    const delay = reduceMotion ? 0 : TOC_TEXT_HIGHLIGHT_DELAY_MS
+    tocHighlightTimerRef.current = window.setTimeout(() => {
+      setTocHighlightedHeadingId(hoveredHeadingId)
+      tocHighlightTimerRef.current = null
+    }, delay)
+
+    return () => {
+      if (tocHighlightTimerRef.current !== null) {
+        window.clearTimeout(tocHighlightTimerRef.current)
+        tocHighlightTimerRef.current = null
+      }
+    }
+  }, [hoveredHeadingId, reduceMotion])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
@@ -297,6 +336,22 @@ export default function ArticleDetail() {
   const goTo = (hid: string) => {
     const el = document.getElementById(hid)
     if (el) el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' })
+  }
+
+  const previewTocHeading = (headingId: string) => {
+    if (tocHoverTimerRef.current !== null) window.clearTimeout(tocHoverTimerRef.current)
+    tocHoverTimerRef.current = window.setTimeout(() => {
+      setHoveredHeadingId(headingId)
+      tocHoverTimerRef.current = null
+    }, TOC_HOVER_INTENT_MS)
+  }
+
+  const stopPreviewingToc = () => {
+    if (tocHoverTimerRef.current !== null) {
+      window.clearTimeout(tocHoverTimerRef.current)
+      tocHoverTimerRef.current = null
+    }
+    setHoveredHeadingId(null)
   }
 
   const share = async () => {
@@ -373,12 +428,12 @@ export default function ArticleDetail() {
 
       <div
         className={cn(
-          'article-grid grid grid-cols-1 gap-10 lg:gap-8',
+          'article-grid article-enter grid grid-cols-1 gap-10 lg:gap-8',
           headings.length > 0 && !zen && 'lg:grid-cols-[minmax(0,1fr)_160px] xl:grid-cols-[64px_minmax(0,1fr)_160px]'
         )}
       >
         {headings.length > 0 && !zen && (
-          <aside className="article-chapter-rail hidden xl:flex" aria-label="文章编号">
+          <aside className="article-chapter-rail hidden xl:flex" aria-label="Article number">
             <span>ARTICLE</span>
             <strong>{String(article.id).padStart(2, '0').slice(-2)}</strong>
             <i aria-hidden="true" />
@@ -389,13 +444,26 @@ export default function ArticleDetail() {
         <article ref={mainRef} className="article-main mx-auto w-full min-w-0 max-w-[680px]">
           <div className="article-actions article-reveal mb-8 flex items-center justify-end gap-2">
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={share} aria-label="分享文章">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={share}
+                aria-label={shared ? 'Link copied' : 'Share article'}
+                title={shared ? 'Link copied' : 'Share'}
+              >
                 {shared ? <Check /> : <Share2 />}
-                <span className="hidden sm:inline">{shared ? '已复制' : '分享'}</span>
               </Button>
-              <Button variant="ghost" size="sm" onClick={toggleZen} aria-pressed={zen}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={toggleZen}
+                aria-label={zen ? 'Exit focus mode' : 'Enter focus mode'}
+                aria-pressed={zen}
+                title={zen ? 'Exit focus mode' : 'Focus mode'}
+              >
                 <Focus />
-                <span className="hidden sm:inline">{zen ? '退出沉浸' : '沉浸阅读'}</span>
               </Button>
             </div>
           </div>
@@ -405,7 +473,7 @@ export default function ArticleDetail() {
             <i aria-hidden="true" />
             <span>{article.date}</span>
             <span className="inline-flex items-center gap-1">
-              <Clock3 className="size-3.5" /> {readMinutes} 分钟
+              <Clock3 className="size-3.5" /> {readMinutes} min read
             </span>
           </div>
 
@@ -432,7 +500,7 @@ export default function ArticleDetail() {
                 data-zoomable="true"
                 data-pswp-width={coverSize.width || undefined}
                 data-pswp-height={coverSize.height || undefined}
-                aria-label="查看大图"
+                aria-label="View full-size image"
               >
                 <img
                   src={article.coverImage}
@@ -457,7 +525,7 @@ export default function ArticleDetail() {
           </div>
 
           {(adjacent.newer || adjacent.older) && (
-            <nav className="article-pagination mt-20 grid gap-3 pt-7 sm:grid-cols-2" aria-label="文章导航">
+            <nav className="article-pagination mt-20 grid gap-3 pt-7 sm:grid-cols-2" aria-label="Article navigation">
               {adjacent.older ? (
                 <button
                   type="button"
@@ -465,7 +533,7 @@ export default function ArticleDetail() {
                   className="group rounded-xl p-4 text-left transition-colors"
                 >
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <ChevronLeft className="size-3.5" /> 较旧一篇 · J
+                    <ChevronLeft className="size-3.5" /> Older · J
                   </span>
                   <span className="mt-1 block truncate text-sm font-medium">{adjacent.older.title}</span>
                 </button>
@@ -479,20 +547,24 @@ export default function ArticleDetail() {
                   className="group rounded-xl p-4 text-right transition-colors"
                 >
                   <span className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                    K · 较新一篇 <ChevronRight className="size-3.5" />
+                    K · Newer <ChevronRight className="size-3.5" />
                   </span>
                   <span className="mt-1 block truncate text-sm font-medium">{adjacent.newer.title}</span>
                 </button>
               )}
             </nav>
           )}
+
+          <div className="mt-12">
+            <GiscusComments term={article.title} />
+          </div>
         </article>
 
         {headings.length > 0 && !zen && (
           <aside className="article-aside hidden lg:block">
             <div className="article-aside-inner">
-              <nav ref={tocRef} className="article-toc" aria-label="文章目录">
-                <div className="article-toc-list">
+              <nav ref={tocRef} className="article-toc" aria-label="Table of contents">
+                <div className="article-toc-list" onMouseLeave={stopPreviewingToc}>
                   <span
                     ref={tocPillRef}
                     className="article-toc-pill"
@@ -505,14 +577,13 @@ export default function ArticleDetail() {
                     <button
                       key={heading.id}
                       onClick={() => goTo(heading.id)}
-                      onMouseEnter={() => setHoveredHeadingId(heading.id)}
-                      onMouseLeave={() => setHoveredHeadingId(null)}
+                      onMouseEnter={() => previewTocHeading(heading.id)}
                       aria-current={activeId === heading.id ? 'location' : undefined}
                       data-heading-id={heading.id}
                       title={heading.text}
                       className={cn(
                         'article-toc-entry',
-                        activeId === heading.id && 'active',
+                        (tocHighlightedHeadingId ?? activeId) === heading.id && 'highlighted',
                         heading.level === 3 && 'level-three'
                       )}
                     >

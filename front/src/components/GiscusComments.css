@@ -1,0 +1,18 @@
+.giscus-comments {
+  width: 100%;
+  color-scheme: light;
+}
+
+.giscus-comments giscus-widget,
+.giscus-comments giscus-widget::part(iframe) {
+  width: 100%;
+}
+
+.giscus-comments giscus-widget::part(iframe) {
+  min-height: 0;
+  background: transparent;
+}
+
+[data-theme='dark'] .giscus-comments {
+  color-scheme: dark;
+}

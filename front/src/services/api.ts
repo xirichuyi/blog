@@ -49,6 +49,50 @@ export interface HealthStatus {
   }
 }
 
+export type ReadingStatus = 'want_to_read' | 'reading' | 'finished' | 'paused'
+
+export interface BookFile {
+  id: number
+  book_id: number
+  format: string
+  file_url: string
+  r2_key: string
+  file_name: string
+  file_size: number
+  mime_type: string
+  created_at: string
+}
+
+export interface Book {
+  id: number
+  title: string
+  author: string
+  description: string
+  cover_url?: string | null
+  reading_status: ReadingStatus
+  progress: number
+  rating?: number | null
+  notes: string
+  started_at?: string | null
+  finished_at?: string | null
+  is_public: boolean
+  download_enabled: boolean
+  created_at: string
+  updated_at: string
+  files: BookFile[]
+}
+
+export interface ChangelogEntry {
+  id: number
+  version: string
+  title: string
+  content: string
+  published_at: string
+  status: number
+  created_at: string
+  updated_at: string
+}
+
 interface Envelope<T> {
   code: number
   message: string
@@ -244,4 +288,14 @@ export async function getHealth(): Promise<HealthStatus> {
   const res = await fetch(`${API_BASE}${PREFIX}/health`)
   if (!res.ok) throw new Error(`Request failed: ${res.status}`)
   return (await res.json()) as HealthStatus
+}
+
+export async function listBooks(): Promise<Book[]> {
+  const env = await req<Book[]>('/books')
+  return env.data || []
+}
+
+export async function listChangelog(): Promise<ChangelogEntry[]> {
+  const env = await req<ChangelogEntry[]>('/changelog')
+  return env.data || []
 }

@@ -1,6 +1,4 @@
-// 邮箱阅读（IMAP）前端服务。
-// 凭据（邮箱 + 应用专用密码）由用户在表单里当场填写，每次请求都带上，
-// 前端不持久化、不写 localStorage；后端也只临时中转、零存储。
+// IMAP credentials are sent per request and are never persisted by the client.
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 
 export interface MailSummary {
@@ -43,7 +41,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     /* non-JSON error body */
   }
   if (!res.ok || !env || env.code !== 0) {
-    throw new Error(env?.message || `请求失败 (${res.status})`)
+    throw new Error(env?.message || `Request failed (${res.status})`)
   }
   return env.data
 }

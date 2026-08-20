@@ -10,11 +10,13 @@ import {
 const MAX_PARALLEL_PARTS = 3
 const MAX_PART_ATTEMPTS = 3
 
-export interface VideoUploadProgress {
+export interface MultipartUploadProgress {
   uploadedBytes: number
   totalBytes: number
   percent: number
 }
+
+export type VideoUploadProgress = MultipartUploadProgress
 
 export interface UploadedVideo {
   url: string
@@ -31,7 +33,7 @@ export async function uploadVideoDirect(
 
   try {
     session = await beginVideoUpload(file, contentType)
-    const parts = await uploadAllParts(file, session, onProgress, signal)
+    const parts = await uploadMultipartParts(file, session, onProgress, signal)
     const url = await completeVideoUpload(session, parts)
     onProgress({ uploadedBytes: file.size, totalBytes: file.size, percent: 100 })
     return { url, title: file.name.replace(/\.[^.]+$/, '') }
@@ -50,10 +52,10 @@ function videoContentType(file: File): string {
   return 'video/mp4'
 }
 
-async function uploadAllParts(
+export async function uploadMultipartParts(
   file: File,
   session: VideoMultipartSession,
-  onProgress: (progress: VideoUploadProgress) => void,
+  onProgress: (progress: MultipartUploadProgress) => void,
   signal: AbortSignal,
 ): Promise<CompletedVideoPart[]> {
   const uploadController = new AbortController()
@@ -121,7 +123,7 @@ async function uploadPartWithRetry(
       if (attempt < MAX_PART_ATTEMPTS) await retryDelay(attempt, signal)
     }
   }
-  throw lastError instanceof Error ? lastError : new Error('视频分片上传失败')
+  throw lastError instanceof Error ? lastError : new Error('R2 分片上传失败')
 }
 
 function uploadPart(
@@ -160,7 +162,7 @@ function uploadPart(
     }
     request.onabort = () => {
       cleanup()
-      reject(new DOMException('视频上传已取消', 'AbortError'))
+      reject(new DOMException('上传已取消', 'AbortError'))
     }
     signal.addEventListener('abort', abort, { once: true })
     request.send(blob)
@@ -172,7 +174,7 @@ function retryDelay(attempt: number, signal: AbortSignal): Promise<void> {
     const abort = () => {
       window.clearTimeout(timer)
       signal.removeEventListener('abort', abort)
-      reject(new DOMException('视频上传已取消', 'AbortError'))
+      reject(new DOMException('上传已取消', 'AbortError'))
     }
     const timer = window.setTimeout(() => {
       signal.removeEventListener('abort', abort)

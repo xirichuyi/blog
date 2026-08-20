@@ -1,14 +1,16 @@
 import { useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { motion, useMotionValue, useSpring, useTransform, type MotionValue } from 'framer-motion'
-import { Home, FileText, Wrench, Moon, Sun, type LucideIcon } from 'lucide-react'
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type MotionValue } from 'framer-motion'
+import { Home, FileText, Wrench, Moon, Sun, BookOpen, MessageCircle, type LucideIcon } from 'lucide-react'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/articles', label: 'Articles', icon: FileText },
+  { to: '/books', label: 'Books', icon: BookOpen },
   { to: '/projects', label: 'Projects', icon: Wrench },
+  { to: '/guestbook', label: 'Guestbook', icon: MessageCircle },
 ]
 
 const BASE = 38
@@ -43,20 +45,22 @@ function DockItem({
   return (
     <motion.button
       ref={ref}
+      type="button"
       style={{ width, height: BASE }}
       onClick={onClick}
       aria-label={label}
-      className="group/item relative flex shrink-0 items-end justify-center"
+      aria-current={active ? 'page' : undefined}
+      className="group/item relative flex shrink-0 items-end justify-center focus-visible:outline-none"
     >
       {/* tooltip */}
-      <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity group-hover/item:opacity-100">
+      <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs text-popover-foreground opacity-0 shadow-md transition-opacity group-hover/item:opacity-100 group-focus-visible/item:opacity-100">
         {label}
       </span>
       {/* icon tile — fixed box, scaled via transform from the bottom */}
       <motion.span
         style={{ width: BASE, height: BASE, scale, transformOrigin: 'bottom center' }}
         className={cn(
-          'grid place-items-center rounded-full transition-colors [&>svg]:size-[42%]',
+          'grid place-items-center rounded-full transition-colors group-focus-visible/item:ring-2 group-focus-visible/item:ring-foreground/30 group-focus-visible/item:ring-offset-2 group-focus-visible/item:ring-offset-background [&>svg]:size-[42%]',
           active
             ? 'bg-foreground/10 text-foreground'
             : 'bg-secondary text-muted-foreground group-hover/item:bg-foreground/10 group-hover/item:text-foreground'
@@ -79,6 +83,7 @@ export function Dock() {
   const navigate = useNavigate()
   const location = useLocation()
   const { theme, toggle } = useTheme()
+  const reduceMotion = useReducedMotion()
   const mouseX = useMotionValue(Infinity)
 
   const isActive = (to: string) => (to === '/' ? location.pathname === '/' : location.pathname.startsWith(to))
@@ -86,7 +91,7 @@ export function Dock() {
   return (
     <div className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
       <motion.div
-        onMouseMove={(e) => mouseX.set(e.clientX)}
+        onMouseMove={(event) => !reduceMotion && mouseX.set(event.clientX)}
         onMouseLeave={() => mouseX.set(Infinity)}
         className="flex items-end gap-1.5 rounded-[1.5rem] border border-border bg-background/60 px-2.5 pb-1.5 pt-1 shadow-xl backdrop-blur-2xl"
       >

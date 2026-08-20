@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 
 const SITE = 'https://blog.chuyi.uk'
 const SITE_NAME = "chuyi's blog"
-const DEFAULT_DESCRIPTION = "chuyi's blog —— 全栈开发、技术笔记与思考。"
+const DEFAULT_DESCRIPTION = "chuyi's blog — full-stack development, technical notes, and ideas."
 
 interface SEOProps {
   title?: string
@@ -93,17 +93,20 @@ export function SEO({
 
 const STATIC_META: Record<string, { title?: string; description?: string; noIndex?: boolean }> = {
   '/': {},
-  '/articles': { title: '文章归档', description: '全部技术文章与笔记归档。' },
-  '/projects': { title: 'Projects', description: '开源项目与自建在线工具。' },
-  '/about': { title: 'About', description: '关于 chuyi。' },
+  '/articles': { title: 'Archive', description: 'An archive of technical articles and notes.' },
+  '/projects': { title: 'Projects', description: 'Open-source projects and self-hosted tools.' },
+  '/about': { title: 'About', description: 'About chuyi.' },
+  '/guestbook': { title: 'Guestbook', description: 'Notes, suggestions, questions, and links.' },
+  '/books': { title: 'Books', description: 'Ebooks, reading progress, and book notes.' },
+  '/changelog': { title: 'Changelog', description: 'Product updates and design changes.' },
   '/tools/gitbook2epub': {
-    title: 'GitBook 转 EPUB',
-    description: '将在线 GitBook 或 bookdown 图书转换为可离线阅读的 EPUB。',
+    title: 'GitBook to EPUB',
+    description: 'Convert a GitBook or bookdown site into an EPUB for offline reading.',
   },
-  '/tools/quant': { title: '量化收益', description: '自建量化策略的只读收益快照与净值曲线。' },
+  '/tools/quant': { title: 'Quant Performance', description: 'A read-only performance snapshot and equity curve.' },
   '/tools/mailbox': {
-    title: '邮箱阅读',
-    description: '临时读取支持 IMAP 的邮箱，凭据不在服务端保存。',
+    title: 'Mail Reader',
+    description: 'Read an IMAP inbox without storing credentials on the server.',
     noIndex: true,
   },
 }
@@ -113,5 +116,5 @@ export function RouteSEO() {
   if (pathname.startsWith('/article/')) return null
   const meta = STATIC_META[pathname]
   if (meta) return <SEO path={pathname} {...meta} />
-  return <SEO title="页面不存在" description="这个页面不存在，或者已经移动。" path={pathname} noIndex />
+  return <SEO title="Page not found" description="This page does not exist or has moved." path={pathname} noIndex />
 }

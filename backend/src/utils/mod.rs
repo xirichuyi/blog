@@ -7,4 +7,4 @@ pub mod text;
 pub use file_handler::{
     FileHandler, OptimizeResult, DOCUMENT_TYPES, IMAGE_TYPES, MUSIC_TYPES, PDF_TYPES,
 };
-pub use r2_video::{CompletedVideoPart, R2VideoStorage, VideoMultipartSession, VideoUploadPart};
+pub use r2_video::{CompletedVideoPart, R2Storage, VideoMultipartSession, VideoUploadPart};

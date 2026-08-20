@@ -27,7 +27,7 @@ struct R2Client {
 }
 
 #[derive(Clone)]
-pub struct R2VideoStorage {
+pub struct R2Storage {
     client: Option<R2Client>,
 }
 
@@ -68,7 +68,7 @@ struct RequestSignature<'a> {
     now: DateTime<Utc>,
 }
 
-impl R2VideoStorage {
+impl R2Storage {
     pub fn new(config: &S3Config) -> Self {
         let client = config.enabled.then(|| {
             let endpoint = config.endpoint.trim_end_matches('/').to_string();
@@ -91,15 +91,36 @@ impl R2VideoStorage {
         Self { client }
     }
 
-    pub async fn begin_upload(
+    pub async fn begin_video_upload(
         &self,
         file_name: &str,
         content_type: &str,
         file_size: u64,
     ) -> Result<VideoMultipartSession> {
         validate_video(file_name, content_type, file_size)?;
-        let client = self.client()?;
         let key = video_key(file_name)?;
+        self.begin_upload(key, content_type, file_size).await
+    }
+
+    pub async fn begin_book_upload(
+        &self,
+        book_id: i64,
+        file_name: &str,
+        content_type: &str,
+        file_size: u64,
+    ) -> Result<VideoMultipartSession> {
+        validate_book_file(file_name, content_type, file_size)?;
+        let key = book_key(book_id, file_name)?;
+        self.begin_upload(key, content_type, file_size).await
+    }
+
+    async fn begin_upload(
+        &self,
+        key: String,
+        content_type: &str,
+        file_size: u64,
+    ) -> Result<VideoMultipartSession> {
+        let client = self.client()?;
         let upload_id = initiate_multipart(client, &key, content_type).await?;
         let part_size = choose_part_size(file_size);
         let part_count = file_size.div_ceil(part_size);
@@ -146,7 +167,7 @@ impl R2VideoStorage {
     fn client(&self) -> Result<&R2Client> {
         self.client
             .as_ref()
-            .ok_or_else(|| AppError::Internal("R2 video uploads are not configured".to_string()))
+            .ok_or_else(|| AppError::Internal("R2 uploads are not configured".to_string()))
     }
 }
 
@@ -202,6 +223,53 @@ fn video_key(file_name: &str) -> Result<String> {
     ))
 }
 
+fn validate_book_file(file_name: &str, content_type: &str, file_size: u64) -> Result<()> {
+    const MAX_BOOK_SIZE: u64 = 2 * 1024 * 1024 * 1024;
+    if file_size == 0 || file_size > MAX_BOOK_SIZE {
+        return Err(AppError::BadRequest(
+            "Book file must be between 1 byte and 2 GiB".to_string(),
+        ));
+    }
+    let extension = book_extension(file_name)?;
+    let expected_type = match extension.as_str() {
+        "pdf" => "application/pdf",
+        "epub" => "application/epub+zip",
+        "mobi" | "azw3" => "application/octet-stream",
+        _ => unreachable!(),
+    };
+    if content_type != expected_type && content_type != "application/octet-stream" {
+        return Err(AppError::BadRequest(format!(
+            "Unsupported book content type: {content_type}"
+        )));
+    }
+    Ok(())
+}
+
+fn book_extension(file_name: &str) -> Result<String> {
+    let extension = Path::new(file_name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(str::to_ascii_lowercase)
+        .ok_or_else(|| AppError::BadRequest("Book file has no extension".to_string()))?;
+    match extension.as_str() {
+        "pdf" | "epub" | "mobi" | "azw3" => Ok(extension),
+        _ => Err(AppError::BadRequest(format!(
+            "Unsupported book extension: {extension}"
+        ))),
+    }
+}
+
+fn book_key(book_id: i64, file_name: &str) -> Result<String> {
+    if book_id <= 0 {
+        return Err(AppError::BadRequest("Invalid book ID".to_string()));
+    }
+    Ok(format!(
+        "books/{book_id}/{}.{}",
+        Uuid::new_v4(),
+        book_extension(file_name)?
+    ))
+}
+
 fn choose_part_size(file_size: u64) -> u64 {
     let minimum_for_part_limit = file_size.div_ceil(MAX_PARTS);
     let rounded_minimum = minimum_for_part_limit.div_ceil(MIN_PART_SIZE) * MIN_PART_SIZE;
@@ -209,7 +277,7 @@ fn choose_part_size(file_size: u64) -> u64 {
 }
 
 fn validate_upload_reference(key: &str, upload_id: &str) -> Result<()> {
-    let key_is_safe = key.starts_with("videos/")
+    let key_is_safe = (key.starts_with("videos/") || key.starts_with("books/"))
         && key.len() <= 256
         && !key
             .split('/')
@@ -558,9 +626,9 @@ mod tests {
                 .expect("write response");
         });
 
-        let storage = R2VideoStorage::new(&test_config(format!("http://{address}")));
+        let storage = R2Storage::new(&test_config(format!("http://{address}")));
         let session = storage
-            .begin_upload("original-4k.mp4", "video/mp4", 130 * 1024 * 1024)
+            .begin_video_upload("original-4k.mp4", "video/mp4", 130 * 1024 * 1024)
             .await
             .expect("multipart upload starts");
 
@@ -576,7 +644,7 @@ mod tests {
 
     #[test]
     fn presigned_part_uses_stable_sigv4_parameters() {
-        let client = R2VideoStorage::new(&test_config(
+        let client = R2Storage::new(&test_config(
             "https://account.r2.cloudflarestorage.com".to_string(),
         ))
         .client
@@ -594,8 +662,11 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_video_and_unsafe_completion_data() {
+    fn rejects_unsupported_files_and_unsafe_completion_data() {
         assert!(validate_video("archive.zip", "application/zip", 10).is_err());
+        assert!(validate_book_file("archive.zip", "application/zip", 10).is_err());
+        assert!(validate_book_file("book.pdf", "application/pdf", 10).is_ok());
+        assert!(validate_book_file("book.epub", "application/epub+zip", 10).is_ok());
         assert!(validate_upload_reference("../secret", "upload-1").is_err());
         assert!(validate_completed_parts(&[
             CompletedVideoPart {

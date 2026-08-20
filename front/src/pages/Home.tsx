@@ -134,6 +134,13 @@ export default function Home() {
           <HoverList articles={recent} />
         )}
       </section>
+
+      <nav className="mt-14 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-6 text-xs text-muted-foreground" aria-label="More content">
+        <Link to="/books" className="transition-colors hover:text-foreground">Books</Link>
+        <Link to="/changelog" className="transition-colors hover:text-foreground">Changelog</Link>
+        <Link to="/guestbook" className="transition-colors hover:text-foreground">Guestbook</Link>
+        <a href="/rss.xml" className="transition-colors hover:text-foreground">RSS</a>
+      </nav>
     </div>
   )
 }

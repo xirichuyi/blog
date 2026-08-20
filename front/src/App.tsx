@@ -12,6 +12,10 @@ const Gitbook2Epub = lazy(() => import('@/pages/tools/Gitbook2Epub'))
 const Mailbox = lazy(() => import('@/pages/tools/Mailbox'))
 const Quant = lazy(() => import('@/pages/tools/Quant'))
 const About = lazy(() => import('@/pages/About'))
+const Guestbook = lazy(() => import('@/pages/Guestbook'))
+const Books = lazy(() => import('@/pages/Books'))
+const BookReader = lazy(() => import('@/pages/BookReader'))
+const Changelog = lazy(() => import('@/pages/Changelog'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 const AdminLogin = lazy(() => import('@/pages/admin/Login'))
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'))
@@ -20,6 +24,8 @@ const PostsList = lazy(() => import('@/pages/admin/PostsList'))
 const PostEditor = lazy(() => import('@/pages/admin/PostEditor'))
 const Taxonomy = lazy(() => import('@/pages/admin/Taxonomy'))
 const AboutEditor = lazy(() => import('@/pages/admin/AboutEditor'))
+const BooksManager = lazy(() => import('@/pages/admin/BooksManager'))
+const ChangelogManager = lazy(() => import('@/pages/admin/ChangelogManager'))
 
 export default function App() {
   return (
@@ -56,6 +62,8 @@ export default function App() {
           <Route path="posts/:id" element={<PostEditor />} />
           <Route path="taxonomy" element={<Taxonomy />} />
           <Route path="about" element={<AboutEditor />} />
+          <Route path="books" element={<BooksManager />} />
+          <Route path="changelog" element={<ChangelogManager />} />
         </Route>
 
         {/* Public */}
@@ -68,6 +76,10 @@ export default function App() {
           <Route path="/tools/quant" element={<Quant />} />
           <Route path="/article/:id" element={<ArticleDetail />} />
           <Route path="/about" element={<About />} />
+          <Route path="/guestbook" element={<Guestbook />} />
+          <Route path="/books" element={<Books />} />
+          <Route path="/books/:id/read" element={<BookReader />} />
+          <Route path="/changelog" element={<Changelog />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

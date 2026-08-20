@@ -12,59 +12,59 @@ interface Tool {
   tags?: string[]
 }
 
-// 博客自建、能直接用的在线工具 / 链接。
+// Public tools and services maintained for this site.
 const TOOLS: Tool[] = [
   {
     name: 'GitBook → EPUB',
-    description: '输入在线书（GitBook / bookdown 等）的链接，一键导出干净的 EPUB 离线阅读。',
+    description: 'Paste a GitBook or bookdown URL and export a clean EPUB for offline reading.',
     internal: '/tools/gitbook2epub',
     tags: ['Tool', 'Online'],
   },
   {
-    name: '邮箱阅读 · IMAP',
-    description: '填入邮箱和 IMAP 授权码，在浏览器里读最近的邮件。支持 Yahoo / Gmail / Outlook / QQ / 163 等；凭据用完即丢，服务端不存储。',
+    name: 'Mail Reader · IMAP',
+    description: 'Read recent messages from common IMAP providers. Credentials are used once and never stored.',
     internal: '/tools/mailbox',
     tags: ['Tool', 'Online'],
   },
   {
-    name: '量化收益 · Barter',
-    description: '自建 BTC 做市机器人的实盘权益走势：总收益率 + 净值曲线。只读展示，仅收益数据。',
+    name: 'Quant Performance · Barter',
+    description: 'A read-only equity curve and return snapshot for a self-hosted BTC market-making bot.',
     internal: '/tools/quant',
     tags: ['Quant', 'Live'],
   },
   {
-    name: '见微 · 账单分析',
-    description: '上传微信账单，一键生成看得懂的财务报告：健康评分、消费分类、月度走势、商户分析。数据全程在浏览器本地处理，不上传服务器。',
+    name: 'Jianwei · Expense Analysis',
+    description: 'Turn a WeChat statement into a clear financial report. All data stays in your browser.',
     url: 'https://bill.chuyi.uk/',
     tags: ['Tool', 'Online'],
   },
   {
-    name: 'Proxy 节点',
-    description: '自用代理节点与连接状态页，仅向授权设备开放。',
+    name: 'Proxy Node',
+    description: 'A private proxy node and connection status page for authorized devices.',
     url: 'https://zhoumaosen.top/proxy',
     tags: ['Proxy'],
   },
   {
-    name: '服务器监控 · Beszel',
-    description: '服务器实时状态面板：CPU / 内存 / 磁盘 / 网络 / 在线时长。',
+    name: 'Server Monitor · Beszel',
+    description: 'Live CPU, memory, disk, network, and uptime monitoring.',
     url: 'https://monitor.chuyi.uk/',
     tags: ['Monitor'],
   },
   {
-    name: 'USDTPay · 收款网关',
-    description: '非托管多链 USDT 收款网关：款项直达自己的钱包，平台零手续费、不碰资金；自动监听链上到账并签名回调，REST API 一键接入。',
+    name: 'USDTPay · Payment Gateway',
+    description: 'A non-custodial multi-chain USDT gateway with direct wallet settlement, signed callbacks, and a REST API.',
     url: 'https://pay.chuyi.uk/',
     tags: ['Tool', 'Online'],
   },
   {
-    name: 'Sub2API · AI 网关',
-    description: '统一的 AI API 网关：把多家 AI 服务聚合成一个入口，集中管理与转发请求。',
+    name: 'Sub2API · AI Gateway',
+    description: 'A unified gateway for routing and managing requests across multiple AI providers.',
     url: 'https://sub2api.chuyi.uk',
     tags: ['Tool', 'AI'],
   },
 ]
 
-// 语言对应的小圆点颜色（GitHub 风格）。
+// GitHub-style language colors.
 const LANG_COLOR: Record<string, string> = {
   TypeScript: '#3178c6',
   JavaScript: '#f1e05a',
@@ -94,9 +94,9 @@ export default function Projects() {
         <title>Projects · chuyi's blog</title>
       </Helmet>
 
-      {/* 在线工具 */}
+      {/* Online tools */}
       <section>
-        <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">在线工具</h2>
+        <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">Online Tools</h2>
         <div className="hover-list flex flex-col">
           {TOOLS.map((p) => {
             const href = p.internal || p.url
@@ -126,10 +126,10 @@ export default function Projects() {
         </div>
       </section>
 
-      {/* 开源项目（GitHub 自动拉取） */}
+      {/* Open-source projects loaded from GitHub. */}
       <section className="mt-12">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">开源项目</h2>
+          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Open Source</h2>
           <a
             href="https://github.com/xirichuyi"
             target="_blank"
@@ -142,10 +142,10 @@ export default function Projects() {
 
         {!repos && !ghError && (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> 加载中…
+            <Loader2 className="size-4 animate-spin" /> Loading…
           </div>
         )}
-        {ghError && <p className="py-6 text-sm text-muted-foreground">暂时无法从 GitHub 加载项目，稍后再试。</p>}
+        {ghError && <p className="py-6 text-sm text-muted-foreground">GitHub projects are temporarily unavailable. Please try again later.</p>}
 
         {repos && (
           <div className="hover-list flex flex-col">
@@ -177,7 +177,7 @@ export default function Projects() {
                 </div>
               </a>
             ))}
-            {repos.length === 0 && <p className="py-6 text-sm text-muted-foreground">还没有带描述的公开仓库。</p>}
+            {repos.length === 0 && <p className="py-6 text-sm text-muted-foreground">No described public repositories yet.</p>}
           </div>
         )}
       </section>

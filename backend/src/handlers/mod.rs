@@ -1,6 +1,8 @@
 pub mod about_handler;
 pub mod auth_handler;
+pub mod book_handler;
 pub mod category_handler;
+pub mod changelog_handler;
 pub mod download_handler;
 pub mod health_handler;
 pub mod mail_handler;

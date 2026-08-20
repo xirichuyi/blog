@@ -85,7 +85,7 @@ export function MagneticBackButton({ onClick }: MagneticBackButtonProps) {
         onFocus={() => setHovered(true)}
         onBlur={() => setHovered(false)}
         className="article-magnetic-back"
-        aria-label="返回上一页"
+        aria-label="Go back"
       >
         <motion.span
           className="article-back-parallax"

@@ -4,8 +4,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, TrendingUp, Loader2 } from 'lucide-react'
 import { getQuant, type QuantData } from '@/services/quant'
 
-// 量化收益仪表盘：独立的「交易终端」风格(始终深色),和博客其他极简页面区分开。
-// 只展示收益:总收益率 + 权益曲线 + 几个汇总数字,不涉及交易/仓位/策略。
+// Read-only performance dashboard with a dedicated terminal-style surface.
 
 function fmtMoney(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -13,15 +12,15 @@ function fmtMoney(n: number): string {
 function fmtDate(s: string): string {
   if (!s) return ''
   const d = new Date(s)
-  return Number.isNaN(d.getTime()) ? s : d.toLocaleString('zh-CN', { dateStyle: 'medium', timeStyle: 'short' })
+  return Number.isNaN(d.getTime()) ? s : d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-/** 手搓 SVG 权益曲线（面积 + 折线），无第三方图表库。 */
+/** Lightweight SVG equity chart without a charting dependency. */
 function EquityChart({ curve, up }: { curve: QuantData['curve']; up: boolean }) {
   const W = 640
   const H = 200
   const pad = { t: 16, r: 8, b: 16, l: 8 }
-  if (curve.length < 2) return <div className="h-40 text-sm text-zinc-500">数据点不足，无法绘制曲线。</div>
+  if (curve.length < 2) return <div className="h-40 text-sm text-zinc-500">Not enough data to draw the chart.</div>
 
   const xs = curve.map((_, i) => i)
   const ys = curve.map((p) => p.balance)
@@ -84,7 +83,7 @@ export default function Quant() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16 sm:px-8">
       <Helmet>
-        <title>量化收益 · Barter · chuyi's blog</title>
+        <title>Quant Performance · Barter · chuyi's blog</title>
       </Helmet>
 
       <Link
@@ -98,27 +97,27 @@ export default function Quant() {
         <div className="mb-3 inline-flex size-11 items-center justify-center rounded-xl bg-secondary text-foreground">
           <TrendingUp className="size-5" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">量化收益 · Barter</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Quant Performance · Barter</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          自建 BTC 做市机器人的权益走势。只读展示，仅收益数据，不含交易、仓位或策略。
+          Read-only equity performance for a self-hosted BTC market-making bot. No trades, positions, or strategy details are exposed.
         </p>
       </header>
 
-      {/* 深色交易终端面板 */}
+      {/* Dark terminal-style performance panel. */}
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 text-zinc-100 shadow-xl">
         {state === 'loading' && (
           <div className="flex items-center gap-2 py-10 text-sm text-zinc-400">
-            <Loader2 className="size-4 animate-spin" /> 加载中…
+            <Loader2 className="size-4 animate-spin" /> Loading…
           </div>
         )}
-        {state === 'error' && <p className="py-10 text-sm text-zinc-400">暂时无法加载收益数据，稍后再试。</p>}
-        {state === 'empty' && <p className="py-10 text-sm text-zinc-400">暂无收益数据。</p>}
+        {state === 'error' && <p className="py-10 text-sm text-zinc-400">Performance data is temporarily unavailable. Please try again later.</p>}
+        {state === 'empty' && <p className="py-10 text-sm text-zinc-400">No performance data yet.</p>}
 
         {state === 'ready' && data && (
           <>
             <div className="flex items-end justify-between gap-4">
               <div>
-                <div className="text-[11px] uppercase tracking-wider text-zinc-500">总收益率</div>
+                <div className="text-[11px] uppercase tracking-wider text-zinc-500">Total Return</div>
                 <div
                   className={`mt-1 text-4xl font-bold tabular-nums ${up ? 'text-emerald-400' : 'text-rose-400'}`}
                 >
@@ -127,7 +126,7 @@ export default function Quant() {
                 </div>
               </div>
               <div className="pb-1 text-right">
-                <div className="text-[11px] uppercase tracking-wider text-zinc-500">当前权益</div>
+                <div className="text-[11px] uppercase tracking-wider text-zinc-500">Current Equity</div>
                 <div className="mt-1 text-xl font-semibold tabular-nums text-zinc-100">
                   {fmtMoney(data.balance)} <span className="text-sm text-zinc-500">{data.currency}</span>
                 </div>
@@ -139,9 +138,9 @@ export default function Quant() {
             </div>
 
             <div className="mt-5 grid grid-cols-3 gap-4 border-t border-zinc-800 pt-5">
-              <Stat label="起始权益" value={`${fmtMoney(data.baseline)}`} sub={data.startDate} />
-              <Stat label="运行天数" value={`${data.days} 天`} />
-              <Stat label="数据截至" value={data.asOf} sub={`更新于 ${fmtDate(data.updated)}`} />
+              <Stat label="Starting Equity" value={`${fmtMoney(data.baseline)}`} sub={data.startDate} />
+              <Stat label="Days Running" value={`${data.days} days`} />
+              <Stat label="Data Through" value={data.asOf} sub={`Updated ${fmtDate(data.updated)}`} />
             </div>
           </>
         )}
@@ -149,10 +148,10 @@ export default function Quant() {
 
       <div className="mt-12 space-y-2 border-t border-border/60 pt-6 text-xs leading-relaxed text-muted-foreground">
         <p>
-          <span className="font-medium text-foreground/80">说明.</span>{' '}
-          数据由后端定时以只读方式从机器人记录的每日权益中提取，机器人本身代码与运行不受影响。
+          <span className="font-medium text-foreground/80">Note.</span>{' '}
+          The backend periodically reads daily equity records without modifying the bot or its runtime.
         </p>
-        <p>权益快照随机器人记录更新；曲线反映已记录区间的净值走势，过往表现不代表未来收益。</p>
+        <p>The chart reflects recorded equity history. Past performance does not guarantee future results.</p>
       </div>
     </div>
   )

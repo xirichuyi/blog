@@ -1,13 +1,13 @@
 use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
-    about_handler, auth_handler, category_handler, download_handler, health_handler, mail_handler,
-    music_handler, pdf_handler, post_handler, quant_handler, resource_handler, seo_handler,
-    tag_handler, tools_handler, video_handler,
+    about_handler, auth_handler, book_handler, category_handler, changelog_handler,
+    download_handler, health_handler, mail_handler, music_handler, pdf_handler, post_handler,
+    quant_handler, resource_handler, seo_handler, tag_handler, tools_handler, video_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
-use crate::utils::{FileHandler, R2VideoStorage};
+use crate::utils::{FileHandler, R2Storage};
 use axum::{
     extract::FromRef,
     middleware,
@@ -21,7 +21,7 @@ pub struct AppState {
     pub database: Database,
     pub config: Arc<Config>,
     pub file_handler: Arc<FileHandler>,
-    pub video_storage: Arc<R2VideoStorage>,
+    pub r2_storage: Arc<R2Storage>,
     pub services: Services,
 }
 
@@ -43,9 +43,9 @@ impl FromRef<AppState> for Arc<FileHandler> {
     }
 }
 
-impl FromRef<AppState> for Arc<R2VideoStorage> {
-    fn from_ref(app_state: &AppState) -> Arc<R2VideoStorage> {
-        Arc::clone(&app_state.video_storage)
+impl FromRef<AppState> for Arc<R2Storage> {
+    fn from_ref(app_state: &AppState) -> Arc<R2Storage> {
+        Arc::clone(&app_state.r2_storage)
     }
 }
 
@@ -62,7 +62,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         config.storage.max_file_size,
         Some(&config.s3),
     ));
-    let video_storage = Arc::new(R2VideoStorage::new(&config.s3));
+    let r2_storage = Arc::new(R2Storage::new(&config.s3));
     let services = Services::new(
         database.clone(),
         file_handler.clone(),
@@ -72,7 +72,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         database,
         config,
         file_handler,
-        video_storage,
+        r2_storage,
         services,
     };
     // Public routes (no authentication required)
@@ -131,6 +131,9 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         )
         // About public route
         .route("/api/about/get", get(about_handler::get_about))
+        // Books and site changelog
+        .route("/api/books", get(book_handler::list_public))
+        .route("/api/changelog", get(changelog_handler::list_public))
         // Online tools
         .route("/api/tools/gitbook2epub", post(tools_handler::gitbook2epub))
         // 邮箱阅读（IMAP）：凭据由请求当场传入，服务端零存储、地址白名单。
@@ -162,6 +165,40 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route(
             "/api/admin/videos/multipart/abort",
             post(video_handler::abort_video_upload),
+        )
+        // Book library and direct R2 file uploads
+        .route(
+            "/api/admin/books",
+            get(book_handler::list_admin).post(book_handler::create),
+        )
+        .route(
+            "/api/admin/books/:id",
+            put(book_handler::update).delete(book_handler::delete_book),
+        )
+        .route(
+            "/api/admin/books/:id/files/multipart",
+            post(book_handler::begin_file_upload),
+        )
+        .route(
+            "/api/admin/books/:id/files/multipart/complete",
+            post(book_handler::complete_file_upload),
+        )
+        .route(
+            "/api/admin/books/files/multipart/abort",
+            post(book_handler::abort_file_upload),
+        )
+        .route(
+            "/api/admin/books/files/:id",
+            delete(book_handler::delete_file),
+        )
+        // Changelog management
+        .route(
+            "/api/admin/changelog",
+            get(changelog_handler::list_admin).post(changelog_handler::create),
+        )
+        .route(
+            "/api/admin/changelog/:id",
+            put(changelog_handler::update).delete(changelog_handler::delete_entry),
         )
         // Post admin routes
         .route("/api/post/create", post(post_handler::create_post))

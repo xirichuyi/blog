@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ExternalLink,
+  BookOpen,
+  History,
   FileText,
   LayoutDashboard,
   Loader2,
@@ -44,6 +46,8 @@ const NAV = [
   { to: '/admin', label: '概览', icon: LayoutDashboard, exact: true },
   { to: '/admin/posts', label: '文章', icon: FileText },
   { to: '/admin/taxonomy', label: '分类与标签', icon: Tags },
+  { to: '/admin/books', label: '书架', icon: BookOpen },
+  { to: '/admin/changelog', label: '更新日志', icon: History },
   { to: '/admin/about', label: '关于页', icon: User },
 ]
 
