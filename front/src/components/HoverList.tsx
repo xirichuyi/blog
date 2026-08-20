@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -6,8 +6,7 @@ import type { Article } from '@/services/api'
 
 // cai.im's springy easing.
 const SPRING = 'cubic-bezier(.25,1.22,.45,1.04)'
-// 液滴感:位置回弹更快更弹,宽高回弹更慢且过冲更大 —— 移动时高亮块会先被
-// 「拉伸」再回弹收住,像一滴水。两条曲线时长/过冲故意错开。
+// Position and size use different spring curves to create a soft liquid-glass motion.
 const MOVE = 'cubic-bezier(.34,1.56,.5,1)'
 const MORPH = 'cubic-bezier(.5,1.8,.45,.92)'
 const PREVIEW_W = 232
@@ -15,7 +14,6 @@ const PREVIEW_W = 232
 /** cai.im-style list: title + meta stacked, left-aligned. The highlight pill
  *  sizes to each row's content width and springs between rows. */
 export function HoverList({ articles }: { articles: Article[] }) {
-  const listRef = useRef<HTMLDivElement>(null)
   const [pill, setPill] = useState({ x: 0, y: 0, w: 0, h: 0, on: false })
   const [preview, setPreview] = useState<{ src: string; left: number; top: number } | null>(null)
   const [shown, setShown] = useState(false)
@@ -25,11 +23,10 @@ export function HoverList({ articles }: { articles: Article[] }) {
     setPill({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight, on: true })
     if (a.coverImage) {
       const r = el.getBoundingClientRect()
-      // hug the hovered row's own right edge (cai.im-style), kept on-screen
-      let left = r.right + 18
-      if (left + PREVIEW_W > window.innerWidth - 16) left = window.innerWidth - PREVIEW_W - 16
-      // vertically center the preview on the hovered item (cai.im-style)
-      const top = Math.max(90, Math.min(r.top + r.height / 2, window.innerHeight - 90))
+      // Use document coordinates so the preview follows its row while the page scrolls.
+      const maxLeft = window.scrollX + window.innerWidth - PREVIEW_W - 16
+      const left = Math.max(window.scrollX + 16, Math.min(r.right + window.scrollX + 18, maxLeft))
+      const top = r.top + window.scrollY + r.height / 2
       // Preload: only reveal the preview once the image actually loads,
       // so broken cover URLs never show an empty frame.
       const src = a.coverImage
@@ -51,7 +48,7 @@ export function HoverList({ articles }: { articles: Article[] }) {
   }
 
   return (
-    <div ref={listRef} className="hover-list relative flex w-fit max-w-full flex-col items-start gap-1" onMouseLeave={leave}>
+    <div className="hover-list relative flex w-fit max-w-full flex-col items-start gap-1" onMouseLeave={leave}>
       {/* highlight pill — 苹果液态玻璃:半透明磨砂 + 高光描边,液滴感回弹 */}
       <div
         className="pointer-events-none absolute left-0 top-0 -z-10 rounded-2xl bg-accent/50 shadow-sm ring-1 ring-inset ring-foreground/[0.06] backdrop-blur-md"
@@ -82,7 +79,7 @@ export function HoverList({ articles }: { articles: Article[] }) {
       {preview &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-[60] hidden w-[232px] -translate-y-1/2 lg:block"
+            className="pointer-events-none absolute z-[60] hidden w-[232px] -translate-y-1/2 lg:block"
             style={{
               left: preview.left,
               top: preview.top,

@@ -121,6 +121,10 @@ export default function BooksManager() {
   }
 
   const uploadFile = async (book: Book, file: File) => {
+    if (!file.name.toLowerCase().endsWith('.epub')) {
+      toast.error('Only EPUB files can be uploaded to the bookshelf')
+      return
+    }
     const controller = new AbortController()
     setUploadingBookId(book.id)
     setUploadProgress(0)
@@ -197,8 +201,8 @@ export default function BooksManager() {
                 <Button asChild variant="outline" size="sm" className="w-full" disabled={uploadingBookId !== null}>
                   <label className="cursor-pointer">
                     {uploadingBookId === book.id ? <Loader2 className="animate-spin" /> : <FileUp />}
-                    {uploadingBookId === book.id ? `上传中 ${uploadProgress}%` : '上传 PDF / EPUB / MOBI / AZW3'}
-                    <input type="file" accept=".pdf,.epub,.mobi,.azw3" className="hidden" disabled={uploadingBookId !== null} onChange={(event) => {
+                    {uploadingBookId === book.id ? `Uploading ${uploadProgress}%` : 'Upload EPUB'}
+                    <input type="file" accept=".epub,application/epub+zip" className="hidden" disabled={uploadingBookId !== null} onChange={(event) => {
                       const file = event.target.files?.[0]
                       if (file) void uploadFile(book, file)
                       event.target.value = ''
