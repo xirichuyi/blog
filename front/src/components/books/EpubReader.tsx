@@ -14,27 +14,14 @@ interface EpubReaderProps {
   theme: ReaderTheme
 }
 
-interface ReadingLocation {
+interface ReadingPosition {
   atEnd: boolean
   atStart: boolean
-  chapter: string
-  percent: number
 }
 
-const EMPTY_LOCATION: ReadingLocation = {
+const EMPTY_POSITION: ReadingPosition = {
   atEnd: false,
   atStart: true,
-  chapter: 'Opening book…',
-  percent: 0,
-}
-
-function flattenNavigation(items: NavItem[]): NavItem[] {
-  return items.flatMap((item) => [item, ...flattenNavigation(item.subitems ?? [])])
-}
-
-function chapterForHref(items: NavItem[], href: string): string {
-  const target = href.split('#')[0]
-  return flattenNavigation(items).find((item) => item.href.split('#')[0] === target)?.label || 'Current chapter'
 }
 
 function progressFromLocation(book: EpubBook, location: Location): number {
@@ -75,9 +62,8 @@ export function EpubReader({ bookId, file, fontSize, theme }: EpubReaderProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const bookRef = useRef<EpubBook | null>(null)
   const renditionRef = useRef<Rendition | null>(null)
-  const navigationRef = useRef<NavItem[]>([])
   const [navigation, setNavigation] = useState<NavItem[]>([])
-  const [location, setLocation] = useState<ReadingLocation>(EMPTY_LOCATION)
+  const [position, setPosition] = useState<ReadingPosition>(EMPTY_POSITION)
   const [tocOpen, setTocOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -103,16 +89,13 @@ export function EpubReader({ bookId, file, fontSize, theme }: EpubReaderProps) {
         rendition.themes.select(theme)
         rendition.themes.fontSize(`${fontSize}%`)
         const nav = (await activeBook.loaded.navigation).toc
-        navigationRef.current = nav
         setNavigation(nav)
         rendition.on('relocated', (nextLocation: Location) => {
           if (!activeBook || disposed) return
           const percent = progressFromLocation(activeBook, nextLocation)
-          setLocation({
+          setPosition({
             atEnd: nextLocation.atEnd,
             atStart: nextLocation.atStart,
-            chapter: chapterForHref(navigationRef.current, nextLocation.start.href),
-            percent,
           })
           saveReaderProgress(bookId, file.id, { kind: 'epub', cfi: nextLocation.start.cfi, percent })
         })
@@ -171,12 +154,11 @@ export function EpubReader({ bookId, file, fontSize, theme }: EpubReaderProps) {
         {loading && <div className="reader-state"><Loader2 className="animate-spin" /> Preparing EPUB…</div>}
         {error && <div className="reader-state reader-error"><strong>Could not open this EPUB</strong><span>{error}</span></div>}
       </section>
-      <footer className="reader-controls">
+      <div className="reader-chapter-controls" aria-label="Chapter navigation">
         <Button size="icon" variant="ghost" onClick={() => setTocOpen(true)} aria-label="Open table of contents"><List /></Button>
-        <Button size="icon" variant="ghost" disabled={location.atStart} onClick={() => void renditionRef.current?.prev()} aria-label="Previous page"><ChevronLeft /></Button>
-        <div className="reader-location"><span>{location.chapter}</span><div><i style={{ width: `${location.percent}%` }} /></div><small>{location.percent}%</small></div>
-        <Button size="icon" variant="ghost" disabled={location.atEnd} onClick={() => void renditionRef.current?.next()} aria-label="Next page"><ChevronRight /></Button>
-      </footer>
+        <Button size="icon" variant="ghost" disabled={position.atStart} onClick={() => void renditionRef.current?.prev()} aria-label="Previous page"><ChevronLeft /></Button>
+        <Button size="icon" variant="ghost" disabled={position.atEnd} onClick={() => void renditionRef.current?.next()} aria-label="Next page"><ChevronRight /></Button>
+      </div>
     </div>
   )
 }

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Download, Maximize2, Minus, Moon, Plus, Sun } from 'lucide-react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Maximize2, Minus, Moon, Plus, Sun } from 'lucide-react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { EpubReader, type ReaderTheme } from '@/components/books/EpubReader'
 import { PdfReader } from '@/components/books/PdfReader'
+import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
-import { imageUrl, listBooks, type Book, type BookFile } from '@/services/api'
+import { listBooks, type Book, type BookFile } from '@/services/api'
 import './BookReader.css'
 
 function isReadable(file: BookFile): boolean {
@@ -14,34 +15,6 @@ function isReadable(file: BookFile): boolean {
 
 function initialReaderTheme(): ReaderTheme {
   return localStorage.getItem('book-reader-theme') === 'night' ? 'night' : 'paper'
-}
-
-function ReaderHeader({ book, file, files, onFileChange }: {
-  book: Book
-  file: BookFile
-  files: BookFile[]
-  onFileChange: (fileId: number) => void
-}) {
-  return (
-    <header className="book-reader-header">
-      <Button asChild size="icon" variant="ghost"><Link to="/books" aria-label="Back to bookshelf"><ArrowLeft /></Link></Button>
-      <div className="book-reader-identity">
-        <strong>{book.title}</strong>
-        {book.author && <span>{book.author}</span>}
-      </div>
-      <div className="book-reader-header-actions">
-        {files.length > 1 && (
-          <label className="book-reader-file-select">
-            <span className="sr-only">Edition</span>
-            <select value={file.id} onChange={(event) => onFileChange(Number(event.target.value))}>
-              {files.map((item) => <option key={item.id} value={item.id}>{item.format.toUpperCase()}</option>)}
-            </select>
-          </label>
-        )}
-        {book.download_enabled && <Button asChild size="icon" variant="ghost"><a href={file.file_url} download aria-label="Download book"><Download /></a></Button>}
-      </div>
-    </header>
-  )
 }
 
 function ReaderPreferences({ format, fontSize, theme, onFontSize, onTheme, onFullscreen }: {
@@ -74,6 +47,7 @@ function ReaderPreferences({ format, fontSize, theme, onFontSize, onTheme, onFul
 
 export default function BookReader() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const pageRef = useRef<HTMLElement>(null)
   const [books, setBooks] = useState<Book[] | null>(null)
@@ -107,7 +81,19 @@ export default function BookReader() {
   return (
     <main ref={pageRef} className={`book-reader-page reader-theme-${theme}`}>
       <SEO title={`Read ${book.title}`} description={`Read ${book.title} by ${book.author || 'Unknown author'}.`} path={`/books/${book.id}/read`} />
-      <ReaderHeader book={book} file={file} files={readableFiles} onFileChange={changeFile} />
+      <div className="book-reader-back"><MagneticBackButton onClick={() => navigate('/books')} /></div>
+      <div className="book-reader-title" aria-label="Current book">
+        <strong>{book.title}</strong>
+        {book.author && <span>{book.author}</span>}
+      </div>
+      {readableFiles.length > 1 && (
+        <label className="book-reader-file-select">
+          <span className="sr-only">Edition</span>
+          <select value={file.id} onChange={(event) => changeFile(Number(event.target.value))}>
+            {readableFiles.map((item) => <option key={item.id} value={item.id}>{item.format.toUpperCase()}</option>)}
+          </select>
+        </label>
+      )}
       <div className="book-reader-settings">
         <ReaderPreferences
           format={format}
@@ -123,7 +109,6 @@ export default function BookReader() {
           ? <EpubReader bookId={book.id} file={file} fontSize={fontSize} theme={theme} />
           : <PdfReader bookId={book.id} file={file} />}
       </div>
-      {book.download_enabled && <a className="book-reader-source" href={imageUrl(file.file_url)} target="_blank" rel="noreferrer">Open original file</a>}
     </main>
   )
 }

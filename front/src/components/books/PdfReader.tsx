@@ -117,16 +117,15 @@ export function PdfReader({ bookId, file }: PdfReaderProps) {
         {loading && <div className="reader-state"><Loader2 className="animate-spin" /> Preparing PDF…</div>}
         {error && <div className="reader-state reader-error"><strong>Could not open this PDF</strong><span>{error}</span></div>}
       </section>
-      <footer className="reader-controls">
+      <div className="reader-chapter-controls reader-pdf-controls" aria-label="Page navigation">
         <Button size="icon" variant="ghost" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} aria-label="Previous page"><ChevronLeft /></Button>
         <div className="pdf-page-control"><span>Page</span><input aria-label="Current page" type="number" min={1} max={pages || 1} value={page} onChange={(event) => setPage(Math.min(pages || 1, Math.max(1, Number(event.target.value))))} /><span>of {pages || '—'}</span></div>
-        <div className="reader-location"><div><i style={{ width: pages ? `${(page / pages) * 100}%` : '0%' }} /></div><small>{pages ? Math.round((page / pages) * 100) : 0}%</small></div>
         <Button size="icon" variant="ghost" disabled={!pages || page >= pages} onClick={() => setPage((current) => Math.min(pages, current + 1))} aria-label="Next page"><ChevronRight /></Button>
         <span className="reader-control-divider" />
         <Button size="icon" variant="ghost" disabled={zoom <= 0.7} onClick={() => setZoom((current) => Math.max(0.7, current - 0.1))} aria-label="Zoom out"><Minus /></Button>
         <small>{Math.round(zoom * 100)}%</small>
         <Button size="icon" variant="ghost" disabled={zoom >= 1.8} onClick={() => setZoom((current) => Math.min(1.8, current + 0.1))} aria-label="Zoom in"><Plus /></Button>
-      </footer>
+      </div>
     </div>
   )
 }
