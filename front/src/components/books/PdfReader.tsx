@@ -4,11 +4,13 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Button } from '@/components/ui/button'
 import { loadReaderProgress, saveReaderProgress } from '@/lib/book-progress'
+import { bindReaderGestures } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 interface PdfReaderProps {
   bookId: number
   file: BookFile
+  onToggleUi: () => void
 }
 
 function restoredPage(bookId: number, fileId: number): number {
@@ -16,7 +18,7 @@ function restoredPage(bookId: number, fileId: number): number {
   return saved?.kind === 'pdf' ? saved.page : 1
 }
 
-export function PdfReader({ bookId, file }: PdfReaderProps) {
+export function PdfReader({ bookId, file, onToggleUi }: PdfReaderProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null)
@@ -99,6 +101,19 @@ export function PdfReader({ bookId, file }: PdfReaderProps) {
   useEffect(() => {
     if (pages) saveReaderProgress(bookId, file.id, { kind: 'pdf', page, pages })
   }, [bookId, file.id, page, pages])
+
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+    frame.style.touchAction = 'pan-y pinch-zoom'
+    return bindReaderGestures(frame, {
+      getSelection: () => window.getSelection()?.toString() ?? '',
+      getWidth: () => frame.clientWidth,
+      onNext: () => setPage((current) => Math.min(pages || 1, current + 1)),
+      onPrevious: () => setPage((current) => Math.max(1, current - 1)),
+      onToggleControls: onToggleUi,
+    })
+  }, [onToggleUi, pages])
 
   useEffect(() => {
     const navigateWithKeyboard = (event: KeyboardEvent) => {
