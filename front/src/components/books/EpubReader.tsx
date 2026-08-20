@@ -96,7 +96,7 @@ export function EpubReader({ bookId, file, fontSize, theme }: EpubReaderProps) {
         activeBook = createEpub(await response.arrayBuffer())
         bookRef.current = activeBook
         const rendition = activeBook.renderTo(viewportRef.current, {
-          width: '100%', height: '100%', spread: 'none', flow: 'paginated', allowScriptedContent: false,
+          width: '100%', height: '100%', spread: 'auto', flow: 'paginated', minSpreadWidth: 1100, allowScriptedContent: false,
         })
         renditionRef.current = rendition
         registerThemes(rendition)
