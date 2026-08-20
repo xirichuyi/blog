@@ -35,10 +35,10 @@ const EMPTY_BOOK: BookPayload = {
 }
 
 const STATUS: Record<ReadingStatus, string> = {
-  want_to_read: '想读',
-  reading: '正在读',
-  finished: '已读完',
-  paused: '暂停',
+  want_to_read: 'Want to read',
+  reading: 'Reading',
+  finished: 'Finished',
+  paused: 'Paused',
 }
 
 function payloadFromBook(book: Book): BookPayload {
@@ -70,13 +70,15 @@ export default function BooksManager() {
   const [uploadingCover, setUploadingCover] = useState(false)
   const [uploadingBookId, setUploadingBookId] = useState<number | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [selectedEpub, setSelectedEpub] = useState<File | null>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const epubInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = async () => {
     try {
       setBooks(await adminListBooks())
     } catch (error) {
-      toast.error('书架加载失败', { description: (error as Error).message })
+      toast.error('Could not load the bookshelf', { description: (error as Error).message })
     }
   }
 
@@ -84,27 +86,72 @@ export default function BooksManager() {
 
   const openCreate = () => {
     setForm({ ...EMPTY_BOOK })
+    setSelectedEpub(null)
     setEditing('new')
   }
 
   const openEdit = (book: Book) => {
     setForm(payloadFromBook(book))
+    setSelectedEpub(null)
     setEditing(book)
+  }
+
+  const closeEditor = () => {
+    setEditing(null)
+    setSelectedEpub(null)
+    setUploadProgress(0)
+  }
+
+  const chooseEpub = (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.epub')) {
+      toast.error('Only EPUB files can be uploaded to the bookshelf')
+      return
+    }
+    setSelectedEpub(file)
+    setForm((current) => current.title.trim()
+      ? current
+      : { ...current, title: file.name.replace(/\.epub$/i, '') })
   }
 
   const save = async () => {
     if (!form.title.trim()) return
+    if (editing === 'new' && !selectedEpub) {
+      toast.error('Choose an EPUB file before adding the book')
+      return
+    }
+
     setBusy(true)
+    let createdBookId: number | null = null
     try {
-      if (editing === 'new') await createBook(form)
-      else if (editing) await updateBook(editing.id, form)
+      const savedBook = editing === 'new'
+        ? await createBook(form)
+        : editing
+          ? await updateBook(editing.id, form)
+          : null
+
+      if (!savedBook) return
+      if (editing === 'new') createdBookId = savedBook.id
+
+      if (selectedEpub) {
+        const controller = new AbortController()
+        setUploadProgress(0)
+        await uploadBookFileDirect(
+          savedBook.id,
+          selectedEpub,
+          (progress) => setUploadProgress(progress.percent),
+          controller.signal,
+        )
+      }
+
       await refresh()
-      setEditing(null)
-      toast.success(editing === 'new' ? '书籍已添加' : '书籍已更新')
+      closeEditor()
+      toast.success(editing === 'new' ? 'Book and EPUB added' : 'Book updated')
     } catch (error) {
-      toast.error('保存失败', { description: (error as Error).message })
+      if (createdBookId !== null) await deleteBook(createdBookId).catch(() => undefined)
+      toast.error('Could not save the book', { description: (error as Error).message })
     } finally {
       setBusy(false)
+      setUploadProgress(0)
     }
   }
 
@@ -114,7 +161,7 @@ export default function BooksManager() {
       const coverUrl = await uploadImage(file)
       setForm((current) => ({ ...current, cover_url: coverUrl }))
     } catch (error) {
-      toast.error('封面上传失败', { description: (error as Error).message })
+      toast.error('Could not upload the cover', { description: (error as Error).message })
     } finally {
       setUploadingCover(false)
     }
@@ -131,9 +178,9 @@ export default function BooksManager() {
     try {
       await uploadBookFileDirect(book.id, file, (progress) => setUploadProgress(progress.percent), controller.signal)
       await refresh()
-      toast.success(`${file.name} 已上传到 R2`)
+      toast.success(`${file.name} uploaded to R2`)
     } catch (error) {
-      toast.error('电子书上传失败', { description: (error as Error).message })
+      toast.error('Could not upload the EPUB', { description: (error as Error).message })
     } finally {
       setUploadingBookId(null)
       setUploadProgress(0)
@@ -141,35 +188,35 @@ export default function BooksManager() {
   }
 
   const removeBook = async (book: Book) => {
-    if (!window.confirm(`确定删除《${book.title}》及其电子书文件吗？`)) return
+    if (!window.confirm(`Delete “${book.title}” and its ebook files?`)) return
     try {
       await deleteBook(book.id)
       await refresh()
-      toast.success('书籍已删除')
+      toast.success('Book deleted')
     } catch (error) {
-      toast.error('删除失败', { description: (error as Error).message })
+      toast.error('Could not delete the book', { description: (error as Error).message })
     }
   }
 
   const removeFile = async (fileId: number) => {
-    if (!window.confirm('确定从 R2 删除这个文件吗？')) return
+    if (!window.confirm('Delete this file from R2?')) return
     try {
       await deleteBookFile(fileId)
       await refresh()
-      toast.success('文件已删除')
+      toast.success('File deleted')
     } catch (error) {
-      toast.error('文件删除失败', { description: (error as Error).message })
+      toast.error('Could not delete the file', { description: (error as Error).message })
     }
   }
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between gap-3">
-        <div><h1 className="text-2xl font-bold tracking-tight">书架</h1><p className="mt-1 text-sm text-muted-foreground">管理阅读状态、书评与 R2 电子书文件。</p></div>
-        <Button onClick={openCreate}><Plus /> 新增书籍</Button>
+        <div><h1 className="text-2xl font-bold tracking-tight">Bookshelf</h1><p className="mt-1 text-sm text-muted-foreground">Manage reading notes and EPUB files stored in R2.</p></div>
+        <Button onClick={openCreate}><Plus /> Add book</Button>
       </div>
 
-      {!books && <div className="flex items-center gap-2 py-12 text-muted-foreground"><Loader2 className="animate-spin" /> 加载中…</div>}
+      {!books && <div className="flex items-center gap-2 py-12 text-muted-foreground"><Loader2 className="animate-spin" /> Loading…</div>}
       <div className="grid gap-4 lg:grid-cols-2">
         {books?.map((book) => (
           <Card key={book.id}>
@@ -179,15 +226,15 @@ export default function BooksManager() {
               </div>
               <div className="min-w-0 flex-1">
                 <CardTitle className="truncate text-lg">{book.title}</CardTitle>
-                <CardDescription className="mt-1">{book.author || '未填写作者'} · {STATUS[book.reading_status]} · {book.progress}%</CardDescription>
+                <CardDescription className="mt-1">{book.author || 'Unknown author'} · {STATUS[book.reading_status]} · {book.progress}%</CardDescription>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <span>{book.is_public ? '公开展示' : '隐藏'}</span>
+                  <span>{book.is_public ? 'Public' : 'Hidden'}</span>
                   <span>·</span>
-                  <span>{book.download_enabled ? '允许下载' : '禁止下载'}</span>
+                  <span>{book.download_enabled ? 'Downloads enabled' : 'Downloads disabled'}</span>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => openEdit(book)} aria-label="编辑"><Pencil /></Button>
-              <Button variant="ghost" size="icon" onClick={() => void removeBook(book)} aria-label="删除"><Trash2 /></Button>
+              <Button variant="ghost" size="icon" onClick={() => openEdit(book)} aria-label="Edit"><Pencil /></Button>
+              <Button variant="ghost" size="icon" onClick={() => void removeBook(book)} aria-label="Delete"><Trash2 /></Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -215,9 +262,9 @@ export default function BooksManager() {
         ))}
       </div>
 
-      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && closeEditor()}>
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing === 'new' ? '新增书籍' : '编辑书籍'}</DialogTitle><DialogDescription>电子书文件在保存书籍后从列表上传。</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{editing === 'new' ? 'Add book' : 'Edit book'}</DialogTitle><DialogDescription>Choose an EPUB and add its bookshelf details in one step.</DialogDescription></DialogHeader>
           <div className="space-y-5">
             <div className="flex items-center gap-4">
               <div className="grid h-28 w-20 place-items-center overflow-hidden rounded-md bg-secondary text-muted-foreground">
@@ -228,26 +275,48 @@ export default function BooksManager() {
                 if (file) void uploadCover(file)
                 event.target.value = ''
               }} />
-              <Button variant="outline" onClick={() => coverInputRef.current?.click()} disabled={uploadingCover}>{uploadingCover ? <Loader2 className="animate-spin" /> : <ImagePlus />} 上传封面</Button>
-              {form.cover_url && <Button variant="ghost" onClick={() => setForm((current) => ({ ...current, cover_url: null }))}><X /> 移除</Button>}
+              <Button variant="outline" onClick={() => coverInputRef.current?.click()} disabled={uploadingCover}>{uploadingCover ? <Loader2 className="animate-spin" /> : <ImagePlus />} Upload cover</Button>
+              {form.cover_url && <Button variant="ghost" onClick={() => setForm((current) => ({ ...current, cover_url: null }))}><X /> Remove</Button>}
+            </div>
+            <div className="space-y-2">
+              <Label>EPUB file {editing === 'new' && <span className="text-destructive">*</span>}</Label>
+              <input ref={epubInputRef} type="file" accept=".epub,application/epub+zip" className="hidden" onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) chooseEpub(file)
+                event.target.value = ''
+              }} />
+              <div className="flex min-h-11 items-center gap-3 rounded-md bg-secondary/60 px-3 py-2">
+                <FileUp className="size-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                  {selectedEpub ? `${selectedEpub.name} · ${formatBytes(selectedEpub.size)}` : 'No EPUB selected'}
+                </span>
+                {selectedEpub && <Button variant="ghost" size="icon" className="size-7" onClick={() => setSelectedEpub(null)} aria-label="Remove EPUB"><X /></Button>}
+                <Button type="button" variant="outline" size="sm" onClick={() => epubInputRef.current?.click()}>{selectedEpub ? 'Replace' : 'Choose EPUB'}</Button>
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="书名"><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
-              <Field label="作者"><Input value={form.author} onChange={(event) => setForm({ ...form, author: event.target.value })} /></Field>
-              <Field label="阅读状态"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.reading_status} onChange={(event) => setForm({ ...form, reading_status: event.target.value as ReadingStatus })}>{Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
-              <Field label="阅读进度（0–100）"><Input type="number" min={0} max={100} value={form.progress} onChange={(event) => setForm({ ...form, progress: Number(event.target.value) })} /></Field>
-              <Field label="评分（1–5，可留空）"><Input type="number" min={1} max={5} value={form.rating ?? ''} onChange={(event) => setForm({ ...form, rating: event.target.value ? Number(event.target.value) : null })} /></Field>
-              <Field label="开始日期"><Input type="date" value={form.started_at ?? ''} onChange={(event) => setForm({ ...form, started_at: event.target.value || null })} /></Field>
-              <Field label="读完日期"><Input type="date" value={form.finished_at ?? ''} onChange={(event) => setForm({ ...form, finished_at: event.target.value || null })} /></Field>
+              <Field label="Title"><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
+              <Field label="Author"><Input value={form.author} onChange={(event) => setForm({ ...form, author: event.target.value })} /></Field>
+              <Field label="Reading status"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.reading_status} onChange={(event) => setForm({ ...form, reading_status: event.target.value as ReadingStatus })}>{Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
+              <Field label="Progress (0–100)"><Input type="number" min={0} max={100} value={form.progress} onChange={(event) => setForm({ ...form, progress: Number(event.target.value) })} /></Field>
+              <Field label="Rating (1–5, optional)"><Input type="number" min={1} max={5} value={form.rating ?? ''} onChange={(event) => setForm({ ...form, rating: event.target.value ? Number(event.target.value) : null })} /></Field>
+              <Field label="Started"><Input type="date" value={form.started_at ?? ''} onChange={(event) => setForm({ ...form, started_at: event.target.value || null })} /></Field>
+              <Field label="Finished"><Input type="date" value={form.finished_at ?? ''} onChange={(event) => setForm({ ...form, finished_at: event.target.value || null })} /></Field>
             </div>
-            <Field label="简介"><Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
-            <Field label="书评 / 阅读笔记（Markdown）"><Textarea className="min-h-40 font-mono" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></Field>
+            <Field label="Description"><Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
+            <Field label="Review / notes (Markdown)"><Textarea className="min-h-40 font-mono" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></Field>
             <div className="flex flex-wrap gap-5 text-sm">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_public} onChange={(event) => setForm({ ...form, is_public: event.target.checked })} />在公开书架展示</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.download_enabled} onChange={(event) => setForm({ ...form, download_enabled: event.target.checked })} />允许公开下载</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_public} onChange={(event) => setForm({ ...form, is_public: event.target.checked })} />Show on the public bookshelf</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.download_enabled} onChange={(event) => setForm({ ...form, download_enabled: event.target.checked })} />Allow public downloads</label>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setEditing(null)}>取消</Button><Button disabled={busy || !form.title.trim()} onClick={() => void save()}>{busy && <Loader2 className="animate-spin" />} 保存</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditor}>Cancel</Button>
+            <Button disabled={busy || !form.title.trim() || (editing === 'new' && !selectedEpub)} onClick={() => void save()}>
+              {busy && <Loader2 className="animate-spin" />}
+              {busy && selectedEpub ? `Uploading ${uploadProgress}%` : editing === 'new' ? 'Add book' : 'Save changes'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
