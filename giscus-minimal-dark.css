@@ -138,7 +138,7 @@ main {
 }
 
 .gsc-comment-author > div {
-  display: none;
+  display: none !important;
 }
 
 .gsc-comment-header .link-secondary {
