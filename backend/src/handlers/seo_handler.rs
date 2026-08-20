@@ -171,6 +171,12 @@ fn static_meta(path: &str) -> Meta {
             "index,follow",
             StatusCode::OK,
         ),
+        _ if path.starts_with("/books/") && path.ends_with("/read") => (
+            format!("Reader · {SITE_NAME}"),
+            "Private reading view for a book in the library.".to_string(),
+            "noindex,nofollow",
+            StatusCode::OK,
+        ),
         "/changelog" => (
             format!("Changelog · {SITE_NAME}"),
             "Product updates and design changes.".to_string(),
@@ -496,4 +502,18 @@ pub async fn spa_fallback(State(state): State<AppState>, uri: Uri) -> Response {
         inject(&html, &meta),
     )
         .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn book_reader_route_returns_the_spa_with_noindex_metadata() {
+        let meta = static_meta("/books/42/read");
+
+        assert_eq!(meta.status, StatusCode::OK);
+        assert_eq!(meta.robots, "noindex,nofollow");
+        assert!(meta.title.starts_with("Reader"));
+    }
 }
