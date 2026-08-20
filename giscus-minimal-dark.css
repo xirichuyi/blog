@@ -110,6 +110,32 @@ main {
   font-size: 0.75rem;
 }
 
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-bottom {
+  justify-content: flex-end;
+  margin: 0 0 0.75rem;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary {
+  min-height: 1.75rem;
+  padding: 0.25rem 0.55rem;
+  color: var(--color-fg-muted) !important;
+  background: transparent !important;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary:hover,
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary:focus-visible {
+  color: var(--color-accent-fg) !important;
+  background: var(--color-btn-hover-bg) !important;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
 .gsc-comment-header,
 .gsc-comment-content,
 .gsc-reply {
