@@ -4,6 +4,12 @@
   color-scheme: dark;
 }
 
+html,
+body,
+main {
+  background: transparent !important;
+}
+
 main {
   --color-canvas-default: transparent;
   --color-canvas-overlay: #1d211f;
