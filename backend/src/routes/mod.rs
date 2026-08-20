@@ -133,6 +133,10 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route("/api/about/get", get(about_handler::get_about))
         // Books and site changelog
         .route("/api/books", get(book_handler::list_public))
+        .route(
+            "/api/books/:book_id/files/:file_id/content",
+            get(book_handler::read_file),
+        )
         .route("/api/changelog", get(changelog_handler::list_public))
         // Online tools
         .route("/api/tools/gitbook2epub", post(tools_handler::gitbook2epub))

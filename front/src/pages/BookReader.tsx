@@ -37,7 +37,7 @@ function ReaderHeader({ book, file, files, onFileChange }: {
           </select>
         </label>
       )}
-      <Button asChild size="icon" variant="ghost"><a href={file.file_url} download aria-label="Download book"><Download /></a></Button>
+      {book.download_enabled && <Button asChild size="icon" variant="ghost"><a href={file.file_url} download aria-label="Download book"><Download /></a></Button>}
     </header>
   )
 }
@@ -115,7 +115,7 @@ export default function BookReader() {
           ? <EpubReader bookId={book.id} file={file} fontSize={fontSize} theme={theme} />
           : <PdfReader bookId={book.id} file={file} />}
       </div>
-      <a className="book-reader-source" href={imageUrl(file.file_url)} target="_blank" rel="noreferrer">Open original file</a>
+      {book.download_enabled && <a className="book-reader-source" href={imageUrl(file.file_url)} target="_blank" rel="noreferrer">Open original file</a>}
     </main>
   )
 }

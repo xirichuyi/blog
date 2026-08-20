@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { BookOpen, FileUp, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { BookOpen, FileUp, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -62,17 +62,67 @@ function formatBytes(bytes: number): string {
   return bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+interface EpubMetadata {
+  author: string
+  cover: File | null
+  description: string
+  title: string
+}
+
+function imageExtension(contentType: string): string {
+  if (contentType === 'image/png') return 'png'
+  if (contentType === 'image/webp') return 'webp'
+  if (contentType === 'image/gif') return 'gif'
+  return 'jpg'
+}
+
+function plainText(value: string): string {
+  return new DOMParser().parseFromString(value, 'text/html').body.textContent?.trim() ?? ''
+}
+
+async function readEpubMetadata(file: File): Promise<EpubMetadata> {
+  const { default: createEpub } = await import('epubjs')
+  const epub = createEpub(await file.arrayBuffer())
+  try {
+    const [metadata, coverUrl] = await Promise.all([epub.loaded.metadata, epub.coverUrl()])
+    let cover: File | null = null
+    if (coverUrl) {
+      const blob = await fetch(coverUrl).then((response) => response.blob())
+      if (blob.type.startsWith('image/')) {
+        const name = `${file.name.replace(/\.epub$/i, '')}-cover.${imageExtension(blob.type)}`
+        cover = new File([blob], name, { type: blob.type })
+      }
+    }
+    return {
+      author: metadata.creator?.trim() ?? '',
+      cover,
+      description: plainText(metadata.description ?? ''),
+      title: metadata.title?.trim() ?? '',
+    }
+  } finally {
+    epub.destroy()
+  }
+}
+
 export default function BooksManager() {
   const [books, setBooks] = useState<Book[] | null>(null)
   const [editing, setEditing] = useState<Book | 'new' | null>(null)
   const [form, setForm] = useState<BookPayload>(EMPTY_BOOK)
   const [busy, setBusy] = useState(false)
-  const [uploadingCover, setUploadingCover] = useState(false)
+  const [readingEpub, setReadingEpub] = useState(false)
   const [uploadingBookId, setUploadingBookId] = useState<number | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [selectedEpub, setSelectedEpub] = useState<File | null>(null)
-  const coverInputRef = useRef<HTMLInputElement>(null)
+  const [embeddedCover, setEmbeddedCover] = useState<File | null>(null)
   const epubInputRef = useRef<HTMLInputElement>(null)
+  const embeddedCoverUrl = useMemo(
+    () => embeddedCover ? URL.createObjectURL(embeddedCover) : null,
+    [embeddedCover],
+  )
+
+  useEffect(() => () => {
+    if (embeddedCoverUrl) URL.revokeObjectURL(embeddedCoverUrl)
+  }, [embeddedCoverUrl])
 
   const refresh = async () => {
     try {
@@ -87,30 +137,51 @@ export default function BooksManager() {
   const openCreate = () => {
     setForm({ ...EMPTY_BOOK })
     setSelectedEpub(null)
+    setEmbeddedCover(null)
     setEditing('new')
   }
 
   const openEdit = (book: Book) => {
     setForm(payloadFromBook(book))
     setSelectedEpub(null)
+    setEmbeddedCover(null)
     setEditing(book)
   }
 
   const closeEditor = () => {
     setEditing(null)
     setSelectedEpub(null)
+    setEmbeddedCover(null)
     setUploadProgress(0)
   }
 
-  const chooseEpub = (file: File) => {
+  const chooseEpub = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.epub')) {
       toast.error('Only EPUB files can be uploaded to the bookshelf')
       return
     }
     setSelectedEpub(file)
-    setForm((current) => current.title.trim()
-      ? current
-      : { ...current, title: file.name.replace(/\.epub$/i, '') })
+    setReadingEpub(true)
+    try {
+      const metadata = await readEpubMetadata(file)
+      setEmbeddedCover(metadata.cover)
+      setForm((current) => ({
+        ...current,
+        author: current.author.trim() || metadata.author,
+        description: current.description.trim() || metadata.description,
+        title: current.title.trim() || metadata.title || file.name.replace(/\.epub$/i, ''),
+      }))
+    } catch (error) {
+      setEmbeddedCover(null)
+      setForm((current) => current.title.trim()
+        ? current
+        : { ...current, title: file.name.replace(/\.epub$/i, '') })
+      toast.warning('The EPUB was selected, but its metadata could not be read', {
+        description: (error as Error).message,
+      })
+    } finally {
+      setReadingEpub(false)
+    }
   }
 
   const save = async () => {
@@ -123,10 +194,12 @@ export default function BooksManager() {
     setBusy(true)
     let createdBookId: number | null = null
     try {
+      const coverUrl = embeddedCover ? await uploadImage(embeddedCover) : form.cover_url
+      const payload = { ...form, cover_url: coverUrl }
       const savedBook = editing === 'new'
-        ? await createBook(form)
+        ? await createBook(payload)
         : editing
-          ? await updateBook(editing.id, form)
+          ? await updateBook(editing.id, payload)
           : null
 
       if (!savedBook) return
@@ -152,18 +225,6 @@ export default function BooksManager() {
     } finally {
       setBusy(false)
       setUploadProgress(0)
-    }
-  }
-
-  const uploadCover = async (file: File) => {
-    setUploadingCover(true)
-    try {
-      const coverUrl = await uploadImage(file)
-      setForm((current) => ({ ...current, cover_url: coverUrl }))
-    } catch (error) {
-      toast.error('Could not upload the cover', { description: (error as Error).message })
-    } finally {
-      setUploadingCover(false)
     }
   }
 
@@ -268,27 +329,26 @@ export default function BooksManager() {
           <div className="space-y-5">
             <div className="flex items-center gap-4">
               <div className="grid h-28 w-20 place-items-center overflow-hidden rounded-md bg-secondary text-muted-foreground">
-                {form.cover_url ? <img src={imageUrl(form.cover_url)} alt="" className="h-full w-full object-cover" /> : <BookOpen />}
+                {embeddedCoverUrl || form.cover_url
+                  ? <img src={embeddedCoverUrl || imageUrl(form.cover_url ?? undefined)} alt="" className="h-full w-full object-cover" />
+                  : <BookOpen />}
               </div>
-              <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) void uploadCover(file)
-                event.target.value = ''
-              }} />
-              <Button variant="outline" onClick={() => coverInputRef.current?.click()} disabled={uploadingCover}>{uploadingCover ? <Loader2 className="animate-spin" /> : <ImagePlus />} Upload cover</Button>
-              {form.cover_url && <Button variant="ghost" onClick={() => setForm((current) => ({ ...current, cover_url: null }))}><X /> Remove</Button>}
+              <div>
+                <p className="text-sm font-medium">Embedded cover</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Cover, title, author, and description are read from the EPUB automatically.</p>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>EPUB file {editing === 'new' && <span className="text-destructive">*</span>}</Label>
               <input ref={epubInputRef} type="file" accept=".epub,application/epub+zip" className="hidden" onChange={(event) => {
                 const file = event.target.files?.[0]
-                if (file) chooseEpub(file)
+                if (file) void chooseEpub(file)
                 event.target.value = ''
               }} />
               <div className="flex min-h-11 items-center gap-3 rounded-md bg-secondary/60 px-3 py-2">
-                <FileUp className="size-4 shrink-0 text-muted-foreground" />
+                {readingEpub ? <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" /> : <FileUp className="size-4 shrink-0 text-muted-foreground" />}
                 <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-                  {selectedEpub ? `${selectedEpub.name} · ${formatBytes(selectedEpub.size)}` : 'No EPUB selected'}
+                  {readingEpub ? 'Reading EPUB metadata…' : selectedEpub ? `${selectedEpub.name} · ${formatBytes(selectedEpub.size)}` : 'No EPUB selected'}
                 </span>
                 {selectedEpub && <Button variant="ghost" size="icon" className="size-7" onClick={() => setSelectedEpub(null)} aria-label="Remove EPUB"><X /></Button>}
                 <Button type="button" variant="outline" size="sm" onClick={() => epubInputRef.current?.click()}>{selectedEpub ? 'Replace' : 'Choose EPUB'}</Button>
@@ -312,7 +372,7 @@ export default function BooksManager() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeEditor}>Cancel</Button>
-            <Button disabled={busy || !form.title.trim() || (editing === 'new' && !selectedEpub)} onClick={() => void save()}>
+            <Button disabled={busy || readingEpub || !form.title.trim() || (editing === 'new' && !selectedEpub)} onClick={() => void save()}>
               {busy && <Loader2 className="animate-spin" />}
               {busy && selectedEpub ? `Uploading ${uploadProgress}%` : editing === 'new' ? 'Add book' : 'Save changes'}
             </Button>

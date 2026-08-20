@@ -3,7 +3,10 @@ use crate::services::Services;
 use crate::utils::error::AppError;
 use crate::utils::{CompletedVideoPart, R2Storage, VideoMultipartSession};
 use axum::{
+    body::Body,
     extract::{Path, State},
+    http::{header, StatusCode},
+    response::Response,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -51,6 +54,38 @@ pub async fn list_admin(
     Ok(Json(ApiResponse::success(
         services.book.list_admin().await?,
     )))
+}
+
+pub async fn read_file(
+    State(services): State<Services>,
+    Path((book_id, file_id)): Path<(i64, i64)>,
+) -> crate::utils::error::Result<Response> {
+    let file = services.book.get_public_file(book_id, file_id).await?;
+    let upstream = reqwest::Client::new()
+        .get(&file.file_url)
+        .send()
+        .await
+        .map_err(|error| AppError::Internal(format!("Could not fetch book file: {error}")))?;
+
+    if !upstream.status().is_success() {
+        return Err(AppError::Internal(format!(
+            "Book storage returned {}",
+            upstream.status()
+        )));
+    }
+
+    let content_length = upstream.content_length();
+    let mut response = Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, file.mime_type)
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
+        .header(header::CONTENT_DISPOSITION, "inline");
+    if let Some(length) = content_length {
+        response = response.header(header::CONTENT_LENGTH, length);
+    }
+    response
+        .body(Body::from_stream(upstream.bytes_stream()))
+        .map_err(|error| AppError::Internal(format!("Could not stream book file: {error}")))
 }
 
 pub async fn create(

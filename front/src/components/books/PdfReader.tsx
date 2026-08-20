@@ -4,7 +4,7 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Button } from '@/components/ui/button'
 import { loadReaderProgress, saveReaderProgress } from '@/lib/book-progress'
-import { imageUrl, type BookFile } from '@/services/api'
+import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 interface PdfReaderProps {
   bookId: number
@@ -36,7 +36,7 @@ export function PdfReader({ bookId, file }: PdfReaderProps) {
       try {
         const pdfjs = await import('pdfjs-dist')
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
-        loadingTask = pdfjs.getDocument({ url: imageUrl(file.file_url) || file.file_url })
+        loadingTask = pdfjs.getDocument({ url: bookFileContentUrl(bookId, file.id) })
         const loaded = await loadingTask.promise
         if (disposed) return void loaded.destroy()
         const initialPage = Math.min(loaded.numPages, Math.max(1, restoredPage(bookId, file.id)))

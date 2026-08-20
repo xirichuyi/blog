@@ -295,6 +295,10 @@ export async function listBooks(): Promise<Book[]> {
   return env.data || []
 }
 
+export function bookFileContentUrl(bookId: number, fileId: number): string {
+  return `${API_BASE}${PREFIX}/books/${bookId}/files/${fileId}/content`
+}
+
 export async function listChangelog(): Promise<ChangelogEntry[]> {
   const env = await req<ChangelogEntry[]>('/changelog')
   return env.data || []

@@ -41,7 +41,7 @@ impl BookService {
             .await?;
         let mut books = Vec::with_capacity(records.len());
         for record in records {
-            books.push(self.with_files(record, public_only).await?);
+            books.push(self.with_files(record).await?);
         }
         Ok(books)
     }
@@ -57,21 +57,26 @@ impl BookService {
             .fetch_optional(self.database.pool())
             .await?
             .ok_or_else(|| AppError::NotFound("Book not found".to_string()))?;
-        self.with_files(record, public_only).await
+        self.with_files(record).await
     }
 
-    async fn with_files(&self, record: BookRecord, public_only: bool) -> Result<Book> {
-        let files = if public_only && !record.download_enabled {
-            Vec::new()
-        } else {
-            sqlx::query_as::<_, BookFile>(
-                "SELECT id, book_id, format, file_url, r2_key, file_name, file_size, mime_type, created_at FROM book_files WHERE book_id = ? ORDER BY id",
-            )
-            .bind(record.id)
-            .fetch_all(self.database.pool())
-            .await?
-        };
+    async fn with_files(&self, record: BookRecord) -> Result<Book> {
+        let files = sqlx::query_as::<_, BookFile>(
+            "SELECT id, book_id, format, file_url, r2_key, file_name, file_size, mime_type, created_at FROM book_files WHERE book_id = ? ORDER BY id",
+        )
+        .bind(record.id)
+        .fetch_all(self.database.pool())
+        .await?;
         Ok(Book { record, files })
+    }
+
+    pub async fn get_public_file(&self, book_id: i64, file_id: i64) -> Result<BookFile> {
+        self.get(book_id, true)
+            .await?
+            .files
+            .into_iter()
+            .find(|file| file.id == file_id)
+            .ok_or_else(|| AppError::NotFound("Book file not found".to_string()))
     }
 
     pub async fn create(&self, request: CreateBookRequest) -> Result<Book> {

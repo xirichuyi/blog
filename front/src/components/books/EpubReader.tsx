@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, List, Loader2, X } from 'lucide-react'
 import type { Book as EpubBook, Location, NavItem, Rendition } from 'epubjs'
 import { Button } from '@/components/ui/button'
 import { loadReaderProgress, saveReaderProgress } from '@/lib/book-progress'
-import { imageUrl, type BookFile } from '@/services/api'
+import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 export type ReaderTheme = 'paper' | 'night'
 
@@ -89,7 +89,7 @@ export function EpubReader({ bookId, file, fontSize, theme }: EpubReaderProps) {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch(imageUrl(file.file_url) || file.file_url)
+        const response = await fetch(bookFileContentUrl(bookId, file.id))
         if (!response.ok) throw new Error(`The book file returned ${response.status}.`)
         const { default: createEpub } = await import('epubjs')
         if (disposed || !viewportRef.current) return
