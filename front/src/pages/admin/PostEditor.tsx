@@ -215,6 +215,8 @@ export default function PostEditor() {
         onChange={(event) => setTitle(event.target.value)}
         placeholder="文章标题"
         aria-label="文章标题"
+        autoComplete="off"
+        autoCapitalize="sentences"
         className="mb-3 h-11 border-0 bg-transparent px-0 text-xl font-bold shadow-none focus-visible:ring-0 sm:text-2xl"
       />
 

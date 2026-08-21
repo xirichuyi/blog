@@ -94,11 +94,14 @@ export function MarkdownEditor({
   uploadingImage,
 }: MarkdownEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [linkValue, setLinkValue] = useState('')
-  const [keyboardOffset, setKeyboardOffset] = useState(0)
+  const [mobileToolbarTop, setMobileToolbarTop] = useState(() => (
+    typeof window === 'undefined' ? 0 : Math.max(0, window.innerHeight - 44)
+  ))
 
   const editor = useEditor({
     extensions: [
@@ -120,6 +123,14 @@ export function MarkdownEditor({
     content: value,
     contentType: 'markdown',
     immediatelyRender: false,
+    editorProps: {
+      attributes: {
+        autocapitalize: 'sentences',
+        autocomplete: 'off',
+        autocorrect: 'on',
+        spellcheck: 'true',
+      },
+    },
     onUpdate: ({ editor: updatedEditor }) => onChange(updatedEditor.getMarkdown()),
   })
 
@@ -133,23 +144,35 @@ export function MarkdownEditor({
     if (!viewport) return
 
     let frame = 0
-    const updateKeyboardOffset = () => {
+    let settleTimer = 0
+    const updateToolbarPosition = () => {
+      const toolbarHeight = toolbarRef.current?.getBoundingClientRect().height || 44
+      const visibleBottom = viewport.offsetTop + viewport.height
+      setMobileToolbarTop(Math.max(0, Math.round(visibleBottom - toolbarHeight)))
+    }
+    const scheduleToolbarPosition = () => {
       cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
-        setKeyboardOffset(inset > 80 ? Math.round(inset) : 0)
-      })
+      window.clearTimeout(settleTimer)
+      frame = requestAnimationFrame(updateToolbarPosition)
+      settleTimer = window.setTimeout(updateToolbarPosition, 350)
     }
 
-    updateKeyboardOffset()
-    viewport.addEventListener('resize', updateKeyboardOffset)
-    viewport.addEventListener('scroll', updateKeyboardOffset)
-    window.addEventListener('resize', updateKeyboardOffset)
+    scheduleToolbarPosition()
+    viewport.addEventListener('resize', scheduleToolbarPosition)
+    viewport.addEventListener('scroll', scheduleToolbarPosition)
+    window.addEventListener('resize', scheduleToolbarPosition)
+    window.addEventListener('scroll', scheduleToolbarPosition, { passive: true })
+    document.addEventListener('focusin', scheduleToolbarPosition)
+    document.addEventListener('focusout', scheduleToolbarPosition)
     return () => {
       cancelAnimationFrame(frame)
-      viewport.removeEventListener('resize', updateKeyboardOffset)
-      viewport.removeEventListener('scroll', updateKeyboardOffset)
-      window.removeEventListener('resize', updateKeyboardOffset)
+      window.clearTimeout(settleTimer)
+      viewport.removeEventListener('resize', scheduleToolbarPosition)
+      viewport.removeEventListener('scroll', scheduleToolbarPosition)
+      window.removeEventListener('resize', scheduleToolbarPosition)
+      window.removeEventListener('scroll', scheduleToolbarPosition)
+      document.removeEventListener('focusin', scheduleToolbarPosition)
+      document.removeEventListener('focusout', scheduleToolbarPosition)
     }
   }, [])
 
@@ -231,9 +254,10 @@ export function MarkdownEditor({
       }}
     >
       <div
-        className="fixed inset-x-0 bottom-[var(--mobile-toolbar-bottom)] z-50 flex min-h-11 items-center gap-1 overflow-x-auto border-y border-border bg-background/95 px-2 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-auto md:top-12 md:z-20 md:rounded-t-xl md:border-x-0 md:border-t-0 md:shadow-none"
+        ref={toolbarRef}
+        className="fixed inset-x-0 top-[var(--mobile-toolbar-top)] z-50 flex min-h-11 items-center gap-1 overflow-x-auto border-y border-border bg-background/95 px-2 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:top-12 md:z-20 md:rounded-t-xl md:border-x-0 md:border-t-0 md:shadow-none"
         style={{
-          '--mobile-toolbar-bottom': `${keyboardOffset}px`,
+          '--mobile-toolbar-top': `${mobileToolbarTop}px`,
         } as CSSProperties}
       >
         <ToolbarButton
