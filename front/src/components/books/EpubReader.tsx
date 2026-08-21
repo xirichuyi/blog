@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, List, Loader2, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
 import { Button } from '@/components/ui/button'
 import { loadReaderProgress, saveReaderProgress } from '@/lib/book-progress'
-import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
+import { bindReaderGestures, bindReaderKeyboard, isReaderTouchDevice } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 export type ReaderTheme = 'paper' | 'night'
@@ -52,7 +52,7 @@ function registerThemes(rendition: Rendition): void {
   })
 }
 
-function applyContentAppearance(contents: Contents, theme: ReaderTheme, fontSize: number): void {
+function applyContentAppearance(contents: Contents, theme: ReaderTheme): void {
   const paper = theme === 'night' ? '#191c19' : '#fbfaf6'
   const ink = theme === 'night' ? '#e5e8e5' : '#252925'
   const root = contents.document.documentElement as HTMLElement
@@ -60,8 +60,7 @@ function applyContentAppearance(contents: Contents, theme: ReaderTheme, fontSize
   root.style.setProperty('color-scheme', theme === 'night' ? 'dark' : 'light')
   contents.document.body?.style.setProperty('background-color', paper, 'important')
   contents.document.body?.style.setProperty('color', ink, 'important')
-  contents.document.body?.style.setProperty('font-size', `${fontSize}%`, 'important')
-  root.style.touchAction = 'pan-y pinch-zoom'
+  root.style.touchAction = isReaderTouchDevice(contents.window) ? 'pan-y pinch-zoom' : 'auto'
   if (contents.document.body) contents.document.body.style.touchAction = root.style.touchAction
 }
 
@@ -73,7 +72,7 @@ function visibleContents(rendition: Rendition): Contents[] {
 function applyRenditionAppearance(rendition: Rendition, theme: ReaderTheme, fontSize: number): void {
   rendition.themes.select(theme)
   rendition.themes.fontSize(`${fontSize}%`)
-  visibleContents(rendition).forEach((contents) => applyContentAppearance(contents, theme, fontSize))
+  visibleContents(rendition).forEach((contents) => applyContentAppearance(contents, theme))
 }
 
 function TableOfContents({ items, onSelect }: { items: NavItem[]; onSelect: (href: string) => void }) {
@@ -92,10 +91,8 @@ function TableOfContents({ items, onSelect }: { items: NavItem[]; onSelect: (hre
 export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onToggleUi, theme }: EpubReaderProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const renditionRef = useRef<Rendition | null>(null)
-  const flowRef = useRef(flow)
   const fontSizeRef = useRef(fontSize)
   const themeRef = useRef(theme)
-  flowRef.current = flow
   fontSizeRef.current = fontSize
   themeRef.current = theme
   const [navigation, setNavigation] = useState<NavItem[]>([])
@@ -107,7 +104,7 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
   useEffect(() => {
     let disposed = false
     let activeBook: EpubBook | null = null
-    const gestureCleanups = new Map<Document, () => void>()
+    const interactionCleanups = new Map<Contents, () => void>()
     const openBook = async () => {
       setLoading(true)
       setError('')
@@ -130,18 +127,19 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
         registerThemes(rendition)
         applyRenditionAppearance(rendition, themeRef.current, fontSizeRef.current)
         const unbindRemovedView = (view: { contents?: Contents }) => {
-          const document = view.contents?.document
-          if (!document) return
-          gestureCleanups.get(document)?.()
-          gestureCleanups.delete(document)
+          const contents = view.contents
+          if (!contents) return
+          interactionCleanups.get(contents)?.()
+          interactionCleanups.delete(contents)
         }
         rendition.hooks.unloaded.register(unbindRemovedView)
         const bindVisibleContents = () => {
           visibleContents(rendition).forEach((contents) => {
-            applyContentAppearance(contents, themeRef.current, fontSizeRef.current)
-            if (gestureCleanups.has(contents.document)) return
-            const cleanup = bindReaderGestures(contents.document, {
-              pageNavigation: flowRef.current === 'paginated',
+            applyContentAppearance(contents, themeRef.current)
+            if (interactionCleanups.has(contents)) return
+            const cleanup = bindReaderGestures(contents, {
+              getWindow: () => contents.window,
+              pageNavigation: true,
               getHeight: () => contents.window.innerHeight,
               getSelection: () => contents.window.getSelection()?.toString() ?? '',
               getWidth: () => contents.window.innerWidth,
@@ -150,13 +148,13 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
               onTopHoverChange,
               onToggleControls: onToggleUi,
             })
-            const cleanupKeyboard = bindReaderKeyboard(contents.document, {
-              pageNavigation: flowRef.current === 'paginated',
+            const cleanupKeyboard = bindReaderKeyboard(contents, {
+              pageNavigation: flow === 'paginated',
               getSelection: () => contents.window.getSelection()?.toString() ?? '',
               onNext: () => void rendition.next(),
               onPrevious: () => void rendition.prev(),
             })
-            gestureCleanups.set(contents.document, () => {
+            interactionCleanups.set(contents, () => {
               cleanup()
               cleanupKeyboard()
             })
@@ -190,8 +188,8 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
     return () => {
       disposed = true
       renditionRef.current = null
-      gestureCleanups.forEach((cleanup) => cleanup())
-      gestureCleanups.clear()
+      interactionCleanups.forEach((cleanup) => cleanup())
+      interactionCleanups.clear()
       activeBook?.destroy()
     }
   }, [bookId, file.id, file.file_url, flow, onTopHoverChange, onToggleUi])

@@ -1,4 +1,5 @@
 interface ReaderGestureOptions {
+  getWindow: () => Window
   pageNavigation?: boolean
   getHeight: () => number
   getSelection: () => string
@@ -23,8 +24,25 @@ interface GestureStart {
   y: number
 }
 
+interface ReaderEventEmitter {
+  off: (type: string, listener: (event: Event) => void) => unknown
+  on: (type: string, listener: (event: Event) => void) => unknown
+}
+
+type ReaderEventSource = EventTarget | ReaderEventEmitter
+
 const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, [contenteditable="true"]'
 const TEXT_ENTRY_SELECTOR = 'input, select, textarea, [contenteditable="true"]'
+const READER_HOVER_MEDIA = '(hover: hover) and (pointer: fine)'
+const READER_TOUCH_MEDIA = '(hover: none), (pointer: coarse)'
+
+export function isReaderHoverDevice(view: Window): boolean {
+  return view.matchMedia(READER_HOVER_MEDIA).matches
+}
+
+export function isReaderTouchDevice(view: Window): boolean {
+  return view.matchMedia(READER_TOUCH_MEDIA).matches
+}
 
 export function isReaderTopHover(clientY: number, height: number): boolean {
   const hoverHeight = Math.min(96, Math.max(64, height * 0.12))
@@ -40,10 +58,24 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   return targetMatches(target, INTERACTIVE_SELECTOR)
 }
 
-export function bindReaderGestures(target: EventTarget, options: ReaderGestureOptions): () => void {
+function isDomEventTarget(source: ReaderEventSource): source is EventTarget {
+  return 'addEventListener' in source
+}
+
+function addReaderEvent(source: ReaderEventSource, type: string, listener: (event: Event) => void, passive = false): void {
+  if (isDomEventTarget(source)) source.addEventListener(type, listener, passive ? { passive: true } : undefined)
+  else source.on(type, listener)
+}
+
+function removeReaderEvent(source: ReaderEventSource, type: string, listener: (event: Event) => void): void {
+  if (isDomEventTarget(source)) source.removeEventListener(type, listener)
+  else source.off(type, listener)
+}
+
+export function bindReaderGestures(source: ReaderEventSource, options: ReaderGestureOptions): () => void {
   let touchStart: GestureStart | null = null
 
-  const handleTap = (clientX: number, clientY: number): boolean => {
+  const handleTap = (clientX: number, clientY: number) => {
     const width = Math.max(1, options.getWidth())
     const height = Math.max(1, options.getHeight())
     const relativeX = clientX / width
@@ -51,8 +83,6 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
     if (options.pageNavigation !== false && relativeX <= 0.2) options.onPrevious()
     else if (options.pageNavigation !== false && relativeX >= 0.8) options.onNext()
     else if (relativeX >= 0.22 && relativeX <= 0.78 && relativeY >= 0.12 && relativeY <= 0.88) options.onToggleControls?.()
-    else return false
-    return true
   }
 
   const completeGesture = (gestureStart: GestureStart, clientX: number, clientY: number) => {
@@ -67,21 +97,22 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
       if (deltaX < 0) options.onNext()
       else options.onPrevious()
       return
-    } else if (distance < 24 && now - gestureStart.time < 650) {
+    }
+    if (distance < 24 && now - gestureStart.time < 650) {
       handleTap(clientX, clientY)
     }
   }
 
-  const onPointerMove = (rawEvent: Event) => {
-    const event = rawEvent as PointerEvent
-    if (event.pointerType === 'mouse') {
+  const onMouseMove = (rawEvent: Event) => {
+    const event = rawEvent as MouseEvent
+    if (isReaderHoverDevice(options.getWindow())) {
       options.onTopHoverChange?.(isReaderTopHover(event.clientY, options.getHeight()))
     }
   }
 
   const onTouchStart = (rawEvent: Event) => {
     const event = rawEvent as TouchEvent
-    if (event.touches.length !== 1 || isInteractiveTarget(event.target)) {
+    if (!isReaderTouchDevice(options.getWindow()) || event.touches.length !== 1 || isInteractiveTarget(event.target)) {
       touchStart = null
       return
     }
@@ -99,24 +130,18 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
     if (touch) completeGesture(gestureStart, touch.clientX, touch.clientY)
   }
 
-  const onTouchCancel = () => {
-    touchStart = null
-  }
-
-  target.addEventListener('pointermove', onPointerMove)
-  target.addEventListener('touchstart', onTouchStart, { passive: true })
-  target.addEventListener('touchend', onTouchEnd, { passive: true })
-  target.addEventListener('touchcancel', onTouchCancel, { passive: true })
+  addReaderEvent(source, 'mousemove', onMouseMove)
+  addReaderEvent(source, 'touchstart', onTouchStart, true)
+  addReaderEvent(source, 'touchend', onTouchEnd, true)
 
   return () => {
-    target.removeEventListener('pointermove', onPointerMove)
-    target.removeEventListener('touchstart', onTouchStart)
-    target.removeEventListener('touchend', onTouchEnd)
-    target.removeEventListener('touchcancel', onTouchCancel)
+    removeReaderEvent(source, 'mousemove', onMouseMove)
+    removeReaderEvent(source, 'touchstart', onTouchStart)
+    removeReaderEvent(source, 'touchend', onTouchEnd)
   }
 }
 
-export function bindReaderKeyboard(target: EventTarget, options: ReaderKeyboardOptions): () => void {
+export function bindReaderKeyboard(source: ReaderEventSource, options: ReaderKeyboardOptions): () => void {
   const onKeyDown = (rawEvent: Event) => {
     const event = rawEvent as KeyboardEvent
     if (
@@ -143,6 +168,6 @@ export function bindReaderKeyboard(target: EventTarget, options: ReaderKeyboardO
     else options.onNext()
   }
 
-  target.addEventListener('keydown', onKeyDown)
-  return () => target.removeEventListener('keydown', onKeyDown)
+  addReaderEvent(source, 'keydown', onKeyDown)
+  return () => removeReaderEvent(source, 'keydown', onKeyDown)
 }

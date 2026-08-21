@@ -10,6 +10,7 @@ import { bookFileContentUrl, type BookFile } from '@/services/api'
 interface PdfReaderProps {
   bookId: number
   file: BookFile
+  onTopHoverChange: (hovered: boolean) => void
   onToggleUi: () => void
 }
 
@@ -18,7 +19,7 @@ function restoredPage(bookId: number, fileId: number): number {
   return saved?.kind === 'pdf' ? saved.page : 1
 }
 
-export function PdfReader({ bookId, file, onToggleUi }: PdfReaderProps) {
+export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfReaderProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null)
@@ -105,16 +106,17 @@ export function PdfReader({ bookId, file, onToggleUi }: PdfReaderProps) {
   useEffect(() => {
     const frame = frameRef.current
     if (!frame) return
-    frame.style.touchAction = 'pan-y pinch-zoom'
     return bindReaderGestures(frame, {
+      getWindow: () => window,
       getHeight: () => frame.clientHeight,
       getSelection: () => window.getSelection()?.toString() ?? '',
       getWidth: () => frame.clientWidth,
       onNext: () => setPage((current) => Math.min(pages || 1, current + 1)),
       onPrevious: () => setPage((current) => Math.max(1, current - 1)),
+      onTopHoverChange,
       onToggleControls: onToggleUi,
     })
-  }, [onToggleUi, pages])
+  }, [onToggleUi, onTopHoverChange, pages])
 
   useEffect(() => bindReaderKeyboard(window, {
     getSelection: () => window.getSelection()?.toString() ?? '',

@@ -6,7 +6,7 @@ import { PdfReader } from '@/components/books/PdfReader'
 import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
-import { isReaderTopHover } from '@/lib/reader-gestures'
+import { isReaderHoverDevice } from '@/lib/reader-gestures'
 import { listBooks, type Book, type BookFile } from '@/services/api'
 import './BookReader.css'
 
@@ -18,9 +18,13 @@ function initialReaderTheme(): ReaderTheme {
   return localStorage.getItem('book-reader-theme') === 'night' ? 'night' : 'paper'
 }
 
+const DEFAULT_READER_FONT_SIZE = 100
+
 function initialFontSize(): number {
-  const saved = Number(localStorage.getItem('book-reader-font-size'))
-  return Number.isFinite(saved) ? Math.min(150, Math.max(80, saved)) : 100
+  const stored = localStorage.getItem('book-reader-font-size')
+  if (!stored) return DEFAULT_READER_FONT_SIZE
+  const saved = Number(stored)
+  return Number.isFinite(saved) ? Math.min(150, Math.max(80, saved)) : DEFAULT_READER_FONT_SIZE
 }
 
 function initialReaderFlow(): ReaderFlow {
@@ -149,11 +153,8 @@ export default function BookReader() {
     <main
       ref={pageRef}
       className={`book-reader-page reader-theme-${theme}${uiVisible ? '' : ' is-reader-ui-hidden'}`}
-      onPointerMove={(event) => {
-        if (event.pointerType === 'mouse') syncUiWithTopHover(isReaderTopHover(event.clientY, event.currentTarget.clientHeight))
-      }}
       onPointerLeave={(event) => {
-        if (event.pointerType === 'mouse') syncUiWithTopHover(false)
+        if (event.pointerType === 'mouse' && isReaderHoverDevice(window)) syncUiWithTopHover(false)
       }}
     >
       <SEO title={`Read ${book.title}`} description={`Read ${book.title} by ${book.author || 'Unknown author'}.`} path={`/books/${book.id}/read`} />
@@ -187,7 +188,7 @@ export default function BookReader() {
       <div className="book-reader-surface">
         {format === 'epub'
           ? <EpubReader bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />
-          : <PdfReader bookId={book.id} file={file} onToggleUi={toggleUi} />}
+          : <PdfReader bookId={book.id} file={file} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />}
       </div>
     </main>
   )

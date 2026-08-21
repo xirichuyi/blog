@@ -280,9 +280,11 @@
   background: var(--reader-paper);
 }
 
-.epub-viewport,
-.pdf-viewport {
-  touch-action: pan-y pinch-zoom;
+@media (hover: none), (pointer: coarse) {
+  .epub-viewport,
+  .pdf-viewport {
+    touch-action: pan-y pinch-zoom;
+  }
 }
 
 .reader-flow-scrolled .reader-canvas-wrap {
