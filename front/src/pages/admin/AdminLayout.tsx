@@ -163,15 +163,15 @@ export default function AdminLayout() {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur">
+        <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/90 px-3 backdrop-blur sm:px-4">
           <SidebarTrigger className="-ml-1" />
           <span className="text-sm font-medium md:hidden">博客后台</span>
         </header>
         <main className="flex-1">
           <div
             className={cn(
-              'mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-10',
-              editingPost ? 'max-w-[1500px]' : 'max-w-5xl',
+              'mx-auto px-3 py-5 sm:px-6 md:px-8 md:py-8',
+              editingPost ? 'max-w-[1400px]' : 'max-w-5xl',
             )}
           >
             <Outlet />

@@ -177,11 +177,11 @@ export default function PostEditor() {
         }
       }}
     >
-      <div className="sticky top-14 z-30 -mx-4 mb-6 flex items-center justify-between gap-3 border-b bg-background/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
-        <Button variant="ghost" onClick={() => navigate('/admin/posts')}>
+      <div className="sticky top-12 z-30 -mx-3 mb-4 flex min-h-11 items-center justify-between gap-2 border-b bg-background/95 px-3 py-2 backdrop-blur sm:-mx-6 sm:px-6 md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0">
+        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => navigate('/admin/posts')}>
           <ArrowLeft /> 文章
         </Button>
-        <Button onClick={() => void save()} disabled={saving} size="sm">
+        <Button onClick={() => void save()} disabled={saving} size="sm" className="h-8">
           {saving && <Loader2 className="animate-spin" />} 保存
         </Button>
       </div>
@@ -199,106 +199,98 @@ export default function PostEditor() {
         onChange={(event) => setTitle(event.target.value)}
         placeholder="文章标题"
         aria-label="文章标题"
-        className="mb-4 h-12 border-0 bg-transparent px-0 text-xl font-bold shadow-none focus-visible:ring-0 sm:text-2xl"
+        className="mb-3 h-11 border-0 bg-transparent px-0 text-xl font-bold shadow-none focus-visible:ring-0 sm:text-2xl"
       />
 
-      <Card className="mb-5 shadow-none">
-        <CardContent className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-[180px_220px_1fr]">
-          <div className="space-y-2">
-            <Label>状态</Label>
-            <Select value={String(status)} onValueChange={(value) => setStatus(Number(value))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <Card className="mb-4 shadow-none">
+        <CardContent className="flex flex-wrap items-center gap-2 p-2.5 sm:p-3">
+          <Label className="sr-only">状态</Label>
+          <Select value={String(status)} onValueChange={(value) => setStatus(Number(value))}>
+            <SelectTrigger className="h-9 w-[7.5rem]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <div className="space-y-2">
-            <Label>分类</Label>
-            <Select
-              value={categoryId === null ? 'none' : String(categoryId)}
-              onValueChange={(value) => setCategoryId(value === 'none' ? null : Number(value))}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">未分类</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={String(category.id)}>{category.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Label className="sr-only">分类</Label>
+          <Select
+            value={categoryId === null ? 'none' : String(categoryId)}
+            onValueChange={(value) => setCategoryId(value === 'none' ? null : Number(value))}
+          >
+            <SelectTrigger className="h-9 w-[7.5rem]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">未分类</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={String(category.id)}>{category.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-            <Label>标签</Label>
-            <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="min-w-32 justify-between font-normal">
-                    <span className="flex items-center gap-2"><Tags /> 已选 {tagIds.length}</span>
-                    <ChevronDown />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
-                  <DropdownMenuLabel>选择标签</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {tagsList.map((tag) => (
-                    <DropdownMenuCheckboxItem
-                      key={tag.id}
-                      checked={tagIds.includes(Number(tag.id))}
-                      onCheckedChange={() => toggleTag(Number(tag.id))}
-                      onSelect={(event) => event.preventDefault()}
-                    >
-                      {tag.name}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                  {tagsList.length === 0 && <p className="px-2 py-3 text-xs text-muted-foreground">暂无标签</p>}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Input
-                value={newTag}
-                onChange={(event) => setNewTag(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    void addTag()
-                  }
-                }}
-                placeholder="新标签"
-                className="min-w-0"
-              />
-              <Button variant="secondary" disabled={!newTag.trim()} onClick={() => void addTag()}>添加</Button>
-            </div>
-          </div>
-
-          <div className="space-y-2 sm:col-span-2 lg:col-span-3">
-            <Label>封面</Label>
-            <div className="flex flex-wrap items-center gap-3">
-              {coverUrl && <img src={imageUrl(coverUrl)} alt="文章封面" className="h-16 w-24 rounded-md border object-cover" />}
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) void pickCover(file)
-                  event.target.value = ''
-                }}
-              />
-              <Button variant="outline" onClick={() => coverInputRef.current?.click()} disabled={uploading === 'cover'}>
-                {uploading === 'cover' ? <Loader2 className="animate-spin" /> : <ImagePlus />}
-                {coverUrl ? '更换封面' : '上传封面'}
-              </Button>
-              {coverUrl && (
-                <Button variant="ghost" onClick={() => setCoverUrl(null)}>
-                  <X /> 移除
+          <div className="flex min-w-0 flex-[1_1_18rem] items-center gap-2">
+            <Label className="sr-only">标签</Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 shrink-0 justify-between px-2.5 font-normal">
+                  <span className="flex items-center gap-1.5"><Tags className="size-4" /> 已选 {tagIds.length}</span>
+                  <ChevronDown className="ml-2 size-4" />
                 </Button>
-              )}
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
+                <DropdownMenuLabel>选择标签</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {tagsList.map((tag) => (
+                  <DropdownMenuCheckboxItem
+                    key={tag.id}
+                    checked={tagIds.includes(Number(tag.id))}
+                    onCheckedChange={() => toggleTag(Number(tag.id))}
+                    onSelect={(event) => event.preventDefault()}
+                  >
+                    {tag.name}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {tagsList.length === 0 && <p className="px-2 py-3 text-xs text-muted-foreground">暂无标签</p>}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Input
+              value={newTag}
+              onChange={(event) => setNewTag(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  void addTag()
+                }
+              }}
+              placeholder="新标签（回车添加）"
+              className="h-9 min-w-0"
+            />
+            <Button variant="secondary" size="sm" className="h-9 shrink-0" disabled={!newTag.trim()} onClick={() => void addTag()}>添加</Button>
+          </div>
+
+          <div className="flex w-full items-center gap-2 border-t pt-2">
+            {coverUrl && <img src={imageUrl(coverUrl)} alt="文章封面" className="h-8 w-12 rounded border object-cover" />}
+            <span className="text-xs text-muted-foreground">封面</span>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void pickCover(file)
+                event.target.value = ''
+              }}
+            />
+            <Button variant="outline" size="sm" className="h-8" onClick={() => coverInputRef.current?.click()} disabled={uploading === 'cover'}>
+              {uploading === 'cover' ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+              {coverUrl ? '更换' : '上传'}
+            </Button>
+            {coverUrl && (
+              <Button variant="ghost" size="sm" className="h-8" onClick={() => setCoverUrl(null)}>
+                <X /> 移除
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

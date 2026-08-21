@@ -183,7 +183,7 @@ export function MarkdownEditor({
   return (
     <TooltipProvider delayDuration={300}>
       <section
-        className="overflow-hidden rounded-xl border border-border bg-background shadow-sm"
+        className="rounded-xl border border-border bg-background shadow-sm"
       onPaste={handleImagePaste}
       onDragEnter={(event) => {
         if (!hasImageFile(event.dataTransfer)) return
@@ -204,7 +204,7 @@ export function MarkdownEditor({
         void insertImage(file)
       }}
     >
-      <div className="flex min-h-12 items-center gap-1 overflow-x-auto border-b border-border px-2">
+      <div className="sticky top-24 z-20 flex min-h-11 items-center gap-1 overflow-x-auto border-b border-border bg-background/95 px-2 backdrop-blur md:top-12">
         <ToolbarButton
           label="二级标题"
           active={editor.isActive('heading', { level: 2 })}
@@ -305,7 +305,7 @@ export function MarkdownEditor({
         >
           <Redo2 className="size-4" />
         </ToolbarButton>
-        <span className="ml-auto shrink-0 pl-2 text-xs tabular-nums text-muted-foreground">
+        <span className="ml-auto hidden shrink-0 pl-2 text-xs tabular-nums text-muted-foreground sm:inline">
           {value.length.toLocaleString()} 字符
         </span>
       </div>
@@ -316,10 +316,10 @@ export function MarkdownEditor({
         </p>
       )}
 
-      <div className="article-page relative max-h-[70vh] min-h-[32rem] overflow-y-auto bg-muted/10 lg:max-h-[calc(100dvh-16rem)] lg:min-h-[38rem]">
+      <div className="article-page relative max-h-[calc(100dvh-14rem)] min-h-[24rem] overflow-y-auto bg-muted/10 sm:min-h-[28rem] lg:max-h-[calc(100dvh-13rem)] lg:min-h-[36rem]">
         <EditorContent
           editor={editor}
-          className="markdown-body wysiwyg-editor prose mx-auto max-w-3xl px-5 py-7 sm:px-8 lg:px-12 lg:py-10"
+          className="markdown-body wysiwyg-editor prose mx-auto max-w-3xl px-4 py-6 sm:px-8 lg:px-12 lg:py-10"
         />
         {dragging && (
           <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-primary bg-background/90 text-sm font-medium text-primary backdrop-blur">
