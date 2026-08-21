@@ -121,10 +121,16 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy frontend (rsync dist, --delete)
+      - name: Deploy frontend (assets first, entrypoint last)
         run: |
           chmod -R a+rX dist
-          rsync -az --delete \
+          # Keep old hashed assets so browsers with a cached HTML document can
+          # still finish loading during a deploy. Upload new assets before
+          # index.html so the new entrypoint never references missing files.
+          rsync -az \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            dist/assets/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/frontend/dist/assets/"
+          rsync -az --exclude 'assets/' \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
             dist/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/frontend/dist/"
 
