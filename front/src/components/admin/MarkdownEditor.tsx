@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -98,6 +98,7 @@ export function MarkdownEditor({
   const [uploadError, setUploadError] = useState('')
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [linkValue, setLinkValue] = useState('')
+  const [keyboardOffset, setKeyboardOffset] = useState(0)
 
   const editor = useEditor({
     extensions: [
@@ -126,6 +127,31 @@ export function MarkdownEditor({
     if (!editor || editor.isDestroyed || editor.getMarkdown() === value) return
     editor.commands.setContent(value, { contentType: 'markdown', emitUpdate: false })
   }, [editor, value])
+
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    let frame = 0
+    const updateKeyboardOffset = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+        setKeyboardOffset(inset > 80 ? Math.round(inset) : 0)
+      })
+    }
+
+    updateKeyboardOffset()
+    viewport.addEventListener('resize', updateKeyboardOffset)
+    viewport.addEventListener('scroll', updateKeyboardOffset)
+    window.addEventListener('resize', updateKeyboardOffset)
+    return () => {
+      cancelAnimationFrame(frame)
+      viewport.removeEventListener('resize', updateKeyboardOffset)
+      viewport.removeEventListener('scroll', updateKeyboardOffset)
+      window.removeEventListener('resize', updateKeyboardOffset)
+    }
+  }, [])
 
   const insertImage = async (file: File) => {
     if (!editor || !file.type.startsWith('image/')) return
@@ -204,7 +230,12 @@ export function MarkdownEditor({
         void insertImage(file)
       }}
     >
-      <div className="sticky top-[5.75rem] z-20 flex min-h-11 items-center gap-1 overflow-x-auto rounded-t-xl border-b border-border bg-background/95 px-2 backdrop-blur md:top-12">
+      <div
+        className="fixed inset-x-0 bottom-[var(--mobile-toolbar-bottom)] z-50 flex min-h-11 items-center gap-1 overflow-x-auto border-y border-border bg-background/95 px-2 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:bottom-auto md:top-12 md:z-20 md:rounded-t-xl md:border-x-0 md:border-t-0 md:shadow-none"
+        style={{
+          '--mobile-toolbar-bottom': `${keyboardOffset}px`,
+        } as CSSProperties}
+      >
         <ToolbarButton
           label="二级标题"
           active={editor.isActive('heading', { level: 2 })}
@@ -316,10 +347,10 @@ export function MarkdownEditor({
         </p>
       )}
 
-      <div className="article-page relative max-h-[calc(100dvh-15rem)] min-h-[24rem] overflow-y-auto rounded-b-xl bg-muted/10 sm:min-h-[28rem] lg:max-h-[calc(100dvh-14rem)] lg:min-h-[36rem]">
+      <div className="article-page relative max-h-[calc(100dvh-11rem)] min-h-[calc(100dvh-11rem)] overflow-y-auto rounded-xl bg-muted/10 md:max-h-[calc(100dvh-14rem)] md:min-h-[36rem] md:rounded-b-xl md:rounded-t-none">
         <EditorContent
           editor={editor}
-          className="markdown-body wysiwyg-editor prose mx-auto max-w-3xl px-4 py-6 sm:px-8 lg:px-12 lg:py-10"
+          className="markdown-body wysiwyg-editor prose mx-auto max-w-3xl px-4 pb-20 pt-6 sm:px-8 md:pb-8 lg:px-12 lg:py-10"
         />
         {dragging && (
           <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-primary bg-background/90 text-sm font-medium text-primary backdrop-blur">

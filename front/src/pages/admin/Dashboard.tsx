@@ -69,8 +69,8 @@ export default function Dashboard() {
           </div>
 
           {stats.recent_posts && stats.recent_posts.length > 0 && (
-            <Card className="mt-8">
-              <CardHeader><CardTitle className="text-base">最近文章</CardTitle></CardHeader>
+            <Card className="mt-6">
+              <CardHeader className="p-4"><CardTitle className="text-base">最近文章</CardTitle></CardHeader>
               <CardContent className="divide-y divide-border p-0">
                 {stats.recent_posts.map((p) => (
                   <Link

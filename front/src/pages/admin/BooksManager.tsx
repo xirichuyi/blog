@@ -300,6 +300,16 @@ export default function BooksManager() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onSelect={() => openEdit(book)}><Pencil /> 编辑</DropdownMenuItem>
+                  <DropdownMenuItem asChild disabled={uploadingBookId !== null}>
+                    <label className="cursor-pointer">
+                      <FileUp /> {uploadingBookId === book.id ? `上传中 ${uploadProgress}%` : '上传 EPUB'}
+                      <input type="file" accept=".epub,application/epub+zip" className="hidden" disabled={uploadingBookId !== null} onChange={(event) => {
+                        const file = event.target.files?.[0]
+                        if (file) void uploadFile(book, file)
+                        event.target.value = ''
+                      }} />
+                    </label>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => void removeBook(book)}><Trash2 /> 删除</DropdownMenuItem>
                 </DropdownMenuContent>
@@ -314,21 +324,23 @@ export default function BooksManager() {
                     <Button variant="ghost" size="icon" className="size-7" onClick={() => void removeFile(file.id)}><X /></Button>
                   </div>
                 ))}
-                <Button asChild variant="outline" size="sm" className="w-full" disabled={uploadingBookId !== null}>
-                  <label className="cursor-pointer">
-                    {uploadingBookId === book.id ? <Loader2 className="animate-spin" /> : <FileUp />}
-                    {uploadingBookId === book.id ? `上传中 ${uploadProgress}%` : '上传 EPUB'}
-                    <input type="file" accept=".epub,application/epub+zip" className="hidden" disabled={uploadingBookId !== null} onChange={(event) => {
-                      const file = event.target.files?.[0]
-                      if (file) void uploadFile(book, file)
-                      event.target.value = ''
-                    }} />
-                  </label>
-                </Button>
+                {book.files.length === 0 && (
+                  <p className="py-2 text-xs text-muted-foreground">暂无电子书文件，可从右上角菜单上传。</p>
+                )}
+                {uploadingBookId === book.id && (
+                  <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" /> 上传中 {uploadProgress}%
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         ))}
+        {books?.length === 0 && (
+          <div className="col-span-full rounded-lg border border-dashed px-4 py-12 text-center text-sm text-muted-foreground">
+            书架还是空的。
+          </div>
+        )}
       </div>
 
       <Dialog open={editing !== null} onOpenChange={(open) => !open && closeEditor()}>
@@ -367,16 +379,26 @@ export default function BooksManager() {
               <Field label="作者"><Input value={form.author} onChange={(event) => setForm({ ...form, author: event.target.value })} /></Field>
               <Field label="阅读状态"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.reading_status} onChange={(event) => setForm({ ...form, reading_status: event.target.value as ReadingStatus })}>{Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
               <Field label="进度（0–100）"><Input type="number" min={0} max={100} value={form.progress} onChange={(event) => setForm({ ...form, progress: Number(event.target.value) })} /></Field>
-              <Field label="评分（1–5，可选）"><Input type="number" min={1} max={5} value={form.rating ?? ''} onChange={(event) => setForm({ ...form, rating: event.target.value ? Number(event.target.value) : null })} /></Field>
-              <Field label="开始日期"><Input type="date" value={form.started_at ?? ''} onChange={(event) => setForm({ ...form, started_at: event.target.value || null })} /></Field>
-              <Field label="完成日期"><Input type="date" value={form.finished_at ?? ''} onChange={(event) => setForm({ ...form, finished_at: event.target.value || null })} /></Field>
             </div>
-            <Field label="简介"><Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
-            <Field label="书评 / 笔记（Markdown）"><Textarea className="min-h-40 font-mono" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></Field>
             <div className="flex flex-wrap gap-5 text-sm">
               <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_public} onChange={(event) => setForm({ ...form, is_public: event.target.checked })} />显示在公开书架</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={form.download_enabled} onChange={(event) => setForm({ ...form, download_enabled: event.target.checked })} />允许公开下载</label>
             </div>
+            <details className="group rounded-lg border">
+              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:hidden">
+                更多信息
+                <span className="float-right text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="space-y-4 border-t p-4">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field label="评分（1–5）"><Input type="number" min={1} max={5} value={form.rating ?? ''} onChange={(event) => setForm({ ...form, rating: event.target.value ? Number(event.target.value) : null })} /></Field>
+                  <Field label="开始日期"><Input type="date" value={form.started_at ?? ''} onChange={(event) => setForm({ ...form, started_at: event.target.value || null })} /></Field>
+                  <Field label="完成日期"><Input type="date" value={form.finished_at ?? ''} onChange={(event) => setForm({ ...form, finished_at: event.target.value || null })} /></Field>
+                </div>
+                <Field label="简介"><Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
+                <Field label="书评 / 笔记（Markdown）"><Textarea className="min-h-40 font-mono" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></Field>
+              </div>
+            </details>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeEditor}>取消</Button>

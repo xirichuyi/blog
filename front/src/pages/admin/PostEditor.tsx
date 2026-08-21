@@ -129,7 +129,7 @@ export default function PostEditor() {
     ))
   }
 
-  async function save() {
+  async function save(statusOverride?: number) {
     if (!title.trim()) {
       toast.error('标题不能为空')
       return
@@ -137,10 +137,11 @@ export default function PostEditor() {
     setSaving(true)
     setError('')
     try {
+      const nextStatus = statusOverride ?? status
       const payload = {
         title: title.trim(),
         content,
-        status,
+        status: nextStatus,
         category_id: categoryId,
         cover_url: coverUrl,
         tag_ids: tagIds,
@@ -151,7 +152,8 @@ export default function PostEditor() {
       } else {
         postId = (await createPost(payload)).id
       }
-      toast.success('文章已保存')
+      setStatus(nextStatus)
+      toast.success(nextStatus === POST_STATUS.Published ? '文章已发布' : '文章已保存')
       if (!editing) navigate(`/admin/posts/${postId}`, { replace: true })
     } catch (saveError) {
       toast.error('保存失败', { description: (saveError as Error).message })
@@ -188,8 +190,14 @@ export default function PostEditor() {
               <Settings2 /> 设置
             </Button>
           </SheetTrigger>
-          <Button onClick={() => void save()} disabled={saving} size="sm" className="h-8">
-            {saving && <Loader2 className="animate-spin" />} 保存
+          <Button
+            onClick={() => void save(status === POST_STATUS.Published ? undefined : POST_STATUS.Published)}
+            disabled={saving}
+            size="sm"
+            className="h-8"
+          >
+            {saving && <Loader2 className="animate-spin" />}
+            {status === POST_STATUS.Published ? '更新' : '发布'}
           </Button>
         </div>
       </div>
@@ -309,6 +317,12 @@ export default function PostEditor() {
                 </Button>
               )}
             </div>
+          </div>
+
+          <div className="border-t pt-5">
+            <Button variant="outline" className="w-full" disabled={saving} onClick={() => void save()}>
+              {saving && <Loader2 className="animate-spin" />} 保存当前状态
+            </Button>
           </div>
         </div>
       </SheetContent>

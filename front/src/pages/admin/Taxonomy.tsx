@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import {
   createCategory,
   createTag,
@@ -113,11 +114,11 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-4">
+      <CardHeader className="p-4 pb-3">
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="mb-5 flex gap-2">
+      <CardContent className="px-4 pb-4">
+        <div className="mb-4 flex gap-2">
           <Input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -140,20 +141,19 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
           {items?.map((item) => (
             <div key={item.id} className="flex min-h-11 items-center gap-2 px-3 py-2">
               <span className="min-w-0 flex-1 truncate text-sm">{item.name}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setEditing(item)
-                  setEditName(item.name)
-                }}
-                aria-label={`重命名${item.name}`}
-              >
-                <Pencil />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => setPendingDelete(item)} aria-label={`删除${item.name}`}>
-                <Trash2 />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="size-8" aria-label={`操作：${item.name}`}><MoreHorizontal /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => {
+                    setEditing(item)
+                    setEditName(item.name)
+                  }}><Pencil /> 重命名</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setPendingDelete(item)}><Trash2 /> 删除</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
           {items?.length === 0 && <p className="px-3 py-8 text-center text-sm text-muted-foreground">暂无内容</p>}

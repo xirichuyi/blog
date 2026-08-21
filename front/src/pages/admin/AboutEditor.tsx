@@ -86,12 +86,12 @@ export default function AboutEditor() {
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle>基本信息</CardTitle>
+        <CardHeader className="p-4 pb-3">
+          <CardTitle className="text-base">基本信息</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-5 px-4 pb-4">
           <div className="flex flex-wrap items-center gap-4">
-            <Avatar className="size-20 border">
+            <Avatar className="size-16 border sm:size-20">
               <AvatarImage src={photoUrl ? imageUrl(photoUrl) : undefined} alt={title || '头像'} />
               <AvatarFallback>{title.slice(0, 1).toUpperCase() || 'C'}</AvatarFallback>
             </Avatar>
