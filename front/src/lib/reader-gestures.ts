@@ -16,7 +16,7 @@ interface ReaderKeyboardOptions {
   onPrevious: () => void
 }
 
-interface PointerStart {
+interface GestureStart {
   id: number
   time: number
   x: number
@@ -41,8 +41,10 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 }
 
 export function bindReaderGestures(target: EventTarget, options: ReaderGestureOptions): () => void {
-  let start: PointerStart | null = null
-  let lastHandledPointerAt: number | null = null
+  let pointerStart: GestureStart | null = null
+  let touchStart: GestureStart | null = null
+  let lastDirectHandledAt: number | null = null
+  let lastHandledAt: number | null = null
 
   const handleTap = (clientX: number, clientY: number): boolean => {
     const width = Math.max(1, options.getWidth())
@@ -56,14 +58,40 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
     return true
   }
 
+  const completeGesture = (gestureStart: GestureStart, clientX: number, clientY: number): boolean => {
+    const now = performance.now()
+    if (lastDirectHandledAt !== null && now - lastDirectHandledAt < 120) return false
+
+    const deltaX = clientX - gestureStart.x
+    const deltaY = clientY - gestureStart.y
+    const distance = Math.hypot(deltaX, deltaY)
+    const width = Math.max(1, options.getWidth())
+    const swipeThreshold = Math.min(72, Math.max(44, width * 0.1))
+    let handled = false
+
+    if (options.pageNavigation !== false && Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      if (deltaX < 0) options.onNext()
+      else options.onPrevious()
+      handled = true
+    } else if (distance < 24 && now - gestureStart.time < 650) {
+      handled = handleTap(clientX, clientY)
+    }
+
+    if (handled) {
+      lastDirectHandledAt = now
+      lastHandledAt = now
+    }
+    return handled
+  }
+
   const onPointerDown = (rawEvent: Event) => {
     const event = rawEvent as PointerEvent
     if (!event.isPrimary || isInteractiveTarget(event.target)) return
-    start = { id: event.pointerId, time: performance.now(), x: event.clientX, y: event.clientY }
+    pointerStart = { id: event.pointerId, time: performance.now(), x: event.clientX, y: event.clientY }
   }
 
   const onPointerCancel = () => {
-    start = null
+    pointerStart = null
   }
 
   const onPointerMove = (rawEvent: Event) => {
@@ -75,44 +103,55 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
 
   const onPointerUp = (rawEvent: Event) => {
     const event = rawEvent as PointerEvent
-    if (!start || event.pointerId !== start.id) return
-    const gestureStart = start
-    start = null
+    if (!pointerStart || event.pointerId !== pointerStart.id) return
+    const gestureStart = pointerStart
+    pointerStart = null
     if (options.getSelection().trim() || isInteractiveTarget(event.target)) return
+    completeGesture(gestureStart, event.clientX, event.clientY)
+  }
 
-    const deltaX = event.clientX - gestureStart.x
-    const deltaY = event.clientY - gestureStart.y
-    const distance = Math.hypot(deltaX, deltaY)
-    const width = Math.max(1, options.getWidth())
-    const swipeThreshold = Math.min(72, Math.max(44, width * 0.1))
-
-    if (options.pageNavigation !== false && Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
-      if (deltaX < 0) options.onNext()
-      else options.onPrevious()
+  const onTouchStart = (rawEvent: Event) => {
+    const event = rawEvent as TouchEvent
+    if (event.touches.length !== 1 || isInteractiveTarget(event.target)) {
+      touchStart = null
       return
     }
+    const touch = event.touches[0]
+    touchStart = { id: touch.identifier, time: performance.now(), x: touch.clientX, y: touch.clientY }
+  }
 
-    const isTap = distance < 24 && performance.now() - gestureStart.time < 650
-    if (!isTap) return
-    if (handleTap(event.clientX, event.clientY)) lastHandledPointerAt = performance.now()
+  const onTouchEnd = (rawEvent: Event) => {
+    const event = rawEvent as TouchEvent
+    if (!touchStart) return
+    const gestureStart = touchStart
+    touchStart = null
+    if (options.getSelection().trim() || isInteractiveTarget(event.target)) return
+    const touch = Array.from(event.changedTouches).find((item) => item.identifier === gestureStart.id)
+    if (touch) completeGesture(gestureStart, touch.clientX, touch.clientY)
+  }
+
+  const onTouchCancel = () => {
+    touchStart = null
   }
 
   const onClick = (rawEvent: Event) => {
     const event = rawEvent as MouseEvent
-    // iOS can omit/cancel Pointer events inside EPUB iframes but still emits click.
-    // Ignore the synthesized click when Pointer handling has already completed.
+    // Ignore the synthesized click when Pointer or Touch handling already completed.
     if (
-      (lastHandledPointerAt !== null && performance.now() - lastHandledPointerAt < 700)
+      (lastHandledAt !== null && performance.now() - lastHandledAt < 700)
       || options.getSelection().trim()
       || isInteractiveTarget(event.target)
     ) return
-    handleTap(event.clientX, event.clientY)
+    if (handleTap(event.clientX, event.clientY)) lastHandledAt = performance.now()
   }
 
   target.addEventListener('pointerdown', onPointerDown)
   target.addEventListener('pointermove', onPointerMove)
   target.addEventListener('pointerup', onPointerUp)
   target.addEventListener('pointercancel', onPointerCancel)
+  target.addEventListener('touchstart', onTouchStart, { passive: true })
+  target.addEventListener('touchend', onTouchEnd, { passive: true })
+  target.addEventListener('touchcancel', onTouchCancel, { passive: true })
   target.addEventListener('click', onClick)
 
   return () => {
@@ -120,6 +159,9 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
     target.removeEventListener('pointermove', onPointerMove)
     target.removeEventListener('pointerup', onPointerUp)
     target.removeEventListener('pointercancel', onPointerCancel)
+    target.removeEventListener('touchstart', onTouchStart)
+    target.removeEventListener('touchend', onTouchEnd)
+    target.removeEventListener('touchcancel', onTouchCancel)
     target.removeEventListener('click', onClick)
   }
 }
