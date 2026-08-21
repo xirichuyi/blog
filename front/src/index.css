@@ -163,11 +163,7 @@
     --article-reveal-progress: 1;
     --article-translate-amount: 10px;
     --article-scale-amount: 0.985;
-    --article-blur-amount: 0px;
     opacity: var(--article-reveal-progress);
-    filter: blur(
-      calc((1 - var(--article-reveal-progress)) * var(--article-blur-amount))
-    );
     transform:
       translateY(
         calc((1 - var(--article-reveal-progress)) * var(--article-translate-amount))
@@ -182,7 +178,6 @@
     animation: linear both article-reveal-progress;
     animation-range: entry 0% entry var(--article-reveal-range);
     animation-timeline: view();
-    will-change: opacity, transform, filter;
   }
 }
 

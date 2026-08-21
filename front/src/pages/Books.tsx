@@ -3,7 +3,6 @@ import { BookOpen, LibraryBig, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { SEO } from '@/components/SEO'
 import {
-  bookFileContentUrl,
   imageUrl,
   listBooks,
   type Book,
@@ -23,45 +22,8 @@ function readableFile(book: Book): BookFile | undefined {
   return book.files.find((file) => ['epub', 'pdf'].includes(file.format.toLowerCase()))
 }
 
-function useBookCover(book: Book): string | undefined {
-  const storedCover = imageUrl(book.cover_url ?? undefined)
-  const epubFile = book.files.find((file) => file.format.toLowerCase() === 'epub')
-  const [embeddedCover, setEmbeddedCover] = useState<string>()
-
-  useEffect(() => {
-    if (storedCover || !epubFile) return
-    let disposed = false
-    let objectUrl: string | undefined
-
-    const loadEmbeddedCover = async () => {
-      const response = await fetch(bookFileContentUrl(book.id, epubFile.id))
-      if (!response.ok) return
-      const { default: createEpub } = await import('epubjs')
-      const epub = createEpub(await response.arrayBuffer())
-      try {
-        const coverUrl = await epub.coverUrl()
-        if (!coverUrl) return
-        const coverBlob = await fetch(coverUrl).then((coverResponse) => coverResponse.blob())
-        if (disposed) return
-        objectUrl = URL.createObjectURL(coverBlob)
-        setEmbeddedCover(objectUrl)
-      } finally {
-        epub.destroy()
-      }
-    }
-
-    void loadEmbeddedCover().catch(() => undefined)
-    return () => {
-      disposed = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [book.id, epubFile?.id, storedCover])
-
-  return storedCover || embeddedCover
-}
-
 function BookCover({ book }: { book: Book }) {
-  const cover = useBookCover(book)
+  const cover = imageUrl(book.cover_url ?? undefined)
   return (
     <span className="library-book-cover">
       {cover

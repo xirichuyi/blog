@@ -170,6 +170,7 @@ export default function ArticleDetail() {
 
     const headingElements = Array.from(content.querySelectorAll<HTMLElement>('h2, h3'))
     let headingOffsets: Array<{ id: string; top: number }> = []
+    let tocEntriesById = new Map<string, HTMLElement>()
     let contentStart = 0
     let contentEnd = 1
     let contentDistance = 1
@@ -185,6 +186,13 @@ export default function ArticleDetail() {
         id: element.id,
         top: element.getBoundingClientRect().top + scrollY,
       }))
+      tocEntriesById = new Map(
+        Array.from(tocRef.current?.querySelectorAll<HTMLElement>('.article-toc-entry') ?? [])
+          .flatMap((entry) => {
+            const headingId = entry.dataset.headingId
+            return headingId ? [[headingId, entry] as const] : []
+          }),
+      )
     }
 
     const renderScrollState = () => {
@@ -220,10 +228,7 @@ export default function ArticleDetail() {
 
         setActiveId(activeHeading.id)
 
-        const tocEntries = Array.from(
-          tocRef.current?.querySelectorAll<HTMLElement>('.article-toc-entry') ?? [],
-        )
-        const tocEntry = tocEntries.find((entry) => entry.dataset.headingId === activeHeading.id)
+        const tocEntry = tocEntriesById.get(activeHeading.id)
         if (tocEntry && tocProgressRef.current) {
           const progressHeight = tocEntry.offsetTop + activeProgress * tocEntry.offsetHeight
           tocProgressRef.current.style.height = `${progressHeight}px`
@@ -251,7 +256,7 @@ export default function ArticleDetail() {
       window.removeEventListener('resize', measureAndRender)
       if (frame !== 0) window.cancelAnimationFrame(frame)
     }
-  }, [article])
+  }, [article, headings.length])
 
   useEffect(() => {
     const toc = tocRef.current
