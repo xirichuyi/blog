@@ -36,6 +36,19 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 
 export function bindReaderGestures(target: EventTarget, options: ReaderGestureOptions): () => void {
   let start: PointerStart | null = null
+  let lastHandledPointerAt: number | null = null
+
+  const handleTap = (clientX: number, clientY: number): boolean => {
+    const width = Math.max(1, options.getWidth())
+    const height = Math.max(1, options.getHeight())
+    const relativeX = clientX / width
+    const relativeY = clientY / height
+    if (options.pageNavigation !== false && relativeX <= 0.2) options.onPrevious()
+    else if (options.pageNavigation !== false && relativeX >= 0.8) options.onNext()
+    else if (relativeX >= 0.22 && relativeX <= 0.78 && relativeY >= 0.12 && relativeY <= 0.88) options.onToggleControls?.()
+    else return false
+    return true
+  }
 
   const onPointerDown = (rawEvent: Event) => {
     const event = rawEvent as PointerEvent
@@ -58,7 +71,6 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
     const deltaY = event.clientY - gestureStart.y
     const distance = Math.hypot(deltaX, deltaY)
     const width = Math.max(1, options.getWidth())
-    const height = Math.max(1, options.getHeight())
     const swipeThreshold = Math.min(72, Math.max(44, width * 0.1))
 
     if (options.pageNavigation !== false && Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
@@ -67,23 +79,33 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
       return
     }
 
-    const isTap = distance < 12 && performance.now() - gestureStart.time < 420
+    const isTap = distance < 24 && performance.now() - gestureStart.time < 650
     if (!isTap) return
-    const relativeX = event.clientX / width
-    const relativeY = event.clientY / height
-    if (options.pageNavigation !== false && relativeX <= 0.2) options.onPrevious()
-    else if (options.pageNavigation !== false && relativeX >= 0.8) options.onNext()
-    else if (relativeX >= 0.28 && relativeX <= 0.72 && relativeY >= 0.18 && relativeY <= 0.82) options.onToggleControls?.()
+    if (handleTap(event.clientX, event.clientY)) lastHandledPointerAt = performance.now()
+  }
+
+  const onClick = (rawEvent: Event) => {
+    const event = rawEvent as MouseEvent
+    // iOS can omit/cancel Pointer events inside EPUB iframes but still emits click.
+    // Ignore the synthesized click when Pointer handling has already completed.
+    if (
+      (lastHandledPointerAt !== null && performance.now() - lastHandledPointerAt < 700)
+      || options.getSelection().trim()
+      || isInteractiveTarget(event.target)
+    ) return
+    handleTap(event.clientX, event.clientY)
   }
 
   target.addEventListener('pointerdown', onPointerDown)
   target.addEventListener('pointerup', onPointerUp)
   target.addEventListener('pointercancel', onPointerCancel)
+  target.addEventListener('click', onClick)
 
   return () => {
     target.removeEventListener('pointerdown', onPointerDown)
     target.removeEventListener('pointerup', onPointerUp)
     target.removeEventListener('pointercancel', onPointerCancel)
+    target.removeEventListener('click', onClick)
   }
 }
 
