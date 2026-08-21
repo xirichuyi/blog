@@ -428,7 +428,7 @@ export default function ArticleDetail() {
 
       <div
         className={cn(
-          'article-grid article-enter grid grid-cols-1 gap-10 lg:gap-8',
+          'article-grid grid grid-cols-1 gap-10 lg:gap-8',
           headings.length > 0 && !zen && 'lg:grid-cols-[minmax(0,1fr)_160px] xl:grid-cols-[64px_minmax(0,1fr)_160px]'
         )}
       >
@@ -441,7 +441,7 @@ export default function ArticleDetail() {
           </aside>
         )}
 
-        <article ref={mainRef} className="article-main mx-auto w-full min-w-0 max-w-[680px]">
+        <article ref={mainRef} className="article-main article-enter mx-auto w-full min-w-0 max-w-[680px]">
           <div className="article-actions article-reveal mb-8 flex items-center justify-end gap-2">
             <div className="flex items-center gap-1">
               <Button
