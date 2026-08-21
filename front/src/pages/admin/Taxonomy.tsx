@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -38,14 +38,13 @@ type Item = Category | Tag
 
 interface SectionProps {
   title: string
-  description: string
   load: () => Promise<Item[]>
   create: (name: string) => Promise<unknown>
   rename: (id: string, name: string) => Promise<unknown>
   remove: (id: string) => Promise<unknown>
 }
 
-function Section({ title, description, load, create, rename, remove }: SectionProps) {
+function Section({ title, load, create, rename, remove }: SectionProps) {
   const [items, setItems] = useState<Item[] | null>(null)
   const [name, setName] = useState('')
   const [editing, setEditing] = useState<Item | null>(null)
@@ -114,9 +113,8 @@ function Section({ title, description, load, create, rename, remove }: SectionPr
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="mb-5 flex gap-2">
@@ -213,14 +211,9 @@ function Section({ title, description, load, create, rename, remove }: SectionPr
 export default function Taxonomy() {
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">分类与标签</h1>
-        <p className="mt-1 text-sm text-muted-foreground">维护文章的内容组织方式。</p>
-      </div>
       <div className="grid gap-5 lg:grid-cols-2">
         <Section
           title="分类"
-          description="每篇文章可以归入一个分类。"
           load={listCategories}
           create={createCategory}
           rename={updateCategory}
@@ -228,7 +221,6 @@ export default function Taxonomy() {
         />
         <Section
           title="标签"
-          description="一篇文章可以使用多个标签。"
           load={listTags}
           create={createTag}
           rename={updateTag}

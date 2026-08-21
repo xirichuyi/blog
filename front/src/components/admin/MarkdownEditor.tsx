@@ -204,7 +204,7 @@ export function MarkdownEditor({
         void insertImage(file)
       }}
     >
-      <div className="sticky top-[6.25rem] z-20 flex min-h-11 items-center gap-1 overflow-x-auto rounded-t-xl border-b border-border bg-background/95 px-2 backdrop-blur md:top-14">
+      <div className="sticky top-[5.75rem] z-20 flex min-h-11 items-center gap-1 overflow-x-auto rounded-t-xl border-b border-border bg-background/95 px-2 backdrop-blur md:top-12">
         <ToolbarButton
           label="二级标题"
           active={editor.isActive('heading', { level: 2 })}

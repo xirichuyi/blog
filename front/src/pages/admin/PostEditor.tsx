@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, ChevronDown, ImagePlus, Loader2, Tags, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ChevronDown, ImagePlus, Loader2, Settings2, Tags, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { MarkdownEditor } from '@/components/admin/MarkdownEditor'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -17,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
   adminGetPost,
   createPost,
@@ -169,21 +169,29 @@ export default function PostEditor() {
   }
 
   return (
-    <div
-      onKeyDown={(event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-          event.preventDefault()
-          void save()
-        }
-      }}
-    >
-      <div className="sticky top-14 z-30 -mx-4 mb-4 flex min-h-11 items-center justify-between gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0">
+    <Sheet>
+      <div
+        onKeyDown={(event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+            event.preventDefault()
+            void save()
+          }
+        }}
+      >
+      <div className="sticky top-12 z-30 -mx-4 mb-4 flex min-h-11 items-center justify-between gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur sm:-mx-5 sm:px-5 md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0">
         <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => navigate('/admin/posts')}>
           <ArrowLeft /> 文章
         </Button>
-        <Button onClick={() => void save()} disabled={saving} size="sm" className="h-8">
-          {saving && <Loader2 className="animate-spin" />} 保存
-        </Button>
+        <div className="flex items-center gap-2">
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8">
+              <Settings2 /> 设置
+            </Button>
+          </SheetTrigger>
+          <Button onClick={() => void save()} disabled={saving} size="sm" className="h-8">
+            {saving && <Loader2 className="animate-spin" />} 保存
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -202,39 +210,46 @@ export default function PostEditor() {
         className="mb-3 h-11 border-0 bg-transparent px-0 text-xl font-bold shadow-none focus-visible:ring-0 sm:text-2xl"
       />
 
-      <Card className="mb-4 shadow-none">
-        <CardContent className="flex flex-wrap items-center gap-2 p-2.5 sm:p-3">
-          <Label className="sr-only">状态</Label>
-          <Select value={String(status)} onValueChange={(value) => setStatus(Number(value))}>
-            <SelectTrigger className="h-9 w-[7.5rem]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <SheetContent className="w-full overflow-y-auto p-5 sm:max-w-sm">
+        <SheetHeader className="text-left">
+          <SheetTitle>文章设置</SheetTitle>
+        </SheetHeader>
+        <div className="mt-6 space-y-5">
+          <div className="space-y-2">
+            <Label>状态</Label>
+            <Select value={String(status)} onValueChange={(value) => setStatus(Number(value))}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Label className="sr-only">分类</Label>
-          <Select
-            value={categoryId === null ? 'none' : String(categoryId)}
-            onValueChange={(value) => setCategoryId(value === 'none' ? null : Number(value))}
-          >
-            <SelectTrigger className="h-9 w-[7.5rem]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">未分类</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={String(category.id)}>{category.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label>分类</Label>
+            <Select
+              value={categoryId === null ? 'none' : String(categoryId)}
+              onValueChange={(value) => setCategoryId(value === 'none' ? null : Number(value))}
+            >
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">未分类</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={String(category.id)}>{category.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <div className="flex min-w-0 flex-[1_1_18rem] items-center gap-2">
-            <Label className="sr-only">标签</Label>
+          <div className="space-y-2">
+            <Label>标签</Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 shrink-0 justify-between px-2.5 font-normal">
+                <Button variant="outline" className="w-full justify-between font-normal">
                   <span className="flex items-center gap-1.5"><Tags className="size-4" /> 已选 {tagIds.length}</span>
-                  <ChevronDown className="ml-2 size-4" />
+                  <ChevronDown className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
@@ -253,47 +268,50 @@ export default function PostEditor() {
                 {tagsList.length === 0 && <p className="px-2 py-3 text-xs text-muted-foreground">暂无标签</p>}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Input
-              value={newTag}
-              onChange={(event) => setNewTag(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  void addTag()
-                }
-              }}
-              placeholder="新标签（回车添加）"
-              className="h-9 min-w-0"
-            />
-            <Button variant="secondary" size="sm" className="h-9 shrink-0" disabled={!newTag.trim()} onClick={() => void addTag()}>添加</Button>
+            <div className="flex gap-2">
+              <Input
+                value={newTag}
+                onChange={(event) => setNewTag(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void addTag()
+                  }
+                }}
+                placeholder="新标签（回车添加）"
+              />
+              <Button variant="secondary" className="shrink-0" disabled={!newTag.trim()} onClick={() => void addTag()}>添加</Button>
+            </div>
           </div>
 
-          <div className="flex w-full items-center gap-2 border-t pt-2">
-            {coverUrl && <img src={imageUrl(coverUrl)} alt="文章封面" className="h-8 w-12 rounded border object-cover" />}
-            <span className="text-xs text-muted-foreground">封面</span>
-            <input
-              ref={coverInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) void pickCover(file)
-                event.target.value = ''
-              }}
-            />
-            <Button variant="outline" size="sm" className="h-8" onClick={() => coverInputRef.current?.click()} disabled={uploading === 'cover'}>
-              {uploading === 'cover' ? <Loader2 className="animate-spin" /> : <ImagePlus />}
-              {coverUrl ? '更换' : '上传'}
-            </Button>
-            {coverUrl && (
-              <Button variant="ghost" size="sm" className="h-8" onClick={() => setCoverUrl(null)}>
-                <X /> 移除
+          <div className="space-y-2">
+            <Label>封面</Label>
+            <div className="flex items-center gap-2">
+              {coverUrl && <img src={imageUrl(coverUrl)} alt="文章封面" className="h-8 w-12 rounded border object-cover" />}
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) void pickCover(file)
+                  event.target.value = ''
+                }}
+              />
+              <Button variant="outline" size="sm" className="h-8" onClick={() => coverInputRef.current?.click()} disabled={uploading === 'cover'}>
+                {uploading === 'cover' ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+                {coverUrl ? '更换' : '上传'}
               </Button>
-            )}
+              {coverUrl && (
+                <Button variant="ghost" size="sm" className="h-8" onClick={() => setCoverUrl(null)}>
+                  <X /> 移除
+                </Button>
+              )}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </SheetContent>
 
       <MarkdownEditor
         value={content}
@@ -301,6 +319,7 @@ export default function PostEditor() {
         onUploadImage={uploadInlineImage}
         uploadingImage={uploading === 'inline'}
       />
-    </div>
+      </div>
+    </Sheet>
   )
 }

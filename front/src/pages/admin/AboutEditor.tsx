@@ -5,7 +5,7 @@ import { Markdown } from '@/components/Markdown'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -71,11 +71,7 @@ export default function AboutEditor() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">关于页</h1>
-          <p className="mt-1 text-sm text-muted-foreground">维护个人简介与头像。</p>
-        </div>
+      <div className="mb-4 flex justify-end">
         <Button onClick={() => void save()} disabled={saving} size="sm">
           {saving && <Loader2 className="animate-spin" />} 保存
         </Button>
@@ -92,7 +88,6 @@ export default function AboutEditor() {
       <Card>
         <CardHeader>
           <CardTitle>基本信息</CardTitle>
-          <CardDescription>这些内容会显示在公开的关于页面。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-wrap items-center gap-4">

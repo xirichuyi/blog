@@ -7,14 +7,21 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
+const STATUS_LABEL: Record<number, string> = {
+  0: '草稿',
+  1: '已发布',
+  2: '已删除',
+  3: '私密',
+}
+
 function Stat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number | string }) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+      <CardContent className="flex items-center gap-3 p-4">
         <Icon className="size-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent><div className="text-2xl font-semibold">{value}</div></CardContent>
+        <div className="min-w-0 flex-1 text-sm text-muted-foreground">{label}</div>
+        <div className="text-xl font-semibold tabular-nums">{value}</div>
+      </CardContent>
     </Card>
   )
 }
@@ -31,11 +38,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">概览</h1>
-          <p className="mt-1 text-sm text-muted-foreground">博客内容与运行状态。</p>
-        </div>
+      <div className="mb-4 flex justify-end">
         <Button asChild size="sm">
           <Link to="/admin/posts/new">
             <Plus className="size-4" /> 写文章
@@ -76,7 +79,7 @@ export default function Dashboard() {
                     className="flex items-center justify-between gap-3 px-4 py-3 text-sm transition-colors hover:bg-accent/50"
                   >
                     <span className="truncate">{p.title || '(无标题)'}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{STATUS_NAME[p.status] ?? p.status}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{STATUS_LABEL[p.status] ?? STATUS_NAME[p.status] ?? p.status}</span>
                   </Link>
                 ))}
               </CardContent>

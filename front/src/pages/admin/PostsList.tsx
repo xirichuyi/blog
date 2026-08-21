@@ -105,11 +105,7 @@ export default function PostsList() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">文章</h1>
-          <p className="mt-1 text-sm text-muted-foreground">管理博客中的全部文章与发布状态。</p>
-        </div>
+      <div className="mb-4 flex justify-end">
         <Button asChild size="sm">
           <Link to="/admin/posts/new">
             <Plus /> 写文章

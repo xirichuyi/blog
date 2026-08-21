@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ExternalLink,
@@ -25,10 +25,8 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -63,6 +61,10 @@ export default function AdminLayout() {
   const editingPost =
     location.pathname === '/admin/posts/new'
     || /^\/admin\/posts\/\d+$/.test(location.pathname)
+  const activeNav = NAV.find((item) => pathIsActive(location.pathname, item.to, item.exact))
+  const pageTitle = editingPost
+    ? (location.pathname.endsWith('/new') ? '写文章' : '编辑文章')
+    : activeNav?.label || '后台'
 
   const logout = async () => {
     setSigningOut(true)
@@ -77,29 +79,49 @@ export default function AdminLayout() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider style={{ '--sidebar-width': '14rem' } as CSSProperties}>
       <Sidebar collapsible="icon">
-        <SidebarHeader>
+        <SidebarHeader className="border-b border-sidebar-border">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild size="lg" tooltip="chuyi / admin">
-                <Link to="/admin">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
-                    C
-                  </span>
-                  <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">chuyi</span>
-                    <span className="truncate text-xs text-sidebar-foreground/60">博客后台</span>
-                  </span>
-                </Link>
-              </SidebarMenuButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton size="lg" tooltip={session?.name || '账号'}>
+                    <Avatar className="size-8 rounded-lg">
+                      <AvatarImage src={session?.picture ?? undefined} alt={session?.name || ''} referrerPolicy="no-referrer" />
+                      <AvatarFallback className="rounded-lg">
+                        {session?.name?.slice(0, 1).toUpperCase() || 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">{session?.name || '管理员'}</span>
+                      <span className="truncate text-xs text-sidebar-foreground/60">{session?.email}</span>
+                    </span>
+                    {signingOut ? <Loader2 className="animate-spin" /> : <MoreVertical />}
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <p className="truncate text-sm font-medium">{session?.name || '管理员'}</p>
+                    <p className="truncate text-xs text-muted-foreground">{session?.email}</p>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <a href="/" target="_blank" rel="noreferrer">
+                      <ExternalLink /> 查看网站
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={signingOut} onSelect={() => void logout()}>
+                    <LogOut /> 退出登录
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>管理</SidebarGroupLabel>
+          <SidebarGroup className="pt-2">
             <SidebarGroupContent>
               <SidebarMenu>
                 {NAV.map((item) => (
@@ -120,57 +142,18 @@ export default function AdminLayout() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton size="lg" tooltip={session?.name || '账号'}>
-                    <Avatar className="size-8 rounded-lg">
-                      <AvatarImage src={session?.picture ?? undefined} alt={session?.name || ''} referrerPolicy="no-referrer" />
-                      <AvatarFallback className="rounded-lg">
-                        {session?.name?.slice(0, 1).toUpperCase() || 'A'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">{session?.name || '管理员'}</span>
-                      <span className="truncate text-xs text-sidebar-foreground/60">{session?.email}</span>
-                    </span>
-                    {signingOut ? <Loader2 className="animate-spin" /> : <MoreVertical />}
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" align="end" className="w-56">
-                  <DropdownMenuLabel className="font-normal">
-                    <p className="truncate text-sm font-medium">{session?.name || '管理员'}</p>
-                    <p className="truncate text-xs text-muted-foreground">{session?.email}</p>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a href="/" target="_blank" rel="noreferrer">
-                      <ExternalLink /> 查看网站
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled={signingOut} onSelect={() => void logout()}>
-                    <LogOut /> 退出登录
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur">
+        <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/90 px-3 backdrop-blur sm:px-4">
           <SidebarTrigger className="-ml-1" />
-          <span className="text-sm font-medium md:hidden">博客后台</span>
+          <h1 className="text-sm font-medium">{pageTitle}</h1>
         </header>
         <main className="flex-1">
           <div
             className={cn(
-              'mx-auto px-4 py-6 sm:px-6 md:px-8 md:py-10',
+              'mx-auto px-4 py-5 sm:px-5 md:px-6 md:py-7',
               editingPost ? 'max-w-[1500px]' : 'max-w-5xl',
             )}
           >

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -52,20 +53,25 @@ export default function ChangelogManager() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div><h1 className="text-2xl font-bold tracking-tight">更新日志</h1><p className="mt-1 text-sm text-muted-foreground">记录博客的功能、设计与部署变化。</p></div>
-        <Button onClick={() => { setForm({ ...EMPTY }); setEditing('new') }}><Plus /> 新增记录</Button>
+      <div className="mb-4 flex justify-end">
+        <Button size="sm" onClick={() => { setForm({ ...EMPTY }); setEditing('new') }}><Plus /> 新增记录</Button>
       </div>
       {!entries && <div className="flex items-center gap-2 py-12 text-muted-foreground"><Loader2 className="animate-spin" /> 加载中…</div>}
       <div className="space-y-3">
         {entries?.map((entry) => (
           <Card key={entry.id}>
-            <CardHeader className="flex-row items-start gap-3 space-y-0">
+            <CardHeader className="flex-row items-start gap-3 space-y-0 p-4">
               <div className="min-w-0 flex-1"><CardTitle className="text-lg">{entry.title}</CardTitle><CardDescription className="mt-1">{entry.version || '无版本号'} · {new Date(entry.published_at).toLocaleString('zh-CN')} · {entry.status === 1 ? '已发布' : '草稿'}</CardDescription></div>
-              <Button variant="ghost" size="icon" onClick={() => openEdit(entry)}><Pencil /></Button>
-              <Button variant="ghost" size="icon" onClick={() => void remove(entry)}><Trash2 /></Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label={`操作：${entry.title}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => openEdit(entry)}><Pencil /> 编辑</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => void remove(entry)}><Trash2 /> 删除</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardHeader>
-            <CardContent><p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">{entry.content}</p></CardContent>
+            <CardContent className="px-4 pb-4"><p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">{entry.content}</p></CardContent>
           </Card>
         ))}
       </div>
