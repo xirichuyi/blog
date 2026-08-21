@@ -6,6 +6,7 @@ import { PdfReader } from '@/components/books/PdfReader'
 import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
+import { isReaderTopHover } from '@/lib/reader-gestures'
 import { listBooks, type Book, type BookFile } from '@/services/api'
 import './BookReader.css'
 
@@ -136,6 +137,7 @@ export default function BookReader() {
     else void pageRef.current?.requestFullscreen()
   }
   const toggleUi = useCallback(() => setUiVisible((current) => !current), [])
+  const revealUi = useCallback(() => setUiVisible(true), [])
 
   if (!books && !error) return <div className="reader-route-state">Opening reader…</div>
   if (error) return <div className="reader-route-state"><strong>Could not load the bookshelf.</strong><span>{error}</span><Link to="/books">Back to Books</Link></div>
@@ -144,7 +146,13 @@ export default function BookReader() {
 
   const format = file.format.toLowerCase()
   return (
-    <main ref={pageRef} className={`book-reader-page reader-theme-${theme}${uiVisible ? '' : ' is-reader-ui-hidden'}`}>
+    <main
+      ref={pageRef}
+      className={`book-reader-page reader-theme-${theme}${uiVisible ? '' : ' is-reader-ui-hidden'}`}
+      onPointerMove={(event) => {
+        if (event.pointerType === 'mouse' && isReaderTopHover(event.clientY, event.currentTarget.clientHeight)) revealUi()
+      }}
+    >
       <SEO title={`Read ${book.title}`} description={`Read ${book.title} by ${book.author || 'Unknown author'}.`} path={`/books/${book.id}/read`} />
       <div className="book-reader-back"><MagneticBackButton onClick={() => navigate('/books')} /></div>
       <div className="book-reader-title" aria-label="Current book">
@@ -175,7 +183,7 @@ export default function BookReader() {
       </div>
       <div className="book-reader-surface">
         {format === 'epub'
-          ? <EpubReader bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onToggleUi={toggleUi} />
+          ? <EpubReader bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onRevealUi={revealUi} onToggleUi={toggleUi} />
           : <PdfReader bookId={book.id} file={file} onToggleUi={toggleUi} />}
       </div>
     </main>

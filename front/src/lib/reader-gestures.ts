@@ -5,6 +5,7 @@ interface ReaderGestureOptions {
   getWidth: () => number
   onNext: () => void
   onPrevious: () => void
+  onTopHover?: () => void
   onToggleControls?: () => void
 }
 
@@ -24,6 +25,11 @@ interface PointerStart {
 
 const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, [contenteditable="true"]'
 const TEXT_ENTRY_SELECTOR = 'input, select, textarea, [contenteditable="true"]'
+
+export function isReaderTopHover(clientY: number, height: number): boolean {
+  const hoverHeight = Math.min(96, Math.max(64, height * 0.12))
+  return clientY >= 0 && clientY <= hoverHeight
+}
 
 function targetMatches(target: EventTarget | null, selector: string): boolean {
   const element = target as { closest?: (selector: string) => Element | null } | null
@@ -58,6 +64,13 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
 
   const onPointerCancel = () => {
     start = null
+  }
+
+  const onPointerMove = (rawEvent: Event) => {
+    const event = rawEvent as PointerEvent
+    if (event.pointerType === 'mouse' && isReaderTopHover(event.clientY, options.getHeight())) {
+      options.onTopHover?.()
+    }
   }
 
   const onPointerUp = (rawEvent: Event) => {
@@ -97,12 +110,14 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
   }
 
   target.addEventListener('pointerdown', onPointerDown)
+  target.addEventListener('pointermove', onPointerMove)
   target.addEventListener('pointerup', onPointerUp)
   target.addEventListener('pointercancel', onPointerCancel)
   target.addEventListener('click', onClick)
 
   return () => {
     target.removeEventListener('pointerdown', onPointerDown)
+    target.removeEventListener('pointermove', onPointerMove)
     target.removeEventListener('pointerup', onPointerUp)
     target.removeEventListener('pointercancel', onPointerCancel)
     target.removeEventListener('click', onClick)

@@ -14,6 +14,7 @@ interface EpubReaderProps {
   file: BookFile
   flow: ReaderFlow
   fontSize: number
+  onRevealUi: () => void
   onToggleUi: () => void
   theme: ReaderTheme
 }
@@ -88,7 +89,7 @@ function TableOfContents({ items, onSelect }: { items: NavItem[]; onSelect: (hre
   )
 }
 
-export function EpubReader({ bookId, file, flow, fontSize, onToggleUi, theme }: EpubReaderProps) {
+export function EpubReader({ bookId, file, flow, fontSize, onRevealUi, onToggleUi, theme }: EpubReaderProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const renditionRef = useRef<Rendition | null>(null)
   const flowRef = useRef(flow)
@@ -146,6 +147,7 @@ export function EpubReader({ bookId, file, flow, fontSize, onToggleUi, theme }: 
               getWidth: () => contents.window.innerWidth,
               onNext: () => void rendition.next(),
               onPrevious: () => void rendition.prev(),
+              onTopHover: onRevealUi,
               onToggleControls: onToggleUi,
             })
             const cleanupKeyboard = bindReaderKeyboard(contents.document, {
@@ -192,7 +194,7 @@ export function EpubReader({ bookId, file, flow, fontSize, onToggleUi, theme }: 
       gestureCleanups.clear()
       activeBook?.destroy()
     }
-  }, [bookId, file.id, file.file_url, flow, onToggleUi])
+  }, [bookId, file.id, file.file_url, flow, onRevealUi, onToggleUi])
 
   useEffect(() => {
     themeRef.current = theme
