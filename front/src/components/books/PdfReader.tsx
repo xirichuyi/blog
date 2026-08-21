@@ -4,7 +4,7 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Button } from '@/components/ui/button'
 import { loadReaderProgress, saveReaderProgress } from '@/lib/book-progress'
-import { bindReaderGestures } from '@/lib/reader-gestures'
+import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 interface PdfReaderProps {
@@ -107,6 +107,7 @@ export function PdfReader({ bookId, file, onToggleUi }: PdfReaderProps) {
     if (!frame) return
     frame.style.touchAction = 'pan-y pinch-zoom'
     return bindReaderGestures(frame, {
+      getHeight: () => frame.clientHeight,
       getSelection: () => window.getSelection()?.toString() ?? '',
       getWidth: () => frame.clientWidth,
       onNext: () => setPage((current) => Math.min(pages || 1, current + 1)),
@@ -115,19 +116,15 @@ export function PdfReader({ bookId, file, onToggleUi }: PdfReaderProps) {
     })
   }, [onToggleUi, pages])
 
-  useEffect(() => {
-    const navigateWithKeyboard = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement).closest('input, select, textarea, button')) return
-      if (event.key === 'ArrowLeft') setPage((current) => Math.max(1, current - 1))
-      if (event.key === 'ArrowRight') setPage((current) => Math.min(pages, current + 1))
-    }
-    window.addEventListener('keydown', navigateWithKeyboard)
-    return () => window.removeEventListener('keydown', navigateWithKeyboard)
-  }, [pages])
+  useEffect(() => bindReaderKeyboard(window, {
+    getSelection: () => window.getSelection()?.toString() ?? '',
+    onNext: () => setPage((current) => Math.min(pages || 1, current + 1)),
+    onPrevious: () => setPage((current) => Math.max(1, current - 1)),
+  }), [pages])
 
   return (
     <div className="pdf-reader">
-      <section ref={frameRef} className="pdf-viewport">
+      <section ref={frameRef} className="pdf-viewport" tabIndex={0} aria-label="PDF reading area">
         <canvas ref={canvasRef} />
         {loading && <div className="reader-state"><Loader2 className="animate-spin" /> Preparing PDF…</div>}
         {error && <div className="reader-state reader-error"><strong>Could not open this PDF</strong><span>{error}</span></div>}

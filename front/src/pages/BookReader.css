@@ -47,6 +47,17 @@
   pointer-events: none;
 }
 
+.book-reader-page.is-reader-ui-hidden .book-reader-back,
+.book-reader-page.is-reader-ui-hidden .book-reader-file-select,
+.book-reader-page.is-reader-ui-hidden .book-reader-settings,
+.book-reader-page.is-reader-ui-hidden .reader-chapter-controls {
+  transform: translateY(-0.5rem);
+}
+
+.book-reader-page.is-reader-ui-hidden .book-reader-title {
+  transform: translate(-50%, -0.5rem);
+}
+
 .book-reader-back {
   position: fixed;
   z-index: 32;

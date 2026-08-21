@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, List, Loader2, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
 import { Button } from '@/components/ui/button'
 import { loadReaderProgress, saveReaderProgress } from '@/lib/book-progress'
-import { bindReaderGestures } from '@/lib/reader-gestures'
+import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 export type ReaderTheme = 'paper' | 'night'
@@ -128,19 +128,36 @@ export function EpubReader({ bookId, file, flow, fontSize, onToggleUi, theme }: 
         renditionRef.current = rendition
         registerThemes(rendition)
         applyRenditionAppearance(rendition, themeRef.current, fontSizeRef.current)
+        const unbindRemovedView = (view: { contents?: Contents }) => {
+          const document = view.contents?.document
+          if (!document) return
+          gestureCleanups.get(document)?.()
+          gestureCleanups.delete(document)
+        }
+        rendition.hooks.unloaded.register(unbindRemovedView)
         const bindVisibleContents = () => {
           visibleContents(rendition).forEach((contents) => {
             applyContentAppearance(contents, themeRef.current, fontSizeRef.current)
             if (gestureCleanups.has(contents.document)) return
             const cleanup = bindReaderGestures(contents.document, {
               pageNavigation: flowRef.current === 'paginated',
+              getHeight: () => contents.window.innerHeight,
               getSelection: () => contents.window.getSelection()?.toString() ?? '',
               getWidth: () => contents.window.innerWidth,
               onNext: () => void rendition.next(),
               onPrevious: () => void rendition.prev(),
               onToggleControls: onToggleUi,
             })
-            gestureCleanups.set(contents.document, cleanup)
+            const cleanupKeyboard = bindReaderKeyboard(contents.document, {
+              pageNavigation: flowRef.current === 'paginated',
+              getSelection: () => contents.window.getSelection()?.toString() ?? '',
+              onNext: () => void rendition.next(),
+              onPrevious: () => void rendition.prev(),
+            })
+            gestureCleanups.set(contents.document, () => {
+              cleanup()
+              cleanupKeyboard()
+            })
           })
         }
         rendition.on('rendered', bindVisibleContents)
@@ -189,15 +206,12 @@ export function EpubReader({ bookId, file, flow, fontSize, onToggleUi, theme }: 
     if (rendition) applyRenditionAppearance(rendition, themeRef.current, fontSize)
   }, [fontSize])
 
-  useEffect(() => {
-    const navigateWithKeyboard = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement).closest('input, select, textarea, button')) return
-      if (event.key === 'ArrowLeft') void renditionRef.current?.prev()
-      if (event.key === 'ArrowRight') void renditionRef.current?.next()
-    }
-    window.addEventListener('keydown', navigateWithKeyboard)
-    return () => window.removeEventListener('keydown', navigateWithKeyboard)
-  }, [])
+  useEffect(() => bindReaderKeyboard(window, {
+    pageNavigation: flow === 'paginated',
+    getSelection: () => window.getSelection()?.toString() ?? '',
+    onNext: () => void renditionRef.current?.next(),
+    onPrevious: () => void renditionRef.current?.prev(),
+  }), [flow])
 
   const displayChapter = (href: string) => {
     void renditionRef.current?.display(href)

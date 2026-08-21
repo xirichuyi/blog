@@ -26,12 +26,13 @@ function initialReaderFlow(): ReaderFlow {
   return localStorage.getItem('book-reader-flow') === 'scrolled' ? 'scrolled' : 'paginated'
 }
 
-function ReaderPreferences({ format, flow, fontSize, fullscreen, theme, onFlow, onFontSize, onTheme, onFullscreen }: {
+function ReaderPreferences({ format, flow, fontSize, fullscreen, theme, visible, onFlow, onFontSize, onTheme, onFullscreen }: {
   format: string
   flow: ReaderFlow
   fontSize: number
   fullscreen: boolean
   theme: ReaderTheme
+  visible: boolean
   onFlow: (flow: ReaderFlow) => void
   onFontSize: (size: number) => void
   onTheme: (theme: ReaderTheme) => void
@@ -39,6 +40,10 @@ function ReaderPreferences({ format, flow, fontSize, fullscreen, theme, onFlow, 
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!visible) setOpen(false)
+  }, [visible])
 
   useEffect(() => {
     if (!open) return
@@ -96,7 +101,7 @@ export default function BookReader() {
   const [fontSize, setFontSize] = useState(initialFontSize)
   const [flow, setFlow] = useState<ReaderFlow>(initialReaderFlow)
   const [fullscreen, setFullscreen] = useState(false)
-  const [uiVisible, setUiVisible] = useState(true)
+  const [uiVisible, setUiVisible] = useState(false)
 
   useEffect(() => {
     listBooks().then(setBooks).catch((loadError) => setError((loadError as Error).message))
@@ -161,6 +166,7 @@ export default function BookReader() {
           fontSize={fontSize}
           fullscreen={fullscreen}
           theme={theme}
+          visible={uiVisible}
           onFlow={changeFlow}
           onFontSize={changeFontSize}
           onTheme={changeTheme}

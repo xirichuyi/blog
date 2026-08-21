@@ -1,10 +1,18 @@
 interface ReaderGestureOptions {
   pageNavigation?: boolean
+  getHeight: () => number
   getSelection: () => string
   getWidth: () => number
   onNext: () => void
   onPrevious: () => void
   onToggleControls?: () => void
+}
+
+interface ReaderKeyboardOptions {
+  pageNavigation?: boolean
+  getSelection: () => string
+  onNext: () => void
+  onPrevious: () => void
 }
 
 interface PointerStart {
@@ -15,10 +23,15 @@ interface PointerStart {
 }
 
 const INTERACTIVE_SELECTOR = 'a, button, input, select, textarea, [contenteditable="true"]'
+const TEXT_ENTRY_SELECTOR = 'input, select, textarea, [contenteditable="true"]'
+
+function targetMatches(target: EventTarget | null, selector: string): boolean {
+  const element = target as { closest?: (selector: string) => Element | null } | null
+  return typeof element?.closest === 'function' && Boolean(element.closest(selector))
+}
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
-  const element = target as { closest?: (selector: string) => Element | null } | null
-  return typeof element?.closest === 'function' && Boolean(element.closest(INTERACTIVE_SELECTOR))
+  return targetMatches(target, INTERACTIVE_SELECTOR)
 }
 
 export function bindReaderGestures(target: EventTarget, options: ReaderGestureOptions): () => void {
@@ -45,6 +58,7 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
     const deltaY = event.clientY - gestureStart.y
     const distance = Math.hypot(deltaX, deltaY)
     const width = Math.max(1, options.getWidth())
+    const height = Math.max(1, options.getHeight())
     const swipeThreshold = Math.min(72, Math.max(44, width * 0.1))
 
     if (options.pageNavigation !== false && Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
@@ -56,9 +70,10 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
     const isTap = distance < 12 && performance.now() - gestureStart.time < 420
     if (!isTap) return
     const relativeX = event.clientX / width
+    const relativeY = event.clientY / height
     if (options.pageNavigation !== false && relativeX <= 0.2) options.onPrevious()
     else if (options.pageNavigation !== false && relativeX >= 0.8) options.onNext()
-    else options.onToggleControls?.()
+    else if (relativeX >= 0.28 && relativeX <= 0.72 && relativeY >= 0.18 && relativeY <= 0.82) options.onToggleControls?.()
   }
 
   target.addEventListener('pointerdown', onPointerDown)
@@ -70,4 +85,35 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
     target.removeEventListener('pointerup', onPointerUp)
     target.removeEventListener('pointercancel', onPointerCancel)
   }
+}
+
+export function bindReaderKeyboard(target: EventTarget, options: ReaderKeyboardOptions): () => void {
+  const onKeyDown = (rawEvent: Event) => {
+    const event = rawEvent as KeyboardEvent
+    if (
+      event.defaultPrevented
+      || event.isComposing
+      || event.metaKey
+      || event.ctrlKey
+      || event.altKey
+      || targetMatches(event.target, TEXT_ENTRY_SELECTOR)
+      || options.getSelection().trim()
+    ) return
+
+    const paginated = options.pageNavigation !== false
+    const previous = event.key === 'ArrowLeft'
+      || (paginated && (event.key === 'ArrowUp' || event.key === 'PageUp' || (event.key === ' ' && event.shiftKey)))
+    const next = event.key === 'ArrowRight'
+      || (paginated && (event.key === 'ArrowDown' || event.key === 'PageDown' || (event.key === ' ' && !event.shiftKey)))
+
+    if (!previous && !next) return
+    // Keep Space available for activating focused reader controls.
+    if (event.key === ' ' && isInteractiveTarget(event.target)) return
+    event.preventDefault()
+    if (previous) options.onPrevious()
+    else options.onNext()
+  }
+
+  target.addEventListener('keydown', onKeyDown)
+  return () => target.removeEventListener('keydown', onKeyDown)
 }
