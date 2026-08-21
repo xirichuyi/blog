@@ -5,7 +5,7 @@ interface ReaderGestureOptions {
   getWidth: () => number
   onNext: () => void
   onPrevious: () => void
-  onTopHover?: () => void
+  onTopHoverChange?: (hovered: boolean) => void
   onToggleControls?: () => void
 }
 
@@ -68,8 +68,8 @@ export function bindReaderGestures(target: EventTarget, options: ReaderGestureOp
 
   const onPointerMove = (rawEvent: Event) => {
     const event = rawEvent as PointerEvent
-    if (event.pointerType === 'mouse' && isReaderTopHover(event.clientY, options.getHeight())) {
-      options.onTopHover?.()
+    if (event.pointerType === 'mouse') {
+      options.onTopHoverChange?.(isReaderTopHover(event.clientY, options.getHeight()))
     }
   }
 

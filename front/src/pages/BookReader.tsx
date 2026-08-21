@@ -137,7 +137,7 @@ export default function BookReader() {
     else void pageRef.current?.requestFullscreen()
   }
   const toggleUi = useCallback(() => setUiVisible((current) => !current), [])
-  const revealUi = useCallback(() => setUiVisible(true), [])
+  const syncUiWithTopHover = useCallback((hovered: boolean) => setUiVisible(hovered), [])
 
   if (!books && !error) return <div className="reader-route-state">Opening reader…</div>
   if (error) return <div className="reader-route-state"><strong>Could not load the bookshelf.</strong><span>{error}</span><Link to="/books">Back to Books</Link></div>
@@ -150,7 +150,10 @@ export default function BookReader() {
       ref={pageRef}
       className={`book-reader-page reader-theme-${theme}${uiVisible ? '' : ' is-reader-ui-hidden'}`}
       onPointerMove={(event) => {
-        if (event.pointerType === 'mouse' && isReaderTopHover(event.clientY, event.currentTarget.clientHeight)) revealUi()
+        if (event.pointerType === 'mouse') syncUiWithTopHover(isReaderTopHover(event.clientY, event.currentTarget.clientHeight))
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === 'mouse') syncUiWithTopHover(false)
       }}
     >
       <SEO title={`Read ${book.title}`} description={`Read ${book.title} by ${book.author || 'Unknown author'}.`} path={`/books/${book.id}/read`} />
@@ -183,7 +186,7 @@ export default function BookReader() {
       </div>
       <div className="book-reader-surface">
         {format === 'epub'
-          ? <EpubReader bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onRevealUi={revealUi} onToggleUi={toggleUi} />
+          ? <EpubReader bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />
           : <PdfReader bookId={book.id} file={file} onToggleUi={toggleUi} />}
       </div>
     </main>
