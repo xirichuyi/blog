@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, List, Loader2, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
 import { Button } from '@/components/ui/button'
 import { loadReaderProgress, saveReaderProgress } from '@/lib/book-progress'
-import { bindReaderGestures, bindReaderKeyboard, isReaderTouchDevice } from '@/lib/reader-gestures'
+import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 export type ReaderTheme = 'paper' | 'night'
@@ -60,7 +60,7 @@ function applyContentAppearance(contents: Contents, theme: ReaderTheme): void {
   root.style.setProperty('color-scheme', theme === 'night' ? 'dark' : 'light')
   contents.document.body?.style.setProperty('background-color', paper, 'important')
   contents.document.body?.style.setProperty('color', ink, 'important')
-  root.style.touchAction = isReaderTouchDevice(contents.window) ? 'pan-y pinch-zoom' : 'auto'
+  root.style.touchAction = 'pan-y pinch-zoom'
   if (contents.document.body) contents.document.body.style.touchAction = root.style.touchAction
 }
 
@@ -137,7 +137,7 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
           visibleContents(rendition).forEach((contents) => {
             applyContentAppearance(contents, themeRef.current)
             if (interactionCleanups.has(contents)) return
-            const cleanup = bindReaderGestures(contents, {
+            const cleanup = bindReaderGestures(contents.document, {
               getWindow: () => contents.window,
               pageNavigation: true,
               getHeight: () => contents.window.innerHeight,
@@ -148,7 +148,7 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
               onTopHoverChange,
               onToggleControls: onToggleUi,
             })
-            const cleanupKeyboard = bindReaderKeyboard(contents, {
+            const cleanupKeyboard = bindReaderKeyboard(contents.document, {
               pageNavigation: flow === 'paginated',
               getSelection: () => contents.window.getSelection()?.toString() ?? '',
               onNext: () => void rendition.next(),
