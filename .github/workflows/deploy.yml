@@ -159,6 +159,10 @@ jobs:
       - name: Deploy backend (upload binary, atomic swap, restart)
         run: |
           chmod +x bin/chuyi-uk-back
+          rsync -az \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            backend/blog-backend.service \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/blog-backend.service.new"
           rsync -az --chmod=F600 \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
             analytics.env \
@@ -175,6 +179,10 @@ jobs:
               mv -f .analytics.env.new .analytics.env
               sudo chown root:www-data .analytics.env
               sudo chmod 640 .analytics.env
+              sudo install -o root -g root -m 644 \
+                /tmp/blog-backend.service.new \
+                /etc/systemd/system/blog-backend.service
+              sudo systemctl daemon-reload
               cd /var/www/blog/backend/target/release
               mv -f chuyi-uk-back.new chuyi-uk-back   # atomic on same fs
               chmod +x chuyi-uk-back
@@ -185,14 +193,30 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
+              set -e
+              healthy=false
               for i in $(seq 1 20); do
                 code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3006/api/health || true)
                 echo "attempt $i: /api/health -> $code"
-                [ "$code" = "200" ] && { echo "backend healthy ✅"; exit 0; }
+                [ "$code" = "200" ] && { healthy=true; break; }
                 sleep 2
               done
-              echo "❌ backend did not become healthy"
-              sudo systemctl status blog-backend --no-pager | tail -30
-              journalctl -u blog-backend --no-pager -n 40
-              exit 1
+              if [ "$healthy" != "true" ]; then
+                echo "❌ backend did not become healthy"
+                sudo systemctl status blog-backend --no-pager | tail -30
+                journalctl -u blog-backend --no-pager -n 40
+                exit 1
+              fi
+              echo "backend healthy ✅"
+
+              admin_token=$(sudo sed -n "s/^BLOG_ADMIN_TOKEN=//p" /var/www/blog/backend/.env | tail -n 1 | tr -d "\r")
+              test -n "$admin_token" || { echo "❌ BLOG_ADMIN_TOKEN is unavailable"; exit 1; }
+              analytics=$(curl -sS \
+                -H "Authorization: Bearer $admin_token" \
+                "http://127.0.0.1:3006/api/admin/analytics?days=7")
+              if ! printf "%s" "$analytics" | grep -q "\"available\":true"; then
+                echo "❌ Cloudflare analytics is not connected: $analytics"
+                exit 1
+              fi
+              echo "Cloudflare analytics connected ✅"
             '
