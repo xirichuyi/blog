@@ -12,6 +12,7 @@ Restart=always
 RestartSec=5
 Environment=ENV=production
 Environment=RUST_LOG=info
+EnvironmentFile=-/var/www/blog/backend/.env
 EnvironmentFile=-/var/www/blog/backend/.analytics.env
 
 # 安全设置

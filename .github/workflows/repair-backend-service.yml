@@ -1,0 +1,46 @@
+name: Repair Backend Service
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Restore service configuration
+        run: |
+          rsync -az \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            backend/blog-backend.service \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/blog-backend.service.repair"
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
+              set -e
+              sudo install -o root -g root -m 644 \
+                /tmp/blog-backend.service.repair \
+                /etc/systemd/system/blog-backend.service
+              sudo systemctl daemon-reload
+              sudo systemctl restart blog-backend
+              for i in $(seq 1 20); do
+                code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3006/api/health || true)
+                echo "attempt $i: /api/health -> $code"
+                [ "$code" = "200" ] && exit 0
+                sleep 2
+              done
+              sudo systemctl status blog-backend --no-pager | tail -30
+              journalctl -u blog-backend --no-pager -n 40
+              exit 1
+            '
