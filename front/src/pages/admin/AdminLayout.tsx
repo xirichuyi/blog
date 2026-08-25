@@ -2,8 +2,6 @@ import { useState, type CSSProperties } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   BookOpen,
-  ChevronUp,
-  ExternalLink,
   FileText,
   History,
   LayoutDashboard,
@@ -26,10 +24,8 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -92,21 +88,34 @@ export default function AdminLayout() {
   }
 
   return (
-    <SidebarProvider className="admin-shell" style={{ '--sidebar-width': '13rem' } as CSSProperties}>
-      <Sidebar collapsible="offcanvas" className="admin-sidebar">
+    <SidebarProvider className="admin-shell" style={{ '--sidebar-width': '10.75rem' } as CSSProperties}>
+      {!editingPost && (
+        <Sidebar collapsible="offcanvas" className="admin-sidebar">
         <SidebarHeader className="admin-sidebar-header">
-          <Link to="/admin" className="admin-brand" aria-label="楚一博客管理后台">
-            <span className="admin-brand-mark">初</span>
-            <span className="min-w-0">
-              <strong>楚一博客</strong>
-              <small>写作与整理</small>
-            </span>
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="admin-profile-trigger" aria-label="管理员账户">
+                <Avatar className="size-8">
+                  <AvatarImage src={session?.picture ?? undefined} alt={session?.name || ''} referrerPolicy="no-referrer" />
+                  <AvatarFallback>{session?.name?.slice(0, 1).toUpperCase() || 'A'}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="w-60">
+              <DropdownMenuLabel className="font-normal">
+                <p className="truncate text-sm font-medium">{session?.name || '管理员'}</p>
+                <p className="truncate text-xs text-muted-foreground">{session?.email}</p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled={signingOut} onSelect={() => void logout()}>
+                {signingOut ? <Loader2 className="animate-spin" /> : <LogOut />} 退出登录
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarHeader>
 
         <SidebarContent className="px-2">
           <SidebarGroup>
-            <SidebarGroupLabel className="admin-nav-label">一 隅 书 房</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {NAV.map((item) => (
@@ -128,44 +137,12 @@ export default function AdminLayout() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="admin-sidebar-footer">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton size="lg" className="admin-account">
-                    <Avatar className="size-8">
-                      <AvatarImage src={session?.picture ?? undefined} alt={session?.name || ''} referrerPolicy="no-referrer" />
-                      <AvatarFallback>{session?.name?.slice(0, 1).toUpperCase() || 'A'}</AvatarFallback>
-                    </Avatar>
-                    <span className="grid min-w-0 flex-1 text-left leading-tight">
-                      <span className="truncate text-sm font-medium">{session?.name || '管理员'}</span>
-                      <span className="truncate text-xs text-muted-foreground">{session?.email}</span>
-                    </span>
-                    {signingOut ? <Loader2 className="animate-spin" /> : <ChevronUp />}
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" align="end" className="w-60">
-                  <DropdownMenuLabel className="font-normal">
-                    <p className="truncate text-sm font-medium">{session?.name || '管理员'}</p>
-                    <p className="truncate text-xs text-muted-foreground">{session?.email}</p>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a href="/" target="_blank" rel="noreferrer"><ExternalLink /> 查看博客</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled={signingOut} onSelect={() => void logout()}>
-                    <LogOut /> 退出登录
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
+        </Sidebar>
+      )}
 
-      <SidebarInset className="admin-workspace">
-        <header className="admin-topbar">
+      <SidebarInset className={cn('admin-workspace', editingPost && 'admin-workspace-editor')}>
+        {!editingPost && (
+          <header className="admin-topbar">
           <div className="flex min-w-0 items-center gap-3">
             <SidebarTrigger className="md:hidden" />
             <div className="min-w-0">
@@ -173,12 +150,10 @@ export default function AdminLayout() {
               <p>{meta.description}</p>
             </div>
           </div>
-          <Button asChild variant="ghost" size="sm" className="admin-view-site">
-            <a href="/" target="_blank" rel="noreferrer"><ExternalLink /> <span>查看博客</span></a>
-          </Button>
-        </header>
+          </header>
+        )}
 
-        <main className="admin-main">
+        <main className={cn('admin-main', editingPost && 'admin-main-editor')}>
           <div className={cn('admin-container', editingPost && 'admin-container-editor')}>
             <Outlet />
           </div>

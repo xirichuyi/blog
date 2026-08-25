@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { EditorContent, useEditor } from '@tiptap/react'
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
+import { BubbleMenu } from '@tiptap/react/menus'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown as TiptapMarkdown } from '@tiptap/markdown'
@@ -133,6 +134,22 @@ export function MarkdownEditor({
     },
     onUpdate: ({ editor: updatedEditor }) => onChange(updatedEditor.getMarkdown()),
   })
+  const editorState = useEditorState({
+    editor,
+    selector: ({ editor: currentEditor }) => currentEditor ? ({
+      blockquote: currentEditor.isActive('blockquote'),
+      bold: currentEditor.isActive('bold'),
+      bulletList: currentEditor.isActive('bulletList'),
+      canRedo: currentEditor.can().redo(),
+      canUndo: currentEditor.can().undo(),
+      code: currentEditor.isActive('code'),
+      heading2: currentEditor.isActive('heading', { level: 2 }),
+      heading3: currentEditor.isActive('heading', { level: 3 }),
+      italic: currentEditor.isActive('italic'),
+      link: currentEditor.isActive('link'),
+      orderedList: currentEditor.isActive('orderedList'),
+    }) : null,
+  })
 
   useEffect(() => {
     if (!editor || editor.isDestroyed || editor.getMarkdown() === value) return
@@ -232,7 +249,7 @@ export function MarkdownEditor({
   return (
     <TooltipProvider delayDuration={300}>
       <section
-        className="admin-editor-surface rounded-xl border border-border bg-background"
+        className="admin-editor-surface"
       onPaste={handleImagePaste}
       onDragEnter={(event) => {
         if (!hasImageFile(event.dataTransfer)) return
@@ -253,23 +270,51 @@ export function MarkdownEditor({
         void insertImage(file)
       }}
     >
+      <BubbleMenu editor={editor}>
+        <div className="admin-editor-bubble">
+          <ToolbarButton
+            label="粗体"
+            active={editorState?.bold}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+          >
+            <Bold />
+          </ToolbarButton>
+          <ToolbarButton
+            label="斜体"
+            active={editorState?.italic}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+          >
+            <Italic />
+          </ToolbarButton>
+          <ToolbarButton label="链接" active={editorState?.link} onClick={openLinkDialog}>
+            <Link2 />
+          </ToolbarButton>
+          <ToolbarButton
+            label="行内代码"
+            active={editorState?.code}
+            onClick={() => editor.chain().focus().toggleCode().run()}
+          >
+            <Code2 />
+          </ToolbarButton>
+        </div>
+      </BubbleMenu>
       <div
         ref={toolbarRef}
-        className="admin-editor-toolbar fixed inset-x-0 top-[var(--mobile-toolbar-top)] z-50 flex min-h-11 items-center gap-1 overflow-x-auto border-y border-border bg-background/95 px-2 backdrop-blur md:sticky md:inset-x-auto md:top-12 md:z-20 md:rounded-t-xl md:border-x-0 md:border-t-0"
+        className="admin-editor-toolbar fixed inset-x-0 top-[var(--mobile-toolbar-top)] z-50 flex min-h-11 items-center gap-1 overflow-x-auto border-y border-border bg-background/95 px-1 backdrop-blur md:sticky md:inset-x-auto md:z-40 md:border-x-0"
         style={{
           '--mobile-toolbar-top': `${mobileToolbarTop}px`,
         } as CSSProperties}
       >
         <ToolbarButton
           label="二级标题"
-          active={editor.isActive('heading', { level: 2 })}
+          active={editorState?.heading2}
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         >
           <Heading2 className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="三级标题"
-          active={editor.isActive('heading', { level: 3 })}
+          active={editorState?.heading3}
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         >
           <Heading3 className="size-4" />
@@ -277,28 +322,28 @@ export function MarkdownEditor({
         <span className="mx-1 h-5 w-px shrink-0 bg-border" />
         <ToolbarButton
           label="粗体 (⌘B)"
-          active={editor.isActive('bold')}
+          active={editorState?.bold}
           onClick={() => editor.chain().focus().toggleBold().run()}
         >
           <Bold className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="斜体 (⌘I)"
-          active={editor.isActive('italic')}
+          active={editorState?.italic}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         >
           <Italic className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="链接"
-          active={editor.isActive('link')}
+          active={editorState?.link}
           onClick={openLinkDialog}
         >
           <Link2 className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="行内代码"
-          active={editor.isActive('code')}
+          active={editorState?.code}
           onClick={() => editor.chain().focus().toggleCode().run()}
         >
           <Code2 className="size-4" />
@@ -306,21 +351,21 @@ export function MarkdownEditor({
         <span className="mx-1 h-5 w-px shrink-0 bg-border" />
         <ToolbarButton
           label="无序列表"
-          active={editor.isActive('bulletList')}
+          active={editorState?.bulletList}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
           <List className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="有序列表"
-          active={editor.isActive('orderedList')}
+          active={editorState?.orderedList}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         >
           <ListOrdered className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="引用"
-          active={editor.isActive('blockquote')}
+          active={editorState?.blockquote}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         >
           <Quote className="size-4" />
@@ -348,14 +393,14 @@ export function MarkdownEditor({
         <span className="mx-1 h-5 w-px shrink-0 bg-border" />
         <ToolbarButton
           label="撤销 (⌘Z)"
-          disabled={!editor.can().undo()}
+          disabled={!editorState?.canUndo}
           onClick={() => editor.chain().focus().undo().run()}
         >
           <Undo2 className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="重做 (⇧⌘Z)"
-          disabled={!editor.can().redo()}
+          disabled={!editorState?.canRedo}
           onClick={() => editor.chain().focus().redo().run()}
         >
           <Redo2 className="size-4" />
@@ -371,10 +416,10 @@ export function MarkdownEditor({
         </p>
       )}
 
-      <div className="article-page relative max-h-[calc(100dvh-11rem)] min-h-[calc(100dvh-11rem)] overflow-y-auto rounded-xl bg-muted/10 md:max-h-[calc(100dvh-14rem)] md:min-h-[36rem] md:rounded-b-xl md:rounded-t-none">
+      <div className="article-page admin-editor-body relative min-h-[70vh]">
         <EditorContent
           editor={editor}
-          className="markdown-body wysiwyg-editor prose mx-auto max-w-3xl px-4 pb-20 pt-6 sm:px-8 md:pb-8 lg:px-12 lg:py-10"
+          className="markdown-body wysiwyg-editor prose max-w-none px-0 pb-32 pt-8 md:pb-16"
         />
         {dragging && (
           <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-primary bg-background/90 text-sm font-medium text-primary backdrop-blur">

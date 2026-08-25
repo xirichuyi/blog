@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, ChevronDown, ImagePlus, Loader2, Settings2, Tags, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -36,6 +36,44 @@ const STATUS_OPTIONS: { value: number; label: string }[] = [
   { value: POST_STATUS.Deleted, label: '已删除' },
 ]
 
+interface LocalPostDraft {
+  title: string
+  content: string
+  status: number
+  categoryId: number | null
+  coverUrl: string | null
+  tagIds: number[]
+  savedAt: number
+}
+
+type PostDraftContent = Omit<LocalPostDraft, 'savedAt'>
+
+const EMPTY_DRAFT: PostDraftContent = {
+  title: '',
+  content: '',
+  status: POST_STATUS.Draft,
+  categoryId: null,
+  coverUrl: null,
+  tagIds: [],
+}
+
+function draftKey(id?: string): string {
+  return `chuyi:post-draft:${id ?? 'new'}`
+}
+
+function draftSnapshot(draft: PostDraftContent): string {
+  return JSON.stringify({ ...draft, tagIds: [...draft.tagIds].sort((a, b) => a - b) })
+}
+
+function readLocalDraft(key: string): LocalPostDraft | null {
+  try {
+    const draft = JSON.parse(localStorage.getItem(key) || 'null') as LocalPostDraft | null
+    return draft && typeof draft.savedAt === 'number' ? draft : null
+  } catch {
+    return null
+  }
+}
+
 export default function PostEditor() {
   const { id } = useParams<{ id: string }>()
   const editing = Boolean(id)
@@ -55,6 +93,29 @@ export default function PostEditor() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState<'cover' | 'inline' | null>(null)
   const [error, setError] = useState('')
+  const [hydrated, setHydrated] = useState(false)
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() => draftSnapshot(EMPTY_DRAFT))
+  const [localBackupSnapshot, setLocalBackupSnapshot] = useState('')
+
+  const currentDraft = useMemo<PostDraftContent>(() => ({
+    title,
+    content,
+    status,
+    categoryId,
+    coverUrl,
+    tagIds,
+  }), [categoryId, content, coverUrl, status, tagIds, title])
+  const currentSnapshot = useMemo(() => draftSnapshot(currentDraft), [currentDraft])
+  const dirty = hydrated && currentSnapshot !== lastSavedSnapshot
+
+  function applyDraft(draft: PostDraftContent) {
+    setTitle(draft.title)
+    setContent(draft.content)
+    setStatus(draft.status)
+    setCategoryId(draft.categoryId)
+    setCoverUrl(draft.coverUrl)
+    setTagIds(draft.tagIds)
+  }
 
   useEffect(() => {
     Promise.all([listCategories(), listTags()])
@@ -68,19 +129,68 @@ export default function PostEditor() {
   }, [])
 
   useEffect(() => {
-    if (!id) return
+    if (!id) {
+      const localDraft = readLocalDraft(draftKey())
+      setLastSavedSnapshot(draftSnapshot(EMPTY_DRAFT))
+      if (localDraft) {
+        applyDraft(localDraft)
+        setLocalBackupSnapshot(draftSnapshot(localDraft))
+        toast.info('已恢复未保存的本地草稿')
+      }
+      setHydrated(true)
+      return
+    }
     adminGetPost(id)
       .then((post) => {
-        setTitle(post.title || '')
-        setContent(post.content || '')
-        setStatus(post.status)
-        setCategoryId(post.category_id ?? null)
-        setCoverUrl(post.cover_url ?? null)
-        setTagIds((post.tags ?? []).map((tag) => Number(tag.id)))
+        const serverDraft: PostDraftContent = {
+          title: post.title || '',
+          content: post.content || '',
+          status: post.status,
+          categoryId: post.category_id ?? null,
+          coverUrl: post.cover_url ?? null,
+          tagIds: (post.tags ?? []).map((tag) => Number(tag.id)),
+        }
+        const serverSnapshot = draftSnapshot(serverDraft)
+        const localDraft = readLocalDraft(draftKey(id))
+        const serverUpdatedAt = Date.parse(post.updated_at || post.created_at || '') || 0
+        setLastSavedSnapshot(serverSnapshot)
+        if (localDraft && localDraft.savedAt > serverUpdatedAt) {
+          applyDraft(localDraft)
+          setLocalBackupSnapshot(draftSnapshot(localDraft))
+          toast.info('已恢复未保存的本地草稿')
+        } else {
+          applyDraft(serverDraft)
+          localStorage.removeItem(draftKey(id))
+          setLocalBackupSnapshot('')
+        }
+        setHydrated(true)
       })
       .catch((loadError) => setError(String(loadError.message || loadError)))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (!hydrated || !dirty) return
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey(id), JSON.stringify({ ...currentDraft, savedAt: Date.now() }))
+        setLocalBackupSnapshot(currentSnapshot)
+      } catch {
+        // The server save path still works if browser storage is unavailable.
+      }
+    }, 700)
+    return () => window.clearTimeout(timer)
+  }, [currentDraft, currentSnapshot, dirty, hydrated, id])
+
+  useEffect(() => {
+    if (!dirty) return
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnBeforeUnload)
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload)
+  }, [dirty])
 
   async function pickCover(file: File) {
     setUploading('cover')
@@ -154,7 +264,12 @@ export default function PostEditor() {
       } else {
         postId = (await createPost(payload)).id
       }
+      setTitle(payload.title)
       setStatus(nextStatus)
+      const savedSnapshot = draftSnapshot({ ...currentDraft, title: payload.title, status: nextStatus })
+      setLastSavedSnapshot(savedSnapshot)
+      setLocalBackupSnapshot('')
+      localStorage.removeItem(draftKey(id))
       toast.success(nextStatus === POST_STATUS.Published ? '文章已发布' : '文章已保存')
       if (!editing) navigate(`/admin/posts/${postId}`, { replace: true })
     } catch (saveError) {
@@ -163,6 +278,19 @@ export default function PostEditor() {
       setSaving(false)
     }
   }
+
+  function leaveEditor() {
+    if (dirty && !window.confirm('还有未保存到服务器的修改，确定离开吗？本地草稿仍会保留。')) return
+    navigate('/admin/posts')
+  }
+
+  const saveState = saving
+    ? '保存中…'
+    : uploading
+      ? '上传中…'
+      : dirty
+        ? localBackupSnapshot === currentSnapshot ? '已备份到本机' : '未保存'
+        : editing ? '已保存' : '尚未保存'
 
   if (loading) {
     return (
@@ -175,6 +303,7 @@ export default function PostEditor() {
   return (
     <Sheet>
       <div
+        className="admin-writing-mode"
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
             event.preventDefault()
@@ -182,11 +311,20 @@ export default function PostEditor() {
           }
         }}
       >
-      <div className="admin-editor-actions sticky z-30 -mx-4 mb-4 flex min-h-11 items-center justify-between gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur sm:-mx-5 sm:px-5 md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0">
-        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => navigate('/admin/posts')}>
-          <ArrowLeft /> 文章
-        </Button>
-        <div className="flex items-center gap-2">
+      <header className="admin-editor-actions">
+        <div className="admin-editor-actions-inner">
+          <div className="admin-editor-actions-left">
+            <Button variant="ghost" size="sm" className="h-8 px-2" onClick={leaveEditor}>
+              <ArrowLeft /> <span className="admin-editor-back-label">返回文章</span>
+            </Button>
+            <span className="admin-editor-save-state">{saveState}</span>
+          </div>
+          <div className="admin-editor-actions-right">
+          {status !== POST_STATUS.Published && (
+            <Button variant="ghost" size="sm" className="admin-editor-save-draft h-8" disabled={saving || Boolean(uploading)} onClick={() => void save()}>
+              {saving && <Loader2 className="animate-spin" />} 保存草稿
+            </Button>
+          )}
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" className="h-8">
               <Settings2 /> 设置
@@ -194,15 +332,18 @@ export default function PostEditor() {
           </SheetTrigger>
           <Button
             onClick={() => void save(status === POST_STATUS.Published ? undefined : POST_STATUS.Published)}
-            disabled={saving}
+            disabled={saving || Boolean(uploading)}
             size="sm"
             className="h-8"
           >
             {saving && <Loader2 className="animate-spin" />}
             {status === POST_STATUS.Published ? '更新' : '发布'}
           </Button>
+          </div>
         </div>
-      </div>
+      </header>
+
+      <div className="admin-writing-canvas">
 
       {error && (
         <Alert variant="destructive" className="mb-4">
@@ -219,10 +360,10 @@ export default function PostEditor() {
         aria-label="文章标题"
         autoComplete="off"
         autoCapitalize="sentences"
-        className="admin-editor-title mb-3 h-11 border-0 bg-transparent px-0 text-xl font-bold shadow-none focus-visible:ring-0 sm:text-2xl"
+        className="admin-editor-title h-auto border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
       />
 
-      <SheetContent className="w-full overflow-y-auto p-5 sm:max-w-sm">
+      <SheetContent className="admin-settings-sheet w-full overflow-y-auto p-4 sm:max-w-xs">
         <SheetHeader className="text-left">
           <SheetTitle>文章设置</SheetTitle>
         </SheetHeader>
@@ -337,6 +478,7 @@ export default function PostEditor() {
         onUploadImage={uploadInlineImage}
         uploadingImage={uploading === 'inline'}
       />
+      </div>
       </div>
     </Sheet>
   )
