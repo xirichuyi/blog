@@ -92,21 +92,21 @@ export default function AdminLayout() {
   }
 
   return (
-    <SidebarProvider className="admin-shell" style={{ '--sidebar-width': '13.5rem' } as CSSProperties}>
+    <SidebarProvider className="admin-shell" style={{ '--sidebar-width': '13rem' } as CSSProperties}>
       <Sidebar collapsible="offcanvas" className="admin-sidebar">
         <SidebarHeader className="admin-sidebar-header">
           <Link to="/admin" className="admin-brand" aria-label="楚一博客管理后台">
-            <span className="admin-brand-mark">楚</span>
+            <span className="admin-brand-mark">初</span>
             <span className="min-w-0">
               <strong>楚一博客</strong>
-              <small>内容管理</small>
+              <small>写作与整理</small>
             </span>
           </Link>
         </SidebarHeader>
 
         <SidebarContent className="px-2">
           <SidebarGroup>
-            <SidebarGroupLabel className="admin-nav-label">创作与管理</SidebarGroupLabel>
+            <SidebarGroupLabel className="admin-nav-label">一 隅 书 房</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {NAV.map((item) => (

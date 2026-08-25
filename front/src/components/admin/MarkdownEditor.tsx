@@ -232,7 +232,7 @@ export function MarkdownEditor({
   return (
     <TooltipProvider delayDuration={300}>
       <section
-        className="rounded-xl border border-border bg-background shadow-sm"
+        className="admin-editor-surface rounded-xl border border-border bg-background"
       onPaste={handleImagePaste}
       onDragEnter={(event) => {
         if (!hasImageFile(event.dataTransfer)) return
@@ -255,7 +255,7 @@ export function MarkdownEditor({
     >
       <div
         ref={toolbarRef}
-        className="fixed inset-x-0 top-[var(--mobile-toolbar-top)] z-50 flex min-h-11 items-center gap-1 overflow-x-auto border-y border-border bg-background/95 px-2 shadow-lg backdrop-blur md:sticky md:inset-x-auto md:top-12 md:z-20 md:rounded-t-xl md:border-x-0 md:border-t-0 md:shadow-none"
+        className="admin-editor-toolbar fixed inset-x-0 top-[var(--mobile-toolbar-top)] z-50 flex min-h-11 items-center gap-1 overflow-x-auto border-y border-border bg-background/95 px-2 backdrop-blur md:sticky md:inset-x-auto md:top-12 md:z-20 md:rounded-t-xl md:border-x-0 md:border-t-0"
         style={{
           '--mobile-toolbar-top': `${mobileToolbarTop}px`,
         } as CSSProperties}

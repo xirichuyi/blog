@@ -1,16 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  AlertCircle,
-  ArrowRight,
-  BookOpen,
-  CircleCheck,
-  FileText,
-  FolderTree,
-  PenLine,
-  Plus,
-  Tags,
-} from 'lucide-react'
+import { AlertCircle, ArrowRight, PenLine } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -25,9 +15,9 @@ const STATUS_LABEL: Record<number, string> = {
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="min-w-0 px-5 py-5 sm:px-7">
-      <div className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{value}</div>
-      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
+    <div className="admin-stat">
+      <div className="admin-stat-value">{value}</div>
+      <div className="admin-stat-label">{label}</div>
     </div>
   )
 }
@@ -45,15 +35,15 @@ export default function Dashboard() {
   }, [])
 
   return (
-    <div className="space-y-6">
-      <section className="flex flex-col gap-5 rounded-xl border bg-card px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+    <div className="admin-dashboard">
+      <section className="admin-writing-prompt">
         <div>
-          <p className="text-xs font-medium text-primary">CHUYI BLOG</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">今天想写点什么？</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">从一个想法开始，剩下的交给编辑器。</p>
+          <p className="kicker">书房札记</p>
+          <h2>今天，想留下一些什么？</h2>
+          <p>把念头慢慢写下来，也把寻常日子妥帖收好。</p>
         </div>
-        <Button asChild className="w-full shrink-0 sm:w-auto">
-          <Link to="/admin/posts/new"><Plus /> 写文章</Link>
+        <Button asChild className="admin-writing-action shrink-0">
+          <Link to="/admin/posts/new"><PenLine /> 写一篇</Link>
         </Button>
       </section>
 
@@ -74,36 +64,32 @@ export default function Dashboard() {
 
       {stats && (
         <>
-          <section className="grid grid-cols-3 divide-x overflow-hidden rounded-xl border bg-card">
+          <section className="admin-stat-line">
             <Stat label="全部文章" value={stats.total_posts} />
             <Stat label="内容分类" value={stats.total_categories} />
             <Stat label="常用标签" value={stats.total_tags} />
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-            <section className="overflow-hidden rounded-xl border bg-card">
-              <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
+          <div className="admin-dashboard-grid">
+            <section>
+              <div className="admin-section-heading">
                 <div>
-                  <h3 className="text-sm font-semibold">最近文章</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">继续编辑或检查发布状态</p>
+                  <h3>近来写下</h3>
                 </div>
-                <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-                  <Link to="/admin/posts">全部文章 <ArrowRight /></Link>
+                <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                  <Link to="/admin/posts">全部文章 <ArrowRight className="size-3.5" /></Link>
                 </Button>
               </div>
-              <div className="divide-y">
+              <div>
                 {stats.recent_posts?.map((post) => (
                   <Link
                     key={post.id}
                     to={`/admin/posts/${post.id}`}
-                    className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/55 sm:px-6"
+                    className="admin-article-row"
                   >
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
-                      <FileText className="size-4" />
-                    </span>
                     <span className="min-w-0 flex-1">
-                      <strong className="block truncate text-sm font-medium">{post.title || '(无标题)'}</strong>
-                      <span className="mt-1 block text-xs text-muted-foreground">{shortDate(post.created_at)}</span>
+                      <strong>{post.title || '(无标题)'}</strong>
+                      <span className="admin-article-meta">{shortDate(post.created_at)}</span>
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {STATUS_LABEL[post.status] ?? STATUS_NAME[post.status] ?? post.status}
@@ -111,33 +97,17 @@ export default function Dashboard() {
                   </Link>
                 ))}
                 {!stats.recent_posts?.length && (
-                  <div className="px-6 py-14 text-center">
-                    <PenLine className="mx-auto size-5 text-muted-foreground" />
-                    <p className="mt-3 text-sm text-muted-foreground">还没有文章，从第一篇开始吧。</p>
-                  </div>
+                  <div className="admin-empty-note">还没有文章，从第一篇开始吧。</div>
                 )}
               </div>
             </section>
 
-            <aside className="space-y-6">
-              <section className="rounded-xl border bg-card p-5">
-                <h3 className="text-sm font-semibold">快捷管理</h3>
-                <div className="mt-3 space-y-1">
-                  <QuickLink to="/admin/posts/new" icon={PenLine}>开始写作</QuickLink>
-                  <QuickLink to="/admin/taxonomy" icon={FolderTree}>整理分类</QuickLink>
-                  <QuickLink to="/admin/taxonomy" icon={Tags}>管理标签</QuickLink>
-                  <QuickLink to="/admin/books" icon={BookOpen}>维护书架</QuickLink>
-                </div>
-              </section>
-
+            <aside className="admin-side-notes">
               {stats.system_info && (
-                <section className="rounded-xl border bg-card p-5">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <CircleCheck className="size-4 text-emerald-500" /> 站点运行正常
-                  </div>
-                  <p className="mt-3 text-sm text-muted-foreground">建站至今</p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums">{stats.system_info.uptime}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">始于 2025 年 5 月 2 日</p>
+                <section className="admin-side-note">
+                  <div className="admin-site-state">此间安好</div>
+                  <p className="admin-site-age">已生长 {stats.system_info.uptime}</p>
+                  <p className="admin-site-since">始于 2025 年 5 月 2 日</p>
                 </section>
               )}
             </aside>
@@ -145,15 +115,5 @@ export default function Dashboard() {
         </>
       )}
     </div>
-  )
-}
-
-function QuickLink({ children, icon: Icon, to }: { children: React.ReactNode; icon: React.ElementType; to: string }) {
-  return (
-    <Link to={to} className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-      <Icon className="size-4" />
-      <span className="flex-1">{children}</span>
-      <ArrowRight className="size-3.5 opacity-50" />
-    </Link>
   )
 }

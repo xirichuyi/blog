@@ -1,11 +1,11 @@
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
+import { AlertCircle, Loader2 } from 'lucide-react'
 import { googleLoginUrl } from '@/services/admin'
 import { useAdminAuth } from '@/lib/admin-auth'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import './AdminLayout.css'
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_configured: '服务器还没有配置 Google 登录。',
@@ -40,48 +40,37 @@ export default function AdminLogin() {
   if (!loading && session) return <Navigate to={from} replace />
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-5 py-10 text-foreground">
+    <div className="admin-shell admin-login-shell">
       <Helmet>
         <title>后台登录 · chuyi's blog</title>
       </Helmet>
 
-      <main className="w-full max-w-sm">
-        <Card>
-          <CardHeader className="items-center text-center">
-            <div className="mx-auto grid size-12 place-items-center rounded-2xl border border-border bg-secondary/60">
-              <ShieldCheck className="size-5" />
+      <main className="admin-login-panel">
+        <div className="admin-login-mark">初</div>
+        <p className="admin-login-kicker">一 隅 书 房</p>
+        <h1>回来写字</h1>
+        <p className="admin-login-description">使用管理员 Google 账号，进入这间安静的书房。</p>
+
+        {error && (
+          <Alert variant="destructive" className="mt-7">
+            <AlertCircle />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="mt-8">
+          {loading ? (
+            <div className="admin-login-loading">
+              <Loader2 className="size-4 animate-spin" />
             </div>
-            <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              chuyi / admin
-            </p>
-            <CardTitle className="mt-2 text-2xl">登录博客后台</CardTitle>
-            <CardDescription className="leading-6">
-              使用已加入管理员白名单的 Google 账号。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          ) : (
+            <Button asChild variant="outline" className="admin-login-button h-11 w-full">
+              <a href={googleLoginUrl()}><GoogleMark /> 使用 Google 账号继续</a>
+            </Button>
+          )}
+        </div>
 
-            {loading ? (
-              <div className="flex h-12 items-center justify-center rounded-xl border border-border text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-              </div>
-            ) : (
-              <Button asChild variant="outline" className="h-12 w-full bg-white text-slate-800 hover:bg-slate-50 hover:text-slate-900">
-                <a href={googleLoginUrl()}><GoogleMark /> 使用 Google 账号继续</a>
-              </Button>
-            )}
-
-            <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
-              登录状态通过安全 Cookie 保存，不会在浏览器中存储管理令牌。
-            </p>
-          </CardContent>
-        </Card>
+        <p className="admin-login-note">登录状态仅通过安全 Cookie 保存。</p>
       </main>
     </div>
   )

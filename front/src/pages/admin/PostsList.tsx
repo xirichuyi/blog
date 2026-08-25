@@ -44,7 +44,7 @@ function Status({ value }: { value: number }) {
   return (
     <span className={cn(
       'inline-flex items-center gap-1.5 text-xs text-muted-foreground',
-      value === POST_STATUS.Published && 'text-emerald-600',
+      value === POST_STATUS.Published && 'text-primary',
       value === POST_STATUS.Draft && 'text-amber-600',
     )}>
       <i className="size-1.5 rounded-full bg-current" />
@@ -121,18 +121,18 @@ export default function PostsList() {
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative min-w-0 flex-1 sm:max-w-sm">
+        <div className="admin-search relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、分类或标签" className="pl-9" />
         </div>
-        <div className="flex min-w-0 items-center gap-1 overflow-x-auto rounded-lg bg-muted p-1">
+        <div className="admin-filters flex min-w-0 items-center gap-1 overflow-x-auto">
           {FILTERS.map((item) => (
             <button
               key={item.value}
               type="button"
               className={cn(
-                'shrink-0 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors',
-                filter === item.value && 'bg-card font-medium text-foreground shadow-sm',
+                'admin-filter shrink-0 px-3 py-1.5 text-xs text-muted-foreground transition-colors',
+                filter === item.value && 'admin-filter-active font-medium text-foreground',
               )}
               onClick={() => setFilter(item.value)}
             >
@@ -158,14 +158,14 @@ export default function PostsList() {
       )}
 
       {posts && (
-        <section className="overflow-hidden rounded-xl border bg-card">
-          <div className="flex items-center justify-between border-b px-5 py-3 text-xs text-muted-foreground">
+        <section className="admin-post-list">
+          <div className="admin-post-list-meta flex items-center justify-between text-xs text-muted-foreground">
             <span>{visiblePosts.length} 篇文章</span>
             <span className="hidden sm:inline">按创建时间排序</span>
           </div>
           <div className="divide-y">
             {visiblePosts.map((post) => (
-              <article key={post.id} className="group flex items-start gap-4 px-5 py-4 transition-colors hover:bg-muted/45 sm:px-6">
+              <article key={post.id} className="admin-post-row group flex items-start gap-4">
                 <Link to={`/admin/posts/${post.id}`} className="min-w-0 flex-1">
                   <h2 className="truncate text-[15px] font-medium text-foreground group-hover:text-primary">{post.title || '(无标题)'}</h2>
                   <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
