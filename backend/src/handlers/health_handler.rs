@@ -2,11 +2,10 @@ use crate::routes::AppState;
 use axum::{extract::State, http::StatusCode, response::Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::OnceLock;
-use std::time::Instant;
 use sysinfo::{Disks, System};
+
+const BLOG_FOUNDED_AT: &str = "2025-05-02T00:00:00+08:00";
+const BLOG_FOUNDED_AT_UNIX: i64 = 1_746_115_200;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthStatus {
@@ -14,6 +13,7 @@ pub struct HealthStatus {
     pub timestamp: DateTime<Utc>,
     pub service: String,
     pub uptime_seconds: u64,
+    pub founded_at: &'static str,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,6 +22,7 @@ pub struct DetailedHealthStatus {
     pub timestamp: DateTime<Utc>,
     pub version: String,
     pub uptime_seconds: u64,
+    pub founded_at: &'static str,
     pub checks: HealthChecks,
     pub metrics: SystemMetrics,
 }
@@ -46,32 +47,13 @@ pub struct CheckResult {
 pub struct SystemMetrics {
     pub memory_usage_mb: f64,
     pub cpu_usage_percent: f64,
-    pub active_connections: u32,
-    pub request_count: u64,
-    pub cache_hit_rate: f64,
-    pub avg_response_time_ms: u64,
     pub disk_usage_percent: f64,
     pub disk_used_bytes: u64,
     pub disk_total_bytes: u64,
 }
 
-// 线程安全的服务器指标跟踪
-static SERVER_START_TIME: OnceLock<Instant> = OnceLock::new();
-static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
-
-pub fn init_server_metrics() {
-    SERVER_START_TIME.get_or_init(Instant::now);
-}
-
 fn get_uptime_seconds() -> u64 {
-    SERVER_START_TIME
-        .get()
-        .map(|start| start.elapsed().as_secs())
-        .unwrap_or(0)
-}
-
-fn get_request_count() -> u64 {
-    REQUEST_COUNT.load(Ordering::Relaxed)
+    Utc::now().timestamp().saturating_sub(BLOG_FOUNDED_AT_UNIX) as u64
 }
 
 /// Basic health check endpoint
@@ -81,6 +63,7 @@ pub async fn health_check() -> Result<Json<HealthStatus>, StatusCode> {
         timestamp: Utc::now(),
         service: "cyrus-blog-backend".to_string(),
         uptime_seconds: get_uptime_seconds(),
+        founded_at: BLOG_FOUNDED_AT,
     };
 
     Ok(Json(health_status))
@@ -107,9 +90,9 @@ pub async fn detailed_health_check(
 
     // External services check (placeholder)
     let external_check = CheckResult {
-        status: "pass".to_string(),
-        response_time_ms: 1,
-        message: "External services check skipped".to_string(),
+        status: "skip".to_string(),
+        response_time_ms: 0,
+        message: "No external service probe is configured".to_string(),
         details: None,
     };
 
@@ -124,6 +107,7 @@ pub async fn detailed_health_check(
         timestamp: Utc::now(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_seconds,
+        founded_at: BLOG_FOUNDED_AT,
         checks: HealthChecks {
             database: db_check,
             memory: memory_check,
@@ -152,6 +136,7 @@ pub async fn readiness_check(
             timestamp: Utc::now(),
             service: "cyrus-blog-backend".to_string(),
             uptime_seconds: get_uptime_seconds(),
+            founded_at: BLOG_FOUNDED_AT,
         })),
         Err(_) => Err(StatusCode::SERVICE_UNAVAILABLE),
     }
@@ -164,6 +149,7 @@ pub async fn liveness_check() -> Result<Json<HealthStatus>, StatusCode> {
         timestamp: Utc::now(),
         service: "cyrus-blog-backend".to_string(),
         uptime_seconds: get_uptime_seconds(),
+        founded_at: BLOG_FOUNDED_AT,
     }))
 }
 
@@ -178,11 +164,20 @@ async fn check_database_health(app_state: &AppState) -> CheckResult {
 
     match result {
         Ok(_) => {
-            // Note: Some pool metrics may not be available in all sqlx versions
+            let pool = app_state.database.pool();
+            let pool_size = pool.size();
+            let idle_connections = pool.num_idle();
+            let utilization_percent = if pool_size == 0 {
+                0.0
+            } else {
+                ((pool_size as usize).saturating_sub(idle_connections) as f64
+                    / f64::from(pool_size))
+                    * 100.0
+            };
             let details = serde_json::json!({
-                "pool_size": 10, // Default value - would need actual pool configuration
-                "idle_connections": 8, // Placeholder - actual implementation would need pool metrics
-                "utilization_percent": 20.0 // Placeholder
+                "pool_size": pool_size,
+                "idle_connections": idle_connections,
+                "utilization_percent": utilization_percent
             });
 
             CheckResult {
@@ -292,15 +287,9 @@ fn get_system_metrics(system: &System) -> SystemMetrics {
         (0, 0, 0.0)
     };
 
-    let request_count = get_request_count();
-
     SystemMetrics {
         memory_usage_mb: used_memory,
         cpu_usage_percent: cpu_usage as f64,
-        active_connections: 10, // Placeholder - would need actual connection tracking
-        request_count,
-        cache_hit_rate: 0.0,     // Placeholder - would need actual cache metrics
-        avg_response_time_ms: 0, // Placeholder - would need actual response time tracking
         disk_usage_percent,
         disk_used_bytes: disk_used,
         disk_total_bytes: disk_total,
@@ -310,11 +299,9 @@ fn get_system_metrics(system: &System) -> SystemMetrics {
 // Dashboard Statistics
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DashboardStats {
-    pub total_views: i64,
     pub total_posts: i64,
     pub total_categories: i64,
     pub total_tags: i64,
-    pub total_music: i64,
     pub recent_posts: Vec<RecentPost>,
     pub system_info: DashboardSystemInfo,
 }
@@ -331,7 +318,6 @@ pub struct RecentPost {
 pub struct DashboardSystemInfo {
     pub uptime: String,
     pub memory_usage: String,
-    pub disk_usage: String,
 }
 
 /// Dashboard statistics endpoint - returns real data from database
@@ -350,11 +336,6 @@ pub async fn get_dashboard_stats(
         .unwrap_or((0,));
 
     let total_tags: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM tags")
-        .fetch_one(app_state.database.pool.as_ref())
-        .await
-        .unwrap_or((0,));
-
-    let total_music: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM music WHERE status != 2")
         .fetch_one(app_state.database.pool.as_ref())
         .await
         .unwrap_or((0,));
@@ -387,21 +368,14 @@ pub async fn get_dashboard_stats(
     let used_memory = system.used_memory() as f64 / 1024.0 / 1024.0;
     let memory_usage = format!("{:.0}MB", used_memory);
 
-    // Calculate uploads directory size
-    let upload_dir = &app_state.config.storage.upload_dir;
-    let disk_usage = get_directory_size(upload_dir);
-
     let stats = DashboardStats {
-        total_views: 0, // Placeholder - would need view tracking
         total_posts: total_posts.0,
         total_categories: total_categories.0,
         total_tags: total_tags.0,
-        total_music: total_music.0,
         recent_posts,
         system_info: DashboardSystemInfo {
             uptime,
             memory_usage,
-            disk_usage,
         },
     };
 
@@ -410,57 +384,22 @@ pub async fn get_dashboard_stats(
 
 fn format_uptime(seconds: u64) -> String {
     let days = seconds / 86400;
-    let hours = (seconds % 86400) / 3600;
-    let minutes = (seconds % 3600) / 60;
-
-    if days > 0 {
-        format!("{}d {}h", days, hours)
-    } else if hours > 0 {
-        format!("{}h {}m", hours, minutes)
-    } else {
-        format!("{}m", minutes)
-    }
+    format!("{days} 天")
 }
 
-fn get_directory_size(path: &str) -> String {
-    let path = Path::new(path);
-    if !path.exists() {
-        return "0B".to_string();
+#[cfg(test)]
+mod tests {
+    use super::{format_uptime, BLOG_FOUNDED_AT, BLOG_FOUNDED_AT_UNIX};
+
+    #[test]
+    fn founding_date_and_timestamp_stay_in_sync() {
+        let founded_at = chrono::DateTime::parse_from_rfc3339(BLOG_FOUNDED_AT)
+            .expect("the fixed blog founding date is valid");
+        assert_eq!(founded_at.timestamp(), BLOG_FOUNDED_AT_UNIX);
     }
 
-    let size = calculate_dir_size(path);
-    format_bytes(size)
-}
-
-fn calculate_dir_size(path: &Path) -> u64 {
-    let mut size = 0;
-    if path.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(path) {
-            for entry in entries.flatten() {
-                let entry_path = entry.path();
-                if entry_path.is_dir() {
-                    size += calculate_dir_size(&entry_path);
-                } else if let Ok(metadata) = entry.metadata() {
-                    size += metadata.len();
-                }
-            }
-        }
-    }
-    size
-}
-
-fn format_bytes(bytes: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = KB * 1024;
-    const GB: u64 = MB * 1024;
-
-    if bytes >= GB {
-        format!("{:.1}GB", bytes as f64 / GB as f64)
-    } else if bytes >= MB {
-        format!("{:.1}MB", bytes as f64 / MB as f64)
-    } else if bytes >= KB {
-        format!("{:.1}KB", bytes as f64 / KB as f64)
-    } else {
-        format!("{}B", bytes)
+    #[test]
+    fn dashboard_formats_site_age_in_whole_days() {
+        assert_eq!(format_uptime(481 * 86_400 + 3_600), "481 天");
     }
 }

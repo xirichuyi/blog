@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..700&family=Fira+Code:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..700&family=Fira+Code:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,26 +8,27 @@
   :root {
     --font-display: 'Bricolage Grotesque', 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
     --font-body: 'Bricolage Grotesque', 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
+    --font-literary: 'Noto Serif SC', ui-serif, 'Songti SC', SimSun, serif;
     --font-code: 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
-    --background: 0 0% 98%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
+    --background: 42 30% 97%;
+    --foreground: 150 9% 16%;
+    --card: 42 35% 99%;
+    --card-foreground: 150 9% 16%;
+    --popover: 42 35% 99%;
+    --popover-foreground: 150 9% 16%;
+    --primary: 151 18% 31%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --secondary: 43 18% 92%;
+    --secondary-foreground: 150 9% 22%;
+    --muted: 43 18% 93%;
+    --muted-foreground: 145 6% 44%;
+    --accent: 143 15% 91%;
+    --accent-foreground: 151 20% 27%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --border: 140 9% 86%;
+    --input: 140 9% 84%;
+    --ring: 151 18% 31%;
     --radius: 0.625rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -40,25 +41,25 @@
   }
 
   [data-theme='dark'] {
-    --background: 240 6% 4%;
-    --foreground: 0 0% 98%;
-    --card: 240 6% 7%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 6% 7%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 4% 13%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 13%;
-    --muted-foreground: 240 5% 58%;
-    --accent: 240 4% 14%;
-    --accent-foreground: 0 0% 98%;
+    --background: 150 10% 7%;
+    --foreground: 42 18% 91%;
+    --card: 150 9% 10%;
+    --card-foreground: 42 18% 91%;
+    --popover: 150 9% 10%;
+    --popover-foreground: 42 18% 91%;
+    --primary: 139 17% 70%;
+    --primary-foreground: 150 12% 10%;
+    --secondary: 150 8% 14%;
+    --secondary-foreground: 42 18% 91%;
+    --muted: 150 8% 14%;
+    --muted-foreground: 140 7% 61%;
+    --accent: 148 10% 17%;
+    --accent-foreground: 139 17% 78%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 14%;
-    --input: 240 4% 14%;
-    --ring: 142 71% 45%;
+    --border: 148 8% 18%;
+    --input: 148 8% 20%;
+    --ring: 139 17% 70%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -68,6 +69,157 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+}
+
+/* Public pages share a quiet paper atmosphere. The texture and colour pools
+   stay deliberately faint so the words remain the visual focus. */
+.public-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background:
+    linear-gradient(180deg, hsl(var(--background) / 0.3), hsl(var(--background)) 28rem),
+    hsl(var(--background));
+}
+
+.public-shell::before {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.24'/%3E%3C/svg%3E");
+  content: '';
+  opacity: 0.022;
+  pointer-events: none;
+}
+
+.public-ambience {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.public-ambience span {
+  position: absolute;
+  width: 34rem;
+  height: 34rem;
+  border-radius: 50%;
+  filter: blur(22px);
+  opacity: 0.13;
+}
+
+.public-ambience-sage {
+  top: -17rem;
+  right: -13rem;
+  background: radial-gradient(circle, #9eb6a3 0, transparent 68%);
+}
+
+.public-ambience-amber {
+  top: 42rem;
+  left: -18rem;
+  background: radial-gradient(circle, #d8bd8b 0, transparent 68%);
+}
+
+[data-theme='dark'] .public-ambience span {
+  opacity: 0.07;
+}
+
+.public-content {
+  position: relative;
+  z-index: 1;
+}
+
+.literary-kicker {
+  color: hsl(var(--primary));
+  font-family: var(--font-literary);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+}
+
+.literary-title {
+  font-family: var(--font-literary);
+  font-weight: 600;
+  letter-spacing: 0.035em;
+}
+
+.public-page-head {
+  margin-bottom: 2.75rem;
+}
+
+.public-page-head h1 {
+  margin-top: 0.55rem;
+  font-family: var(--font-literary);
+  font-size: clamp(1.6rem, 5vw, 2.15rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.public-page-head > p:last-child {
+  max-width: 32rem;
+  margin-top: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.86rem;
+  line-height: 1.8;
+}
+
+.home-intro {
+  animation: quiet-arrival 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.home-avatar-frame {
+  position: relative;
+  width: fit-content;
+}
+
+.home-avatar-frame::before {
+  position: absolute;
+  inset: -0.55rem;
+  border: 1px solid hsl(var(--primary) / 0.16);
+  border-radius: 47% 53% 49% 51%;
+  content: '';
+  transform: rotate(-8deg);
+}
+
+.home-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  transition: color 180ms ease;
+}
+
+.home-contact:hover {
+  color: hsl(var(--primary));
+}
+
+.home-note {
+  margin-top: 2rem;
+  border-left: 1px solid hsl(var(--primary) / 0.3);
+  padding-left: 1rem;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-literary);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.home-signoff {
+  margin-top: 4.5rem;
+  color: hsl(var(--muted-foreground) / 0.75);
+  font-family: var(--font-literary);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+@keyframes quiet-arrival {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-intro { animation: none; }
 }
 
 [data-zen] .site-chrome {

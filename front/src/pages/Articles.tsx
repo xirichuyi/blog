@@ -21,10 +21,10 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3 py-1 text-sm transition-colors',
+        'rounded-full border px-3 py-1 text-xs transition-colors',
         active
-          ? 'border-primary bg-primary text-primary-foreground'
-          : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+          ? 'border-primary/40 bg-primary/10 text-primary'
+          : 'border-border/80 bg-background/40 text-muted-foreground hover:border-primary/30 hover:text-primary'
       )}
     >
       {children}
@@ -71,16 +71,20 @@ export default function Articles() {
   }, [filtered])
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-20">
+    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-24">
       <Helmet>
         <title>Archive · chuyi's blog</title>
       </Helmet>
 
-      <p className="mb-6 text-sm text-muted-foreground">{all?.length ?? 0} posts · filter by category or tag.</p>
+      <header className="public-page-head">
+        <p className="literary-kicker">ARCHIVE · 文稿</p>
+        <h1>文章归档</h1>
+        <p>时间把零散的思绪收拢成页。这里共有 {all?.length ?? 0} 篇文章，可以按分类或标签慢慢翻阅。</p>
+      </header>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-8 flex flex-wrap gap-2 border-b border-border/70 pb-6">
         <Pill active={filter.type === null} onClick={() => setFilter({ type: null, value: null })}>
-          All
+          全部
         </Pill>
         {cats.map((c) => (
           <Pill
@@ -115,8 +119,8 @@ export default function Articles() {
           {groups.map((g) => (
             <section key={g.year}>
               {/* 年份分段标题:无 icon,大字 + 计数 + 细分隔线 */}
-              <div className="mb-2 flex items-baseline justify-between border-b border-border pb-2">
-                <h2 className="text-lg font-semibold tracking-tight tabular-nums">{g.year}</h2>
+              <div className="mb-2 flex items-baseline justify-between border-b border-border/70 pb-2">
+                <h2 className="font-[var(--font-literary)] text-lg font-semibold tracking-wide tabular-nums">{g.year}</h2>
                 <span className="text-xs tabular-nums text-muted-foreground">{g.items.length}</span>
               </div>
 

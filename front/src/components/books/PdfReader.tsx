@@ -39,7 +39,7 @@ export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfRea
       try {
         const pdfjs = await import('pdfjs-dist')
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
-        loadingTask = pdfjs.getDocument({ url: bookFileContentUrl(bookId, file.id) })
+        loadingTask = pdfjs.getDocument({ url: bookFileContentUrl(file) })
         const loaded = await loadingTask.promise
         if (disposed) return void loaded.destroy()
         const initialPage = Math.min(loaded.numPages, Math.max(1, restoredPage(bookId, file.id)))

@@ -27,18 +27,19 @@ export default function About() {
   }
 
   return (
-    <div className="container max-w-3xl py-16">
+    <div className="container max-w-2xl px-6 py-16 sm:py-24">
       <Helmet>
         <title>About · chuyi's blog</title>
       </Helmet>
 
+      <p className="literary-kicker mb-7">ABOUT · 关于</p>
       <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
         <Avatar className="size-20 border border-border">
           {data.photoUrl && <AvatarImage src={data.photoUrl} alt={data.title} />}
           <AvatarFallback className="text-2xl">{data.title?.[0] ?? 'C'}</AvatarFallback>
         </Avatar>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{data.title}</h1>
+          <h1 className="literary-title text-3xl">{data.title}</h1>
           <p className="mt-2 text-lg text-muted-foreground">{data.subtitle}</p>
         </div>
       </div>

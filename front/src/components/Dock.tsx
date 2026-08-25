@@ -13,9 +13,9 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/guestbook', label: 'Guestbook', icon: MessageCircle },
 ]
 
-const BASE = 38
-const MAX = 58
-const RANGE = 140 // px proximity falloff
+const BASE = 36
+const MAX = 48
+const RANGE = 120 // px proximity falloff
 
 function DockItem({
   mouseX,
@@ -60,10 +60,10 @@ function DockItem({
       <motion.span
         style={{ width: BASE, height: BASE, scale, transformOrigin: 'bottom center' }}
         className={cn(
-          'grid place-items-center rounded-full transition-colors group-focus-visible/item:ring-2 group-focus-visible/item:ring-foreground/30 group-focus-visible/item:ring-offset-2 group-focus-visible/item:ring-offset-background [&>svg]:size-[42%]',
+          'grid place-items-center rounded-full border border-border/70 transition-colors group-focus-visible/item:ring-2 group-focus-visible/item:ring-foreground/20 group-focus-visible/item:ring-offset-2 group-focus-visible/item:ring-offset-background [&>svg]:size-[40%]',
           active
-            ? 'bg-foreground/10 text-foreground'
-            : 'bg-secondary text-muted-foreground group-hover/item:bg-foreground/10 group-hover/item:text-foreground'
+            ? 'bg-accent text-accent-foreground'
+            : 'bg-background/70 text-muted-foreground group-hover/item:bg-accent group-hover/item:text-accent-foreground'
         )}
       >
         <Icon />
@@ -93,7 +93,7 @@ export function Dock() {
       <motion.div
         onMouseMove={(event) => !reduceMotion && mouseX.set(event.clientX)}
         onMouseLeave={() => mouseX.set(Infinity)}
-        className="flex items-end gap-1.5 rounded-[1.5rem] border border-border bg-background/60 px-2.5 pb-1.5 pt-1 shadow-xl backdrop-blur-2xl"
+        className="flex items-end gap-1.5 rounded-[1.4rem] border border-border/80 bg-background/72 px-2.5 pb-1.5 pt-1 shadow-[0_12px_40px_hsl(var(--foreground)/0.08)] backdrop-blur-2xl"
       >
         {NAV.map((n) => (
           <DockItem key={n.to} mouseX={mouseX} icon={n.icon} label={n.label} active={isActive(n.to)} onClick={() => navigate(n.to)} />

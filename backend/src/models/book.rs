@@ -15,7 +15,6 @@ pub struct BookRecord {
     pub started_at: Option<String>,
     pub finished_at: Option<String>,
     pub is_public: bool,
-    pub download_enabled: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -59,8 +58,6 @@ pub struct CreateBookRequest {
     pub finished_at: Option<String>,
     #[serde(default = "default_true")]
     pub is_public: bool,
-    #[serde(default)]
-    pub download_enabled: bool,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -76,7 +73,6 @@ pub struct UpdateBookRequest {
     pub started_at: Option<Option<String>>,
     pub finished_at: Option<Option<String>>,
     pub is_public: Option<bool>,
-    pub download_enabled: Option<bool>,
 }
 
 #[derive(Debug)]

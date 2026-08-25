@@ -3,17 +3,10 @@ use std::env;
 
 /// 应用常量定义
 pub mod constants {
-    /// URL前缀常量
-    pub const UPLOADS_URL_PREFIX: &str = "/uploads/";
-
     /// 默认配置值
     pub const DEFAULT_DATABASE_URL: &str = "sqlite:data/blog.db";
     pub const DEFAULT_HOST: &str = "0.0.0.0";
     pub const DEFAULT_PORT: u16 = 3006;
-    pub const DEFAULT_MAX_FILE_SIZE: u64 = 10_485_760; // 10MB
-    pub const DEFAULT_UPLOAD_DIR: &str = "uploads";
-    pub const DEFAULT_BLOG_DATA_DIR: &str = "data";
-    pub const DEFAULT_DEEPSEEK_API_URL: &str = "https://api.deepseek.com";
 
     /// Bearer token前缀
     pub const BEARER_PREFIX: &str = "Bearer ";
@@ -53,9 +46,7 @@ pub struct Config {
     pub jwt: JwtConfig,
     pub google_auth: Option<GoogleAuthConfig>,
     pub server: ServerConfig,
-    pub ai: AiConfig,
     pub cors: CorsConfig,
-    pub storage: StorageConfig,
     pub s3: S3Config,
 }
 
@@ -94,24 +85,11 @@ pub struct ServerConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AiConfig {
-    pub deepseek_api_key: String,
-    pub deepseek_api_url: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CorsConfig {
     pub origins: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageConfig {
-    pub upload_dir: String,
-    pub blog_data_dir: String,
-    pub max_file_size: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct S3Config {
     pub enabled: bool,
     pub endpoint: String,
@@ -174,11 +152,6 @@ impl Config {
             .parse::<bool>()
             .unwrap_or(false);
 
-        let deepseek_api_key = env::var("DEEPSEEK_API_KEY").unwrap_or_else(|_| "".to_string());
-
-        let deepseek_api_url = env::var("DEEPSEEK_API_URL")
-            .unwrap_or_else(|_| constants::DEFAULT_DEEPSEEK_API_URL.to_string());
-
         // CORS 配置：开发模式允许所有来源，生产模式需要明确配置
         let cors_origins = if environment.is_development() {
             // 开发模式：如果设置了 CORS_ORIGINS 就使用，否则允许所有（通过空列表表示）
@@ -205,17 +178,6 @@ impl Config {
                 .collect()
         };
 
-        let upload_dir =
-            env::var("UPLOAD_DIR").unwrap_or_else(|_| constants::DEFAULT_UPLOAD_DIR.to_string());
-
-        let blog_data_dir = env::var("BLOG_DATA_DIR")
-            .unwrap_or_else(|_| constants::DEFAULT_BLOG_DATA_DIR.to_string());
-
-        let max_file_size = env::var("MAX_FILE_SIZE")
-            .unwrap_or_else(|_| constants::DEFAULT_MAX_FILE_SIZE.to_string())
-            .parse::<u64>()
-            .unwrap_or(constants::DEFAULT_MAX_FILE_SIZE);
-
         let s3 = S3Config {
             enabled: env::var("S3_ENABLED")
                 .unwrap_or_else(|_| "false".to_string())
@@ -228,6 +190,12 @@ impl Config {
             region: env::var("S3_REGION").unwrap_or_else(|_| "auto".to_string()),
             public_url: env::var("S3_PUBLIC_URL").unwrap_or_default(),
         };
+        if environment.is_production() && !s3.enabled {
+            return Err(
+                "S3_ENABLED=true is required in production; local file storage is not supported"
+                    .into(),
+            );
+        }
         if s3.enabled
             && [
                 &s3.endpoint,
@@ -255,17 +223,8 @@ impl Config {
                 port,
                 use_tls,
             },
-            ai: AiConfig {
-                deepseek_api_key,
-                deepseek_api_url,
-            },
             cors: CorsConfig {
                 origins: cors_origins,
-            },
-            storage: StorageConfig {
-                upload_dir,
-                blog_data_dir,
-                max_file_size,
             },
             s3,
         })

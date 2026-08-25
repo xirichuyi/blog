@@ -18,9 +18,10 @@
 
 .library-header h1 {
   margin-top: 0.45rem;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+  font-family: var(--font-literary);
+  font-size: 1.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .library-header > p:last-child {

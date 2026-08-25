@@ -1,5 +1,5 @@
 // Admin API client. Authentication is carried by a same-origin HttpOnly cookie.
-import type { Category, Tag, About, Book, BookFile, ChangelogEntry, ReadingStatus } from './api'
+import type { Category, Tag, About, Book, ChangelogEntry, ReadingStatus } from './api'
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 const PREFIX = '/api'
@@ -20,7 +20,7 @@ interface Envelope<T> {
 }
 
 /** JSON request against an admin endpoint. Throws AuthError on 401. */
-async function req<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
+export async function adminRequest<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
   const res = await fetch(`${API_BASE}${PREFIX}${path}`, {
     ...init,
     credentials: 'include',
@@ -36,29 +36,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
   return body
 }
 
-/** multipart upload (don't set Content-Type — browser adds the boundary). */
-async function upload<T>(
-  path: string,
-  file: File,
-  field = 'file',
-  method: 'POST' | 'PUT' = 'POST',
-): Promise<Envelope<T>> {
-  const fd = new FormData()
-  fd.append(field, file)
-  const res = await fetch(`${API_BASE}${PREFIX}${path}`, {
-    method,
-    credentials: 'include',
-    body: fd,
-  })
-  if (res.status === 401) {
-    authExpired('未授权，请重新登录')
-  }
-  const body = (await res.json().catch(() => ({}))) as Envelope<T>
-  if (!res.ok || (typeof body.code === 'number' && body.code >= 400)) {
-    throw new Error(body.message || `上传失败 (${res.status})`)
-  }
-  return body
-}
+const req = adminRequest
 
 // ---------- types ----------
 export const POST_STATUS = { Draft: 0, Published: 1, Deleted: 2, Private: 3 } as const
@@ -73,20 +51,17 @@ export interface AdminPost {
   category_id?: number | null
   category_name?: string | null
   status: number
-  pdf_url?: string | null
   created_at: string
   updated_at?: string
   tags?: Array<{ id: number; name: string }>
 }
 
 export interface DashboardStats {
-  total_views?: number
   total_posts: number
   total_categories: number
   total_tags: number
-  total_music?: number
   recent_posts?: Array<{ id: number; title: string; created_at: string; status: number }>
-  system_info?: { uptime?: string; memory_usage?: string; disk_usage?: string }
+  system_info?: { uptime?: string; memory_usage?: string }
 }
 
 // ---------- auth ----------
@@ -179,71 +154,6 @@ export async function updatePost(id: number, p: Partial<PostPayload>): Promise<A
 export async function deletePost(id: number): Promise<void> {
   await req(`/post/delete/${id}`, { method: 'DELETE' })
 }
-/** Upload an image, returns its relative URL (/uploads/...). */
-export async function uploadImage(file: File): Promise<string> {
-  const env = await upload<{ file_url: string }>(`/post/upload_post_image`, file)
-  return env.data.file_url
-}
-
-/** Replace an existing post cover atomically; the backend removes the old asset. */
-export async function replacePostCover(id: number, file: File): Promise<AdminPost> {
-  const env = await upload<AdminPost>(`/post/update_cover/${id}`, file, 'file', 'PUT')
-  return env.data
-}
-
-// ---------- direct R2 video uploads ----------
-export interface VideoUploadPart {
-  part_number: number
-  upload_url: string
-}
-
-export interface VideoMultipartSession {
-  upload_id: string
-  key: string
-  public_url: string
-  part_size: number
-  parts: VideoUploadPart[]
-}
-
-export interface CompletedVideoPart {
-  part_number: number
-  etag: string
-}
-
-export async function beginVideoUpload(file: File, contentType: string): Promise<VideoMultipartSession> {
-  const env = await req<VideoMultipartSession>('/admin/videos/multipart', {
-    method: 'POST',
-    body: JSON.stringify({
-      file_name: file.name,
-      content_type: contentType,
-      file_size: file.size,
-    }),
-  })
-  return env.data
-}
-
-export async function completeVideoUpload(
-  session: VideoMultipartSession,
-  parts: CompletedVideoPart[],
-): Promise<string> {
-  const env = await req<{ public_url: string }>('/admin/videos/multipart/complete', {
-    method: 'POST',
-    body: JSON.stringify({
-      key: session.key,
-      upload_id: session.upload_id,
-      parts,
-    }),
-  })
-  return env.data.public_url
-}
-
-export async function abortVideoUpload(session: VideoMultipartSession): Promise<void> {
-  await req('/admin/videos/multipart/abort', {
-    method: 'POST',
-    body: JSON.stringify({ key: session.key, upload_id: session.upload_id }),
-  })
-}
-
 // ---------- books ----------
 export interface BookPayload {
   title: string
@@ -257,7 +167,6 @@ export interface BookPayload {
   started_at?: string | null
   finished_at?: string | null
   is_public: boolean
-  download_enabled: boolean
 }
 
 export async function adminListBooks(): Promise<Book[]> {
@@ -279,55 +188,8 @@ export async function deleteBook(id: number): Promise<void> {
   await req(`/admin/books/${id}`, { method: 'DELETE' })
 }
 
-export async function beginBookUpload(bookId: number, file: File): Promise<VideoMultipartSession> {
-  const env = await req<VideoMultipartSession>(`/admin/books/${bookId}/files/multipart`, {
-    method: 'POST',
-    body: JSON.stringify({
-      file_name: file.name,
-      content_type: bookContentType(file),
-      file_size: file.size,
-    }),
-  })
-  return env.data
-}
-
-export async function completeBookUpload(
-  bookId: number,
-  file: File,
-  session: VideoMultipartSession,
-  parts: CompletedVideoPart[],
-): Promise<BookFile> {
-  const env = await req<{ file: BookFile }>(`/admin/books/${bookId}/files/multipart/complete`, {
-    method: 'POST',
-    body: JSON.stringify({
-      key: session.key,
-      upload_id: session.upload_id,
-      parts,
-      file_name: file.name,
-      content_type: bookContentType(file),
-      file_size: file.size,
-    }),
-  })
-  return env.data.file
-}
-
-export async function abortBookUpload(session: VideoMultipartSession): Promise<void> {
-  await req('/admin/books/files/multipart/abort', {
-    method: 'POST',
-    body: JSON.stringify({ key: session.key, upload_id: session.upload_id }),
-  })
-}
-
 export async function deleteBookFile(fileId: number): Promise<void> {
   await req(`/admin/books/files/${fileId}`, { method: 'DELETE' })
-}
-
-function bookContentType(file: File): string {
-  if (file.type) return file.type
-  const extension = file.name.split('.').pop()?.toLowerCase()
-  if (extension === 'pdf') return 'application/pdf'
-  if (extension === 'epub') return 'application/epub+zip'
-  return 'application/octet-stream'
 }
 
 // ---------- changelog ----------

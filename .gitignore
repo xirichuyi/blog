@@ -17,6 +17,7 @@
 /target/
 **/target/
 backend/target/
+backend/data/*.db*
 # Cargo.lock is committed for reproducible CI/CD binary builds
 **/*.rs.bk
 
@@ -39,17 +40,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-
-# frontend build
-frontend/dist/
-frontend/node_modules/
-
-# migration tool
-migration-tool/node_modules/
-
-# uploads
-uploads/
-backend/uploads/
 
 # IDE
 .vscode/

@@ -1,13 +1,13 @@
 use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
-    about_handler, auth_handler, book_handler, category_handler, changelog_handler,
-    download_handler, health_handler, mail_handler, music_handler, pdf_handler, post_handler,
-    quant_handler, resource_handler, seo_handler, tag_handler, tools_handler, video_handler,
+    about_handler, auth_handler, book_handler, category_handler, changelog_handler, health_handler,
+    mail_handler, post_handler, quant_handler, seo_handler, tag_handler, tools_handler,
+    upload_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
-use crate::utils::{FileHandler, R2Storage};
+use crate::utils::R2Storage;
 use axum::{
     extract::FromRef,
     middleware,
@@ -20,7 +20,6 @@ use std::sync::Arc;
 pub struct AppState {
     pub database: Database,
     pub config: Arc<Config>,
-    pub file_handler: Arc<FileHandler>,
     pub r2_storage: Arc<R2Storage>,
     pub services: Services,
 }
@@ -34,12 +33,6 @@ impl FromRef<AppState> for Database {
 impl FromRef<AppState> for Arc<Config> {
     fn from_ref(app_state: &AppState) -> Arc<Config> {
         Arc::clone(&app_state.config)
-    }
-}
-
-impl FromRef<AppState> for Arc<FileHandler> {
-    fn from_ref(app_state: &AppState) -> Arc<FileHandler> {
-        Arc::clone(&app_state.file_handler)
     }
 }
 
@@ -57,21 +50,11 @@ impl FromRef<AppState> for Services {
 
 pub async fn create_app(database: Database, config: &Config) -> Router {
     let config = Arc::new(config.clone());
-    let file_handler = Arc::new(FileHandler::new(
-        config.storage.upload_dir.clone(),
-        config.storage.max_file_size,
-        Some(&config.s3),
-    ));
     let r2_storage = Arc::new(R2Storage::new(&config.s3));
-    let services = Services::new(
-        database.clone(),
-        file_handler.clone(),
-        config.storage.upload_dir.clone(),
-    );
+    let services = Services::new(database.clone(), r2_storage.clone());
     let app_state = AppState {
         database,
         config,
-        file_handler,
         r2_storage,
         services,
     };
@@ -104,22 +87,6 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             "/api/post/adjacent/:id",
             get(post_handler::get_adjacent_posts),
         )
-        // Music public routes
-        .route("/api/music/list", get(music_handler::list_music))
-        .route("/api/music/get/:id", get(music_handler::get_music))
-        // Download public routes
-        .route(
-            "/api/download/download_file/:id",
-            get(download_handler::download_file),
-        )
-        .route(
-            "/api/download/get_file_list",
-            get(download_handler::get_file_list),
-        )
-        .route(
-            "/api/download/get_file/:id",
-            get(download_handler::get_file),
-        )
         // Category public routes
         .route("/api/category/list", get(category_handler::list_categories))
         // Tag public routes
@@ -133,10 +100,6 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route("/api/about/get", get(about_handler::get_about))
         // Books and site changelog
         .route("/api/books", get(book_handler::list_public))
-        .route(
-            "/api/books/:book_id/files/:file_id/content",
-            get(book_handler::read_file),
-        )
         .route("/api/changelog", get(changelog_handler::list_public))
         // Online tools
         .route("/api/tools/gitbook2epub", post(tools_handler::gitbook2epub))
@@ -158,18 +121,13 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             get(post_handler::admin_list_posts_with_details),
         )
         .route("/api/admin/posts/:id", get(post_handler::admin_get_post))
+        // Unified R2 direct-upload sessions. File bytes never pass through this API.
+        .route("/api/admin/uploads", post(upload_handler::begin))
         .route(
-            "/api/admin/videos/multipart",
-            post(video_handler::begin_video_upload),
+            "/api/admin/uploads/complete",
+            post(upload_handler::complete),
         )
-        .route(
-            "/api/admin/videos/multipart/complete",
-            post(video_handler::complete_video_upload),
-        )
-        .route(
-            "/api/admin/videos/multipart/abort",
-            post(video_handler::abort_video_upload),
-        )
+        .route("/api/admin/uploads/abort", post(upload_handler::abort))
         // Book library and direct R2 file uploads
         .route(
             "/api/admin/books",
@@ -178,18 +136,6 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route(
             "/api/admin/books/:id",
             put(book_handler::update).delete(book_handler::delete_book),
-        )
-        .route(
-            "/api/admin/books/:id/files/multipart",
-            post(book_handler::begin_file_upload),
-        )
-        .route(
-            "/api/admin/books/:id/files/multipart/complete",
-            post(book_handler::complete_file_upload),
-        )
-        .route(
-            "/api/admin/books/files/multipart/abort",
-            post(book_handler::abort_file_upload),
         )
         .route(
             "/api/admin/books/files/:id",
@@ -208,45 +154,13 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route("/api/post/create", post(post_handler::create_post))
         .route("/api/post/update/:id", put(post_handler::update_post))
         .route("/api/post/delete/:id", delete(post_handler::delete_post))
-        .route(
-            "/api/post/upload_post_image",
-            post(post_handler::upload_post_image),
-        )
-        .route(
-            "/api/post/update_cover/:id",
-            put(post_handler::update_post_cover),
-        )
         .route("/api/post/get_tags/:id", get(post_handler::get_post_tags))
         .route(
             "/api/post/update_tags/:id",
             put(post_handler::update_post_tags),
         )
-        // PDF admin routes
-        .route("/api/pdf/upload", post(pdf_handler::upload_pdf))
         // About admin routes
         .route("/api/about/update", put(about_handler::update_about))
-        // Music admin routes
-        .route("/api/music/create", post(music_handler::create_music))
-        .route("/api/music/update/:id", put(music_handler::update_music))
-        .route("/api/music/delete/:id", delete(music_handler::delete_music))
-        .route("/api/music/upload_music", post(music_handler::upload_music))
-        .route(
-            "/api/music/upload_cover",
-            post(music_handler::upload_cover_image),
-        )
-        .route(
-            "/api/music/upload_music_cover/:id",
-            post(music_handler::upload_music_cover),
-        )
-        // Download admin routes
-        .route(
-            "/api/download/upload_file",
-            post(download_handler::upload_file),
-        )
-        .route(
-            "/api/download/delete_file/:id",
-            delete(download_handler::delete_file),
-        )
         // Category admin routes
         .route(
             "/api/category/create",
@@ -264,23 +178,6 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route("/api/tag/create", post(tag_handler::create_tag))
         .route("/api/tag/update/:id", put(tag_handler::update_tag))
         .route("/api/tag/delete/:id", delete(tag_handler::delete_tag))
-        // Resource management routes
-        .route(
-            "/api/admin/resources",
-            get(resource_handler::list_resources),
-        )
-        .route(
-            "/api/admin/resources/stats",
-            get(resource_handler::get_resource_stats),
-        )
-        .route(
-            "/api/admin/resources/delete",
-            delete(resource_handler::delete_resource),
-        )
-        .route(
-            "/api/admin/resources/optimize",
-            post(resource_handler::optimize_all_images),
-        )
         // Apply admin authentication middleware
         .layer(middleware::from_fn_with_state(
             app_state.clone(),

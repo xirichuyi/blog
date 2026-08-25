@@ -4,10 +4,14 @@ import { RouteSEO } from '@/components/SEO'
 
 export function Layout() {
   return (
-    <div className="min-h-dvh pb-28">
+    <div className="public-shell min-h-dvh pb-28">
+      <div className="public-ambience" aria-hidden="true">
+        <span className="public-ambience-sage" />
+        <span className="public-ambience-amber" />
+      </div>
       <RouteSEO />
 
-      <main>
+      <main className="public-content">
         <Outlet />
       </main>
 

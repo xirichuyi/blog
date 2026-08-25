@@ -24,17 +24,16 @@ impl PostRepository {
 
         let row = sqlx::query!(
             r#"
-            INSERT INTO posts (title, cover_url, content, category_id, status, post_images, pdf_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            RETURNING id, title, cover_url, content, category_id, status, post_images, pdf_url, created_at, updated_at
+            INSERT INTO posts (title, cover_url, content, category_id, status, post_images)
+            VALUES (?, ?, ?, ?, ?, ?)
+            RETURNING id, title, cover_url, content, category_id, status, post_images, created_at, updated_at
             "#,
             request.title,
             request.cover_url,
             request.content,
             request.category_id,
             status_i32,
-            post_images_json,
-            request.pdf_url
+            post_images_json
         )
         .fetch_one(&mut **tx)
         .await?;
@@ -48,7 +47,6 @@ impl PostRepository {
             category_id: row.category_id,
             status: row.status as i32,
             post_images: row.post_images,
-            pdf_url: row.pdf_url,
             tags: Vec::new(), // 单独创建时不获取标签
             created_at: row.created_at.unwrap().and_utc(),
             updated_at: row.updated_at.unwrap().and_utc(),
@@ -58,7 +56,7 @@ impl PostRepository {
     pub async fn get_by_id(pool: &DatabasePool, id: i64) -> Result<Option<Post>> {
         let row = sqlx::query!(
             r#"
-            SELECT id, title, cover_url, content, category_id, status, post_images, pdf_url, created_at, updated_at
+            SELECT id, title, cover_url, content, category_id, status, post_images, created_at, updated_at
             FROM posts
             WHERE id = ? AND status != ?
             "#,
@@ -77,7 +75,6 @@ impl PostRepository {
             category_id: row.category_id,
             status: row.status as i32,
             post_images: row.post_images,
-            pdf_url: row.pdf_url,
             tags: Vec::new(), // 单独查询时不获取标签
             created_at: row.created_at.unwrap().and_utc(),
             updated_at: row.updated_at.unwrap().and_utc(),
@@ -90,7 +87,7 @@ impl PostRepository {
     ) -> Result<Option<Post>> {
         let row = sqlx::query!(
             r#"
-            SELECT p.id, p.title, p.cover_url, p.content, p.category_id, p.status, p.post_images, p.pdf_url,
+            SELECT p.id, p.title, p.cover_url, p.content, p.category_id, p.status, p.post_images,
                    p.created_at, p.updated_at, c.name as category_name
             FROM posts p
             LEFT JOIN categories c ON p.category_id = c.id
@@ -134,7 +131,6 @@ impl PostRepository {
                 category_id: row.category_id,
                 status: row.status as i32,
                 post_images: row.post_images,
-                pdf_url: row.pdf_url,
                 tags, // 包含完整的标签列表
                 created_at: row.created_at.unwrap().and_utc(),
                 updated_at: row.updated_at.unwrap().and_utc(),
@@ -261,7 +257,7 @@ impl PostRepository {
         // Get posts with category names
         let posts_query = format!(
             "SELECT p.id, p.title, p.cover_url, substr(p.content, 1, 400) AS content,
-                    p.category_id, p.status, p.post_images, p.pdf_url,
+                    p.category_id, p.status, p.post_images,
                     p.created_at, p.updated_at, c.name as category_name
              FROM posts p
              LEFT JOIN categories c ON p.category_id = c.id
@@ -319,7 +315,6 @@ impl PostRepository {
                 category_id: row.get("category_id"),
                 status: row.get::<i32, _>("status"),
                 post_images: row.get("post_images"),
-                pdf_url: row.get("pdf_url"),
                 tags, // 使用上面查询的标签列表
                 created_at: row
                     .get::<Option<chrono::NaiveDateTime>, _>("created_at")
@@ -426,7 +421,7 @@ impl PostRepository {
     ) -> Result<Option<Post>> {
         // Get current post data
         let current = sqlx::query!(
-            "SELECT title, cover_url, content, category_id, status, post_images, pdf_url FROM posts WHERE id = ?",
+            "SELECT title, cover_url, content, category_id, status, post_images FROM posts WHERE id = ?",
             id
         )
         .fetch_optional(&mut **tx)
@@ -448,8 +443,6 @@ impl PostRepository {
                     Some(serde_json::to_string(&images)?)
                 }
             };
-            let pdf_url = request.pdf_url.resolve(current.pdf_url);
-
             let row = sqlx::query!(
                 r#"
                 UPDATE posts
@@ -459,10 +452,9 @@ impl PostRepository {
                     category_id = ?,
                     status = ?,
                     post_images = ?,
-                    pdf_url = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-                RETURNING id, title, cover_url, content, category_id, status, post_images, pdf_url, created_at, updated_at
+                RETURNING id, title, cover_url, content, category_id, status, post_images, created_at, updated_at
                 "#,
                 title,
                 cover_url,
@@ -470,7 +462,6 @@ impl PostRepository {
                 category_id,
                 status,
                 post_images,
-                pdf_url,
                 id
             )
             .fetch_one(&mut **tx)
@@ -485,7 +476,6 @@ impl PostRepository {
                 category_id: row.category_id,
                 status: row.status as i32,
                 post_images: row.post_images,
-                pdf_url: row.pdf_url,
                 tags: Vec::new(), // 事务中更新时不重新获取标签
                 created_at: row.created_at.unwrap().and_utc(),
                 updated_at: row.updated_at.unwrap().and_utc(),

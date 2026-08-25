@@ -73,7 +73,7 @@ fn excerpt(content: &str, max: usize) -> String {
     }
 }
 
-/// 封面/图片转绝对 URL(R2 已是 http;/uploads 等相对路径补上站点前缀)。
+/// R2 URLs are already absolute; site-relative URLs are resolved defensively.
 fn abs_url(u: &str) -> String {
     if u.starts_with("http://") || u.starts_with("https://") {
         u.to_string()

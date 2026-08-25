@@ -1,0 +1,209 @@
+.admin-shell {
+  --background: 210 25% 98%;
+  --foreground: 222 22% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 22% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 22% 15%;
+  --primary: 211 91% 52%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 222 18% 22%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 10% 47%;
+  --accent: 211 100% 96%;
+  --accent-foreground: 211 82% 43%;
+  --border: 214 18% 90%;
+  --input: 214 18% 88%;
+  --ring: 211 91% 52%;
+  --radius: 0.5rem;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 220 15% 25%;
+  --sidebar-accent: 211 100% 96%;
+  --sidebar-accent-foreground: 211 82% 43%;
+  --sidebar-border: 214 18% 91%;
+  min-height: 100svh;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.admin-sidebar [data-sidebar='sidebar'] {
+  border-color: hsl(var(--sidebar-border));
+  background: hsl(var(--sidebar-background));
+}
+
+.admin-sidebar-header {
+  height: 4.5rem;
+  justify-content: center;
+  border-bottom: 1px solid hsl(var(--sidebar-border));
+  padding: 0 1rem;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: hsl(var(--foreground));
+}
+
+.admin-brand-mark {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.5rem;
+  background: hsl(var(--primary));
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 4px 14px hsl(var(--primary) / 0.18);
+}
+
+.admin-brand strong,
+.admin-brand small {
+  display: block;
+}
+
+.admin-brand strong {
+  font-size: 0.9rem;
+  line-height: 1.25rem;
+}
+
+.admin-brand small {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 400;
+  line-height: 1rem;
+}
+
+.admin-nav-label {
+  margin: 0.75rem 0 0.35rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+.admin-nav-item {
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  padding-inline: 0.75rem;
+  color: hsl(var(--sidebar-foreground) / 0.78);
+  font-size: 0.875rem;
+}
+
+.admin-nav-item:hover {
+  color: hsl(var(--foreground));
+}
+
+.admin-nav-item[data-active='true'] {
+  background: hsl(var(--sidebar-accent));
+  color: hsl(var(--sidebar-accent-foreground));
+  font-weight: 600;
+}
+
+.admin-nav-item[data-active='true']::before {
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 1.125rem;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  content: '';
+}
+
+.admin-sidebar-footer {
+  border-top: 1px solid hsl(var(--sidebar-border));
+  padding: 0.65rem;
+}
+
+.admin-account {
+  border-radius: 0.625rem;
+}
+
+.admin-workspace {
+  min-width: 0;
+  background: hsl(var(--background));
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  min-height: 4.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card) / 0.94);
+  padding: 0.75rem 1.5rem;
+  backdrop-filter: blur(14px);
+}
+
+.admin-topbar h1 {
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-topbar p {
+  overflow: hidden;
+  margin-top: 0.1rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  line-height: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-view-site {
+  color: hsl(var(--muted-foreground));
+}
+
+.admin-main {
+  min-height: calc(100svh - 4.5rem);
+}
+
+.admin-container {
+  width: min(100% - 2rem, 70rem);
+  margin-inline: auto;
+  padding-block: 2rem 3.5rem;
+}
+
+.admin-container-editor {
+  width: min(100% - 2rem, 90rem);
+}
+
+.admin-shell input,
+.admin-shell textarea,
+.admin-shell select {
+  background-color: hsl(var(--card));
+}
+
+.admin-shell .admin-editor-title {
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  .admin-topbar {
+    min-height: 4rem;
+    padding-inline: 0.75rem;
+  }
+
+  .admin-topbar p,
+  .admin-view-site span {
+    display: none;
+  }
+
+  .admin-container,
+  .admin-container-editor {
+    width: min(100% - 1.25rem, 70rem);
+    padding-block: 1rem 2.5rem;
+  }
+}

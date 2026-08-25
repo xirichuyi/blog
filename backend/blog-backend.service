@@ -17,7 +17,7 @@ Environment=RUST_LOG=info
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/www/blog/backend/data /var/www/blog/backend/uploads
+ReadWritePaths=/var/www/blog/backend/data
 
 [Install]
 WantedBy=multi-user.target

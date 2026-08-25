@@ -5,20 +5,20 @@ use crate::models::{
 };
 use crate::utils::error::{AppError, Result};
 use crate::utils::text::markdown_image_urls;
-use crate::utils::FileHandler;
+use crate::utils::R2Storage;
 use std::collections::HashSet;
 use std::sync::Arc;
 
 pub struct PostService {
     database: Database,
-    file_handler: Arc<FileHandler>,
+    r2_storage: Arc<R2Storage>,
 }
 
 impl PostService {
-    pub fn new(database: Database, file_handler: Arc<FileHandler>) -> Self {
+    pub fn new(database: Database, r2_storage: Arc<R2Storage>) -> Self {
         Self {
             database,
-            file_handler,
+            r2_storage,
         }
     }
 
@@ -98,45 +98,6 @@ impl PostService {
         }
     }
 
-    pub async fn update_post_cover(&self, id: i64, new_cover_url: String) -> Result<Option<Post>> {
-        if let Some(existing_post) = PostRepository::get_by_id(self.database.pool(), id).await? {
-            let mut tx = self.database.pool().begin().await?;
-            let update_request = UpdatePostRequest {
-                title: None,
-                cover_url: crate::models::NullablePatch::Value(new_cover_url.clone()),
-                content: None,
-                category_id: crate::models::NullablePatch::Missing,
-                status: None,
-                post_images: crate::models::NullablePatch::Missing,
-                pdf_url: crate::models::NullablePatch::Missing,
-                tag_ids: None,
-            };
-
-            match PostRepository::update_in_tx(&mut tx, id, update_request).await {
-                Ok(post) => match tx.commit().await {
-                    Ok(()) => {
-                        if let Some(old_cover_url) = &existing_post.cover_url {
-                            let _ = self.file_handler.delete_file(old_cover_url).await;
-                        }
-                        Ok(post)
-                    }
-                    Err(error) => {
-                        let _ = self.file_handler.delete_file(&new_cover_url).await;
-                        Err(error.into())
-                    }
-                },
-                Err(error) => {
-                    let _ = tx.rollback().await;
-                    let _ = self.file_handler.delete_file(&new_cover_url).await;
-                    Err(error)
-                }
-            }
-        } else {
-            let _ = self.file_handler.delete_file(&new_cover_url).await;
-            Ok(None)
-        }
-    }
-
     pub async fn get_post_tags(&self, post_id: i64) -> Result<Vec<crate::models::Tag>> {
         TagRepository::get_post_tags(self.database.pool(), post_id).await
     }
@@ -159,7 +120,7 @@ impl PostService {
 
     async fn delete_asset_urls(&self, urls: impl IntoIterator<Item = String>) {
         for url in urls {
-            if let Err(error) = self.file_handler.delete_file(&url).await {
+            if let Err(error) = self.r2_storage.delete_public_url(&url).await {
                 tracing::warn!(
                     "Failed to delete unreferenced post asset '{}': {}",
                     url,

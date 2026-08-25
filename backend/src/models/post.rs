@@ -42,7 +42,6 @@ pub struct Post {
     pub category_id: Option<i64>,
     pub status: i32,
     pub post_images: Option<String>, // JSON array of image URLs
-    pub pdf_url: Option<String>,     // PDF file URL
     #[serde(default)]
     #[sqlx(skip)]
     pub tags: Vec<super::tag::Tag>, // 文章标签列表
@@ -158,7 +157,6 @@ pub struct CreatePostRequest {
     pub category_id: Option<i64>,
     pub status: Option<PostStatus>,
     pub post_images: Option<Vec<String>>,
-    pub pdf_url: Option<String>,
     #[serde(default)]
     pub tag_ids: Option<Vec<i64>>,
 }
@@ -174,8 +172,6 @@ pub struct UpdatePostRequest {
     pub status: Option<PostStatus>,
     #[serde(default)]
     pub post_images: NullablePatch<Vec<String>>,
-    #[serde(default)]
-    pub pdf_url: NullablePatch<String>,
     #[serde(default)]
     pub tag_ids: Option<Vec<i64>>,
 }

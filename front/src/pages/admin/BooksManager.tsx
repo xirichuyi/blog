@@ -14,11 +14,10 @@ import {
   deleteBook,
   deleteBookFile,
   updateBook,
-  uploadImage,
   type BookPayload,
 } from '@/services/admin'
-import { uploadBookFileDirect } from '@/services/book-upload'
 import { imageUrl, type Book, type ReadingStatus } from '@/services/api'
+import { uploadBookFileDirect, uploadImageDirect } from '@/services/upload'
 
 const EMPTY_BOOK: BookPayload = {
   title: '',
@@ -32,7 +31,6 @@ const EMPTY_BOOK: BookPayload = {
   started_at: null,
   finished_at: null,
   is_public: true,
-  download_enabled: false,
 }
 
 const STATUS: Record<ReadingStatus, string> = {
@@ -55,7 +53,6 @@ function payloadFromBook(book: Book): BookPayload {
     started_at: book.started_at,
     finished_at: book.finished_at,
     is_public: book.is_public,
-    download_enabled: book.download_enabled,
   }
 }
 
@@ -195,7 +192,7 @@ export default function BooksManager() {
     setBusy(true)
     let createdBookId: number | null = null
     try {
-      const coverUrl = embeddedCover ? await uploadImage(embeddedCover) : form.cover_url
+      const coverUrl = embeddedCover ? await uploadImageDirect(embeddedCover) : form.cover_url
       const payload = { ...form, cover_url: coverUrl }
       const savedBook = editing === 'new'
         ? await createBook(payload)
@@ -290,8 +287,6 @@ export default function BooksManager() {
                 <CardDescription className="mt-1">{book.author || '未知作者'} · {STATUS[book.reading_status]} · {book.progress}%</CardDescription>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                   <span>{book.is_public ? '公开' : '隐藏'}</span>
-                  <span>·</span>
-                  <span>{book.download_enabled ? '允许下载' : '禁止下载'}</span>
                 </div>
               </div>
               <DropdownMenu>
@@ -382,7 +377,6 @@ export default function BooksManager() {
             </div>
             <div className="flex flex-wrap gap-5 text-sm">
               <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_public} onChange={(event) => setForm({ ...form, is_public: event.target.checked })} />显示在公开书架</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.download_enabled} onChange={(event) => setForm({ ...form, download_enabled: event.target.checked })} />允许公开下载</label>
             </div>
             <details className="group rounded-lg border">
               <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:hidden">

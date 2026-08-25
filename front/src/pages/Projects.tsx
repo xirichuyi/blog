@@ -89,14 +89,20 @@ export default function Projects() {
   }, [])
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-20">
+    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-24">
       <Helmet>
         <title>Projects · chuyi's blog</title>
       </Helmet>
 
+      <header className="public-page-head">
+        <p className="literary-kicker">PROJECTS · 造物</p>
+        <h1>做过的一些小东西</h1>
+        <p>代码、工具与长期运行的服务。它们来自真实需要，也记录着不同阶段的兴趣。</p>
+      </header>
+
       {/* Online tools */}
       <section>
-        <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">Online Tools</h2>
+        <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">在线工具</h2>
         <div className="hover-list flex flex-col">
           {TOOLS.map((p) => {
             const href = p.internal || p.url
@@ -129,7 +135,7 @@ export default function Projects() {
       {/* Open-source projects loaded from GitHub. */}
       <section className="mt-12">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Open Source</h2>
+          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">开源项目</h2>
           <a
             href="https://github.com/xirichuyi"
             target="_blank"

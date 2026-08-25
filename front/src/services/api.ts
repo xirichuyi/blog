@@ -1,5 +1,5 @@
 // Typed API client for the Rust/Axum blog backend.
-// In prod the SPA is same-origin behind nginx (''); in dev Vite proxies /api + /uploads.
+// In prod the SPA is same-origin behind nginx; media assets are public R2 URLs.
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 const PREFIX = '/api'
 
@@ -14,7 +14,6 @@ export interface Article {
   category: string
   tags: string[]
   coverImage?: string
-  pdfUrl?: string
 }
 export interface AdjacentArticle {
   id: string
@@ -43,6 +42,7 @@ export interface About {
 export interface HealthStatus {
   status: string
   uptime_seconds?: number
+  founded_at?: string
   checks?: {
     memory?: { details?: { usage_percent?: number; memory_usage_mb?: number; total_memory_mb?: number } }
     disk?: { details?: { usage_percent?: number } }
@@ -76,7 +76,6 @@ export interface Book {
   started_at?: string | null
   finished_at?: string | null
   is_public: boolean
-  download_enabled: boolean
   created_at: string
   updated_at: string
   files: BookFile[]
@@ -111,7 +110,6 @@ interface RawPost {
   status: number
   created_at: string
   updated_at?: string
-  pdf_url?: string
   // tags live inside `post` and may be objects or plain strings
   tags?: Array<{ id?: number; name: string } | string>
 }
@@ -186,7 +184,6 @@ function toArticle(post: RawPost): Article {
     category: post.category_name || 'Uncategorized',
     tags: tagNames(post.tags),
     coverImage: imageUrl(post.cover_url),
-    pdfUrl: post.pdf_url,
   }
 }
 
@@ -295,8 +292,8 @@ export async function listBooks(): Promise<Book[]> {
   return env.data || []
 }
 
-export function bookFileContentUrl(bookId: number, fileId: number): string {
-  return `${API_BASE}${PREFIX}/books/${bookId}/files/${fileId}/content`
+export function bookFileContentUrl(file: BookFile): string {
+  return imageUrl(file.file_url) ?? file.file_url
 }
 
 export async function listChangelog(): Promise<ChangelogEntry[]> {

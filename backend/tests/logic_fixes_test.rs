@@ -1,12 +1,12 @@
+use chuyi_uk_back::config::S3Config;
 use chuyi_uk_back::database::repositories::{PostRepository, TagRepository};
 use chuyi_uk_back::database::Database;
 use chuyi_uk_back::models::{
     CreatePostRequest, CreateTagRequest, NullablePatch, PostStatus, UpdatePostRequest,
 };
 use chuyi_uk_back::services::PostService;
-use chuyi_uk_back::utils::FileHandler;
+use chuyi_uk_back::utils::R2Storage;
 use sqlx::sqlite::SqlitePoolOptions;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 async fn setup_test_db() -> Database {
@@ -23,14 +23,8 @@ async fn setup_test_db() -> Database {
 }
 
 fn post_service(database: Database) -> PostService {
-    post_service_with_upload_dir(database, "/tmp/chuyi-blog-tests".to_string())
-}
-
-fn post_service_with_upload_dir(database: Database, upload_dir: String) -> PostService {
-    PostService::new(
-        database,
-        Arc::new(FileHandler::new(upload_dir, 1_000_000, None)),
-    )
+    let r2 = Arc::new(R2Storage::new(&S3Config::default()));
+    PostService::new(database, r2)
 }
 
 fn create_request(title: &str, tag_ids: Option<Vec<i64>>) -> CreatePostRequest {
@@ -41,7 +35,6 @@ fn create_request(title: &str, tag_ids: Option<Vec<i64>>) -> CreatePostRequest {
         category_id: None,
         status: Some(PostStatus::Published),
         post_images: None,
-        pdf_url: None,
         tag_ids,
     }
 }
@@ -94,8 +87,7 @@ async fn update_can_clear_nullable_fields_and_save_tags_atomically() {
     .expect("create tag");
 
     let mut request = create_request("clear fields", None);
-    request.cover_url = Some("/uploads/cover.webp".to_string());
-    request.pdf_url = Some("/uploads/post.pdf".to_string());
+    request.cover_url = Some("https://assets.example.com/covers/cover.webp".to_string());
     let post = service.create_post(request).await.expect("create post");
 
     service
@@ -108,7 +100,6 @@ async fn update_can_clear_nullable_fields_and_save_tags_atomically() {
                 category_id: NullablePatch::Null,
                 status: None,
                 post_images: NullablePatch::Null,
-                pdf_url: NullablePatch::Null,
                 tag_ids: Some(vec![tag.id]),
             },
         )
@@ -121,7 +112,6 @@ async fn update_can_clear_nullable_fields_and_save_tags_atomically() {
         .expect("load post")
         .expect("post exists");
     assert_eq!(updated.cover_url, None);
-    assert_eq!(updated.pdf_url, None);
     assert_eq!(updated.tags.len(), 1);
     assert_eq!(updated.tags[0].id, tag.id);
 }
@@ -153,26 +143,18 @@ async fn adjacent_posts_use_stable_timestamp_and_id_ordering() {
 }
 
 #[tokio::test]
-async fn updating_content_tracks_images_and_removes_unreferenced_assets() {
+async fn updating_content_tracks_removed_images() {
     let database = setup_test_db().await;
-    let upload_dir = format!("/tmp/chuyi-blog-tests-{}", uuid::Uuid::new_v4());
-    let service = post_service_with_upload_dir(database.clone(), upload_dir.clone());
-    let relative_url = "/uploads/images/old.webp";
-    let file_path = PathBuf::from(&upload_dir).join("images/old.webp");
-    tokio::fs::create_dir_all(file_path.parent().expect("image parent"))
-        .await
-        .expect("create image directory");
-    tokio::fs::write(&file_path, b"old image")
-        .await
-        .expect("write old image");
+    let service = post_service(database.clone());
+    let image_url = "https://assets.example.com/images/old.webp";
 
     let mut request = create_request("image lifecycle", None);
-    request.content = format!("Before\n\n![old]({relative_url})");
+    request.content = format!("Before\n\n![old]({image_url})");
     let post = service.create_post(request).await.expect("create post");
     assert_eq!(
         serde_json::from_str::<Vec<String>>(post.post_images.as_deref().expect("tracked images"))
             .expect("valid image list"),
-        vec![relative_url]
+        vec![image_url]
     );
 
     service
@@ -185,7 +167,6 @@ async fn updating_content_tracks_images_and_removes_unreferenced_assets() {
                 category_id: NullablePatch::Missing,
                 status: None,
                 post_images: NullablePatch::Missing,
-                pdf_url: NullablePatch::Missing,
                 tag_ids: None,
             },
         )
@@ -193,7 +174,6 @@ async fn updating_content_tracks_images_and_removes_unreferenced_assets() {
         .expect("update post")
         .expect("post exists");
 
-    assert!(!file_path.exists());
     let updated = PostRepository::get_by_id(database.pool(), post.id)
         .await
         .expect("load post")

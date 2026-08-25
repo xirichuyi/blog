@@ -1,17 +1,13 @@
 use crate::models::{
-    ApiListResponse, ApiResponse, CreatePostRequest, FileUploadResponse, PostListQuery, PostStatus,
-    UpdatePostRequest, UpdatePostTagsRequest,
+    ApiListResponse, ApiResponse, CreatePostRequest, PostListQuery, PostStatus, UpdatePostRequest,
+    UpdatePostTagsRequest,
 };
-use crate::routes::AppState;
 use crate::services::Services;
-use crate::utils::{FileHandler, IMAGE_TYPES};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
 };
-use axum_extra::extract::Multipart;
-use std::sync::Arc;
 
 pub async fn create_post(
     State(services): State<Services>,
@@ -173,96 +169,6 @@ pub async fn delete_post(
             Ok(Json(ApiResponse::internal_error("Failed to delete post")))
         }
     }
-}
-
-pub async fn upload_post_image(
-    State(file_handler): State<Arc<FileHandler>>,
-    mut multipart: Multipart,
-) -> Result<Json<ApiResponse<FileUploadResponse>>, StatusCode> {
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?
-    {
-        if let Some(file_name) = field.file_name() {
-            if let Err(e) = file_handler.validate_file_type(file_name, IMAGE_TYPES) {
-                return Ok(Json(ApiResponse::bad_request(&e.to_string())));
-            }
-
-            // Use optimized image upload (converts to WebP, resizes if needed)
-            match file_handler
-                .save_optimized_image(field, "images", None)
-                .await
-            {
-                Ok((file_url, file_name, file_size)) => {
-                    let response = FileUploadResponse {
-                        file_url,
-                        file_name,
-                        file_size,
-                    };
-                    return Ok(Json(ApiResponse::success(response)));
-                }
-                Err(e) => {
-                    tracing::error!("Failed to upload image: {}", e);
-                    return Ok(Json(ApiResponse::internal_error("Failed to upload image")));
-                }
-            }
-        }
-    }
-
-    Ok(Json(ApiResponse::bad_request("No file provided")))
-}
-
-pub async fn update_post_cover(
-    State(app_state): State<AppState>,
-    Path(id): Path<i64>,
-    mut multipart: Multipart,
-) -> Result<Json<ApiResponse<crate::models::Post>>, StatusCode> {
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?
-    {
-        if let Some(file_name) = field.file_name() {
-            if let Err(e) = app_state
-                .file_handler
-                .validate_file_type(file_name, IMAGE_TYPES)
-            {
-                return Ok(Json(ApiResponse::bad_request(&e.to_string())));
-            }
-
-            // Use optimized image upload (converts to WebP, resizes if needed)
-            match app_state
-                .file_handler
-                .save_optimized_image(field, "covers", None)
-                .await
-            {
-                Ok((file_url, _, _)) => {
-                    match app_state
-                        .services
-                        .post
-                        .update_post_cover(id, file_url)
-                        .await
-                    {
-                        Ok(Some(post)) => return Ok(Json(ApiResponse::success(post))),
-                        Ok(None) => return Ok(Json(ApiResponse::not_found("Post not found"))),
-                        Err(e) => {
-                            tracing::error!("Failed to update post cover: {}", e);
-                            return Ok(Json(ApiResponse::internal_error(
-                                "Failed to update post cover",
-                            )));
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Failed to upload cover: {}", e);
-                    return Ok(Json(ApiResponse::internal_error("Failed to upload cover")));
-                }
-            }
-        }
-    }
-
-    Ok(Json(ApiResponse::bad_request("No file provided")))
 }
 
 pub async fn get_post_tags(

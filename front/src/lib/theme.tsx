@@ -10,8 +10,8 @@ const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('theme')
-    // Default to dark (cdk-style dashboard aesthetic).
-    return saved === 'light' ? 'light' : 'dark'
+    // A warm paper surface is the default; explicit user choice still wins.
+    return saved === 'dark' ? 'dark' : 'light'
   })
 
   useEffect(() => {

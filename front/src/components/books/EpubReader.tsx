@@ -109,7 +109,7 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
       setLoading(true)
       setError('')
       try {
-        const response = await fetch(bookFileContentUrl(bookId, file.id))
+        const response = await fetch(bookFileContentUrl(file))
         if (!response.ok) throw new Error(`The book file returned ${response.status}.`)
         const { default: createEpub } = await import('epubjs')
         if (disposed || !viewportRef.current) return

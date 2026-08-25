@@ -100,10 +100,3 @@ impl<T> ApiListResponse<T> {
         }
     }
 }
-
-#[derive(Debug, Serialize)]
-pub struct FileUploadResponse {
-    pub file_url: String,
-    pub file_name: String,
-    pub file_size: u64,
-}

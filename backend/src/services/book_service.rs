@@ -3,22 +3,22 @@ use crate::models::{
     Book, BookFile, BookRecord, CreateBookFile, CreateBookRequest, UpdateBookRequest,
 };
 use crate::utils::error::{AppError, Result};
-use crate::utils::FileHandler;
+use crate::utils::R2Storage;
 use std::sync::Arc;
 
-const BOOK_COLUMNS: &str = "id, title, author, description, cover_url, reading_status, progress, rating, notes, started_at, finished_at, is_public, download_enabled, created_at, updated_at";
+const BOOK_COLUMNS: &str = "id, title, author, description, cover_url, reading_status, progress, rating, notes, started_at, finished_at, is_public, created_at, updated_at";
 const VALID_READING_STATUSES: &[&str] = &["want_to_read", "reading", "finished", "paused"];
 
 pub struct BookService {
     database: Database,
-    file_handler: Arc<FileHandler>,
+    r2_storage: Arc<R2Storage>,
 }
 
 impl BookService {
-    pub fn new(database: Database, file_handler: Arc<FileHandler>) -> Self {
+    pub fn new(database: Database, r2_storage: Arc<R2Storage>) -> Self {
         Self {
             database,
-            file_handler,
+            r2_storage,
         }
     }
 
@@ -70,15 +70,6 @@ impl BookService {
         Ok(Book { record, files })
     }
 
-    pub async fn get_public_file(&self, book_id: i64, file_id: i64) -> Result<BookFile> {
-        self.get(book_id, true)
-            .await?
-            .files
-            .into_iter()
-            .find(|file| file.id == file_id)
-            .ok_or_else(|| AppError::NotFound("Book file not found".to_string()))
-    }
-
     pub async fn create(&self, request: CreateBookRequest) -> Result<Book> {
         validate_book(
             &request.title,
@@ -87,7 +78,7 @@ impl BookService {
             request.rating,
         )?;
         let result = sqlx::query(
-            "INSERT INTO books (title, author, description, cover_url, reading_status, progress, rating, notes, started_at, finished_at, is_public, download_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO books (title, author, description, cover_url, reading_status, progress, rating, notes, started_at, finished_at, is_public) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(request.title.trim())
         .bind(request.author.trim())
@@ -100,7 +91,6 @@ impl BookService {
         .bind(request.started_at)
         .bind(request.finished_at)
         .bind(request.is_public)
-        .bind(request.download_enabled)
         .execute(self.database.pool())
         .await?;
         self.get(result.last_insert_rowid(), false).await
@@ -114,7 +104,7 @@ impl BookService {
         let rating = request.rating.unwrap_or(current.rating);
         validate_book(&title, &reading_status, progress, rating)?;
         sqlx::query(
-            "UPDATE books SET title = ?, author = ?, description = ?, cover_url = ?, reading_status = ?, progress = ?, rating = ?, notes = ?, started_at = ?, finished_at = ?, is_public = ?, download_enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            "UPDATE books SET title = ?, author = ?, description = ?, cover_url = ?, reading_status = ?, progress = ?, rating = ?, notes = ?, started_at = ?, finished_at = ?, is_public = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         )
         .bind(title.trim())
         .bind(request.author.unwrap_or(current.author))
@@ -127,7 +117,6 @@ impl BookService {
         .bind(request.started_at.unwrap_or(current.started_at))
         .bind(request.finished_at.unwrap_or(current.finished_at))
         .bind(request.is_public.unwrap_or(current.is_public))
-        .bind(request.download_enabled.unwrap_or(current.download_enabled))
         .bind(id)
         .execute(self.database.pool())
         .await?;
@@ -137,7 +126,7 @@ impl BookService {
     pub async fn delete(&self, id: i64) -> Result<()> {
         let book = self.get(id, false).await?;
         for file in &book.files {
-            self.file_handler.delete_file(&file.file_url).await?;
+            self.r2_storage.delete_object(&file.r2_key).await?;
         }
         sqlx::query("DELETE FROM books WHERE id = ?")
             .bind(id)
@@ -177,7 +166,7 @@ impl BookService {
         .fetch_optional(self.database.pool())
         .await?
         .ok_or_else(|| AppError::NotFound("Book file not found".to_string()))?;
-        self.file_handler.delete_file(&file.file_url).await?;
+        self.r2_storage.delete_object(&file.r2_key).await?;
         sqlx::query("DELETE FROM book_files WHERE id = ?")
             .bind(file_id)
             .execute(self.database.pool())

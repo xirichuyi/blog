@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { getAboutRaw, updateAbout, uploadImage } from '@/services/admin'
+import { getAboutRaw, updateAbout } from '@/services/admin'
 import { imageUrl } from '@/services/api'
+import { uploadImageDirect } from '@/services/upload'
 
 export default function AboutEditor() {
   const [title, setTitle] = useState('')
@@ -39,7 +40,7 @@ export default function AboutEditor() {
   async function uploadPhoto(file: File) {
     setUploading(true)
     try {
-      setPhotoUrl(await uploadImage(file))
+      setPhotoUrl(await uploadImageDirect(file))
       toast.success('头像已上传')
     } catch (uploadError) {
       toast.error('上传失败', { description: (uploadError as Error).message })

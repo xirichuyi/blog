@@ -19,7 +19,6 @@ export default defineConfig({
     // (e.g. http://127.0.0.1:3006) when running one locally.
     proxy: {
       '/api': { target: process.env.VITE_API_TARGET ?? 'https://blog.chuyi.uk', changeOrigin: true },
-      '/uploads': { target: process.env.VITE_API_TARGET ?? 'https://blog.chuyi.uk', changeOrigin: true },
     },
   },
   build: {

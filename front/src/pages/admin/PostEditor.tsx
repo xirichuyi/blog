@@ -24,11 +24,10 @@ import {
   listCategories,
   listTags,
   POST_STATUS,
-  replacePostCover,
   updatePost,
-  uploadImage,
 } from '@/services/admin'
 import { imageUrl, type Category, type Tag } from '@/services/api'
+import { uploadImageDirect } from '@/services/upload'
 
 const STATUS_OPTIONS: { value: number; label: string }[] = [
   { value: POST_STATUS.Published, label: '已发布' },
@@ -86,8 +85,11 @@ export default function PostEditor() {
   async function pickCover(file: File) {
     setUploading('cover')
     try {
-      const updatedPost = editing ? await replacePostCover(Number(id), file) : null
-      setCoverUrl(updatedPost?.cover_url ?? (await uploadImage(file)))
+      const uploadedUrl = await uploadImageDirect(file)
+      const updatedPost = editing
+        ? await updatePost(Number(id), { cover_url: uploadedUrl })
+        : null
+      setCoverUrl(updatedPost?.cover_url ?? uploadedUrl)
       toast.success('封面已上传')
     } catch (uploadError) {
       toast.error('封面上传失败', { description: (uploadError as Error).message })
@@ -99,7 +101,7 @@ export default function PostEditor() {
   async function uploadInlineImage(file: File): Promise<string> {
     setUploading('inline')
     try {
-      return await uploadImage(file)
+      return await uploadImageDirect(file)
     } finally {
       setUploading(null)
     }
@@ -180,7 +182,7 @@ export default function PostEditor() {
           }
         }}
       >
-      <div className="sticky top-12 z-30 -mx-4 mb-4 flex min-h-11 items-center justify-between gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur sm:-mx-5 sm:px-5 md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0">
+      <div className="sticky top-16 z-30 -mx-4 mb-4 flex min-h-11 items-center justify-between gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur sm:-mx-5 sm:px-5 md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:py-0">
         <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => navigate('/admin/posts')}>
           <ArrowLeft /> 文章
         </Button>
@@ -217,7 +219,7 @@ export default function PostEditor() {
         aria-label="文章标题"
         autoComplete="off"
         autoCapitalize="sentences"
-        className="mb-3 h-11 border-0 bg-transparent px-0 text-xl font-bold shadow-none focus-visible:ring-0 sm:text-2xl"
+        className="admin-editor-title mb-3 h-11 border-0 bg-transparent px-0 text-xl font-bold shadow-none focus-visible:ring-0 sm:text-2xl"
       />
 
       <SheetContent className="w-full overflow-y-auto p-5 sm:max-w-sm">

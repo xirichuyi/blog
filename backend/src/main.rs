@@ -12,11 +12,9 @@ use std::net::SocketAddr;
 
 use chuyi_uk_back::config::Config;
 use chuyi_uk_back::database::Database;
-use chuyi_uk_back::handlers::health_handler;
 use chuyi_uk_back::middleware::cors::create_cors_layer;
 use chuyi_uk_back::routes;
 use tower_http::compression::{CompressionLayer, CompressionLevel};
-use tower_http::services::ServeDir;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -32,24 +30,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database = Database::new(&config.database.url).await?;
     database.migrate().await?;
 
-    // 4. 初始化健康检查指标
-    health_handler::init_server_metrics();
-
-    // 5. 配置中间件
+    // 4. 配置中间件
     let cors = create_cors_layer(&config)?;
     let compression = create_compression_layer();
 
-    // 6. 构建应用路由
+    // 5. 构建应用路由
     let app = routes::create_app(database.clone(), &config)
         .await
-        .nest_service("/uploads", ServeDir::new(&config.storage.upload_dir))
-        // axum 默认请求体上限 2MB，会截断稍大的图片导致 multipart 解析失败；
-        // 放宽到 20MB（仍高于 MAX_FILE_SIZE=10MB，留足余量）。
-        .layer(axum::extract::DefaultBodyLimit::max(20 * 1024 * 1024))
         .layer(cors)
         .layer(compression);
 
-    // 7. 启动服务器
+    // 6. 启动服务器
     start_server(&config, app).await
 }
 

@@ -25,11 +25,7 @@ const CONTACTS = [
 function fmtUptime(s?: number) {
   if (!s) return '—'
   const d = Math.floor(s / 86400)
-  const h = Math.floor((s % 86400) / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  if (d > 0) return `${d}d ${h}h`
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m`
+  return `${d} 天`
 }
 
 export default function Home() {
@@ -58,20 +54,23 @@ export default function Home() {
   const online = health?.status === 'healthy'
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-20">
+    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-24">
       <Helmet>
         <title>chuyi's blog</title>
       </Helmet>
 
       {/* Intro */}
-      <header>
-        <Avatar className="size-24 border border-border">
-          {about?.photoUrl && <AvatarImage src={about.photoUrl} alt={about.title} />}
-          <AvatarFallback className="text-3xl">{about?.title?.[0] ?? 'C'}</AvatarFallback>
-        </Avatar>
+      <header className="home-intro">
+        <p className="literary-kicker mb-7">一隅 · 文字与生活</p>
+        <div className="home-avatar-frame">
+          <Avatar className="size-20 border border-border/70 sm:size-24">
+            {about?.photoUrl && <AvatarImage src={about.photoUrl} alt={about.title} />}
+            <AvatarFallback className="text-3xl">{about?.title?.[0] ?? 'C'}</AvatarFallback>
+          </Avatar>
+        </div>
 
-        <h1 className="mt-6 text-xl font-bold tracking-tight">{about?.title ?? "chuyi's blog"}</h1>
-        {about?.subtitle && <p className="mt-1 text-sm text-muted-foreground">{about.subtitle}</p>}
+        <h1 className="literary-title mt-7 text-2xl">{about?.title ?? "chuyi's blog"}</h1>
+        {about?.subtitle && <p className="mt-2 text-sm leading-6 text-muted-foreground">{about.subtitle}</p>}
 
         {bioParas.length > 0 ? (
           <div className="mt-8 space-y-4 text-[15px] leading-7 text-foreground/85">
@@ -83,8 +82,9 @@ export default function Home() {
           about === null && <Skeleton className="mt-8 h-16 w-full" />
         )}
 
-        {/* contact pills */}
-        <div className="mt-8 flex flex-wrap gap-2">
+        <p className="home-note">在喧嚣之外，留一处给文字与时间。</p>
+
+        <div className="mt-7 flex flex-wrap items-center gap-x-2.5 gap-y-2">
           {CONTACTS.map((c) => {
             const Icon = c.icon
             return (
@@ -93,30 +93,29 @@ export default function Home() {
                 href={c.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-secondary px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="home-contact"
               >
-                <Icon className="size-4" />
+                <Icon className="size-3.5" />
                 {c.label}
               </a>
             )
           })}
         </div>
 
-        {/* tiny server line */}
         {health && (
-          <p className="mt-6 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <p className="mt-6 flex items-center gap-1.5 text-xs text-muted-foreground/80">
             <span className={cn('size-1.5 rounded-full', online ? 'bg-emerald-500' : 'bg-red-500')} />
-            server {online ? 'online' : 'offline'} · up {fmtUptime(health.uptime_seconds)}
+            {online ? '此间已安静生长' : '站点暂时离线'} {online && fmtUptime(health.uptime_seconds)}
           </p>
         )}
       </header>
 
       {/* Blog */}
-      <section className="mt-16">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Blog</h2>
+      <section className="mt-20">
+        <div className="mb-4 flex items-center justify-between border-b border-border/70 pb-3">
+          <h2 className="literary-kicker">近来写下</h2>
           <Link to="/articles" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-            All →
+            所有文章 →
           </Link>
         </div>
 
@@ -135,12 +134,13 @@ export default function Home() {
         )}
       </section>
 
-      <nav className="mt-14 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-6 text-xs text-muted-foreground" aria-label="More content">
-        <Link to="/books" className="transition-colors hover:text-foreground">Books</Link>
-        <Link to="/changelog" className="transition-colors hover:text-foreground">Changelog</Link>
-        <Link to="/guestbook" className="transition-colors hover:text-foreground">Guestbook</Link>
-        <a href="/rss.xml" className="transition-colors hover:text-foreground">RSS</a>
+      <nav className="mt-24 flex flex-wrap justify-center gap-x-6 gap-y-2 border-t border-border/70 pt-7 text-xs text-muted-foreground" aria-label="更多内容">
+        <Link to="/books" className="transition-colors hover:text-primary">书架</Link>
+        <Link to="/changelog" className="transition-colors hover:text-primary">更新日志</Link>
+        <Link to="/guestbook" className="transition-colors hover:text-primary">留言簿</Link>
+        <a href="/rss.xml" className="transition-colors hover:text-primary">RSS</a>
       </nav>
+      <footer className="home-signoff">慢慢写，慢慢生活。</footer>
     </div>
   )
 }

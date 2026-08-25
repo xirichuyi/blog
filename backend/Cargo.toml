@@ -3,7 +3,7 @@ name = "chuyi-uk-back"
 version = "0.1.0"
 edition = "2021"
 authors = ["Chuyi <chuyi@chuyi.uk>"]
-description = "High-performance Rust backend for Chuyi Blog with advanced caching, monitoring, and security"
+description = "Rust API for Chuyi Blog"
 license = "MIT"
 repository = "https://github.com/chuyi/blog"
 keywords = ["blog", "api", "rust", "axum", "sqlite"]
@@ -27,12 +27,8 @@ incremental = true
 [dependencies]
 # Web framework
 axum = { version = "0.7", features = ["http2"] }
-axum-extra = { version = "0.9", features = ["typed-header", "multipart"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "fs", "trace", "compression-gzip", "compression-br"] }
-hyper = { version = "1.0", features = ["full", "http2"] }
+tower-http = { version = "0.5", features = ["cors", "compression-gzip", "compression-br"] }
 tokio = { version = "1.0", features = ["full"] }
-tokio-util = { version = "0.7", features = ["io"] }
 
 # Database
 sqlx = { version = "0.7", features = [
@@ -47,26 +43,17 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 quick-xml = { version = "0.37", features = ["serialize"] }
 
-# Async traits
-async-trait = "0.1"
-
-# File handling
-mime_guess = "2.0"
+# R2 request signing
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
 urlencoding = "2"
-
-# Image processing
-image = { version = "0.24", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
-webp = "0.3"
 
 # Authentication & Security
 jsonwebtoken = "9.2"
 bcrypt = "0.15"
 
 # Configuration
-config = "0.14"
 dotenvy = "0.15"
 
 # Logging & Tracing
@@ -82,11 +69,8 @@ chrono = { version = "0.4", features = ["serde"] }
 # UUID
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
-# Random number generation
-rand = "0.8"
-
-# HTTP client for AI API
-reqwest = { version = "0.11", features = ["json", "stream"] }
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
 url = "2.5"
 
 # IMAP 邮箱读取（在线工具：邮箱阅读）。native-tls 已在依赖树中（reqwest 默认 TLS）。
@@ -94,31 +78,11 @@ imap = "2.4"
 native-tls = "0.2"
 mailparse = "0.15"
 
-# Error handling
-anyhow = "1.0"
 thiserror = "1.0"
 
 # Utilities
-slug = "0.1"
 regex = "1.10"
-num_cpus = "1.16"
 sysinfo = "0.30"
-
-# Performance monitoring
-metrics = "0.21"
-metrics-exporter-prometheus = "0.12"
-
-# Memory management (optional)
-mimalloc = { version = "0.1", default-features = false, optional = true }
 
 [build-dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-
-[features]
-default = ["mimalloc"]
-# Enable performance optimizations
-performance = ["mimalloc"]
-# Enable development features
-development = []
-# Enable production features
-production = ["performance"]

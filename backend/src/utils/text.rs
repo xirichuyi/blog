@@ -126,16 +126,16 @@ mod tests {
     #[test]
     fn extracts_unique_markdown_image_urls() {
         let content = r#"
-![cover](/uploads/images/cover.webp)
+![cover](https://assets.example.com/images/cover.webp)
 ![R2](<https://assets.example.com/images/photo.webp> "caption")
-![duplicate](/uploads/images/cover.webp)
-[ordinary link](/uploads/images/not-an-image.webp)
+![duplicate](https://assets.example.com/images/cover.webp)
+[ordinary link](https://assets.example.com/images/not-an-image.webp)
 "#;
 
         assert_eq!(
             markdown_image_urls(content),
             vec![
-                "/uploads/images/cover.webp",
+                "https://assets.example.com/images/cover.webp",
                 "https://assets.example.com/images/photo.webp"
             ]
         );

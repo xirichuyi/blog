@@ -3,23 +3,21 @@ import { SEO } from '@/components/SEO'
 
 export default function Guestbook() {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-20">
+    <div className="mx-auto max-w-2xl px-6 py-16 sm:py-24">
       <SEO
-        title="Guestbook"
-        description="Leave a note, suggestion, question, or link for chuyi."
+        title="留言簿"
+        description="留下一句话、一个想法，或一次路过的痕迹。"
         path="/guestbook"
       />
-      <header className="mb-12">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Community</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight">Guestbook</h1>
-        <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
-          Leave a thought, suggestion, question, or link. Powered by GitHub Discussions.
-        </p>
+      <header className="public-page-head">
+        <p className="literary-kicker">GUESTBOOK · 来信</p>
+        <h1>留一行字</h1>
+        <p>若你恰好路过，欢迎留下一个想法、一句问候，或最近读到的好东西。</p>
       </header>
       <GiscusComments
         term="guestbook"
-        title="Leave a note"
-        description="Sign in with GitHub to post a message or react to other notes."
+        title="写下留言"
+        description="使用 GitHub 登录后，可以留言或回应其他人的文字。"
       />
     </div>
   )

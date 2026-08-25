@@ -12,10 +12,10 @@ import {
 import './Books.css'
 
 const STATUS: Record<ReadingStatus, string> = {
-  reading: 'Reading',
-  finished: 'Finished',
-  want_to_read: 'Up next',
-  paused: 'Paused',
+  reading: '在读',
+  finished: '读过',
+  want_to_read: '想读',
+  paused: '暂歇',
 }
 
 function readableFile(book: Book): BookFile | undefined {
@@ -42,13 +42,13 @@ function BookCard({ book }: { book: Book }) {
       <span className="library-book-copy">
         <span className="library-book-status">{STATUS[book.reading_status]}</span>
         <strong>{book.title}</strong>
-        <small>{book.author || 'Unknown author'}</small>
+        <small>{book.author || '佚名'}</small>
         {book.reading_status === 'reading' && (
           <span className="library-book-progress" aria-label={`${book.progress}% read`}>
             <i style={{ width: `${book.progress}%` }} />
           </span>
         )}
-        <span className="library-book-action">{file ? `Read ${file.format.toUpperCase()} →` : 'Reading notes only'}</span>
+        <span className="library-book-action">{file ? `开始阅读 ${file.format.toUpperCase()} →` : '仅有阅读笔记'}</span>
       </span>
     </>
   )
@@ -66,8 +66,8 @@ function EmptyBookshelf() {
   return (
     <div className="library-empty">
       <LibraryBig />
-      <h2>The shelf is still empty</h2>
-      <p>Add an EPUB from the dashboard and it will appear here.</p>
+      <h2>书架还是空的</h2>
+      <p>书会在适合的时间来到这里。</p>
     </div>
   )
 }
@@ -89,16 +89,16 @@ export default function Books() {
   }, [books])
 
   return (
-    <main className="library-page mx-auto max-w-2xl px-6 py-16 sm:py-20">
-      <SEO title="Books" description="Books in progress, finished volumes, and reading notes." path="/books" />
+    <main className="library-page mx-auto max-w-2xl px-6 py-16 sm:py-24">
+      <SEO title="书架" description="正在阅读、读过与想读的书。" path="/books" />
       <header className="library-header">
-        <p>Personal library</p>
-        <h1>Books</h1>
-        <p>Reading now, finished, and saved for later.</p>
+        <p>PERSONAL LIBRARY · 书房</p>
+        <h1>枕边与案头</h1>
+        <p>正在读、已经读过，以及留待日后相逢的书。</p>
       </header>
 
-      {!books && !error && <div className="library-loading"><Loader2 /> Loading shelf…</div>}
-      {error && <p className="py-8 text-sm text-destructive">Could not load the shelf: {error}</p>}
+      {!books && !error && <div className="library-loading"><Loader2 /> 正在整理书架…</div>}
+      {error && <p className="py-8 text-sm text-destructive">书架暂时无法打开：{error}</p>}
       {books?.length === 0 && <EmptyBookshelf />}
 
       <div className="library-groups">
