@@ -8,6 +8,7 @@ import StarterKit from '@tiptap/starter-kit'
 import {
   Bold,
   Code2,
+  GalleryHorizontal,
   Heading2,
   Heading3,
   ImagePlus,
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BlogVideo, type BlogVideoAttributes } from '@/components/admin/BlogVideo'
+import { BlogGallery } from '@/components/admin/BlogGallery'
 import { VideoUploadControl } from '@/components/admin/VideoUploadControl'
 import {
   Dialog,
@@ -52,6 +54,10 @@ interface ToolbarButtonProps {
 
 function imageFromFiles(files: FileList | null): File | null {
   return Array.from(files ?? []).find((file) => file.type.startsWith('image/')) ?? null
+}
+
+function imagesFromFiles(files: FileList | null): File[] {
+  return Array.from(files ?? []).filter((file) => file.type.startsWith('image/'))
 }
 
 function hasImageFile(dataTransfer: DataTransfer): boolean {
@@ -95,9 +101,11 @@ export function MarkdownEditor({
   uploadingImage,
 }: MarkdownEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [uploadingGallery, setUploadingGallery] = useState(false)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [linkValue, setLinkValue] = useState('')
   const [mobileToolbarTop, setMobileToolbarTop] = useState(() => (
@@ -118,6 +126,7 @@ export function MarkdownEditor({
         HTMLAttributes: { loading: 'lazy', decoding: 'async' },
       }),
       BlogVideo,
+      BlogGallery,
       Placeholder.configure({ placeholder: '开始写作…可以直接粘贴或拖入图片' }),
       TiptapMarkdown.configure({ markedOptions: { gfm: true, breaks: false } }),
     ],
@@ -206,11 +215,45 @@ export function MarkdownEditor({
     }
   }
 
+  const insertGallery = async (files: File[]) => {
+    if (!editor) return
+    const selectedImages = files.filter((file) => file.type.startsWith('image/'))
+    const images = selectedImages.slice(0, 12)
+    if (images.length < 2) {
+      setUploadError('图片组至少需要选择 2 张图片。')
+      return
+    }
+
+    setUploadError('')
+    setUploadingGallery(true)
+    try {
+      const uploads = await Promise.allSettled(images.map(async (file) => ({
+        src: await onUploadImage(file),
+        alt: file.name.replace(/\.[^.]+$/, '').replace(/[\[\]]/g, ''),
+      })))
+      const items = uploads.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
+      if (items.length < 2) throw new Error('成功上传的图片不足 2 张，请重新选择。')
+      editor.chain().focus().setBlogGallery(items).run()
+      const failedCount = uploads.length - items.length
+      const skippedCount = selectedImages.length - images.length
+      const notices = [
+        failedCount > 0 ? `${failedCount} 张上传失败` : '',
+        skippedCount > 0 ? `${skippedCount} 张超过单组 12 张的上限` : '',
+      ].filter(Boolean)
+      if (notices.length > 0) setUploadError(`${notices.join('，')}；其余图片已组成图片组。`)
+    } catch (error) {
+      setUploadError((error as Error).message || '图片组上传失败')
+    } finally {
+      setUploadingGallery(false)
+    }
+  }
+
   const handleImagePaste = (event: React.ClipboardEvent<HTMLElement>) => {
-    const file = imageFromFiles(event.clipboardData.files)
-    if (!file) return
+    const files = imagesFromFiles(event.clipboardData.files)
+    if (files.length === 0) return
     event.preventDefault()
-    void insertImage(file)
+    if (files.length >= 2) void insertGallery(files)
+    else void insertImage(files[0])
   }
 
   const openLinkDialog = () => {
@@ -263,11 +306,12 @@ export function MarkdownEditor({
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false)
       }}
       onDrop={(event) => {
-        const file = imageFromFiles(event.dataTransfer.files)
-        if (!file) return
+        const files = imagesFromFiles(event.dataTransfer.files)
+        if (files.length === 0) return
         event.preventDefault()
         setDragging(false)
-        void insertImage(file)
+        if (files.length >= 2) void insertGallery(files)
+        else void insertImage(files[0])
       }}
     >
       <BubbleMenu editor={editor}>
@@ -372,10 +416,17 @@ export function MarkdownEditor({
         </ToolbarButton>
         <ToolbarButton
           label="上传图片"
-          disabled={uploadingImage}
+          disabled={uploadingImage || uploadingGallery}
           onClick={() => fileInputRef.current?.click()}
         >
           {uploadingImage ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+        </ToolbarButton>
+        <ToolbarButton
+          label="插入图片组"
+          disabled={uploadingImage || uploadingGallery}
+          onClick={() => galleryInputRef.current?.click()}
+        >
+          {uploadingGallery ? <Loader2 className="size-4 animate-spin" /> : <GalleryHorizontal className="size-4" />}
         </ToolbarButton>
         <VideoUploadControl onUploaded={insertVideo} />
         <input
@@ -386,6 +437,18 @@ export function MarkdownEditor({
           onChange={(event) => {
             const file = imageFromFiles(event.target.files)
             if (file) void insertImage(file)
+            event.target.value = ''
+          }}
+        />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            const files = imagesFromFiles(event.target.files)
+            if (files.length > 0) void insertGallery(files)
             event.target.value = ''
           }}
         />

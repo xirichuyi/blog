@@ -148,6 +148,7 @@ function formatDate(iso: string): string {
 export function stripMarkdown(md: string, maxLength = 140): string {
   if (!md) return ''
   const text = md
+    .replace(/^:::[^\n]*$/gm, '')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')

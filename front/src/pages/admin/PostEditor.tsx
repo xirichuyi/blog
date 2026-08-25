@@ -79,6 +79,7 @@ export default function PostEditor() {
   const editing = Boolean(id)
   const navigate = useNavigate()
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const inlineUploadCountRef = useRef(0)
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -209,11 +210,15 @@ export default function PostEditor() {
   }
 
   async function uploadInlineImage(file: File): Promise<string> {
+    inlineUploadCountRef.current += 1
     setUploading('inline')
     try {
       return await uploadImageDirect(file)
     } finally {
-      setUploading(null)
+      inlineUploadCountRef.current -= 1
+      if (inlineUploadCountRef.current === 0) {
+        setUploading((current) => current === 'inline' ? null : current)
+      }
     }
   }
 
@@ -452,7 +457,7 @@ export default function PostEditor() {
                   event.target.value = ''
                 }}
               />
-              <Button variant="outline" size="sm" className="h-8" onClick={() => coverInputRef.current?.click()} disabled={uploading === 'cover'}>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => coverInputRef.current?.click()} disabled={Boolean(uploading)}>
                 {uploading === 'cover' ? <Loader2 className="animate-spin" /> : <ImagePlus />}
                 {coverUrl ? '更换' : '上传'}
               </Button>
@@ -476,7 +481,7 @@ export default function PostEditor() {
         value={content}
         onChange={setContent}
         onUploadImage={uploadInlineImage}
-        uploadingImage={uploading === 'inline'}
+        uploadingImage={Boolean(uploading)}
       />
       </div>
       </div>

@@ -35,7 +35,14 @@ import toml from 'react-syntax-highlighter/dist/esm/languages/prism/toml'
 import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
 import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
 import yaml from 'react-syntax-highlighter/dist/esm/languages/prism/yaml'
-import { Check, Copy, ExternalLink, Link2 } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Link2 } from 'lucide-react'
+import {
+  decodeGalleryItems,
+  encodeGalleryItems,
+  GALLERY_ALT_PREFIX,
+  replaceGalleryDirectives,
+  type BlogGalleryItem,
+} from '@/lib/blog-gallery'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
@@ -272,8 +279,170 @@ const MarkdownVideo = memo(function MarkdownVideo({
   )
 })
 
-function markdownWithVideoPlaceholders(content: string): string {
-  const withDirectives = content.replace(VIDEO_DIRECTIVE_PATTERN, (directive, attributes: string) => {
+const GalleryImage = memo(function GalleryImage({
+  item,
+  interactive,
+}: {
+  item: BlogGalleryItem
+  interactive: boolean
+}) {
+  const [loaded, setLoaded] = useState(false)
+  const [size, setSize] = useState({ width: 0, height: 0 })
+
+  return (
+    <figure className="md-gallery-item">
+      <a
+        href={item.src}
+        target={interactive ? '_blank' : undefined}
+        rel={interactive ? 'noreferrer' : undefined}
+        className={cn('md-gallery-image', loaded && 'is-loaded', !interactive && 'is-static')}
+        data-pswp-width={size.width || undefined}
+        data-pswp-height={size.height || undefined}
+        data-cropped="true"
+        data-zoomable={interactive ? 'true' : undefined}
+        aria-label={interactive ? (item.alt ? `查看大图：${item.alt}` : '查看大图') : undefined}
+        tabIndex={interactive ? undefined : -1}
+        onClick={interactive ? undefined : (event) => event.preventDefault()}
+      >
+        <img
+          src={item.src}
+          alt={item.alt ?? ''}
+          loading="lazy"
+          decoding="async"
+          onLoad={(event) => {
+            setLoaded(true)
+            setSize({
+              width: event.currentTarget.naturalWidth,
+              height: event.currentTarget.naturalHeight,
+            })
+          }}
+          onError={() => setLoaded(true)}
+        />
+      </a>
+      {item.alt && <figcaption className="md-gallery-caption">{item.alt}</figcaption>}
+    </figure>
+  )
+})
+
+const MarkdownGallery = memo(function MarkdownGallery({
+  items,
+  interactive,
+}: {
+  items: BlogGalleryItem[]
+  interactive: boolean
+}) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ pointerId: number; startX: number; scrollLeft: number } | null>(null)
+  const suppressClickRef = useRef(false)
+  const [active, setActive] = useState(0)
+
+  const updateActive = () => {
+    const track = trackRef.current
+    if (!track) return
+    const center = track.scrollLeft + track.clientWidth / 2
+    const slides = Array.from(track.querySelectorAll<HTMLElement>('.md-gallery-item'))
+    let nearest = 0
+    let distance = Number.POSITIVE_INFINITY
+    slides.forEach((slide, index) => {
+      const nextDistance = Math.abs(slide.offsetLeft + slide.offsetWidth / 2 - center)
+      if (nextDistance < distance) {
+        distance = nextDistance
+        nearest = index
+      }
+    })
+    setActive(nearest)
+  }
+
+  const goTo = (index: number) => {
+    const track = trackRef.current
+    const slide = track?.querySelectorAll<HTMLElement>('.md-gallery-item')[index]
+    if (!track || !slide) return
+    track.scrollTo({
+      left: slide.offsetLeft - (track.clientWidth - slide.clientWidth) / 2,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    })
+    setActive(index)
+  }
+
+  return (
+    <section className="md-gallery not-prose" aria-label={`${items.length} 张图片组成的图片组`}>
+      <div className="md-gallery-meta">
+        <span>影像 · {String(active + 1).padStart(2, '0')} / {String(items.length).padStart(2, '0')}</span>
+        <span className="md-gallery-rule" />
+        <div className="md-gallery-controls">
+          <button type="button" onClick={() => goTo(Math.max(0, active - 1))} disabled={active === 0} aria-label="上一张图片">
+            <ChevronLeft />
+          </button>
+          <button type="button" onClick={() => goTo(Math.min(items.length - 1, active + 1))} disabled={active === items.length - 1} aria-label="下一张图片">
+            <ChevronRight />
+          </button>
+        </div>
+      </div>
+      <div
+        ref={trackRef}
+        className="md-gallery-track"
+        tabIndex={0}
+        onScroll={updateActive}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            goTo(Math.max(0, active - 1))
+          }
+          if (event.key === 'ArrowRight') {
+            event.preventDefault()
+            goTo(Math.min(items.length - 1, active + 1))
+          }
+        }}
+        onPointerDown={(event) => {
+          if (event.pointerType !== 'mouse' || event.button !== 0) return
+          dragRef.current = { pointerId: event.pointerId, startX: event.clientX, scrollLeft: event.currentTarget.scrollLeft }
+          suppressClickRef.current = false
+        }}
+        onPointerMove={(event) => {
+          const drag = dragRef.current
+          if (!drag || drag.pointerId !== event.pointerId) return
+          const distance = event.clientX - drag.startX
+          if (Math.abs(distance) > 4) suppressClickRef.current = true
+          event.currentTarget.scrollLeft = drag.scrollLeft - distance
+        }}
+        onPointerUp={(event) => {
+          if (dragRef.current?.pointerId !== event.pointerId) return
+          dragRef.current = null
+          if (suppressClickRef.current) {
+            window.setTimeout(() => {
+              suppressClickRef.current = false
+            }, 0)
+          }
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null
+          suppressClickRef.current = false
+        }}
+        onPointerLeave={() => {
+          dragRef.current = null
+          suppressClickRef.current = false
+        }}
+        onClickCapture={(event) => {
+          if (!suppressClickRef.current) return
+          event.preventDefault()
+          event.stopPropagation()
+          suppressClickRef.current = false
+        }}
+      >
+        {items.map((item, index) => (
+          <GalleryImage key={`${item.src}-${index}`} item={item} interactive={interactive} />
+        ))}
+      </div>
+      <p className="md-gallery-hint">左右滑动，点击查看原图</p>
+    </section>
+  )
+})
+
+function markdownWithMediaPlaceholders(content: string): string {
+  const withGalleries = replaceGalleryDirectives(content, (items) => (
+    `\n\n![${GALLERY_ALT_PREFIX}${encodeGalleryItems(items)}](#blog-gallery)\n\n`
+  ))
+  const withDirectives = withGalleries.replace(VIDEO_DIRECTIVE_PATTERN, (directive, attributes: string) => {
     const src = directiveAttribute(attributes, 'src')
     if (!src) return directive
     return videoPlaceholder(src, directiveAttribute(attributes, 'title'))
@@ -324,7 +493,7 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
   const { theme } = useTheme()
   const markdownRef = useRef<HTMLDivElement>(null)
   const codeTheme = (theme === 'dark' ? oneDark : oneLight) as Record<string, CSSProperties>
-  const renderContent = useMemo(() => markdownWithVideoPlaceholders(content), [content])
+  const renderContent = useMemo(() => markdownWithMediaPlaceholders(content), [content])
 
   useEffect(() => {
     const gallery = markdownRef.current
@@ -354,7 +523,9 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
         onInit: (caption, pswp) => {
           pswp.on('change', () => {
             const trigger = pswp.currSlide?.data.element
-            const text = trigger?.closest('.md-figure')?.querySelector('.md-figcaption')?.innerHTML || ''
+            const text = trigger?.closest('.md-gallery-item')?.querySelector('.md-gallery-caption')?.innerHTML
+              || trigger?.closest('.md-figure')?.querySelector('.md-figcaption')?.innerHTML
+              || ''
             caption.innerHTML = text
             caption.classList.toggle('hidden', !text)
           })
@@ -378,7 +549,10 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
         const isVideoPlaceholder = onlyChild?.type === 'element'
           && onlyChild.tagName === 'img'
           && String(onlyChild.properties?.alt ?? '').startsWith(VIDEO_ALT_PREFIX)
-        return isVideoPlaceholder ? <>{children}</> : <p {...props}>{children}</p>
+        const isGalleryPlaceholder = onlyChild?.type === 'element'
+          && onlyChild.tagName === 'img'
+          && String(onlyChild.properties?.alt ?? '').startsWith(GALLERY_ALT_PREFIX)
+        return isVideoPlaceholder || isGalleryPlaceholder ? <>{children}</> : <p {...props}>{children}</p>
       },
       h2: (props) => <AnchoredHeading level={2} {...props} />,
       h3: (props) => <AnchoredHeading level={3} {...props} />,
@@ -400,6 +574,10 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
         if (alt.startsWith(VIDEO_ALT_PREFIX)) {
           const encodedTitle = alt.slice(VIDEO_ALT_PREFIX.length)
           return <MarkdownVideo src={props.src} title={decodeVideoTitle(encodedTitle)} />
+        }
+        if (alt.startsWith(GALLERY_ALT_PREFIX)) {
+          const items = decodeGalleryItems(alt.slice(GALLERY_ALT_PREFIX.length))
+          return items.length >= 2 ? <MarkdownGallery items={items} interactive={enableLightbox} /> : null
         }
         return <MarkdownImage {...props} interactive={enableLightbox} />
       },

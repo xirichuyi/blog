@@ -805,6 +805,57 @@
   outline-offset: 4px;
 }
 
+.wysiwyg-editor > .ProseMirror .editor-gallery {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  margin: 2.7rem 0 2.8rem;
+  border-block: 1px solid var(--hairline);
+  padding: 0.8rem 0 2.3rem;
+  cursor: grab;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: var(--hairline) transparent;
+  scrollbar-width: thin;
+}
+
+.wysiwyg-editor > .ProseMirror .editor-gallery.ProseMirror-selectednode {
+  outline: 2px solid color-mix(in srgb, var(--sage) 58%, transparent);
+  outline-offset: 4px;
+}
+
+.wysiwyg-editor > .ProseMirror .editor-gallery-item {
+  min-width: min(76%, 30rem);
+  margin: 0;
+  scroll-snap-align: start;
+}
+
+.wysiwyg-editor > .ProseMirror .editor-gallery img {
+  width: 100%;
+  height: clamp(13rem, 34vw, 20rem);
+  margin: 0;
+  border-radius: 0.3rem;
+  object-fit: cover;
+}
+
+.wysiwyg-editor > .ProseMirror .editor-gallery figcaption {
+  overflow: hidden;
+  margin-top: 0.45rem;
+  color: var(--graphite-soft);
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wysiwyg-editor > .ProseMirror .editor-gallery-hint {
+  position: absolute;
+  bottom: 0.45rem;
+  left: 0;
+  color: var(--sage-deep);
+  font-size: 0.63rem;
+  letter-spacing: 0.06em;
+}
+
 .wysiwyg-editor > .ProseMirror video {
   display: block;
   width: auto;
@@ -1217,6 +1268,167 @@
   background: var(--hairline);
 }
 
+.md-gallery {
+  width: 100%;
+  margin: 3.2rem 0 3.4rem;
+}
+
+.md-gallery-meta {
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--sage-deep);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.md-gallery-rule {
+  height: 1px;
+  flex: 1;
+  background: var(--hairline);
+}
+
+.md-gallery-controls {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.md-gallery-controls button {
+  display: grid;
+  width: 1.85rem;
+  height: 1.85rem;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  color: var(--graphite-soft);
+  transition: border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.md-gallery-controls button:hover:not(:disabled),
+.md-gallery-controls button:focus-visible {
+  border-color: var(--sage);
+  color: var(--sage-deep);
+}
+
+.md-gallery-controls button:disabled {
+  opacity: 0.3;
+}
+
+.md-gallery-controls svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.md-gallery-track {
+  display: flex;
+  gap: 0.8rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 0.35rem 0 0.85rem;
+  cursor: grab;
+  scroll-behavior: smooth;
+  scroll-padding-inline: 0.1rem;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: var(--hairline) transparent;
+  scrollbar-width: thin;
+  touch-action: pan-x;
+}
+
+.md-gallery-track:active {
+  cursor: grabbing;
+  scroll-snap-type: none;
+}
+
+.md-gallery-track:focus-visible {
+  outline: 1px solid var(--sage);
+  outline-offset: 3px;
+}
+
+.md-gallery-item {
+  min-width: min(78%, 32rem);
+  margin: 0;
+  scroll-snap-align: start;
+}
+
+.md-gallery-image {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--hairline);
+  border-radius: 0.35rem;
+  background: var(--mist);
+  cursor: zoom-in;
+}
+
+.md-gallery-image.is-static {
+  cursor: default;
+}
+
+.md-gallery-image::after {
+  position: absolute;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  border-radius: 9999px;
+  padding: 0.3rem 0.55rem;
+  background: color-mix(in oklab, black 52%, transparent);
+  color: white;
+  content: '查看原图';
+  font-size: 0.62rem;
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(0.25rem);
+  transition: opacity 160ms ease, transform 160ms ease;
+  pointer-events: none;
+}
+
+.md-gallery-image:hover::after,
+.md-gallery-image:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.md-gallery-image.is-static::after {
+  content: none;
+}
+
+.markdown-body .md-gallery-image img {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.markdown-body .md-gallery-image.is-loaded img {
+  opacity: 1;
+}
+
+.md-gallery-caption {
+  overflow: hidden;
+  margin-top: 0.55rem;
+  color: color-mix(in srgb, var(--graphite-soft) 76%, transparent);
+  font-size: 0.67rem;
+  letter-spacing: 0.035em;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.md-gallery-hint {
+  margin: 0.25rem 0 0;
+  color: color-mix(in srgb, var(--graphite-soft) 66%, transparent);
+  font-size: 0.63rem;
+  letter-spacing: 0.055em;
+  text-align: right;
+}
+
 .md-video-figure {
   width: 100%;
   margin: 2.8rem 0 3rem;
@@ -1382,6 +1594,30 @@
   .md-figure .md-figcaption {
     padding: 0 1rem;
   }
+
+  .md-gallery {
+    width: calc(100% + 2rem);
+    margin-left: -1rem;
+  }
+
+  .md-gallery-meta,
+  .md-gallery-hint {
+    padding-inline: 1rem;
+  }
+
+  .md-gallery-track {
+    gap: 0.65rem;
+    padding-inline: 1rem;
+    scroll-padding-inline: 1rem;
+  }
+
+  .md-gallery-item {
+    min-width: min(82vw, 28rem);
+  }
+
+  .md-gallery-image {
+    border-radius: 0.3rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1401,6 +1637,7 @@
   .article-toc-entry,
   .article-toc-entry > span,
   .markdown-body .md-figure img,
+  .markdown-body .md-gallery-image img,
   .markdown-body a,
   .md-code-copy {
     transition: none;
