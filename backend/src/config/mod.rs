@@ -123,9 +123,7 @@ impl fmt::Debug for CloudflareAnalyticsConfig {
 
 impl Config {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        // Deployment keeps the Cloudflare read-only credential separate from
-        // the application's long-lived .env file.
-        dotenvy::from_filename(".analytics.env").ok();
+        // Local development and production share the standard backend .env.
         dotenvy::dotenv().ok();
 
         // 确定运行环境：优先使用环境变量，否则根据编译模式判断

@@ -140,7 +140,7 @@ jobs:
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
             backend/tools/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/backend/tools/"
 
-      - name: Prepare private analytics configuration
+      - name: Prepare analytics environment variables
         env:
           CF_ANALYTICS_API_TOKEN: ${{ secrets.CF_ANALYTICS_API_TOKEN }}
         run: |
@@ -154,7 +154,7 @@ jobs:
             printf 'CF_ANALYTICS_ACCOUNT_ID=%s\n' 'da0f988dc268fbcea0f67f78601419d6'
             printf 'CF_ANALYTICS_SITE_TAG=%s\n' '16cb4fba33b7403fad2ab9a0dcee6e08'
             printf 'CF_ANALYTICS_SITE_HOST=%s\n' 'blog.chuyi.uk'
-          } > analytics.env
+          } > analytics-vars
 
       - name: Deploy backend (upload binary, atomic swap, restart)
         run: |
@@ -165,8 +165,8 @@ jobs:
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/blog-backend.service.new"
           rsync -az --chmod=F600 \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
-            analytics.env \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/backend/.analytics.env.new"
+            analytics-vars \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/blog-analytics-vars"
           # Upload to a temp name to avoid ETXTBSY on the running binary.
           rsync -az \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
@@ -176,9 +176,17 @@ jobs:
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
               set -e
               cd /var/www/blog/backend
-              mv -f .analytics.env.new .analytics.env
-              sudo chown root:www-data .analytics.env
-              sudo chmod 640 .analytics.env
+              test -f .env || { echo "production .env is missing"; exit 1; }
+              sudo awk '\''!/^CF_ANALYTICS_(API_TOKEN|ACCOUNT_ID|SITE_TAG|SITE_HOST)=/'\'' \
+                .env | sudo tee /tmp/blog.env.merged >/dev/null
+              sudo sh -c '\''cat /tmp/blog-analytics-vars >> /tmp/blog.env.merged'\''
+              sudo install -o root -g www-data -m 640 \
+                /tmp/blog.env.merged \
+                /var/www/blog/backend/.env
+              sudo rm -f \
+                /tmp/blog.env.merged \
+                /tmp/blog-analytics-vars \
+                /var/www/blog/backend/.analytics.env
               sudo install -o root -g root -m 644 \
                 /tmp/blog-backend.service.new \
                 /etc/systemd/system/blog-backend.service
