@@ -368,7 +368,6 @@ const MarkdownGallery = memo(function MarkdownGallery({
     <section className="md-gallery not-prose" aria-label={`${items.length} 张图片组成的图片组`}>
       <div className="md-gallery-meta">
         <span>影像 · {String(active + 1).padStart(2, '0')} / {String(items.length).padStart(2, '0')}</span>
-        <span className="md-gallery-rule" />
         <div className="md-gallery-controls">
           <button type="button" onClick={() => goTo(Math.max(0, active - 1))} disabled={active === 0} aria-label="上一张图片">
             <ChevronLeft />

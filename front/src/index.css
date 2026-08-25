@@ -808,15 +808,18 @@
 .wysiwyg-editor > .ProseMirror .editor-gallery {
   position: relative;
   display: flex;
+  width: min(90vw, 72rem);
   gap: 0.75rem;
   overflow-x: auto;
-  margin: 2.7rem 0 2.8rem;
-  border-block: 1px solid var(--hairline);
-  padding: 0.8rem 0 2.3rem;
+  margin: 2.7rem 0 2.8rem calc((100% - min(90vw, 72rem)) / 2);
+  padding: 0 0 1.8rem;
   cursor: grab;
   scroll-snap-type: x mandatory;
-  scrollbar-color: var(--hairline) transparent;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.wysiwyg-editor > .ProseMirror .editor-gallery::-webkit-scrollbar {
+  display: none;
 }
 
 .wysiwyg-editor > .ProseMirror .editor-gallery.ProseMirror-selectednode {
@@ -825,17 +828,22 @@
 }
 
 .wysiwyg-editor > .ProseMirror .editor-gallery-item {
-  min-width: min(76%, 30rem);
+  width: max-content;
+  min-width: 0;
+  flex: none;
   margin: 0;
-  scroll-snap-align: start;
+  scroll-snap-align: center;
 }
 
 .wysiwyg-editor > .ProseMirror .editor-gallery img {
-  width: 100%;
-  height: clamp(13rem, 34vw, 20rem);
+  width: auto;
+  max-width: none;
+  height: clamp(14rem, 28vw, 20rem);
   margin: 0;
-  border-radius: 0.3rem;
-  object-fit: cover;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  object-fit: contain;
 }
 
 .wysiwyg-editor > .ProseMirror .editor-gallery figcaption {
@@ -850,10 +858,12 @@
 .wysiwyg-editor > .ProseMirror .editor-gallery-hint {
   position: absolute;
   bottom: 0.45rem;
-  left: 0;
+  left: 50%;
   color: var(--sage-deep);
   font-size: 0.63rem;
   letter-spacing: 0.06em;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 .wysiwyg-editor > .ProseMirror video {
@@ -1269,26 +1279,27 @@
 }
 
 .md-gallery {
-  width: 100%;
+  --gallery-image-height: clamp(18rem, 32vw, 26rem);
+  position: relative;
+  left: 50%;
+  width: 100vw;
   margin: 3.2rem 0 3.4rem;
+  transform: translateX(-50%);
 }
 
 .md-gallery-meta {
   display: flex;
+  width: min(calc(100% - 2rem), 42.5rem);
   min-height: 2rem;
+  margin-inline: auto;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  gap: 1rem;
   color: var(--sage-deep);
   font-size: 0.64rem;
   font-weight: 600;
   letter-spacing: 0.11em;
   text-transform: uppercase;
-}
-
-.md-gallery-rule {
-  height: 1px;
-  flex: 1;
-  background: var(--hairline);
 }
 
 .md-gallery-controls {
@@ -1327,14 +1338,17 @@
   gap: 0.8rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding: 0.35rem 0 0.85rem;
+  padding: 0.35rem max(1rem, calc((100vw - 42.5rem) / 2)) 0.85rem;
   cursor: grab;
   scroll-behavior: smooth;
-  scroll-padding-inline: 0.1rem;
+  scroll-padding-inline: max(1rem, calc((100vw - 42.5rem) / 2));
   scroll-snap-type: x mandatory;
-  scrollbar-color: var(--hairline) transparent;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   touch-action: pan-x;
+}
+
+.md-gallery-track::-webkit-scrollbar {
+  display: none;
 }
 
 .md-gallery-track:active {
@@ -1348,19 +1362,22 @@
 }
 
 .md-gallery-item {
-  min-width: min(78%, 32rem);
+  width: max-content;
+  min-width: 0;
+  flex: none;
   margin: 0;
-  scroll-snap-align: start;
+  scroll-snap-align: center;
 }
 
 .md-gallery-image {
   position: relative;
   display: block;
+  width: max-content;
+  height: var(--gallery-image-height);
   overflow: hidden;
-  aspect-ratio: 4 / 3;
-  border: 1px solid var(--hairline);
-  border-radius: 0.35rem;
-  background: var(--mist);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   cursor: zoom-in;
 }
 
@@ -1396,12 +1413,13 @@
 }
 
 .markdown-body .md-gallery-image img {
-  width: 100%;
+  width: auto;
+  max-width: none;
   height: 100%;
   margin: 0;
   border: 0;
   border-radius: 0;
-  object-fit: cover;
+  object-fit: contain;
   opacity: 0;
   transition: opacity 240ms ease;
 }
@@ -1422,7 +1440,8 @@
 }
 
 .md-gallery-hint {
-  margin: 0.25rem 0 0;
+  width: min(calc(100% - 2rem), 42.5rem);
+  margin: 0.25rem auto 0;
   color: color-mix(in srgb, var(--graphite-soft) 66%, transparent);
   font-size: 0.63rem;
   letter-spacing: 0.055em;
@@ -1596,13 +1615,7 @@
   }
 
   .md-gallery {
-    width: calc(100% + 2rem);
-    margin-left: -1rem;
-  }
-
-  .md-gallery-meta,
-  .md-gallery-hint {
-    padding-inline: 1rem;
+    --gallery-image-height: 15rem;
   }
 
   .md-gallery-track {
@@ -1611,12 +1624,8 @@
     scroll-padding-inline: 1rem;
   }
 
-  .md-gallery-item {
-    min-width: min(82vw, 28rem);
-  }
-
   .md-gallery-image {
-    border-radius: 0.3rem;
+    border-radius: 0;
   }
 }
 
