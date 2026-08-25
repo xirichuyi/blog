@@ -20,6 +20,7 @@ const NotFound = lazy(() => import('@/pages/NotFound'))
 const AdminLogin = lazy(() => import('@/pages/admin/Login'))
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'))
 const Dashboard = lazy(() => import('@/pages/admin/Dashboard'))
+const Analytics = lazy(() => import('@/pages/admin/Analytics'))
 const PostsList = lazy(() => import('@/pages/admin/PostsList'))
 const PostEditor = lazy(() => import('@/pages/admin/PostEditor'))
 const Taxonomy = lazy(() => import('@/pages/admin/Taxonomy'))
@@ -57,6 +58,7 @@ export default function App() {
           }
         >
           <Route index element={<Dashboard />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="posts" element={<PostsList />} />
           <Route path="posts/new" element={<PostEditor />} />
           <Route path="posts/:id" element={<PostEditor />} />

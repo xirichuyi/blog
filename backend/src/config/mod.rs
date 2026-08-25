@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::{env, fmt};
 
 /// 应用常量定义
 pub mod constants {
@@ -48,6 +48,7 @@ pub struct Config {
     pub server: ServerConfig,
     pub cors: CorsConfig,
     pub s3: S3Config,
+    pub cloudflare_analytics: Option<CloudflareAnalyticsConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,8 +101,31 @@ pub struct S3Config {
     pub public_url: String,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct CloudflareAnalyticsConfig {
+    pub api_token: String,
+    pub account_id: String,
+    pub site_tag: String,
+    pub site_host: String,
+}
+
+impl fmt::Debug for CloudflareAnalyticsConfig {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("CloudflareAnalyticsConfig")
+            .field("api_token", &"[redacted]")
+            .field("account_id", &self.account_id)
+            .field("site_tag", &self.site_tag)
+            .field("site_host", &self.site_host)
+            .finish()
+    }
+}
+
 impl Config {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        // Deployment keeps the Cloudflare read-only credential separate from
+        // the application's long-lived .env file.
+        dotenvy::from_filename(".analytics.env").ok();
         dotenvy::dotenv().ok();
 
         // 确定运行环境：优先使用环境变量，否则根据编译模式判断
@@ -210,6 +234,8 @@ impl Config {
             return Err("S3_ENABLED=true but one or more S3 settings are empty".into());
         }
 
+        let cloudflare_analytics = load_cloudflare_analytics_config()?;
+
         Ok(Config {
             environment,
             database: DatabaseConfig { url: database_url },
@@ -227,8 +253,35 @@ impl Config {
                 origins: cors_origins,
             },
             s3,
+            cloudflare_analytics,
         })
     }
+}
+
+fn load_cloudflare_analytics_config(
+) -> Result<Option<CloudflareAnalyticsConfig>, Box<dyn std::error::Error>> {
+    let api_token = match env::var("CF_ANALYTICS_API_TOKEN") {
+        Ok(value) if !value.trim().is_empty() => value,
+        _ => return Ok(None),
+    };
+    let account_id = env::var("CF_ANALYTICS_ACCOUNT_ID").unwrap_or_default();
+    let site_tag = env::var("CF_ANALYTICS_SITE_TAG").unwrap_or_default();
+    let site_host =
+        env::var("CF_ANALYTICS_SITE_HOST").unwrap_or_else(|_| "blog.chuyi.uk".to_string());
+
+    if account_id.trim().is_empty() || site_tag.trim().is_empty() || site_host.trim().is_empty() {
+        return Err(
+            "CF_ANALYTICS_API_TOKEN is set but one or more Cloudflare Analytics settings are empty"
+                .into(),
+        );
+    }
+
+    Ok(Some(CloudflareAnalyticsConfig {
+        api_token,
+        account_id,
+        site_tag,
+        site_host,
+    }))
 }
 
 fn load_google_auth_config() -> Option<GoogleAuthConfig> {

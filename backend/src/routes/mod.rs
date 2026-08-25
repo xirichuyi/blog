@@ -1,9 +1,9 @@
 use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
-    about_handler, auth_handler, book_handler, category_handler, changelog_handler, health_handler,
-    mail_handler, post_handler, quant_handler, seo_handler, tag_handler, tools_handler,
-    upload_handler,
+    about_handler, analytics_handler, auth_handler, book_handler, category_handler,
+    changelog_handler, health_handler, mail_handler, post_handler, quant_handler, seo_handler,
+    tag_handler, tools_handler, upload_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::services::Services;
@@ -51,7 +51,11 @@ impl FromRef<AppState> for Services {
 pub async fn create_app(database: Database, config: &Config) -> Router {
     let config = Arc::new(config.clone());
     let r2_storage = Arc::new(R2Storage::new(&config.s3));
-    let services = Services::new(database.clone(), r2_storage.clone());
+    let services = Services::new(
+        database.clone(),
+        r2_storage.clone(),
+        config.cloudflare_analytics.clone(),
+    );
     let app_state = AppState {
         database,
         config,
@@ -116,6 +120,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
             "/api/admin/dashboard/stats",
             get(health_handler::get_dashboard_stats),
         )
+        .route("/api/admin/analytics", get(analytics_handler::dashboard))
         .route(
             "/api/admin/posts",
             get(post_handler::admin_list_posts_with_details),

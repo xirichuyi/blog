@@ -64,6 +64,43 @@ export interface DashboardStats {
   system_info?: { uptime?: string; memory_usage?: string }
 }
 
+export interface AnalyticsTrendPoint {
+  date: string
+  pageviews: number
+  visits: number
+}
+
+export interface AnalyticsPage {
+  path: string
+  title: string
+  pageviews: number
+  visits: number
+}
+
+export interface AnalyticsBreakdown {
+  key: string
+  label: string
+  pageviews: number
+}
+
+export interface AnalyticsDashboard {
+  available: boolean
+  provider: string
+  days: 7 | 30 | 90
+  from: string
+  to: string
+  pageviews: number
+  visits: number
+  trend: AnalyticsTrendPoint[]
+  top_pages: AnalyticsPage[]
+  referrers: AnalyticsBreakdown[]
+  devices: AnalyticsBreakdown[]
+  countries: AnalyticsBreakdown[]
+  updated_at: string
+  cached: boolean
+  message?: string | null
+}
+
 // ---------- auth ----------
 export interface AdminSession {
   email: string
@@ -101,6 +138,11 @@ export async function getDashboard(): Promise<DashboardStats> {
   }
   if (!res.ok) throw new Error(`请求失败 (${res.status})`)
   return (await res.json()) as DashboardStats
+}
+
+export async function getAnalytics(days: 7 | 30 | 90): Promise<AnalyticsDashboard> {
+  const env = await req<AnalyticsDashboard>(`/admin/analytics?days=${days}`)
+  return env.data
 }
 
 // ---------- posts ----------

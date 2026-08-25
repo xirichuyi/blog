@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   BookOpen,
+  BarChart3,
   FileText,
   History,
   LayoutDashboard,
@@ -41,6 +42,7 @@ import './AdminLayout.css'
 
 const NAV = [
   { to: '/admin', label: '工作台', icon: LayoutDashboard, exact: true },
+  { to: '/admin/analytics', label: '访问统计', icon: BarChart3 },
   { to: '/admin/posts', label: '文章管理', icon: FileText },
   { to: '/admin/taxonomy', label: '分类与标签', icon: Tags },
   { to: '/admin/books', label: '我的书架', icon: BookOpen },
@@ -50,6 +52,7 @@ const NAV = [
 
 const PAGE_META: Record<string, { title: string; description: string }> = {
   '/admin': { title: '工作台', description: '管理文章与站点内容' },
+  '/admin/analytics': { title: '访问统计', description: '只属于你的访客足迹' },
   '/admin/posts': { title: '文章管理', description: '创作、发布和整理你的文章' },
   '/admin/taxonomy': { title: '分类与标签', description: '让内容保持清晰有序' },
   '/admin/books': { title: '我的书架', description: '管理公开阅读的书籍' },
