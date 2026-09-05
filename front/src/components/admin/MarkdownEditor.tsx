@@ -1,10 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
-import { BubbleMenu } from '@tiptap/react/menus'
-import Image from '@tiptap/extension-image'
-import Placeholder from '@tiptap/extension-placeholder'
-import { Markdown as TiptapMarkdown } from '@tiptap/markdown'
-import StarterKit from '@tiptap/starter-kit'
+import { useDeferredValue, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMarkdownSource } from './useMarkdownSource'
+import { Markdown } from '@/components/Markdown'
+import { serializeGallery } from '@/lib/blog-gallery'
 import {
   Bold,
   Code2,
@@ -22,8 +19,7 @@ import {
   Undo2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { BlogVideo, type BlogVideoAttributes } from '@/components/admin/BlogVideo'
-import { BlogGallery } from '@/components/admin/BlogGallery'
+import { serializeVideo, type BlogVideoAttributes } from '@/lib/blog-video'
 import { VideoUploadControl } from '@/components/admin/VideoUploadControl'
 import {
   Dialog,
@@ -112,58 +108,10 @@ export function MarkdownEditor({
     typeof window === 'undefined' ? 0 : Math.max(0, window.innerHeight - 44)
   ))
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3, 4] },
-        link: {
-          openOnClick: false,
-          autolink: true,
-          HTMLAttributes: { rel: 'noreferrer', target: '_blank' },
-        },
-      }),
-      Image.configure({
-        HTMLAttributes: { loading: 'lazy', decoding: 'async' },
-      }),
-      BlogVideo,
-      BlogGallery,
-      Placeholder.configure({ placeholder: '开始写作…可以直接粘贴或拖入图片' }),
-      TiptapMarkdown.configure({ markedOptions: { gfm: true, breaks: false } }),
-    ],
-    content: value,
-    contentType: 'markdown',
-    immediatelyRender: false,
-    editorProps: {
-      attributes: {
-        autocapitalize: 'sentences',
-        autocomplete: 'off',
-        autocorrect: 'on',
-        spellcheck: 'true',
-      },
-    },
-    onUpdate: ({ editor: updatedEditor }) => onChange(updatedEditor.getMarkdown()),
-  })
-  const editorState = useEditorState({
-    editor,
-    selector: ({ editor: currentEditor }) => currentEditor ? ({
-      blockquote: currentEditor.isActive('blockquote'),
-      bold: currentEditor.isActive('bold'),
-      bulletList: currentEditor.isActive('bulletList'),
-      canRedo: currentEditor.can().redo(),
-      canUndo: currentEditor.can().undo(),
-      code: currentEditor.isActive('code'),
-      heading2: currentEditor.isActive('heading', { level: 2 }),
-      heading3: currentEditor.isActive('heading', { level: 3 }),
-      italic: currentEditor.isActive('italic'),
-      link: currentEditor.isActive('link'),
-      orderedList: currentEditor.isActive('orderedList'),
-    }) : null,
-  })
-
-  useEffect(() => {
-    if (!editor || editor.isDestroyed || editor.getMarkdown() === value) return
-    editor.commands.setContent(value, { contentType: 'markdown', emitUpdate: false })
-  }, [editor, value])
+  const editor = useMarkdownSource(value, onChange)
+  const [mode, setMode] = useState<'source' | 'split' | 'preview'>('source')
+  const previewValue = useDeferredValue(value)
+  const videoAnchorRef = useRef<((text?: string) => void) | null>(null)
 
   useEffect(() => {
     const viewport = window.visualViewport
@@ -203,20 +151,21 @@ export function MarkdownEditor({
   }, [])
 
   const insertImage = async (file: File) => {
-    if (!editor || !file.type.startsWith('image/')) return
+    if (!file.type.startsWith('image/')) return
+    const finish = editor.anchor()
     setUploadError('')
 
     try {
       const url = await onUploadImage(file)
       const alt = file.name.replace(/\.[^.]+$/, '').replace(/[\[\]]/g, '')
-      editor.chain().focus().setImage({ src: url, alt }).run()
+      finish(`![${alt}](<${url.replace(/>/g, '%3E')}>)`)
     } catch (error) {
+      finish()
       setUploadError((error as Error).message || '图片上传失败')
     }
   }
 
   const insertGallery = async (files: File[]) => {
-    if (!editor) return
     const selectedImages = files.filter((file) => file.type.startsWith('image/'))
     const images = selectedImages.slice(0, 12)
     if (images.length < 2) {
@@ -226,6 +175,7 @@ export function MarkdownEditor({
 
     setUploadError('')
     setUploadingGallery(true)
+    const finish = editor.anchor()
     try {
       const uploads = await Promise.allSettled(images.map(async (file) => ({
         src: await onUploadImage(file),
@@ -233,7 +183,7 @@ export function MarkdownEditor({
       })))
       const items = uploads.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
       if (items.length < 2) throw new Error('成功上传的图片不足 2 张，请重新选择。')
-      editor.chain().focus().setBlogGallery(items).run()
+      finish(serializeGallery(items))
       const failedCount = uploads.length - items.length
       const skippedCount = selectedImages.length - images.length
       const notices = [
@@ -244,6 +194,7 @@ export function MarkdownEditor({
     } catch (error) {
       setUploadError((error as Error).message || '图片组上传失败')
     } finally {
+      finish()
       setUploadingGallery(false)
     }
   }
@@ -257,43 +208,28 @@ export function MarkdownEditor({
   }
 
   const openLinkDialog = () => {
-    if (!editor) return
-    setLinkValue(String(editor.getAttributes('link').href ?? ''))
+    setLinkValue('')
     setLinkDialogOpen(true)
   }
 
   const applyLink = () => {
-    if (!editor) return
     const nextUrl = linkValue.trim()
-    if (nextUrl) {
-      editor.chain().focus().extendMarkRange('link').setLink({ href: normalizeLink(nextUrl) }).run()
-    } else {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run()
-    }
+    if (nextUrl) editor.wrap('[', `](<${normalizeLink(nextUrl).replace(/>/g, '%3E')}>)`, '链接文字')
     setLinkDialogOpen(false)
   }
 
   const insertVideo = (video: BlogVideoAttributes) => {
-    editor
-      ?.chain()
-      .focus()
-      .insertContent({ type: BlogVideo.name, attrs: video })
-      .run()
-  }
-
-  if (!editor) {
-    return (
-      <div className="grid min-h-72 place-items-center rounded-xl border border-border text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-      </div>
-    )
+    const finish = videoAnchorRef.current
+    if (finish) finish(serializeVideo(video))
+    else editor.insert(`\n\n${serializeVideo(video)}\n\n`)
+    videoAnchorRef.current = null
   }
 
   return (
     <TooltipProvider delayDuration={300}>
       <section
         className="admin-editor-surface"
-      onPaste={handleImagePaste}
+      onPasteCapture={handleImagePaste}
       onDragEnter={(event) => {
         if (!hasImageFile(event.dataTransfer)) return
         event.preventDefault()
@@ -305,7 +241,7 @@ export function MarkdownEditor({
       onDragLeave={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false)
       }}
-      onDrop={(event) => {
+      onDropCapture={(event) => {
         const files = imagesFromFiles(event.dataTransfer.files)
         if (files.length === 0) return
         event.preventDefault()
@@ -314,103 +250,67 @@ export function MarkdownEditor({
         else void insertImage(files[0])
       }}
     >
-      <BubbleMenu editor={editor}>
-        <div className="admin-editor-bubble">
-          <ToolbarButton
-            label="粗体"
-            active={editorState?.bold}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          >
-            <Bold />
-          </ToolbarButton>
-          <ToolbarButton
-            label="斜体"
-            active={editorState?.italic}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          >
-            <Italic />
-          </ToolbarButton>
-          <ToolbarButton label="链接" active={editorState?.link} onClick={openLinkDialog}>
-            <Link2 />
-          </ToolbarButton>
-          <ToolbarButton
-            label="行内代码"
-            active={editorState?.code}
-            onClick={() => editor.chain().focus().toggleCode().run()}
-          >
-            <Code2 />
-          </ToolbarButton>
-        </div>
-      </BubbleMenu>
       <div
         ref={toolbarRef}
         className="admin-editor-toolbar fixed inset-x-0 top-[var(--mobile-toolbar-top)] z-50 flex min-h-11 items-center gap-1 overflow-x-auto border-y border-border bg-background/95 px-1 backdrop-blur md:sticky md:inset-x-auto md:z-40 md:border-x-0"
         style={{
+          display: mode === 'preview' ? 'none' : undefined,
           '--mobile-toolbar-top': `${mobileToolbarTop}px`,
         } as CSSProperties}
       >
         <ToolbarButton
           label="二级标题"
-          active={editorState?.heading2}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() => editor.prefix('## ')}
         >
           <Heading2 className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="三级标题"
-          active={editorState?.heading3}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          onClick={() => editor.prefix('### ')}
         >
           <Heading3 className="size-4" />
         </ToolbarButton>
         <span className="mx-1 h-5 w-px shrink-0 bg-border" />
         <ToolbarButton
           label="粗体 (⌘B)"
-          active={editorState?.bold}
-          onClick={() => editor.chain().focus().toggleBold().run()}
+          onClick={() => editor.wrap('**')}
         >
           <Bold className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="斜体 (⌘I)"
-          active={editorState?.italic}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
+          onClick={() => editor.wrap('*')}
         >
           <Italic className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="链接"
-          active={editorState?.link}
           onClick={openLinkDialog}
         >
           <Link2 className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="行内代码"
-          active={editorState?.code}
-          onClick={() => editor.chain().focus().toggleCode().run()}
+          onClick={() => editor.wrap('`')}
         >
           <Code2 className="size-4" />
         </ToolbarButton>
         <span className="mx-1 h-5 w-px shrink-0 bg-border" />
         <ToolbarButton
           label="无序列表"
-          active={editorState?.bulletList}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          onClick={() => editor.prefix('- ')}
         >
           <List className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="有序列表"
-          active={editorState?.orderedList}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          onClick={() => editor.prefix('1. ')}
         >
           <ListOrdered className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="引用"
-          active={editorState?.blockquote}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          onClick={() => editor.prefix('> ')}
         >
           <Quote className="size-4" />
         </ToolbarButton>
@@ -428,7 +328,10 @@ export function MarkdownEditor({
         >
           {uploadingGallery ? <Loader2 className="size-4 animate-spin" /> : <GalleryHorizontal className="size-4" />}
         </ToolbarButton>
-        <VideoUploadControl onUploaded={insertVideo} />
+        <VideoUploadControl onUploaded={insertVideo} onUploadStart={() => {
+          videoAnchorRef.current?.()
+          videoAnchorRef.current = editor.anchor()
+        }} />
         <input
           ref={fileInputRef}
           type="file"
@@ -456,15 +359,15 @@ export function MarkdownEditor({
         <span className="mx-1 h-5 w-px shrink-0 bg-border" />
         <ToolbarButton
           label="撤销 (⌘Z)"
-          disabled={!editorState?.canUndo}
-          onClick={() => editor.chain().focus().undo().run()}
+          disabled={!editor.canUndo}
+          onClick={() => editor.undo()}
         >
           <Undo2 className="size-4" />
         </ToolbarButton>
         <ToolbarButton
           label="重做 (⇧⌘Z)"
-          disabled={!editorState?.canRedo}
-          onClick={() => editor.chain().focus().redo().run()}
+          disabled={!editor.canRedo}
+          onClick={() => editor.redo()}
         >
           <Redo2 className="size-4" />
         </ToolbarButton>
@@ -479,14 +382,25 @@ export function MarkdownEditor({
         </p>
       )}
 
-      <div className="article-page admin-editor-body relative min-h-[70vh]">
-        <EditorContent
-          editor={editor}
-          className="markdown-body wysiwyg-editor prose max-w-none px-0 pb-32 pt-8 md:pb-16"
-        />
+      <div className="flex gap-1 border-b border-border py-2" role="group" aria-label="编辑视图">
+        {(['source', 'split', 'preview'] as const).map((item) => (
+          <Button key={item} type="button" size="sm" variant={mode === item ? 'secondary' : 'ghost'}
+            aria-pressed={mode === item} onClick={() => setMode(item)}>
+            {{ source: '源码', split: '分屏', preview: '预览' }[item]}
+          </Button>
+        ))}
+      </div>
+      <div className={`article-page admin-editor-body relative min-h-[70vh] ${mode === 'split' ? 'grid gap-6 md:grid-cols-2' : ''}`}>
+        <div ref={editor.hostRef} hidden={mode === 'preview'}
+          className="min-w-0 px-0 pb-32 pt-8 text-base md:pb-16" />
+        {mode !== 'source' && (
+          <div className="min-w-0 pb-32 pt-8 md:pb-16" aria-label="文章预览" aria-busy={previewValue !== value}>
+            <Markdown content={previewValue} enableLightbox={false} />
+          </div>
+        )}
         {dragging && (
           <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-primary bg-background/90 text-sm font-medium text-primary backdrop-blur">
-            松开即可上传，图片会插入当前光标位置
+            松开即可上传，图片会插入上传开始时的光标位置
           </div>
         )}
       </div>
@@ -495,7 +409,7 @@ export function MarkdownEditor({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>编辑链接</DialogTitle>
-            <DialogDescription>输入完整地址；留空保存会移除当前链接。</DialogDescription>
+            <DialogDescription>输入地址，将选中文字转换为 Markdown 链接。</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="editor-link">链接地址</Label>

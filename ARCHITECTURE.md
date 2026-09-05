@@ -44,3 +44,14 @@ implementations from drifting apart.
 - Database migrations must remain compatible with the previous binary so the
   automated binary rollback is safe. Destructive schema cleanup belongs in a
   later deploy after old code no longer depends on it.
+
+## Article editor
+
+- Markdown source is the canonical article content. CodeMirror edits that source
+  directly; previewing must never parse and serialize it back into stored content.
+- Editor preview reuses the public `Markdown` component and its existing media
+  styles. Video and gallery directives remain compatible with existing posts.
+- Upload insertion positions track document edits while the upload is pending.
+- `cd front && npm run test:editor` checks source preservation, toolbar history,
+  media rendering, asynchronous image insertion, and narrow-screen layout.
+  Install Chromium first with `npx playwright install chromium`.

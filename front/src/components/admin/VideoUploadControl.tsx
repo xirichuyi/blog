@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { uploadVideoDirect } from '@/services/upload'
-import type { BlogVideoAttributes } from './BlogVideo'
+import type { BlogVideoAttributes } from '@/lib/blog-video'
 
 const ACCEPTED_VIDEO_TYPES = 'video/mp4,video/webm,video/quicktime,video/x-m4v,.mp4,.webm,.mov,.m4v'
 const MAX_VIDEO_BYTES = 20 * 1024 * 1024 * 1024
@@ -28,9 +28,10 @@ interface VideoMetadata {
 
 interface VideoUploadControlProps {
   onUploaded: (video: BlogVideoAttributes) => void
+  onUploadStart?: () => void
 }
 
-export function VideoUploadControl({ onUploaded }: VideoUploadControlProps) {
+export function VideoUploadControl({ onUploaded, onUploadStart }: VideoUploadControlProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const [open, setOpen] = useState(false)
@@ -57,6 +58,7 @@ export function VideoUploadControl({ onUploaded }: VideoUploadControlProps) {
   const upload = async () => {
     if (!file) return
     const controller = new AbortController()
+    onUploadStart?.()
     abortRef.current = controller
     setUploading(true)
     setError('')

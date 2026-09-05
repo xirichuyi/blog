@@ -210,9 +210,11 @@ const MarkdownImage = memo(function MarkdownImage({
   onLoad,
   onError,
   interactive = true,
+  style,
   ...props
 }: MarkdownImageProps) {
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const imageHref = typeof src === 'string' ? src : undefined
 
@@ -226,12 +228,13 @@ const MarkdownImage = memo(function MarkdownImage({
         data-pswp-width={size.width || undefined}
         data-pswp-height={size.height || undefined}
         data-cropped="true"
-        data-zoomable={interactive ? 'true' : undefined}
+        data-zoomable={interactive && !failed ? 'true' : undefined}
         aria-label={interactive ? (alt ? `View full-size image: ${alt}` : 'View full-size image') : undefined}
         tabIndex={interactive ? undefined : -1}
         onClick={interactive ? undefined : (event) => event.preventDefault()}
       >
         <img
+          style={{ ...style, ...(failed ? { display: 'none' } : {}) }}
           src={imageHref}
           alt={alt}
           loading="lazy"
@@ -247,10 +250,14 @@ const MarkdownImage = memo(function MarkdownImage({
           }}
           onError={(event) => {
             setLoaded(true)
+            setFailed(true)
             onError?.(event)
           }}
           {...props}
         />
+        {failed && <span className="flex min-h-24 items-center justify-center px-4 text-sm text-muted-foreground" role="img" aria-label={alt || '图片加载失败'}>
+          {interactive ? '图片暂时无法加载，点击打开原图' : '图片暂时无法加载'}
+        </span>}
       </a>
       {alt && <span className="md-figcaption">{alt}</span>}
     </span>
@@ -578,7 +585,7 @@ export const Markdown = memo(function Markdown({ content, className, enableLight
           const items = decodeGalleryItems(alt.slice(GALLERY_ALT_PREFIX.length))
           return items.length >= 2 ? <MarkdownGallery items={items} interactive={enableLightbox} /> : null
         }
-        return <MarkdownImage {...props} interactive={enableLightbox} />
+        return <MarkdownImage key={props.src} {...props} interactive={enableLightbox} />
       },
       table: ({ children }) => (
         <div className="md-table-wrap" tabIndex={0} role="region" aria-label="Horizontally scrollable data table">

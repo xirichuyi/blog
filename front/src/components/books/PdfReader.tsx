@@ -1,5 +1,6 @@
+import { ReaderLoading } from './ReaderLoading'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, Minus, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist/types/src/display/api'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,8 @@ import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 interface PdfReaderProps {
+  title: string
+  cover?: string
   bookId: number
   file: BookFile
   onTopHoverChange: (hovered: boolean) => void
@@ -19,7 +22,7 @@ function restoredPage(bookId: number, fileId: number): number {
   return saved?.kind === 'pdf' ? saved.page : 1
 }
 
-export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfReaderProps) {
+export function PdfReader({ title, cover, bookId, file, onTopHoverChange, onToggleUi }: PdfReaderProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null)
@@ -29,6 +32,7 @@ export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfRea
   const [frameWidth, setFrameWidth] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     let disposed = false
@@ -38,6 +42,7 @@ export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfRea
       setError('')
       try {
         const pdfjs = await import('pdfjs-dist')
+        if (disposed) return
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
         loadingTask = pdfjs.getDocument({ url: bookFileContentUrl(file) })
         const loaded = await loadingTask.promise
@@ -46,7 +51,6 @@ export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfRea
         setDocument(loaded)
         setPages(loaded.numPages)
         setPage(initialPage)
-        setLoading(false)
       } catch (loadError) {
         if (!disposed) {
           setError((loadError as Error).message || 'The PDF could not be opened.')
@@ -60,7 +64,7 @@ export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfRea
       setDocument(null)
       void loadingTask?.destroy()
     }
-  }, [bookId, file.id, file.file_url])
+  }, [bookId, file.id, file.file_url, retry])
 
   useEffect(() => {
     if (!frameRef.current) return
@@ -89,9 +93,10 @@ export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfRea
       canvas.style.height = `${Math.floor(viewport.height)}px`
       renderTask = pdfPage.render({ canvas, canvasContext: context, viewport, transform: pixelRatio === 1 ? undefined : [pixelRatio, 0, 0, pixelRatio, 0, 0] })
       await renderTask.promise
+      if (!cancelled) setLoading(false)
     }
     void render().catch((renderError) => {
-      if (!cancelled && (renderError as Error).name !== 'RenderingCancelledException') setError((renderError as Error).message)
+      if (!cancelled && (renderError as Error).name !== 'RenderingCancelledException') { setError((renderError as Error).message); setLoading(false) }
     })
     return () => {
       cancelled = true
@@ -128,8 +133,8 @@ export function PdfReader({ bookId, file, onTopHoverChange, onToggleUi }: PdfRea
     <div className="pdf-reader">
       <section ref={frameRef} className="pdf-viewport" tabIndex={0} aria-label="PDF reading area">
         <canvas ref={canvasRef} />
-        {loading && <div className="reader-state"><Loader2 className="animate-spin" /> Preparing PDF…</div>}
-        {error && <div className="reader-state reader-error"><strong>Could not open this PDF</strong><span>{error}</span></div>}
+        {loading && <ReaderLoading title={title} cover={cover} message="正在打开 PDF…" />}
+        {error && <div className="reader-state reader-error"><strong>Could not open this PDF</strong><span>{error}</span><Button variant="outline" onClick={() => setRetry(value => value + 1)}>重试</Button></div>}
       </section>
       <div className="reader-chapter-controls reader-pdf-controls" aria-label="Page navigation">
         <Button size="icon" variant="ghost" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} aria-label="Previous page"><ChevronLeft /></Button>

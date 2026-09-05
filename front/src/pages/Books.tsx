@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { BookOpen, LibraryBig, Loader2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { LibraryBig } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { SEO } from '@/components/SEO'
 import {
@@ -10,6 +10,8 @@ import {
   type ReadingStatus,
 } from '@/services/api'
 import './Books.css'
+import { BookCoverImage } from '@/components/books/BookCoverImage'
+import { Button } from '@/components/ui/button'
 
 const STATUS: Record<ReadingStatus, string> = {
   reading: '在读',
@@ -22,23 +24,21 @@ function readableFile(book: Book): BookFile | undefined {
   return book.files.find((file) => ['epub', 'pdf'].includes(file.format.toLowerCase()))
 }
 
-function BookCover({ book }: { book: Book }) {
+function BookCover({ book, lazy }: { book: Book; lazy: boolean }) {
   const cover = imageUrl(book.cover_url ?? undefined)
   return (
     <span className="library-book-cover">
-      {cover
-        ? <img src={cover} alt={`Cover of ${book.title}`} />
-        : <span className="library-book-fallback"><BookOpen /><strong>{book.title}</strong></span>}
+      <BookCoverImage src={cover} title={book.title} lazy={lazy} />
       <span className="library-book-pages" aria-hidden="true" />
     </span>
   )
 }
 
-function BookCard({ book }: { book: Book }) {
+function BookCard({ book, lazy }: { book: Book; lazy: boolean }) {
   const file = readableFile(book)
   const content = (
     <>
-      <BookCover book={book} />
+      <BookCover book={book} lazy={lazy} />
       <span className="library-book-copy">
         <span className="library-book-status">{STATUS[book.reading_status]}</span>
         <strong>{book.title}</strong>
@@ -76,9 +76,11 @@ export default function Books() {
   const [books, setBooks] = useState<Book[] | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    listBooks().then(setBooks).catch((loadError) => setError((loadError as Error).message))
+  const load = useCallback(() => {
+    setError('')
+    void listBooks().then(setBooks).catch((loadError) => setError((loadError as Error).message))
   }, [])
+  useEffect(load, [load])
 
   const grouped = useMemo(() => {
     const groups = new Map<ReadingStatus, Book[]>()
@@ -97,8 +99,13 @@ export default function Books() {
         <p>正在读、已经读过，以及留待日后相逢的书。</p>
       </header>
 
-      {!books && !error && <div className="library-loading"><Loader2 /> 正在整理书架…</div>}
-      {error && <p className="py-8 text-sm text-destructive">书架暂时无法打开：{error}</p>}
+      {!books && !error && <div role="status" aria-label="正在加载书架" className="library-grid">
+        {Array.from({ length: 6 }, (_, index) => <div key={index} className="library-book animate-pulse motion-reduce:animate-none" aria-hidden="true">
+          <span className="library-book-cover opacity-20" />
+          <span className="space-y-3 pb-3"><span className="block h-3 w-16 rounded bg-muted" /><span className="block h-4 w-full rounded bg-muted" /></span>
+        </div>)}
+      </div>}
+      {error && <div className="py-8" role="alert"><p className="mb-3 text-sm text-destructive">书架暂时无法打开：{error}</p><Button variant="outline" onClick={load}>重试</Button></div>}
       {books?.length === 0 && <EmptyBookshelf />}
 
       <div className="library-groups">
@@ -109,7 +116,7 @@ export default function Books() {
             <section className="library-group" key={status}>
               <header><h2>{STATUS[status]}</h2><span>{items.length}</span></header>
               <div className="library-grid">
-                {items.map((book) => <BookCard book={book} key={book.id} />)}
+                {items.map((book, index) => <BookCard book={book} key={book.id} lazy={index >= 4} />)}
               </div>
             </section>
           )

@@ -33,6 +33,12 @@ jobs:
         working-directory: front
         run: npm ci
 
+      - name: Check Markdown editor in Chromium
+        working-directory: front
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:editor
+
       - name: Build (production)
         working-directory: front
         # VITE_API_URL is intentionally unset → production build uses same-origin

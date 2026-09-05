@@ -74,12 +74,26 @@ function readLocalDraft(key: string): LocalPostDraft | null {
   }
 }
 
+function storeDraft(key: string, draft: PostDraftContent): boolean {
+  try { localStorage.setItem(key, JSON.stringify({ ...draft, savedAt: Date.now() })); return true } catch { return false }
+}
+
+function removeDraft(key: string) {
+  try { localStorage.removeItem(key) } catch { /* Server save success is independent of local storage. */ }
+}
+
 export default function PostEditor() {
+  const { id } = useParams<{ id: string }>()
+  return <PostEditorSession key={id ?? 'new'} />
+}
+
+function PostEditorSession() {
   const { id } = useParams<{ id: string }>()
   const editing = Boolean(id)
   const navigate = useNavigate()
   const coverInputRef = useRef<HTMLInputElement>(null)
   const inlineUploadCountRef = useRef(0)
+  const savingRef = useRef(false)
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -108,6 +122,12 @@ export default function PostEditor() {
   }), [categoryId, content, coverUrl, status, tagIds, title])
   const currentSnapshot = useMemo(() => draftSnapshot(currentDraft), [currentDraft])
   const dirty = hydrated && currentSnapshot !== lastSavedSnapshot
+  const latestDraft = useRef({ draft: currentDraft, dirty })
+  latestDraft.current = { draft: currentDraft, dirty }
+
+  useEffect(() => () => {
+    if (latestDraft.current.dirty) storeDraft(draftKey(id), latestDraft.current.draft)
+  }, [id])
 
   function applyDraft(draft: PostDraftContent) {
     setTitle(draft.title)
@@ -161,7 +181,7 @@ export default function PostEditor() {
           toast.info('已恢复未保存的本地草稿')
         } else {
           applyDraft(serverDraft)
-          localStorage.removeItem(draftKey(id))
+          removeDraft(draftKey(id))
           setLocalBackupSnapshot('')
         }
         setHydrated(true)
@@ -186,22 +206,20 @@ export default function PostEditor() {
   useEffect(() => {
     if (!dirty) return
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      storeDraft(draftKey(id), latestDraft.current.draft)
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', warnBeforeUnload)
     return () => window.removeEventListener('beforeunload', warnBeforeUnload)
-  }, [dirty])
+  }, [dirty, id])
 
   async function pickCover(file: File) {
     setUploading('cover')
     try {
       const uploadedUrl = await uploadImageDirect(file)
-      const updatedPost = editing
-        ? await updatePost(Number(id), { cover_url: uploadedUrl })
-        : null
-      setCoverUrl(updatedPost?.cover_url ?? uploadedUrl)
-      toast.success('封面已上传')
+      setCoverUrl(uploadedUrl)
+      toast.success('封面已上传，保存文章后生效')
     } catch (uploadError) {
       toast.error('封面上传失败', { description: (uploadError as Error).message })
     } finally {
@@ -247,10 +265,13 @@ export default function PostEditor() {
   }
 
   async function save(statusOverride?: number) {
+    if (!hydrated || savingRef.current) return
+    if (uploading) { toast.info('请等待图片上传完成'); return }
     if (!title.trim()) {
       toast.error('标题不能为空')
       return
     }
+    savingRef.current = true
     setSaving(true)
     setError('')
     try {
@@ -269,23 +290,36 @@ export default function PostEditor() {
       } else {
         postId = (await createPost(payload)).id
       }
-      setTitle(payload.title)
-      setStatus(nextStatus)
+      const latest = latestDraft.current.draft
+      const afterSave = { ...latest,
+        title: latest.title === currentDraft.title ? payload.title : latest.title,
+        status: latest.status === currentDraft.status ? nextStatus : latest.status,
+      }
+      setTitle(afterSave.title)
+      setStatus(afterSave.status)
       const savedSnapshot = draftSnapshot({ ...currentDraft, title: payload.title, status: nextStatus })
+      const stillDirty = draftSnapshot(afterSave) !== savedSnapshot
       setLastSavedSnapshot(savedSnapshot)
       setLocalBackupSnapshot('')
-      localStorage.removeItem(draftKey(id))
+      removeDraft(draftKey(id))
+      if (stillDirty && storeDraft(draftKey(String(postId)), afterSave)) {
+        setLocalBackupSnapshot(draftSnapshot(afterSave))
+      }
+      // New-post drafts have moved to the assigned ID before navigation.
+      latestDraft.current = { draft: afterSave, dirty: editing && stillDirty }
       toast.success(nextStatus === POST_STATUS.Published ? '文章已发布' : '文章已保存')
       if (!editing) navigate(`/admin/posts/${postId}`, { replace: true })
     } catch (saveError) {
       toast.error('保存失败', { description: (saveError as Error).message })
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }
 
   function leaveEditor() {
-    if (dirty && !window.confirm('还有未保存到服务器的修改，确定离开吗？本地草稿仍会保留。')) return
+    if (dirty && !window.confirm('还有未保存到服务器的修改，确定离开吗？')) return
+    if (dirty) storeDraft(draftKey(id), latestDraft.current.draft)
     navigate('/admin/posts')
   }
 
@@ -478,6 +512,7 @@ export default function PostEditor() {
       </SheetContent>
 
       <MarkdownEditor
+        key={id ?? 'new'}
         value={content}
         onChange={setContent}
         onUploadImage={uploadInlineImage}

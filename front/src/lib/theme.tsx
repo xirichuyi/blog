@@ -1,3 +1,4 @@
+import { readPreference, writePreference } from '@/lib/browser-storage'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 type Theme = 'light' | 'dark'
@@ -9,14 +10,14 @@ const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('theme')
+    const saved = readPreference('theme')
     // A warm paper surface is the default; explicit user choice still wins.
     return saved === 'dark' ? 'dark' : 'light'
   })
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('theme', theme)
+    writePreference('theme', theme)
   }, [theme])
 
   return (

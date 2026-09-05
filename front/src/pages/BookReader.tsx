@@ -1,3 +1,4 @@
+import { readPreference, writePreference } from '@/lib/browser-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Maximize2, Minimize2, Minus, Plus } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -7,7 +8,7 @@ import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
 import { isReaderHoverDevice } from '@/lib/reader-gestures'
-import { listBooks, type Book, type BookFile } from '@/services/api'
+import { imageUrl, listBooks, type Book, type BookFile } from '@/services/api'
 import './BookReader.css'
 
 function isReadable(file: BookFile): boolean {
@@ -15,20 +16,20 @@ function isReadable(file: BookFile): boolean {
 }
 
 function initialReaderTheme(): ReaderTheme {
-  return localStorage.getItem('book-reader-theme') === 'night' ? 'night' : 'paper'
+  return readPreference('book-reader-theme') === 'night' ? 'night' : 'paper'
 }
 
 const DEFAULT_READER_FONT_SIZE = 100
 
 function initialFontSize(): number {
-  const stored = localStorage.getItem('book-reader-font-size')
+  const stored = readPreference('book-reader-font-size')
   if (!stored) return DEFAULT_READER_FONT_SIZE
   const saved = Number(stored)
   return Number.isFinite(saved) ? Math.min(150, Math.max(80, saved)) : DEFAULT_READER_FONT_SIZE
 }
 
 function initialReaderFlow(): ReaderFlow {
-  return localStorage.getItem('book-reader-flow') === 'scrolled' ? 'scrolled' : 'paginated'
+  return readPreference('book-reader-flow') === 'scrolled' ? 'scrolled' : 'paginated'
 }
 
 function ReaderPreferences({ format, flow, fontSize, fullscreen, theme, visible, onFlow, onFontSize, onTheme, onFullscreen }: {
@@ -126,15 +127,15 @@ export default function BookReader() {
   const changeFile = (fileId: number) => setSearchParams({ file: String(fileId) }, { replace: true })
   const changeTheme = (next: ReaderTheme) => {
     setTheme(next)
-    localStorage.setItem('book-reader-theme', next)
+    writePreference('book-reader-theme', next)
   }
   const changeFontSize = (next: number) => {
     setFontSize(next)
-    localStorage.setItem('book-reader-font-size', String(next))
+    writePreference('book-reader-font-size', String(next))
   }
   const changeFlow = (next: ReaderFlow) => {
     setFlow(next)
-    localStorage.setItem('book-reader-flow', next)
+    writePreference('book-reader-flow', next)
   }
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen()
@@ -187,8 +188,8 @@ export default function BookReader() {
       </div>
       <div className="book-reader-surface">
         {format === 'epub'
-          ? <EpubReader bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />
-          : <PdfReader bookId={book.id} file={file} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />}
+          ? <EpubReader key={file.id} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />
+          : <PdfReader key={file.id} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />}
       </div>
     </main>
   )

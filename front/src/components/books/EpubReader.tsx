@@ -1,5 +1,6 @@
+import { ReaderLoading } from './ReaderLoading'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, List, Loader2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, List, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
 import { Button } from '@/components/ui/button'
 import { loadReaderProgress, saveReaderProgress } from '@/lib/book-progress'
@@ -10,6 +11,8 @@ export type ReaderTheme = 'paper' | 'night'
 export type ReaderFlow = 'paginated' | 'scrolled'
 
 interface EpubReaderProps {
+  title: string
+  cover?: string
   bookId: number
   file: BookFile
   flow: ReaderFlow
@@ -88,7 +91,7 @@ function TableOfContents({ items, onSelect }: { items: NavItem[]; onSelect: (hre
   )
 }
 
-export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onToggleUi, theme }: EpubReaderProps) {
+export function EpubReader({ title, cover, bookId, file, flow, fontSize, onTopHoverChange, onToggleUi, theme }: EpubReaderProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const renditionRef = useRef<Rendition | null>(null)
   const fontSizeRef = useRef(fontSize)
@@ -100,20 +103,34 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
   const [tocOpen, setTocOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [retry, setRetry] = useState(0)
+  const [phase, setPhase] = useState('正在下载 EPUB…')
+  const fileCache = useRef<{ url: string; bytes: ArrayBuffer } | null>(null)
 
   useEffect(() => {
     let disposed = false
+    const controller = new AbortController()
     let activeBook: EpubBook | null = null
     const interactionCleanups = new Map<Contents, () => void>()
     const openBook = async () => {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch(bookFileContentUrl(file))
-        if (!response.ok) throw new Error(`The book file returned ${response.status}.`)
+        const url = bookFileContentUrl(file)
+        let bytes = fileCache.current?.url === url ? fileCache.current.bytes : undefined
+        if (!bytes) {
+          fileCache.current = null
+          setPhase('正在下载 EPUB…')
+          const response = await fetch(url, { signal: controller.signal })
+          if (!response.ok) throw new Error(`The book file returned ${response.status}.`)
+          bytes = await response.arrayBuffer()
+          if (disposed) return
+          fileCache.current = { url, bytes }
+        }
+        setPhase('正在排版，即将打开…')
         const { default: createEpub } = await import('epubjs')
         if (disposed || !viewportRef.current) return
-        activeBook = createEpub(await response.arrayBuffer())
+        activeBook = createEpub(bytes.slice(0))
         const rendition = activeBook.renderTo(viewportRef.current, {
           width: '100%',
           height: '100%',
@@ -162,6 +179,7 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
         }
         rendition.on('rendered', bindVisibleContents)
         const nav = (await activeBook.loaded.navigation).toc
+        if (disposed) return
         setNavigation(nav)
         rendition.on('relocated', (nextLocation: Location) => {
           if (!activeBook || disposed) return
@@ -174,6 +192,7 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
         })
         const saved = loadReaderProgress(bookId, file.id)
         await rendition.display(saved?.kind === 'epub' ? saved.cfi : undefined).catch(() => rendition.display())
+        if (disposed) return
         bindVisibleContents()
         setLoading(false)
         void activeBook.locations.generate(1600).then(() => rendition.reportLocation()).catch(() => undefined)
@@ -187,12 +206,13 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
     void openBook()
     return () => {
       disposed = true
+      controller.abort()
       renditionRef.current = null
       interactionCleanups.forEach((cleanup) => cleanup())
       interactionCleanups.clear()
       activeBook?.destroy()
     }
-  }, [bookId, file.id, file.file_url, flow, onTopHoverChange, onToggleUi])
+  }, [bookId, file.id, file.file_url, flow, retry, onTopHoverChange, onToggleUi])
 
   useEffect(() => {
     themeRef.current = theme
@@ -227,13 +247,13 @@ export function EpubReader({ bookId, file, flow, fontSize, onTopHoverChange, onT
       {tocOpen && <button className="reader-toc-scrim" type="button" aria-label="Close table of contents" onClick={() => setTocOpen(false)} />}
       <section className="reader-canvas-wrap">
         <div ref={viewportRef} className="epub-viewport" />
-        {loading && <div className="reader-state"><Loader2 className="animate-spin" /> Preparing EPUB…</div>}
-        {error && <div className="reader-state reader-error"><strong>Could not open this EPUB</strong><span>{error}</span></div>}
+        {loading && <ReaderLoading title={title} cover={cover} message={phase} />}
+        {error && <div className="reader-state reader-error"><strong>Could not open this EPUB</strong><span>{error}</span><Button variant="outline" onClick={() => { fileCache.current = null; setRetry(value => value + 1) }}>重试</Button></div>}
       </section>
       <div className="reader-chapter-controls" aria-label="Chapter navigation">
         <Button size="icon" variant="ghost" onClick={() => setTocOpen(true)} aria-label="Open table of contents"><List /></Button>
-        <Button size="icon" variant="ghost" disabled={position.atStart} onClick={() => void renditionRef.current?.prev()} aria-label="Previous page"><ChevronLeft /></Button>
-        <Button size="icon" variant="ghost" disabled={position.atEnd} onClick={() => void renditionRef.current?.next()} aria-label="Next page"><ChevronRight /></Button>
+        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atStart} onClick={() => void renditionRef.current?.prev()} aria-label="Previous page"><ChevronLeft /></Button>
+        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atEnd} onClick={() => void renditionRef.current?.next()} aria-label="Next page"><ChevronRight /></Button>
       </div>
     </div>
   )
