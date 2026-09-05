@@ -13,7 +13,7 @@ RestartSec=5
 TimeoutStopSec=25
 KillSignal=SIGTERM
 Environment=ENV=production
-Environment=RUST_LOG=info
+Environment=RUST_LOG=info,tower_http=debug
 EnvironmentFile=-/var/www/blog/backend/.env
 
 # 安全设置

@@ -32,11 +32,15 @@ jobs:
               sudo install -o root -g root -m 644 \
                 /tmp/blog-backend.service.repair \
                 /etc/systemd/system/blog-backend.service
+              sudo install -d -o www-data -g www-data -m 775 \
+                /var/www/blog/backend/data
+              sudo chown -R --no-dereference www-data:www-data \
+                /var/www/blog/backend/data
               sudo systemctl daemon-reload
               sudo systemctl restart blog-backend
               for i in $(seq 1 20); do
-                code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3006/api/health || true)
-                echo "attempt $i: /api/health -> $code"
+                code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3006/api/health/ready || true)
+                echo "attempt $i: /api/health/ready -> $code"
                 [ "$code" = "200" ] && exit 0
                 sleep 2
               done

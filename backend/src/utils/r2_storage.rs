@@ -5,14 +5,17 @@ use hmac::{Hmac, Mac};
 use quick_xml::de::from_str;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use std::path::Path;
+use std::time::Duration;
 use uuid::Uuid;
 
 const MIN_PART_SIZE: u64 = 5 * 1024 * 1024;
 const TARGET_PART_SIZE: u64 = 64 * 1024 * 1024;
 const MAX_PARTS: u64 = 1_000;
 const MAX_VIDEO_SIZE: u64 = 20 * 1024 * 1024 * 1024;
-const UPLOAD_URL_TTL_SECONDS: u32 = 15 * 60;
+const IMAGE_UPLOAD_URL_TTL_SECONDS: u32 = 15 * 60;
+const MULTIPART_UPLOAD_URL_TTL_SECONDS: u32 = 12 * 60 * 60;
 
 #[derive(Clone)]
 struct R2Client {
@@ -50,9 +53,11 @@ pub struct UploadSession {
     pub part_size: Option<u64>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub parts: Vec<UploadPart>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub completed_parts: Vec<CompletedUploadPart>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct CompletedUploadPart {
     pub part_number: u32,
     pub etag: String,
@@ -62,6 +67,20 @@ pub struct CompletedUploadPart {
 struct InitiateMultipartUploadResult {
     #[serde(rename = "UploadId")]
     upload_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ListPartsResult {
+    #[serde(rename = "Part", default)]
+    parts: Vec<ListedPart>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ListedPart {
+    #[serde(rename = "PartNumber")]
+    part_number: u32,
+    #[serde(rename = "ETag")]
+    etag: String,
 }
 
 struct RequestSignature<'a> {
@@ -91,7 +110,11 @@ impl R2Storage {
                 secret_key: config.secret_key.clone(),
                 region: config.region.clone(),
                 public_url: config.public_url.trim_end_matches('/').to_string(),
-                http: reqwest::Client::new(),
+                http: reqwest::Client::builder()
+                    .connect_timeout(Duration::from_secs(10))
+                    .timeout(Duration::from_secs(45))
+                    .build()
+                    .expect("build R2 HTTP client"),
             }
         });
         Self { client }
@@ -137,6 +160,7 @@ impl R2Storage {
             key,
             part_size: None,
             parts: Vec::new(),
+            completed_parts: Vec::new(),
         })
     }
 
@@ -159,6 +183,7 @@ impl R2Storage {
                     &upload_id,
                     part_number as u32,
                     Utc::now(),
+                    MULTIPART_UPLOAD_URL_TTL_SECONDS,
                 ),
             })
             .collect();
@@ -171,6 +196,53 @@ impl R2Storage {
             upload_url: None,
             part_size: Some(part_size),
             parts,
+            completed_parts: Vec::new(),
+        })
+    }
+
+    pub async fn resume_upload(
+        &self,
+        key: &str,
+        upload_id: &str,
+        file_size: u64,
+    ) -> Result<UploadSession> {
+        validate_upload_reference(key, upload_id)?;
+        let client = self.client()?;
+        let uploaded = list_uploaded_parts(client, key, upload_id).await?;
+        validate_uploaded_subset(&uploaded, file_size)?;
+        let completed: HashSet<u32> = uploaded.iter().map(|part| part.part_number).collect();
+        let part_size = choose_part_size(file_size);
+        let part_count = file_size.div_ceil(part_size);
+        let parts = (1..=part_count)
+            .filter(|part_number| !completed.contains(&(*part_number as u32)))
+            .map(|part_number| UploadPart {
+                part_number: part_number as u32,
+                upload_url: presign_upload_part(
+                    client,
+                    key,
+                    upload_id,
+                    part_number as u32,
+                    Utc::now(),
+                    MULTIPART_UPLOAD_URL_TTL_SECONDS,
+                ),
+            })
+            .collect();
+
+        Ok(UploadSession {
+            mode: "multipart",
+            upload_id: Some(upload_id.to_string()),
+            key: key.to_string(),
+            public_url: format!("{}/{}", client.public_url, key),
+            upload_url: None,
+            part_size: Some(part_size),
+            parts,
+            completed_parts: uploaded
+                .into_iter()
+                .map(|part| CompletedUploadPart {
+                    part_number: part.part_number,
+                    etag: part.etag,
+                })
+                .collect(),
         })
     }
 
@@ -179,10 +251,26 @@ impl R2Storage {
         key: &str,
         upload_id: &str,
         parts: &[CompletedUploadPart],
+        file_size: u64,
     ) -> Result<String> {
         validate_upload_reference(key, upload_id)?;
-        validate_completed_parts(parts)?;
+        validate_completed_parts(parts, file_size)?;
         let client = self.client()?;
+        let uploaded = list_uploaded_parts(client, key, upload_id).await?;
+        let mut verified: Vec<CompletedUploadPart> = uploaded
+            .into_iter()
+            .map(|part| CompletedUploadPart {
+                part_number: part.part_number,
+                etag: part.etag,
+            })
+            .collect();
+        verified.sort_by_key(|part| part.part_number);
+        validate_completed_parts(&verified, file_size)?;
+        if verified != parts {
+            return Err(AppError::BadRequest(
+                "Uploaded R2 parts do not match the completion request".to_string(),
+            ));
+        }
         complete_multipart(client, key, upload_id, parts).await?;
         Ok(format!("{}/{}", client.public_url, key))
     }
@@ -230,6 +318,24 @@ impl R2Storage {
                 response.status()
             )))
         }
+    }
+
+    pub fn validate_video_upload(
+        &self,
+        file_name: &str,
+        content_type: &str,
+        file_size: u64,
+    ) -> Result<()> {
+        validate_video(file_name, content_type, file_size)
+    }
+
+    pub fn validate_book_upload(
+        &self,
+        file_name: &str,
+        content_type: &str,
+        file_size: u64,
+    ) -> Result<()> {
+        validate_book_file(file_name, content_type, file_size)
     }
 
     /// Delete an object only when the URL belongs to the configured R2 public
@@ -436,28 +542,104 @@ fn validate_object_key(key: &str) -> Result<()> {
     }
 }
 
-fn validate_completed_parts(parts: &[CompletedUploadPart]) -> Result<()> {
-    if parts.is_empty() || parts.len() > MAX_PARTS as usize {
+fn validate_completed_parts(parts: &[CompletedUploadPart], file_size: u64) -> Result<()> {
+    let expected_count = file_size.div_ceil(choose_part_size(file_size)) as usize;
+    if parts.len() != expected_count || expected_count == 0 || expected_count > MAX_PARTS as usize {
         return Err(AppError::BadRequest(
-            "Multipart completion has an invalid part count".to_string(),
+            "Multipart completion does not match the declared file size".to_string(),
         ));
     }
-    let mut previous = 0;
-    for part in parts {
-        let valid_etag = !part.etag.is_empty()
-            && part.etag.len() <= 128
-            && part
-                .etag
-                .chars()
-                .all(|character| character.is_ascii_hexdigit() || matches!(character, '-' | '"'));
-        if part.part_number <= previous || !valid_etag {
+    for (index, part) in parts.iter().enumerate() {
+        if part.part_number != (index + 1) as u32 || !valid_etag(&part.etag) {
             return Err(AppError::BadRequest(
                 "Multipart completion contains invalid parts".to_string(),
             ));
         }
-        previous = part.part_number;
     }
     Ok(())
+}
+
+fn validate_uploaded_subset(parts: &[ListedPart], file_size: u64) -> Result<()> {
+    let expected_count = file_size.div_ceil(choose_part_size(file_size));
+    let mut seen = HashSet::new();
+    if expected_count == 0 || expected_count > MAX_PARTS {
+        return Err(AppError::BadRequest(
+            "Multipart upload has an invalid declared size".to_string(),
+        ));
+    }
+    for part in parts {
+        if part.part_number == 0
+            || part.part_number as u64 > expected_count
+            || !seen.insert(part.part_number)
+            || !valid_etag(&part.etag)
+        {
+            return Err(AppError::BadRequest(
+                "R2 returned invalid uploaded parts".to_string(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn valid_etag(etag: &str) -> bool {
+    !etag.is_empty()
+        && etag.len() <= 128
+        && etag
+            .chars()
+            .all(|character| character.is_ascii_hexdigit() || matches!(character, '-' | '"'))
+}
+
+async fn list_uploaded_parts(
+    client: &R2Client,
+    key: &str,
+    upload_id: &str,
+) -> Result<Vec<ListedPart>> {
+    let path = object_path(client, key);
+    let query = canonical_query(vec![
+        ("max-parts".to_string(), MAX_PARTS.to_string()),
+        ("uploadId".to_string(), upload_id.to_string()),
+    ]);
+    let payload_hash = sha256_hex(b"");
+    let (authorization, amz_date) = authorization_header(
+        client,
+        RequestSignature {
+            method: "GET",
+            path: &path,
+            query: &query,
+            canonical_headers: format!(
+                "host:{}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{{amz_date}}\n",
+                client.host
+            ),
+            signed_headers: "host;x-amz-content-sha256;x-amz-date",
+            payload_hash: &payload_hash,
+            now: Utc::now(),
+        },
+    );
+    let response = client
+        .http
+        .get(format!("{}{}?{}", client.endpoint, path, query))
+        .header("Host", &client.host)
+        .header("x-amz-content-sha256", &payload_hash)
+        .header("x-amz-date", amz_date)
+        .header("Authorization", authorization)
+        .send()
+        .await
+        .map_err(|error| AppError::BadGateway(format!("R2 part listing failed: {error}")))?;
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+    if status == reqwest::StatusCode::NOT_FOUND || body.contains("<Code>NoSuchUpload</Code>") {
+        return Err(AppError::NotFound(
+            "The multipart upload no longer exists".to_string(),
+        ));
+    }
+    if !status.is_success() {
+        return Err(AppError::BadGateway(format!(
+            "R2 part listing failed with {status}: {body}"
+        )));
+    }
+    from_str::<ListPartsResult>(&body)
+        .map(|result| result.parts)
+        .map_err(|error| AppError::BadGateway(format!("R2 returned invalid parts XML: {error}")))
 }
 
 async fn initiate_multipart(client: &R2Client, key: &str, content_type: &str) -> Result<String> {
@@ -590,6 +772,7 @@ fn presign_upload_part(
     upload_id: &str,
     part_number: u32,
     now: DateTime<Utc>,
+    expires_seconds: u32,
 ) -> String {
     let date = now.format("%Y%m%d").to_string();
     let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
@@ -605,10 +788,7 @@ fn presign_upload_part(
             format!("{}/{}", client.access_key, scope),
         ),
         ("X-Amz-Date".to_string(), amz_date.clone()),
-        (
-            "X-Amz-Expires".to_string(),
-            UPLOAD_URL_TTL_SECONDS.to_string(),
-        ),
+        ("X-Amz-Expires".to_string(), expires_seconds.to_string()),
         ("X-Amz-SignedHeaders".to_string(), "host".to_string()),
         ("partNumber".to_string(), part_number.to_string()),
         ("uploadId".to_string(), upload_id.to_string()),
@@ -648,7 +828,7 @@ fn presign_put_object(
         ("X-Amz-Date".to_string(), amz_date.clone()),
         (
             "X-Amz-Expires".to_string(),
-            UPLOAD_URL_TTL_SECONDS.to_string(),
+            IMAGE_UPLOAD_URL_TTL_SECONDS.to_string(),
         ),
         (
             "X-Amz-SignedHeaders".to_string(),
@@ -775,6 +955,33 @@ mod tests {
         }
     }
 
+    async fn read_http_request(socket: &mut tokio::net::TcpStream) -> String {
+        let mut request = Vec::new();
+        let mut buffer = [0_u8; 4096];
+        loop {
+            let read = socket.read(&mut buffer).await.expect("read request");
+            if read == 0 {
+                break;
+            }
+            request.extend_from_slice(&buffer[..read]);
+            if let Some(header_end) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n") {
+                let headers = String::from_utf8_lossy(&request[..header_end]);
+                let content_length = headers
+                    .lines()
+                    .find_map(|line| {
+                        line.to_ascii_lowercase()
+                            .strip_prefix("content-length:")
+                            .and_then(|value| value.trim().parse::<usize>().ok())
+                    })
+                    .unwrap_or(0);
+                if request.len() >= header_end + 4 + content_length {
+                    break;
+                }
+            }
+        }
+        String::from_utf8(request).expect("HTTP request is UTF-8")
+    }
+
     #[tokio::test]
     async fn begins_multipart_upload_and_presigns_every_part() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -818,6 +1025,107 @@ mod tests {
         server.await.expect("mock server completes");
     }
 
+    #[tokio::test]
+    async fn resumes_only_parts_that_r2_has_not_received() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind mock R2");
+        let address = listener.local_addr().expect("mock R2 address");
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.expect("accept request");
+            let mut request = vec![0_u8; 8192];
+            let read = socket.read(&mut request).await.expect("read request");
+            let request = String::from_utf8_lossy(&request[..read]);
+            assert!(request.starts_with(
+                "GET /blog-assets/videos/test.mp4?max-parts=1000&uploadId=upload-123 HTTP/1.1"
+            ));
+            let body = concat!(
+                "<ListPartsResult>",
+                "<Part><PartNumber>1</PartNumber><ETag>\"abc123\"</ETag></Part>",
+                "<Part><PartNumber>3</PartNumber><ETag>\"def456\"</ETag></Part>",
+                "</ListPartsResult>"
+            );
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            socket
+                .write_all(response.as_bytes())
+                .await
+                .expect("write response");
+        });
+
+        let storage = R2Storage::new(&test_config(format!("http://{address}")));
+        let session = storage
+            .resume_upload("videos/test.mp4", "upload-123", 130 * 1024 * 1024)
+            .await
+            .expect("resume multipart upload");
+
+        assert_eq!(session.completed_parts.len(), 2);
+        assert_eq!(session.parts.len(), 1);
+        assert_eq!(session.parts[0].part_number, 2);
+        assert!(session.parts[0].upload_url.contains("X-Amz-Expires=43200"));
+        server.await.expect("mock server completes");
+    }
+
+    #[tokio::test]
+    async fn completes_only_after_r2_parts_match_the_client() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind mock R2");
+        let address = listener.local_addr().expect("mock R2 address");
+        let server = tokio::spawn(async move {
+            let (mut list_socket, _) = listener.accept().await.expect("accept list request");
+            let list_request = read_http_request(&mut list_socket).await;
+            assert!(list_request.starts_with(
+                "GET /blog-assets/videos/test.mp4?max-parts=1000&uploadId=upload-123 HTTP/1.1"
+            ));
+            let list_body = concat!(
+                "<ListPartsResult>",
+                "<Part><PartNumber>1</PartNumber><ETag>\"abc123\"</ETag></Part>",
+                "</ListPartsResult>"
+            );
+            let list_response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                list_body.len(),
+                list_body
+            );
+            list_socket
+                .write_all(list_response.as_bytes())
+                .await
+                .expect("write list response");
+
+            let (mut complete_socket, _) = listener.accept().await.expect("accept completion");
+            let complete_request = read_http_request(&mut complete_socket).await;
+            assert!(complete_request
+                .starts_with("POST /blog-assets/videos/test.mp4?uploadId=upload-123 HTTP/1.1"));
+            assert!(complete_request
+                .contains("<Part><PartNumber>1</PartNumber><ETag>\"abc123\"</ETag></Part>"));
+            complete_socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                .await
+                .expect("write completion response");
+        });
+
+        let storage = R2Storage::new(&test_config(format!("http://{address}")));
+        let result = storage
+            .complete_upload(
+                "videos/test.mp4",
+                "upload-123",
+                &[CompletedUploadPart {
+                    part_number: 1,
+                    etag: "\"abc123\"".to_string(),
+                }],
+                1,
+            )
+            .await
+            .expect("complete verified multipart upload");
+
+        assert_eq!(result, "https://assets.example.com/videos/test.mp4");
+        server.await.expect("mock server completes");
+    }
+
     #[test]
     fn presigned_part_uses_stable_sigv4_parameters() {
         let client = R2Storage::new(&test_config(
@@ -829,10 +1137,17 @@ mod tests {
             .with_ymd_and_hms(2026, 8, 17, 12, 0, 0)
             .single()
             .expect("valid date");
-        let url = presign_upload_part(&client, "videos/test.mp4", "upload/id+", 7, now);
+        let url = presign_upload_part(
+            &client,
+            "videos/test.mp4",
+            "upload/id+",
+            7,
+            now,
+            MULTIPART_UPLOAD_URL_TTL_SECONDS,
+        );
 
         assert!(url.contains("X-Amz-Date=20260817T120000Z"));
-        assert!(url.contains("X-Amz-Expires=900"));
+        assert!(url.contains("X-Amz-Expires=43200"));
         assert!(url.contains("partNumber=7"));
         assert!(url.contains("uploadId=upload%2Fid%2B"));
     }
@@ -863,16 +1178,27 @@ mod tests {
         assert!(validate_book_file("book.pdf", "application/pdf", 10).is_ok());
         assert!(validate_book_file("book.epub", "application/epub+zip", 10).is_ok());
         assert!(validate_upload_reference("../secret", "upload-1").is_err());
-        assert!(validate_completed_parts(&[
-            CompletedUploadPart {
-                part_number: 2,
-                etag: "abc".to_string(),
-            },
-            CompletedUploadPart {
+        assert!(validate_completed_parts(
+            &[
+                CompletedUploadPart {
+                    part_number: 2,
+                    etag: "abc".to_string(),
+                },
+                CompletedUploadPart {
+                    part_number: 1,
+                    etag: "def".to_string(),
+                },
+            ],
+            TARGET_PART_SIZE * 2,
+        )
+        .is_err());
+        assert!(validate_completed_parts(
+            &[CompletedUploadPart {
                 part_number: 1,
-                etag: "def".to_string(),
-            },
-        ])
+                etag: "abc".to_string(),
+            }],
+            TARGET_PART_SIZE * 2,
+        )
         .is_err());
     }
 }

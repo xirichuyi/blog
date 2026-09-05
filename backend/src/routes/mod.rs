@@ -12,7 +12,7 @@ use crate::utils::error::AppError;
 use crate::utils::R2Storage;
 use axum::{
     body::to_bytes,
-    extract::FromRef,
+    extract::{DefaultBodyLimit, FromRef},
     http::header,
     middleware,
     response::{IntoResponse, Response},
@@ -158,7 +158,11 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         )
         .route("/admin/posts/:id/tags", put(post_handler::update_post_tags))
         // Unified R2 direct-upload sessions. File bytes never pass through this API.
-        .route("/admin/uploads", post(upload_handler::begin))
+        .route(
+            "/admin/uploads",
+            post(upload_handler::begin).delete(upload_handler::delete),
+        )
+        .route("/admin/uploads/resume", post(upload_handler::resume))
         .route("/admin/uploads/complete", post(upload_handler::complete))
         .route("/admin/uploads/abort", post(upload_handler::abort))
         // Book library and direct R2 file uploads
@@ -200,6 +204,9 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
     let api_routes = public_routes
         .merge(admin_routes)
         .fallback(api_not_found)
+        // Upload bytes go directly to R2. Keep accidental/hostile JSON bodies
+        // from consuming unbounded backend memory.
+        .layer(DefaultBodyLimit::max(4 * 1024 * 1024))
         .layer(middleware::map_response(normalize_api_error));
 
     // API 与 SPA 使用独立 fallback，未知 API 始终返回统一 JSON。

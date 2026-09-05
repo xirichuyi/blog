@@ -15,6 +15,7 @@ use chuyi_uk_back::database::Database;
 use chuyi_uk_back::middleware::cors::create_cors_layer;
 use chuyi_uk_back::routes;
 use tower_http::compression::{CompressionLayer, CompressionLevel};
+use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -38,7 +39,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = routes::create_app(database.clone(), &config)
         .await
         .layer(cors)
-        .layer(compression);
+        .layer(compression)
+        .layer(TraceLayer::new_for_http());
 
     // 6. 启动服务器
     start_server(&config, app).await

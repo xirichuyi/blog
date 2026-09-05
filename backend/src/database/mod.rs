@@ -1,5 +1,5 @@
 use sqlx::{
-    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
+    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     Pool, Sqlite,
 };
 use std::str::FromStr;
@@ -21,9 +21,13 @@ impl Database {
             .create_if_missing(true)
             .foreign_keys(true)
             .journal_mode(SqliteJournalMode::Wal)
+            .synchronous(SqliteSynchronous::Full)
             .busy_timeout(Duration::from_secs(5));
+        // The bundled SQLite in SQLx 0.7 predates the WAL-reset race fix.
+        // A single connection removes the concurrent checkpoint/write condition;
+        // this blog's workload is small enough that serialization is acceptable.
         let pool = SqlitePoolOptions::new()
-            .max_connections(5)
+            .max_connections(1)
             .connect_with(options)
             .await?;
 

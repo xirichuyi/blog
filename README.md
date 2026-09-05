@@ -35,6 +35,8 @@ SQLite migrations run automatically at startup. The database defaults to `backen
 R2 is required in production. Configure `S3_ENABLED=true` and the `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`, and `S3_PUBLIC_URL` variables shown in `backend/.env.example`.
 
 The R2 bucket CORS policy must allow `PUT`, `GET`, and `HEAD` from the blog origin, allow the `Content-Type` header, and expose `ETag` so multipart uploads can be completed.
+Interrupted multipart uploads retain their completed parts for up to six days.
+Selecting the same local file again resumes the upload with fresh signed URLs.
 
 ## Checks
 
@@ -44,3 +46,5 @@ cd backend && cargo fmt --all -- --check && cargo clippy --all-targets --locked 
 ```
 
 Pushes to `main` are built and deployed by `.github/workflows/deploy.yml`.
+Pull requests run the same build checks without deploying. Runtime boundaries
+and rollback requirements are documented in [`ARCHITECTURE.md`](ARCHITECTURE.md).

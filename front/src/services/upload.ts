@@ -1,11 +1,15 @@
 import type { BookFile } from '@/services/api'
 import { adminRequest } from '@/services/admin'
+import { ApiError } from '@/services/http'
 
 const MAX_PARALLEL_PARTS = 3
 const MAX_PART_ATTEMPTS = 3
 const IMAGE_COMPRESSION_THRESHOLD = 1024 * 1024
 const IMAGE_MAX_EDGE = 2560
 const IMAGE_WEBP_QUALITY = 0.84
+const PENDING_UPLOADS_KEY = 'blog.pending-multipart-uploads.v1'
+const PENDING_UPLOAD_MAX_AGE_MS = 6 * 24 * 60 * 60 * 1000
+const FINGERPRINT_SAMPLE_BYTES = 1024 * 1024
 
 export type UploadKind = 'image' | 'video' | 'book'
 
@@ -28,11 +32,19 @@ interface UploadSession {
   upload_url?: string
   part_size?: number
   parts: UploadPart[]
+  completed_parts?: CompletedUploadPart[]
 }
 
 interface CompletedUploadPart {
   part_number: number
   etag: string
+}
+
+interface PendingUpload {
+  fingerprint: string
+  key: string
+  uploadId: string
+  createdAt: number
 }
 
 interface CompleteUploadResponse {
@@ -55,7 +67,8 @@ export async function uploadToR2(file: File, options: UploadOptions): Promise<Co
   const contentType = contentTypeFor(file, options.kind)
   const signal = options.signal ?? new AbortController().signal
   const onProgress = options.onProgress ?? (() => undefined)
-  const session = await beginUpload(file, contentType, options)
+  const fingerprint = await uploadFingerprint(file, options)
+  const session = await beginOrResumeUpload(file, contentType, options, fingerprint)
 
   try {
     if (session.mode === 'single') {
@@ -67,11 +80,18 @@ export async function uploadToR2(file: File, options: UploadOptions): Promise<Co
     if (!session.upload_id || !session.part_size) throw new Error('R2 分片会话不完整')
     const parts = await uploadMultipart(file, session, onProgress, signal)
     const result = await completeUpload(file, contentType, options, session, parts)
+    clearPendingUpload(fingerprint)
     onProgress({ uploadedBytes: file.size, totalBytes: file.size, percent: 100 })
     return result
   } catch (error) {
     if (session.mode === 'multipart' && session.upload_id) {
-      await abortUpload(session).catch(() => undefined)
+      if (signal.aborted || (error as Error).name === 'AbortError') {
+        await abortUpload(session).catch(() => undefined)
+        clearPendingUpload(fingerprint)
+      } else {
+        const message = (error as Error).message || '上传失败'
+        throw new Error(`${message}。上传进度已保留，重新选择同一文件即可继续。`)
+      }
     }
     throw error
   }
@@ -117,6 +137,50 @@ async function beginUpload(
       file_size: file.size,
     }),
   })
+}
+
+async function beginOrResumeUpload(
+  file: File,
+  contentType: string,
+  options: UploadOptions,
+  fingerprint: string,
+): Promise<UploadSession> {
+  if (options.kind !== 'image') {
+    const pending = findPendingUpload(fingerprint)
+    if (pending) {
+      try {
+        return await adminRequest<UploadSession>('/admin/uploads/resume', {
+          method: 'POST',
+          body: JSON.stringify({
+            kind: options.kind,
+            book_id: options.bookId,
+            key: pending.key,
+            upload_id: pending.uploadId,
+            file_name: file.name,
+            content_type: contentType,
+            file_size: file.size,
+          }),
+        })
+      } catch (error) {
+        if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
+          clearPendingUpload(fingerprint)
+        } else {
+          throw error
+        }
+      }
+    }
+  }
+
+  const session = await beginUpload(file, contentType, options)
+  if (session.mode === 'multipart' && session.upload_id) {
+    savePendingUpload({
+      fingerprint,
+      key: session.key,
+      uploadId: session.upload_id,
+      createdAt: Date.now(),
+    })
+  }
+  return session
 }
 
 async function completeUpload(
@@ -193,13 +257,23 @@ async function uploadMultipart(
   onProgress: (progress: UploadProgress) => void,
   signal: AbortSignal,
 ): Promise<CompletedUploadPart[]> {
+  const partSize = session.part_size
+  if (!partSize) throw new Error('R2 分片大小无效')
   const controller = new AbortController()
   const abort = () => controller.abort(signal.reason)
   if (signal.aborted) abort()
   else signal.addEventListener('abort', abort, { once: true })
 
   const uploadedByPart = new Map<number, number>()
-  const completed: CompletedUploadPart[] = []
+  const completed = [...(session.completed_parts ?? [])]
+  for (const part of completed) {
+    const start = (part.part_number - 1) * partSize
+    uploadedByPart.set(part.part_number, Math.min(partSize, file.size - start))
+  }
+  if (uploadedByPart.size > 0) {
+    const uploaded = Array.from(uploadedByPart.values()).reduce((sum, value) => sum + value, 0)
+    reportProgress(uploaded, file.size, onProgress, 99)
+  }
   let nextIndex = 0
   const updatePartProgress = (partNumber: number, bytes: number) => {
     uploadedByPart.set(partNumber, bytes)
@@ -210,8 +284,8 @@ async function uploadMultipart(
     while (nextIndex < session.parts.length) {
       controller.signal.throwIfAborted()
       const part = session.parts[nextIndex++]
-      const start = (part.part_number - 1) * (session.part_size as number)
-      const blob = file.slice(start, Math.min(start + (session.part_size as number), file.size))
+      const start = (part.part_number - 1) * partSize
+      const blob = file.slice(start, Math.min(start + partSize, file.size))
       const etag = await uploadPartWithRetry(part, blob, updatePartProgress, controller.signal)
       completed.push({ part_number: part.part_number, etag })
     }
@@ -286,9 +360,66 @@ function uploadPart(
       cleanup()
       reject(new DOMException('上传已取消', 'AbortError'))
     }
-    signal.addEventListener('abort', abort, { once: true })
+    if (signal.aborted) abort()
+    else signal.addEventListener('abort', abort, { once: true })
     request.send(blob)
   })
+}
+
+async function uploadFingerprint(file: File, options: UploadOptions): Promise<string> {
+  const metadata = new TextEncoder().encode(JSON.stringify([
+    options.kind,
+    options.bookId ?? null,
+    file.name,
+    file.size,
+    file.lastModified,
+    file.type,
+  ]))
+  const head = new Uint8Array(await file.slice(0, FINGERPRINT_SAMPLE_BYTES).arrayBuffer())
+  const tailStart = Math.max(FINGERPRINT_SAMPLE_BYTES, file.size - FINGERPRINT_SAMPLE_BYTES)
+  const tail = new Uint8Array(await file.slice(tailStart).arrayBuffer())
+  const input = new Uint8Array(metadata.length + head.length + tail.length)
+  input.set(metadata)
+  input.set(head, metadata.length)
+  input.set(tail, metadata.length + head.length)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', input))
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function readPendingUploads(): PendingUpload[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PENDING_UPLOADS_KEY) ?? '[]') as PendingUpload[]
+    const cutoff = Date.now() - PENDING_UPLOAD_MAX_AGE_MS
+    return parsed.filter((upload) =>
+      typeof upload.fingerprint === 'string'
+      && typeof upload.key === 'string'
+      && typeof upload.uploadId === 'string'
+      && upload.createdAt >= cutoff)
+  } catch {
+    return []
+  }
+}
+
+function findPendingUpload(fingerprint: string): PendingUpload | undefined {
+  return readPendingUploads().find((upload) => upload.fingerprint === fingerprint)
+}
+
+function savePendingUpload(upload: PendingUpload): void {
+  try {
+    const pending = readPendingUploads().filter((item) => item.fingerprint !== upload.fingerprint)
+    localStorage.setItem(PENDING_UPLOADS_KEY, JSON.stringify([...pending, upload].slice(-10)))
+  } catch {
+    // Uploading still works when storage is unavailable; only cross-page resume is lost.
+  }
+}
+
+function clearPendingUpload(fingerprint: string): void {
+  try {
+    const pending = readPendingUploads().filter((upload) => upload.fingerprint !== fingerprint)
+    localStorage.setItem(PENDING_UPLOADS_KEY, JSON.stringify(pending))
+  } catch {
+    // Ignore browsers that block local storage.
+  }
 }
 
 function reportProgress(
@@ -335,7 +466,8 @@ function retryDelay(attempt: number, signal: AbortSignal): Promise<void> {
       signal.removeEventListener('abort', abort)
       resolve()
     }, attempt * 750)
-    signal.addEventListener('abort', abort, { once: true })
+    if (signal.aborted) abort()
+    else signal.addEventListener('abort', abort, { once: true })
   })
 }
 

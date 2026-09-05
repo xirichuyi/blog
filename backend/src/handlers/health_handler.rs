@@ -133,10 +133,7 @@ pub async fn detailed_health_check(
 
 /// Kubernetes readiness check
 pub async fn readiness_check(State(app_state): State<AppState>) -> ApiResult<HealthStatus> {
-    // Check if database is accessible
-    let db_result = sqlx::query("SELECT 1")
-        .fetch_one(app_state.database.pool.as_ref())
-        .await;
+    let db_result = check_database_writable(&app_state).await;
 
     match db_result {
         Ok(_) => Ok(Json(ApiResponse::success(HealthStatus {
@@ -153,6 +150,20 @@ pub async fn readiness_check(State(app_state): State<AppState>) -> ApiResult<Hea
             ))
         }
     }
+}
+
+async fn check_database_writable(app_state: &AppState) -> Result<(), sqlx::Error> {
+    let mut connection = app_state.database.pool.acquire().await?;
+    sqlx::query("BEGIN IMMEDIATE")
+        .execute(&mut *connection)
+        .await?;
+    let write_result = sqlx::query("UPDATE posts SET updated_at = updated_at WHERE id = -1")
+        .execute(&mut *connection)
+        .await;
+    let rollback_result = sqlx::query("ROLLBACK").execute(&mut *connection).await;
+    write_result?;
+    rollback_result?;
+    Ok(())
 }
 
 /// Kubernetes liveness check

@@ -3,12 +3,17 @@ name: Build & Deploy to Sigma
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 # Never run two deploys at once; let an in-flight deploy finish.
 concurrency:
   group: deploy-main
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   # ---------- Frontend (Vite/React) ----------
@@ -85,6 +90,13 @@ jobs:
         working-directory: backend
         run: cargo test --locked
 
+      - name: Verify SQLite backup procedure
+        working-directory: backend
+        run: |
+          rm -rf /tmp/blog-build-backups
+          python3 scripts/backup_database.py /tmp/blog-build.db /tmp/blog-build-backups 2
+          test "$(sqlite3 /tmp/blog-build-backups/blog-*.db 'PRAGMA quick_check')" = "ok"
+
       - name: Build release binary
         working-directory: backend
         run: cargo build --release --locked
@@ -99,6 +111,7 @@ jobs:
   # ---------- Deploy (rsync artifacts → restart service) ----------
   deploy:
     needs: [build-frontend, build-backend]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -121,24 +134,28 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy frontend (assets first, entrypoint last)
+      - name: Deploy frontend assets
         run: |
           chmod -R a+rX dist
           # Keep old hashed assets so browsers with a cached HTML document can
-          # still finish loading during a deploy. Upload new assets before
-          # index.html so the new entrypoint never references missing files.
+          # still finish loading during a deploy. The entrypoint is activated
+          # only after the new backend passes all deployment checks.
           rsync -az \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
             dist/assets/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/frontend/dist/assets/"
-          rsync -az --exclude 'assets/' \
-            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
-            dist/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/frontend/dist/"
 
       - name: Deploy tools (gitbook2epub python scripts)
         run: |
           rsync -az --delete \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
             backend/tools/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/backend/tools/"
+
+      - name: Deploy operational scripts
+        run: |
+          chmod -R a+rX backend/scripts
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            backend/scripts/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/backend/scripts/"
 
       - name: Prepare analytics environment variables
         env:
@@ -155,6 +172,18 @@ jobs:
             printf 'CF_ANALYTICS_SITE_TAG=%s\n' '16cb4fba33b7403fad2ab9a0dcee6e08'
             printf 'CF_ANALYTICS_SITE_HOST=%s\n' 'blog.chuyi.uk'
           } > analytics-vars
+
+      - name: Verify browser-to-R2 upload path
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
+              set -e
+              admin_token=$(sudo sed -n "s/^BLOG_ADMIN_TOKEN=//p" \
+                /var/www/blog/backend/.env | tail -n 1 | tr -d "\r")
+              test -n "$admin_token" || { echo "❌ BLOG_ADMIN_TOKEN is unavailable"; exit 1; }
+              printf "%s" "$admin_token" | \
+                python3 /var/www/blog/backend/scripts/check_upload_path.py cors
+            '
 
       - name: Deploy backend (upload binary, atomic swap, restart)
         run: |
@@ -177,6 +206,27 @@ jobs:
               set -e
               cd /var/www/blog/backend
               test -f .env || { echo "production .env is missing"; exit 1; }
+              sudo install -d -o www-data -g www-data -m 775 \
+                /var/www/blog/backend/data
+              sudo chown -R --no-dereference www-data:www-data \
+                /var/www/blog/backend/data
+              sudo install -d -o www-data -g www-data -m 750 \
+                /var/backups/chuyi-blog
+              if [ -f data/blog.db ]; then
+                sudo -u www-data python3 scripts/backup_database.py \
+                  data/blog.db /var/backups/chuyi-blog 7
+              fi
+
+              if [ -f target/release/chuyi-uk-back ]; then
+                cp -pf target/release/chuyi-uk-back \
+                  target/release/chuyi-uk-back.previous
+              fi
+              if [ -f /etc/systemd/system/blog-backend.service ]; then
+                sudo cp -pf /etc/systemd/system/blog-backend.service \
+                  /etc/systemd/system/blog-backend.service.previous
+              fi
+              touch /tmp/blog-backend-deploy-${{ github.run_id }}.swapped
+
               sudo awk '\''!/^CF_ANALYTICS_(API_TOKEN|ACCOUNT_ID|SITE_TAG|SITE_HOST)=/'\'' \
                 .env | sudo tee /tmp/blog.env.merged >/dev/null
               sudo sh -c '\''cat /tmp/blog-analytics-vars >> /tmp/blog.env.merged'\''
@@ -194,13 +244,6 @@ jobs:
               cd /var/www/blog/backend/target/release
               mv -f chuyi-uk-back.new chuyi-uk-back   # atomic on same fs
               chmod +x chuyi-uk-back
-              # The service runs as www-data. Keep SQLite and its WAL files
-              # writable even if a backup or manual maintenance recreated them
-              # under the SSH deployment account.
-              sudo install -d -o www-data -g www-data -m 775 \
-                /var/www/blog/backend/data
-              sudo chown -R --no-dereference www-data:www-data \
-                /var/www/blog/backend/data
               sudo systemctl restart blog-backend
             '
 
@@ -211,8 +254,8 @@ jobs:
               set -e
               healthy=false
               for i in $(seq 1 20); do
-                code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3006/api/health || true)
-                echo "attempt $i: /api/health -> $code"
+                code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3006/api/health/ready || true)
+                echo "attempt $i: /api/health/ready -> $code"
                 [ "$code" = "200" ] && { healthy=true; break; }
                 sleep 2
               done
@@ -238,4 +281,57 @@ jobs:
                 exit 1
               fi
               echo "Cloudflare analytics connected ✅"
+
+              printf "%s" "$admin_token" | \
+                python3 /var/www/blog/backend/scripts/check_upload_path.py multipart
+              echo "R2 multipart resume connected ✅"
+            '
+
+      - name: Activate frontend entrypoint
+        run: |
+          rsync -az --exclude 'assets/' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            dist/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/blog/frontend/dist/"
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            'rm -f /tmp/blog-backend-deploy-${{ github.run_id }}.swapped' || true
+
+      - name: Roll back backend after a failed deployment check
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
+              set -e
+              marker=/tmp/blog-backend-deploy-${{ github.run_id }}.swapped
+              if [ ! -f "$marker" ]; then
+                echo "Backend was not swapped; rollback is unnecessary"
+                exit 0
+              fi
+              cd /var/www/blog/backend
+              test -f target/release/chuyi-uk-back.previous || {
+                echo "❌ previous backend binary is unavailable"
+                exit 1
+              }
+              cp -pf target/release/chuyi-uk-back.previous \
+                target/release/chuyi-uk-back
+              if [ -f /etc/systemd/system/blog-backend.service.previous ]; then
+                sudo cp -pf /etc/systemd/system/blog-backend.service.previous \
+                  /etc/systemd/system/blog-backend.service
+              fi
+              sudo systemctl daemon-reload
+              sudo systemctl restart blog-backend
+              for i in $(seq 1 20); do
+                code=$(curl -s -o /dev/null -w "%{http_code}" \
+                  http://127.0.0.1:3006/api/health/ready || true)
+                echo "rollback attempt $i: /api/health/ready -> $code"
+                if [ "$code" = "200" ]; then
+                  rm -f "$marker"
+                  echo "Previous backend restored ✅"
+                  exit 0
+                fi
+                sleep 2
+              done
+              sudo systemctl status blog-backend --no-pager | tail -30
+              journalctl -u blog-backend --no-pager -n 40
+              exit 1
             '
