@@ -194,6 +194,13 @@ jobs:
               cd /var/www/blog/backend/target/release
               mv -f chuyi-uk-back.new chuyi-uk-back   # atomic on same fs
               chmod +x chuyi-uk-back
+              # The service runs as www-data. Keep SQLite and its WAL files
+              # writable even if a backup or manual maintenance recreated them
+              # under the SSH deployment account.
+              sudo install -d -o www-data -g www-data -m 775 \
+                /var/www/blog/backend/data
+              sudo chown -R --no-dereference www-data:www-data \
+                /var/www/blog/backend/data
               sudo systemctl restart blog-backend
             '
 
@@ -216,6 +223,10 @@ jobs:
                 exit 1
               fi
               echo "backend healthy ✅"
+
+              sudo -u www-data test -w /var/www/blog/backend/data
+              sudo -u www-data test -w /var/www/blog/backend/data/blog.db
+              echo "SQLite paths writable ✅"
 
               admin_token=$(sudo sed -n "s/^BLOG_ADMIN_TOKEN=//p" /var/www/blog/backend/.env | tail -n 1 | tr -d "\r")
               test -n "$admin_token" || { echo "❌ BLOG_ADMIN_TOKEN is unavailable"; exit 1; }
