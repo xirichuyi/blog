@@ -1,5 +1,7 @@
+use crate::models::ApiResponse;
 use crate::routes::AppState;
-use axum::{extract::State, http::StatusCode, response::Json};
+use crate::utils::error::{ApiResult, AppError};
+use axum::{extract::State, response::Json};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sysinfo::{Disks, System};
@@ -57,7 +59,7 @@ fn get_uptime_seconds() -> u64 {
 }
 
 /// Basic health check endpoint
-pub async fn health_check() -> Result<Json<HealthStatus>, StatusCode> {
+pub async fn health_check() -> ApiResult<HealthStatus> {
     let health_status = HealthStatus {
         status: "healthy".to_string(),
         timestamp: Utc::now(),
@@ -66,13 +68,13 @@ pub async fn health_check() -> Result<Json<HealthStatus>, StatusCode> {
         founded_at: BLOG_FOUNDED_AT,
     };
 
-    Ok(Json(health_status))
+    Ok(Json(ApiResponse::success(health_status)))
 }
 
 /// Detailed health check endpoint
 pub async fn detailed_health_check(
     State(app_state): State<AppState>,
-) -> Result<Json<DetailedHealthStatus>, StatusCode> {
+) -> ApiResult<DetailedHealthStatus> {
     let start_time = std::time::Instant::now();
 
     // Get system information
@@ -102,8 +104,16 @@ pub async fn detailed_health_check(
     // Get system metrics
     let metrics = get_system_metrics(&system);
 
+    let status = if [&db_check, &memory_check, &disk_check]
+        .iter()
+        .all(|check| check.status == "healthy")
+    {
+        "healthy"
+    } else {
+        "unhealthy"
+    };
     let detailed_status = DetailedHealthStatus {
-        status: "healthy".to_string(),
+        status: status.to_string(),
         timestamp: Utc::now(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_seconds,
@@ -118,39 +128,42 @@ pub async fn detailed_health_check(
     };
 
     tracing::debug!("Health check completed in {:?}", start_time.elapsed());
-    Ok(Json(detailed_status))
+    Ok(Json(ApiResponse::success(detailed_status)))
 }
 
 /// Kubernetes readiness check
-pub async fn readiness_check(
-    State(app_state): State<AppState>,
-) -> Result<Json<HealthStatus>, StatusCode> {
+pub async fn readiness_check(State(app_state): State<AppState>) -> ApiResult<HealthStatus> {
     // Check if database is accessible
     let db_result = sqlx::query("SELECT 1")
         .fetch_one(app_state.database.pool.as_ref())
         .await;
 
     match db_result {
-        Ok(_) => Ok(Json(HealthStatus {
+        Ok(_) => Ok(Json(ApiResponse::success(HealthStatus {
             status: "ready".to_string(),
             timestamp: Utc::now(),
             service: "cyrus-blog-backend".to_string(),
             uptime_seconds: get_uptime_seconds(),
             founded_at: BLOG_FOUNDED_AT,
-        })),
-        Err(_) => Err(StatusCode::SERVICE_UNAVAILABLE),
+        }))),
+        Err(error) => {
+            tracing::error!("Readiness database check failed: {}", error);
+            Err(AppError::ServiceUnavailable(
+                "Database is unavailable".to_string(),
+            ))
+        }
     }
 }
 
 /// Kubernetes liveness check
-pub async fn liveness_check() -> Result<Json<HealthStatus>, StatusCode> {
-    Ok(Json(HealthStatus {
+pub async fn liveness_check() -> ApiResult<HealthStatus> {
+    Ok(Json(ApiResponse::success(HealthStatus {
         status: "alive".to_string(),
         timestamp: Utc::now(),
         service: "cyrus-blog-backend".to_string(),
         uptime_seconds: get_uptime_seconds(),
         founded_at: BLOG_FOUNDED_AT,
-    }))
+    })))
 }
 
 async fn check_database_health(app_state: &AppState) -> CheckResult {
@@ -321,32 +334,26 @@ pub struct DashboardSystemInfo {
 }
 
 /// Dashboard statistics endpoint - returns real data from database
-pub async fn get_dashboard_stats(
-    State(app_state): State<AppState>,
-) -> Result<Json<DashboardStats>, StatusCode> {
+pub async fn get_dashboard_stats(State(app_state): State<AppState>) -> ApiResult<DashboardStats> {
     // Get counts from database
     let total_posts: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM posts WHERE status != 2")
         .fetch_one(app_state.database.pool.as_ref())
-        .await
-        .unwrap_or((0,));
+        .await?;
 
     let total_categories: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM categories")
         .fetch_one(app_state.database.pool.as_ref())
-        .await
-        .unwrap_or((0,));
+        .await?;
 
     let total_tags: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM tags")
         .fetch_one(app_state.database.pool.as_ref())
-        .await
-        .unwrap_or((0,));
+        .await?;
 
     // Get recent posts (latest 5)
     let recent_posts_rows: Vec<(i64, String, DateTime<Utc>, i32)> = sqlx::query_as(
         "SELECT id, title, created_at, status FROM posts WHERE status != 2 ORDER BY created_at DESC LIMIT 5"
     )
         .fetch_all(app_state.database.pool.as_ref())
-        .await
-        .unwrap_or_default();
+        .await?;
 
     let recent_posts: Vec<RecentPost> = recent_posts_rows
         .into_iter()
@@ -379,7 +386,7 @@ pub async fn get_dashboard_stats(
         },
     };
 
-    Ok(Json(stats))
+    Ok(Json(ApiResponse::success(stats)))
 }
 
 fn format_uptime(seconds: u64) -> String {

@@ -1,10 +1,11 @@
 //! 在线工具端点：调用 Python 脚本完成任务后返回结果。
 
+use crate::utils::error::{AppError, Result};
 use axum::{
     body::Body,
     extract::Json,
     http::{header, StatusCode},
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use serde::Deserialize;
 use std::net::{IpAddr, ToSocketAddrs};
@@ -29,14 +30,6 @@ pub struct Gitbook2EpubRequest {
     /// 默认跳过可保证转换又快又稳，需要图文版时再显式开启。
     #[serde(default)]
     include_images: bool,
-}
-
-fn json_err(code: StatusCode, msg: &str) -> Response {
-    (
-        code,
-        Json(serde_json::json!({ "code": code.as_u16(), "message": msg, "data": null })),
-    )
-        .into_response()
 }
 
 /// SSRF 防护：只允许指向公网的 http/https 链接。
@@ -102,23 +95,21 @@ fn ip_is_public(ip: IpAddr) -> bool {
 
 /// POST /api/tools/gitbook2epub  body: { "url": "..." }
 /// 成功返回 epub 二进制（下载）；失败返回 JSON。
-pub async fn gitbook2epub(Json(req): Json<Gitbook2EpubRequest>) -> Response {
+pub async fn gitbook2epub(Json(req): Json<Gitbook2EpubRequest>) -> Result<Response> {
     let url = req.url.trim().to_string();
     if url.len() > 2048 || !is_public_http_url(&url) {
-        return json_err(
-            StatusCode::BAD_REQUEST,
-            "无效或不被允许的链接（必须是公网 http/https 在线书地址）",
-        );
+        return Err(AppError::BadRequest(
+            "无效或不被允许的链接（必须是公网 http/https 在线书地址）".to_string(),
+        ));
     }
 
     // 单任务串行：占不到就直接拒绝
     let _permit = match JOB_SEM.try_acquire() {
         Ok(p) => p,
         Err(_) => {
-            return json_err(
-                StatusCode::TOO_MANY_REQUESTS,
-                "服务器正在转换其它任务，请稍后再试",
-            )
+            return Err(AppError::TooManyRequests(
+                "服务器正在转换其它任务，请稍后再试".to_string(),
+            ))
         }
     };
 
@@ -165,24 +156,22 @@ pub async fn gitbook2epub(Json(req): Json<Gitbook2EpubRequest>) -> Response {
     match result {
         Err(_) => {
             cleanup().await;
-            json_err(
-                StatusCode::GATEWAY_TIMEOUT,
-                "转换超时（书太大或站点太慢），请换更小的书或稍后再试",
-            )
+            Err(AppError::GatewayTimeout(
+                "转换超时（书太大或站点太慢），请换更小的书或稍后再试".to_string(),
+            ))
         }
         Ok(Err(e)) => {
             tracing::error!("gitbook2epub 启动失败: {}", e);
             cleanup().await;
-            json_err(StatusCode::INTERNAL_SERVER_ERROR, "服务器无法启动转换")
+            Err(AppError::Internal("服务器无法启动转换".to_string()))
         }
         Ok(Ok(output)) => {
             // GNU timeout 在超时杀掉命令时自身以 124 退出。
             if output.status.code() == Some(124) {
                 cleanup().await;
-                return json_err(
-                    StatusCode::GATEWAY_TIMEOUT,
-                    "转换超时（书太大或站点太慢），请换更小的书或稍后再试",
-                );
+                return Err(AppError::GatewayTimeout(
+                    "转换超时（书太大或站点太慢），请换更小的书或稍后再试".to_string(),
+                ));
             }
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
@@ -195,12 +184,12 @@ pub async fn gitbook2epub(Json(req): Json<Gitbook2EpubRequest>) -> Response {
                     "转换失败，请确认链接是可访问的 gitbook / bookdown 在线书"
                 };
                 cleanup().await;
-                return json_err(StatusCode::BAD_GATEWAY, hint);
+                return Err(AppError::BadGateway(hint.to_string()));
             }
             match tokio::fs::read(&out).await {
                 Ok(bytes) => {
                     cleanup().await;
-                    Response::builder()
+                    Ok(Response::builder()
                         .status(StatusCode::OK)
                         .header(header::CONTENT_TYPE, "application/epub+zip")
                         .header(
@@ -208,11 +197,11 @@ pub async fn gitbook2epub(Json(req): Json<Gitbook2EpubRequest>) -> Response {
                             "attachment; filename=\"book.epub\"",
                         )
                         .body(Body::from(bytes))
-                        .unwrap()
+                        .unwrap())
                 }
                 Err(_) => {
                     cleanup().await;
-                    json_err(StatusCode::INTERNAL_SERVER_ERROR, "转换完成但读取文件失败")
+                    Err(AppError::Internal("转换完成但读取文件失败".to_string()))
                 }
             }
         }

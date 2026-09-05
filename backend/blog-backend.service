@@ -10,6 +10,8 @@ WorkingDirectory=/var/www/blog/backend
 ExecStart=/var/www/blog/backend/target/release/chuyi-uk-back
 Restart=always
 RestartSec=5
+TimeoutStopSec=25
+KillSignal=SIGTERM
 Environment=ENV=production
 Environment=RUST_LOG=info
 EnvironmentFile=-/var/www/blog/backend/.env

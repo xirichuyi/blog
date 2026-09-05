@@ -176,20 +176,6 @@ pub struct UpdatePostRequest {
     pub tag_ids: Option<Vec<i64>>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct PostWithTags {
-    #[serde(flatten)]
-    pub post: Post,
-    pub tags: Vec<super::tag::Tag>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PostWithDetails {
-    pub post: Post,
-    pub tags: Vec<super::tag::Tag>,
-    pub category_name: Option<String>,
-}
-
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct AdjacentPost {
     pub id: i64,

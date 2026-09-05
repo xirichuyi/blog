@@ -1,6 +1,6 @@
-// IMAP credentials are sent per request and are never persisted by the client.
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+import { apiRequest } from './http'
 
+// IMAP credentials are sent per request and are never persisted by the client.
 export interface MailSummary {
   uid: number | null
   from: string
@@ -22,28 +22,11 @@ export interface MailBody {
   html: string | null
 }
 
-interface Envelope<T> {
-  code: number
-  message: string
-  data: T
-}
-
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}/api${path}`, {
+function post<T>(path: string, body: unknown): Promise<T> {
+  return apiRequest<T>(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  let env: Envelope<T> | null = null
-  try {
-    env = (await res.json()) as Envelope<T>
-  } catch {
-    /* non-JSON error body */
-  }
-  if (!res.ok || !env || env.code !== 0) {
-    throw new Error(env?.message || `Request failed (${res.status})`)
-  }
-  return env.data
 }
 
 export function fetchMailList(email: string, token: string, limit = 20): Promise<MailListResult> {

@@ -1,9 +1,9 @@
+use crate::models::ApiResponse;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
-use serde_json::json;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -34,6 +34,18 @@ pub enum AppError {
 
     #[error("File error: {0}")]
     File(String),
+
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
+
+    #[error("Bad gateway: {0}")]
+    BadGateway(String),
+
+    #[error("Gateway timeout: {0}")]
+    GatewayTimeout(String),
+
+    #[error("Service unavailable: {0}")]
+    ServiceUnavailable(String),
 }
 
 impl IntoResponse for AppError {
@@ -75,16 +87,30 @@ impl IntoResponse for AppError {
                 tracing::error!("File error: {}", message);
                 (StatusCode::INTERNAL_SERVER_ERROR, message.as_str())
             }
+            AppError::TooManyRequests(ref message) => {
+                tracing::warn!("Too many requests: {}", message);
+                (StatusCode::TOO_MANY_REQUESTS, message.as_str())
+            }
+            AppError::BadGateway(ref message) => {
+                tracing::warn!("Bad gateway: {}", message);
+                (StatusCode::BAD_GATEWAY, message.as_str())
+            }
+            AppError::GatewayTimeout(ref message) => {
+                tracing::warn!("Gateway timeout: {}", message);
+                (StatusCode::GATEWAY_TIMEOUT, message.as_str())
+            }
+            AppError::ServiceUnavailable(ref message) => {
+                tracing::error!("Service unavailable: {}", message);
+                (StatusCode::SERVICE_UNAVAILABLE, message.as_str())
+            }
         };
 
-        let body = Json(json!({
-            "code": status.as_u16(),
-            "message": error_message,
-            "data": serde_json::Value::Null
-        }));
+        let body = Json(ApiResponse::<()>::error(status.as_u16(), error_message));
 
         (status, body).into_response()
     }
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;
+
+pub type ApiResult<T> = Result<Json<ApiResponse<T>>>;

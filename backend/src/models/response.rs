@@ -2,19 +2,17 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
-    pub code: i32,
+    pub code: u16,
     pub message: String,
     pub data: Option<T>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ApiListResponse<T> {
-    pub code: i32,
-    pub message: String,
-    pub data: Option<Vec<T>>,
-    pub total: Option<i64>,
-    pub page: Option<u32>,
-    pub page_size: Option<u32>,
+pub struct Page<T> {
+    pub items: Vec<T>,
+    pub total: i64,
+    pub page: u32,
+    pub page_size: u32,
 }
 
 impl<T> ApiResponse<T> {
@@ -34,69 +32,39 @@ impl<T> ApiResponse<T> {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn error(code: i32, message: &str) -> Self {
+    pub fn error(code: u16, message: impl Into<String>) -> Self {
         Self {
             code,
-            message: message.to_string(),
-            data: None,
-        }
-    }
-
-    pub fn not_found(message: &str) -> Self {
-        Self {
-            code: 404,
-            message: message.to_string(),
-            data: None,
-        }
-    }
-
-    pub fn bad_request(message: &str) -> Self {
-        Self {
-            code: 400,
-            message: message.to_string(),
-            data: None,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn unauthorized(message: &str) -> Self {
-        Self {
-            code: 401,
-            message: message.to_string(),
-            data: None,
-        }
-    }
-
-    pub fn internal_error(message: &str) -> Self {
-        Self {
-            code: 500,
-            message: message.to_string(),
+            message: message.into(),
             data: None,
         }
     }
 }
 
-impl<T> ApiListResponse<T> {
-    pub fn success(data: Vec<T>, total: i64, page: u32, page_size: u32) -> Self {
+impl<T> Page<T> {
+    pub fn new(items: Vec<T>, total: i64, page: u32, page_size: u32) -> Self {
         Self {
-            code: 200,
-            message: "Success".to_string(),
-            data: Some(data),
-            total: Some(total),
-            page: Some(page),
-            page_size: Some(page_size),
+            items,
+            total,
+            page,
+            page_size,
         }
     }
+}
 
-    pub fn error(code: i32, message: &str) -> Self {
-        Self {
-            code,
-            message: message.to_string(),
-            data: None,
-            total: None,
-            page: None,
-            page_size: None,
-        }
+#[cfg(test)]
+mod tests {
+    use super::{ApiResponse, Page};
+
+    #[test]
+    fn response_has_one_stable_envelope() {
+        let response = ApiResponse::success(Page::new(vec!["post"], 1, 1, 10));
+        let json = serde_json::to_value(response).unwrap();
+
+        assert_eq!(json["code"], 200);
+        assert_eq!(json["message"], "Success");
+        assert_eq!(json["data"]["items"][0], "post");
+        assert_eq!(json["data"]["total"], 1);
+        assert!(json.get("total").is_none());
     }
 }

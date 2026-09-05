@@ -1,7 +1,6 @@
 // Typed API client for the Rust/Axum blog backend.
 // In prod the SPA is same-origin behind nginx; media assets are public R2 URLs.
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
-const PREFIX = '/api'
+import { apiRequest, apiUrl, assetUrl, type ApiPage } from './http'
 
 export interface Article {
   id: string
@@ -92,13 +91,6 @@ export interface ChangelogEntry {
   updated_at: string
 }
 
-interface Envelope<T> {
-  code: number
-  message: string
-  data: T
-  total?: number
-}
-
 interface RawPost {
   id: number
   title: string
@@ -117,26 +109,12 @@ interface RawTag {
   id: number
   name: string
 }
-interface RawDetail {
-  post: RawPost
-}
-
 function tagNames(tags?: RawPost['tags']): string[] {
   return (tags ?? []).map((t) => (typeof t === 'string' ? t : t.name)).filter(Boolean) as string[]
 }
 
-async function req<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
-  const res = await fetch(`${API_BASE}${PREFIX}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  })
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-  return (await res.json()) as Envelope<T>
-}
-
 export function imageUrl(p?: string): string | undefined {
-  if (!p) return undefined
-  return p.startsWith('http') ? p : `${API_BASE}${p}`
+  return assetUrl(p)
 }
 
 function formatDate(iso: string): string {
@@ -199,22 +177,22 @@ export async function listArticles(params: {
   if (params.pageSize) q.set('page_size', String(params.pageSize))
   if (params.category) q.set('category', params.category)
   if (params.tagId) q.set('tag_id', params.tagId)
-  const env = await req<RawDetail[]>(`/post/list_with_details?${q.toString()}`)
-  const items = env.data || []
+  const page = await apiRequest<ApiPage<RawPost>>(`/posts?${q.toString()}`)
+  const items = page.items
   return {
-    articles: items.map((it) => toArticle(it.post)),
-    total: env.total ?? items.length,
+    articles: items.map(toArticle),
+    total: page.total,
   }
 }
 
 export async function getArticle(id: string, signal?: AbortSignal): Promise<Article> {
-  const env = await req<RawPost>(`/post/get/${id}`, { signal })
-  const article = toArticle(env.data)
+  const post = await apiRequest<RawPost>(`/posts/${id}`, { signal })
+  const article = toArticle(post)
   // If the post payload didn't include tags, fetch them separately.
   if (article.tags.length === 0) {
     try {
-      const t = await req<RawTag[]>(`/post/${id}/tags`, { signal })
-      article.tags = (t.data || []).map((x) => x.name)
+      const tags = await apiRequest<RawTag[]>(`/posts/${id}/tags`, { signal })
+      article.tags = tags.map((tag) => tag.name)
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') throw error
       /* tags optional */
@@ -224,33 +202,33 @@ export async function getArticle(id: string, signal?: AbortSignal): Promise<Arti
 }
 
 export async function getAdjacentArticles(id: string, signal?: AbortSignal): Promise<AdjacentArticles> {
-  const env = await req<{
+  const adjacent = await apiRequest<{
     newer?: { id: number; title: string } | null
     older?: { id: number; title: string } | null
-  }>(`/post/adjacent/${id}`, { signal })
+  }>(`/posts/${id}/adjacent`, { signal })
   return {
-    newer: env.data.newer ? { ...env.data.newer, id: String(env.data.newer.id) } : undefined,
-    older: env.data.older ? { ...env.data.older, id: String(env.data.older.id) } : undefined,
+    newer: adjacent.newer ? { ...adjacent.newer, id: String(adjacent.newer.id) } : undefined,
+    older: adjacent.older ? { ...adjacent.older, id: String(adjacent.older.id) } : undefined,
   }
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const env = await req<Array<{ id: number; name: string }>>(`/category/list`)
-  return (env.data || []).map((c) => ({ id: String(c.id), name: c.name, count: 0 }))
+  const categories = await apiRequest<Array<{ id: number; name: string }>>('/categories')
+  return categories.map((category) => ({ id: String(category.id), name: category.name, count: 0 }))
 }
 
 export async function getTags(): Promise<Tag[]> {
-  const env = await req<RawTag[]>(`/tag/list`)
-  return (env.data || []).map((t) => ({ id: String(t.id), name: t.name, count: 0 }))
+  const tags = await apiRequest<RawTag[]>('/tags')
+  return tags.map((tag) => ({ id: String(tag.id), name: tag.name, count: 0 }))
 }
 
 export async function getAbout(): Promise<About> {
-  const env = await req<{ title: string; subtitle: string; content: string; photo_url?: string }>(`/about/get`)
+  const about = await apiRequest<{ title: string; subtitle: string; content: string; photo_url?: string }>('/about')
   return {
-    title: env.data.title,
-    subtitle: env.data.subtitle,
-    content: env.data.content,
-    photoUrl: imageUrl(env.data.photo_url),
+    title: about.title,
+    subtitle: about.subtitle,
+    content: about.content,
+    photoUrl: imageUrl(about.photo_url),
   }
 }
 
@@ -259,7 +237,7 @@ export async function gitbook2epub(
   url: string,
   includeImages = false,
 ): Promise<{ blob: Blob; filename: string }> {
-  const res = await fetch(`${API_BASE}${PREFIX}/tools/gitbook2epub`, {
+  const res = await fetch(apiUrl('/tools/gitbook2epub'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url, include_images: includeImages }),
@@ -282,15 +260,11 @@ export async function gitbook2epub(
 }
 
 export async function getHealth(): Promise<HealthStatus> {
-  // Health endpoint returns the object directly, NOT wrapped in {code,message,data}.
-  const res = await fetch(`${API_BASE}${PREFIX}/health`)
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`)
-  return (await res.json()) as HealthStatus
+  return apiRequest<HealthStatus>('/health')
 }
 
 export async function listBooks(): Promise<Book[]> {
-  const env = await req<Book[]>('/books')
-  return env.data || []
+  return apiRequest<Book[]>('/books')
 }
 
 export function bookFileContentUrl(file: BookFile): string {
@@ -298,6 +272,5 @@ export function bookFileContentUrl(file: BookFile): string {
 }
 
 export async function listChangelog(): Promise<ChangelogEntry[]> {
-  const env = await req<ChangelogEntry[]>('/changelog')
-  return env.data || []
+  return apiRequest<ChangelogEntry[]>('/changelog')
 }

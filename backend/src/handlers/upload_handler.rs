@@ -1,6 +1,6 @@
 use crate::models::{ApiResponse, CreateBookFile};
 use crate::services::Services;
-use crate::utils::error::{AppError, Result};
+use crate::utils::error::{ApiResult, AppError};
 use crate::utils::{CompletedUploadPart, R2Storage, UploadSession};
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
@@ -52,7 +52,7 @@ pub async fn begin(
     State(storage): State<Arc<R2Storage>>,
     State(services): State<Services>,
     Json(request): Json<BeginUploadRequest>,
-) -> Result<Json<ApiResponse<UploadSession>>> {
+) -> ApiResult<UploadSession> {
     let session = match request.kind {
         UploadKind::Image => {
             storage
@@ -86,7 +86,7 @@ pub async fn complete(
     State(storage): State<Arc<R2Storage>>,
     State(services): State<Services>,
     Json(request): Json<CompleteUploadRequest>,
-) -> Result<Json<ApiResponse<CompleteUploadResponse>>> {
+) -> ApiResult<CompleteUploadResponse> {
     if matches!(request.kind, UploadKind::Image) {
         return Err(AppError::BadRequest(
             "Single-part image uploads do not require completion".to_string(),
@@ -157,7 +157,7 @@ pub async fn complete(
 pub async fn abort(
     State(storage): State<Arc<R2Storage>>,
     Json(request): Json<AbortUploadRequest>,
-) -> Result<Json<ApiResponse<()>>> {
+) -> ApiResult<()> {
     storage
         .abort_upload(&request.key, &request.upload_id)
         .await?;

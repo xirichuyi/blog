@@ -1,10 +1,16 @@
+use axum::body::to_bytes;
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
 use chuyi_uk_back::config::S3Config;
 use chuyi_uk_back::database::repositories::{PostRepository, TagRepository};
 use chuyi_uk_back::database::Database;
+use chuyi_uk_back::handlers::post_handler;
 use chuyi_uk_back::models::{
-    CreatePostRequest, CreateTagRequest, NullablePatch, PostStatus, UpdatePostRequest,
+    ApiResponse, CreatePostRequest, CreateTagRequest, NullablePatch, PostStatus, UpdatePostRequest,
 };
-use chuyi_uk_back::services::PostService;
+use chuyi_uk_back::services::{PostService, Services};
 use chuyi_uk_back::utils::R2Storage;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::sync::Arc;
@@ -71,6 +77,26 @@ async fn invalid_tags_roll_back_new_post() {
         .await
         .expect("count posts");
     assert_eq!(count, 0);
+}
+
+#[tokio::test]
+async fn create_post_failure_uses_http_error_and_the_shared_envelope() {
+    let database = setup_test_db().await;
+    let storage = Arc::new(R2Storage::new(&S3Config::default()));
+    let services = Services::new(database.clone(), storage, None);
+    database.pool().close().await;
+
+    let error = post_handler::create_post(State(services), Json(create_request("must fail", None)))
+        .await
+        .expect_err("unavailable database must fail the request");
+    let response = error.into_response();
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let envelope: ApiResponse<serde_json::Value> = serde_json::from_slice(&body).unwrap();
+    assert_eq!(envelope.code, 500);
+    assert_eq!(envelope.message, "Database error");
+    assert!(envelope.data.is_none());
 }
 
 #[tokio::test]

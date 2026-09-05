@@ -1,8 +1,7 @@
 // Admin API client. Authentication is carried by a same-origin HttpOnly cookie.
 import type { Category, Tag, About, Book, ChangelogEntry, ReadingStatus } from './api'
+import { ApiError, apiRequest, type ApiPage } from './http'
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
-const PREFIX = '/api'
 export const ADMIN_AUTH_EXPIRED_EVENT = 'blog-admin-auth-expired'
 
 export class AuthError extends Error {}
@@ -12,28 +11,16 @@ function authExpired(message: string): never {
   throw new AuthError(message)
 }
 
-interface Envelope<T> {
-  code: number
-  message: string
-  data: T
-  total?: number
-}
-
 /** JSON request against an admin endpoint. Throws AuthError on 401. */
-export async function adminRequest<T>(path: string, init?: RequestInit): Promise<Envelope<T>> {
-  const res = await fetch(`${API_BASE}${PREFIX}${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...((init?.headers as Record<string, string>) ?? {}) },
-  })
-  if (res.status === 401) {
-    authExpired('未授权，请重新登录')
+export async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  try {
+    return await apiRequest<T>(path, { ...init, credentials: 'include' })
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      authExpired('未授权，请重新登录')
+    }
+    throw error
   }
-  const body = (await res.json().catch(() => ({}))) as Envelope<T>
-  if (!res.ok || (typeof body.code === 'number' && body.code >= 400)) {
-    throw new Error(body.message || `请求失败 (${res.status})`)
-  }
-  return body
 }
 
 const req = adminRequest
@@ -109,71 +96,43 @@ export interface AdminSession {
 }
 
 export function googleLoginUrl(): string {
-  return `${API_BASE}${PREFIX}/auth/google/start`
+  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+  return `${base}/api/auth/google/start`
 }
 
 export async function getAdminSession(): Promise<AdminSession | null> {
-  const res = await fetch(`${API_BASE}${PREFIX}/auth/session`, { credentials: 'include' })
-  if (res.status === 401) return null
-  if (!res.ok) throw new Error(`无法检查登录状态 (${res.status})`)
-  const body = (await res.json()) as Envelope<AdminSession>
-  return body.data ?? null
+  try {
+    return await apiRequest<AdminSession>('/auth/session', { credentials: 'include' })
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null
+    throw error
+  }
 }
 
 export async function logoutAdmin(): Promise<void> {
-  const res = await fetch(`${API_BASE}${PREFIX}/auth/logout`, {
+  await apiRequest<void>('/auth/logout', {
     method: 'POST',
     credentials: 'include',
   })
-  if (!res.ok) throw new Error(`退出失败 (${res.status})`)
 }
 
 export async function getDashboard(): Promise<DashboardStats> {
-  // dashboard/stats returns the object directly (NOT wrapped).
-  const res = await fetch(`${API_BASE}${PREFIX}/admin/dashboard/stats`, {
-    credentials: 'include',
-  })
-  if (res.status === 401) {
-    authExpired('未授权')
-  }
-  if (!res.ok) throw new Error(`请求失败 (${res.status})`)
-  return (await res.json()) as DashboardStats
+  return adminRequest<DashboardStats>('/admin/dashboard/stats')
 }
 
 export async function getAnalytics(days: 7 | 30 | 90): Promise<AnalyticsDashboard> {
-  const env = await req<AnalyticsDashboard>(`/admin/analytics?days=${days}`)
-  return env.data
+  return req<AnalyticsDashboard>(`/admin/analytics?days=${days}`)
 }
 
 // ---------- posts ----------
-interface RawDetail {
-  post: AdminPost
-  tags?: Array<{ id: number; name: string }>
-  category_name?: string | null
-}
-
 /** List ALL posts (incl. drafts) — omit status. */
 export async function adminListPosts(): Promise<AdminPost[]> {
-  const env = await req<RawDetail[]>(`/admin/posts?page=1&page_size=500`)
-  return (env.data || []).map((d) => ({
-    ...d.post,
-    tags: d.tags ?? d.post.tags,
-    category_name: d.category_name ?? d.post.category_name,
-  }))
+  const page = await req<ApiPage<AdminPost>>(`/admin/posts?page=1&page_size=500`)
+  return page.items
 }
 
 export async function adminGetPost(id: number | string): Promise<AdminPost> {
-  const env = await req<AdminPost>(`/admin/posts/${id}`)
-  const post = env.data
-  if (!post.tags) {
-    try {
-      const t = await req<Array<{ id: number; name: string }>>(`/post/get_tags/${id}`)
-      post.tags = t.data || []
-    } catch {
-      /* tags optional */
-    }
-  }
-  return post
+  return req<AdminPost>(`/admin/posts/${id}`)
 }
 
 export interface PostPayload {
@@ -186,15 +145,13 @@ export interface PostPayload {
 }
 
 export async function createPost(p: PostPayload): Promise<AdminPost> {
-  const env = await req<AdminPost>(`/post/create`, { method: 'POST', body: JSON.stringify(p) })
-  return env.data
+  return req<AdminPost>('/admin/posts', { method: 'POST', body: JSON.stringify(p) })
 }
 export async function updatePost(id: number, p: Partial<PostPayload>): Promise<AdminPost> {
-  const env = await req<AdminPost>(`/post/update/${id}`, { method: 'PUT', body: JSON.stringify(p) })
-  return env.data
+  return req<AdminPost>(`/admin/posts/${id}`, { method: 'PUT', body: JSON.stringify(p) })
 }
 export async function deletePost(id: number): Promise<void> {
-  await req(`/post/delete/${id}`, { method: 'DELETE' })
+  await req(`/admin/posts/${id}`, { method: 'DELETE' })
 }
 // ---------- books ----------
 export interface BookPayload {
@@ -212,18 +169,15 @@ export interface BookPayload {
 }
 
 export async function adminListBooks(): Promise<Book[]> {
-  const env = await req<Book[]>('/admin/books')
-  return env.data || []
+  return req<Book[]>('/admin/books')
 }
 
 export async function createBook(payload: BookPayload): Promise<Book> {
-  const env = await req<Book>('/admin/books', { method: 'POST', body: JSON.stringify(payload) })
-  return env.data
+  return req<Book>('/admin/books', { method: 'POST', body: JSON.stringify(payload) })
 }
 
 export async function updateBook(id: number, payload: Partial<BookPayload>): Promise<Book> {
-  const env = await req<Book>(`/admin/books/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
-  return env.data
+  return req<Book>(`/admin/books/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
 }
 
 export async function deleteBook(id: number): Promise<void> {
@@ -244,18 +198,15 @@ export interface ChangelogPayload {
 }
 
 export async function adminListChangelog(): Promise<ChangelogEntry[]> {
-  const env = await req<ChangelogEntry[]>('/admin/changelog')
-  return env.data || []
+  return req<ChangelogEntry[]>('/admin/changelog')
 }
 
 export async function createChangelog(payload: ChangelogPayload): Promise<ChangelogEntry> {
-  const env = await req<ChangelogEntry>('/admin/changelog', { method: 'POST', body: JSON.stringify(payload) })
-  return env.data
+  return req<ChangelogEntry>('/admin/changelog', { method: 'POST', body: JSON.stringify(payload) })
 }
 
 export async function updateChangelog(id: number, payload: Partial<ChangelogPayload>): Promise<ChangelogEntry> {
-  const env = await req<ChangelogEntry>(`/admin/changelog/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
-  return env.data
+  return req<ChangelogEntry>(`/admin/changelog/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
 }
 
 export async function deleteChangelog(id: number): Promise<void> {
@@ -264,40 +215,39 @@ export async function deleteChangelog(id: number): Promise<void> {
 
 // ---------- categories ----------
 export async function listCategories(): Promise<Category[]> {
-  const env = await req<Array<{ id: number; name: string }>>(`/category/list`)
-  return (env.data || []).map((c) => ({ id: String(c.id), name: c.name, count: 0 }))
+  const categories = await req<Array<{ id: number; name: string }>>('/categories')
+  return categories.map((category) => ({ id: String(category.id), name: category.name, count: 0 }))
 }
 export async function createCategory(name: string) {
-  await req(`/category/create`, { method: 'POST', body: JSON.stringify({ name }) })
+  await req('/admin/categories', { method: 'POST', body: JSON.stringify({ name }) })
 }
 export async function updateCategory(id: string, name: string) {
-  await req(`/category/update/${id}`, { method: 'PUT', body: JSON.stringify({ name }) })
+  await req(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify({ name }) })
 }
 export async function deleteCategory(id: string) {
-  await req(`/category/delete/${id}`, { method: 'DELETE' })
+  await req(`/admin/categories/${id}`, { method: 'DELETE' })
 }
 
 // ---------- tags ----------
 export async function listTags(): Promise<Tag[]> {
-  const env = await req<Array<{ id: number; name: string }>>(`/tag/list`)
-  return (env.data || []).map((t) => ({ id: String(t.id), name: t.name, count: 0 }))
+  const tags = await req<Array<{ id: number; name: string }>>('/tags')
+  return tags.map((tag) => ({ id: String(tag.id), name: tag.name, count: 0 }))
 }
 export async function createTag(name: string): Promise<{ id: number; name: string }> {
-  const env = await req<{ id: number; name: string }>(`/tag/create`, { method: 'POST', body: JSON.stringify({ name }) })
-  return env.data
+  return req<{ id: number; name: string }>('/admin/tags', { method: 'POST', body: JSON.stringify({ name }) })
 }
 export async function updateTag(id: string, name: string) {
-  await req(`/tag/update/${id}`, { method: 'PUT', body: JSON.stringify({ name }) })
+  await req(`/admin/tags/${id}`, { method: 'PUT', body: JSON.stringify({ name }) })
 }
 export async function deleteTag(id: string) {
-  await req(`/tag/delete/${id}`, { method: 'DELETE' })
+  await req(`/admin/tags/${id}`, { method: 'DELETE' })
 }
 
 // ---------- about ----------
 export async function getAboutRaw(): Promise<About & { photo_url?: string }> {
-  const env = await req<{ title: string; subtitle: string; content: string; photo_url?: string }>(`/about/get`)
-  return { ...env.data, photoUrl: env.data.photo_url }
+  const about = await req<{ title: string; subtitle: string; content: string; photo_url?: string }>('/about')
+  return { ...about, photoUrl: about.photo_url }
 }
 export async function updateAbout(p: { title: string; subtitle: string; content: string; photo_url?: string | null }) {
-  await req(`/about/update`, { method: 'PUT', body: JSON.stringify(p) })
+  await req('/admin/about', { method: 'PUT', body: JSON.stringify(p) })
 }

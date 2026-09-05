@@ -107,7 +107,7 @@ async function beginUpload(
   contentType: string,
   options: UploadOptions,
 ): Promise<UploadSession> {
-  const response = await adminRequest<UploadSession>('/admin/uploads', {
+  return adminRequest<UploadSession>('/admin/uploads', {
     method: 'POST',
     body: JSON.stringify({
       kind: options.kind,
@@ -117,7 +117,6 @@ async function beginUpload(
       file_size: file.size,
     }),
   })
-  return response.data
 }
 
 async function completeUpload(
@@ -127,7 +126,7 @@ async function completeUpload(
   session: UploadSession,
   parts: CompletedUploadPart[],
 ): Promise<CompleteUploadResponse> {
-  const response = await adminRequest<CompleteUploadResponse>('/admin/uploads/complete', {
+  return adminRequest<CompleteUploadResponse>('/admin/uploads/complete', {
     method: 'POST',
     body: JSON.stringify({
       kind: options.kind,
@@ -140,7 +139,6 @@ async function completeUpload(
       file_size: file.size,
     }),
   })
-  return response.data
 }
 
 async function abortUpload(session: UploadSession): Promise<void> {

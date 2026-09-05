@@ -51,7 +51,6 @@ urlencoding = "2"
 
 # Authentication & Security
 jsonwebtoken = "9.2"
-bcrypt = "0.15"
 
 # Configuration
 dotenvy = "0.15"

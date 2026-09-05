@@ -13,11 +13,9 @@
 //!   再叠加全局信号量，压制「拿公开端点批量试盗号」的滥用、也保护小内存机器。
 //! - **超时**：TCP 读写超时 + 整体超时，避免卡死线程。
 
-use axum::{
-    extract::Json,
-    http::{HeaderMap, StatusCode},
-    response::{IntoResponse, Response},
-};
+use crate::models::ApiResponse;
+use crate::utils::error::{ApiResult, AppError};
+use axum::{extract::Json, http::HeaderMap};
 use mailparse::ParsedMail;
 use native_tls::TlsConnector;
 use serde::Deserialize;
@@ -62,26 +60,6 @@ pub struct BodyReq {
     email: String,
     token: String,
     uid: u32,
-}
-
-/// 错误响应。**故意一律用 HTTP 200**：站点在 Cloudflare 后面,源站返回 5xx 会被
-/// CF 拦截换成它自己的「error code: 502」页面,前端就拿不到我们友好的中文提示
-/// (登录失败/超时都属常见情况)。所以把语义状态码放进 envelope 的 `code` 字段,
-/// 前端按 `code !== 0` 判断错误并展示 `message`。
-fn json_err(code: StatusCode, msg: &str) -> Response {
-    (
-        StatusCode::OK,
-        Json(serde_json::json!({ "code": code.as_u16(), "message": msg, "data": null })),
-    )
-        .into_response()
-}
-
-fn json_ok(data: serde_json::Value) -> Response {
-    (
-        StatusCode::OK,
-        Json(serde_json::json!({ "code": 0, "message": "ok", "data": data })),
-    )
-        .into_response()
 }
 
 /// 根据邮箱域名推断 IMAP 服务器（只覆盖常见服务商；未知域名直接拒绝，防 SSRF）。
@@ -369,42 +347,57 @@ fn header_field_from_parsed(part: &ParsedMail, key: &str) -> String {
 }
 
 /// 公共校验 + 限流 + 并发/超时包装，跑给定的阻塞闭包。
-async fn run_guarded<F>(ip: String, email: String, token: String, job: F) -> Response
+async fn run_guarded<F>(
+    ip: String,
+    email: String,
+    token: String,
+    job: F,
+) -> ApiResult<serde_json::Value>
 where
     F: FnOnce(String, String) -> Result<serde_json::Value, String> + Send + 'static,
 {
     if email.trim().is_empty() || token.trim().is_empty() {
-        return json_err(StatusCode::BAD_REQUEST, "请填写邮箱和应用专用密码。");
+        return Err(AppError::BadRequest(
+            "请填写邮箱和应用专用密码。".to_string(),
+        ));
     }
     if !email.contains('@') {
-        return json_err(StatusCode::BAD_REQUEST, "邮箱地址格式不正确。");
+        return Err(AppError::BadRequest("邮箱地址格式不正确。".to_string()));
     }
     if imap_host(&email).is_none() {
-        return json_err(StatusCode::BAD_REQUEST, "暂不支持该邮箱服务商。");
+        return Err(AppError::BadRequest("暂不支持该邮箱服务商。".to_string()));
     }
     if !rate_ok(&ip) {
-        return json_err(StatusCode::TOO_MANY_REQUESTS, "尝试过于频繁，请稍后再试。");
+        return Err(AppError::TooManyRequests(
+            "尝试过于频繁，请稍后再试。".to_string(),
+        ));
     }
 
     let _permit = match MAIL_SEM.try_acquire() {
         Ok(p) => p,
-        Err(_) => return json_err(StatusCode::TOO_MANY_REQUESTS, "服务器正忙，请稍后再试。"),
+        Err(_) => {
+            return Err(AppError::TooManyRequests(
+                "服务器正忙，请稍后再试。".to_string(),
+            ))
+        }
     };
 
     let task = tokio::task::spawn_blocking(move || job(email, token));
     match tokio::time::timeout(HARD_TIMEOUT, task).await {
-        Ok(Ok(Ok(data))) => json_ok(data),
-        Ok(Ok(Err(msg))) => json_err(StatusCode::BAD_GATEWAY, &msg),
-        Ok(Err(_)) => json_err(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "读取邮箱失败，请稍后再试。",
-        ),
-        Err(_) => json_err(StatusCode::GATEWAY_TIMEOUT, "读取邮箱超时，请稍后再试。"),
+        Ok(Ok(Ok(data))) => Ok(Json(ApiResponse::success(data))),
+        Ok(Ok(Err(message))) => Err(AppError::BadGateway(message)),
+        Ok(Err(error)) => {
+            tracing::error!("Mail worker failed: {}", error);
+            Err(AppError::Internal("读取邮箱失败，请稍后再试。".to_string()))
+        }
+        Err(_) => Err(AppError::GatewayTimeout(
+            "读取邮箱超时，请稍后再试。".to_string(),
+        )),
     }
 }
 
 /// POST /api/mail/list —— 拉取最近邮件列表。
-pub async fn list(headers: HeaderMap, Json(req): Json<ListReq>) -> Response {
+pub async fn list(headers: HeaderMap, Json(req): Json<ListReq>) -> ApiResult<serde_json::Value> {
     let ip = client_ip(&headers);
     let limit = req.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
     run_guarded(ip, req.email, req.token, move |email, token| {
@@ -414,7 +407,7 @@ pub async fn list(headers: HeaderMap, Json(req): Json<ListReq>) -> Response {
 }
 
 /// POST /api/mail/body —— 按 UID 拉取单封正文。
-pub async fn body(headers: HeaderMap, Json(req): Json<BodyReq>) -> Response {
+pub async fn body(headers: HeaderMap, Json(req): Json<BodyReq>) -> ApiResult<serde_json::Value> {
     let ip = client_ip(&headers);
     let uid = req.uid;
     run_guarded(ip, req.email, req.token, move |email, token| {

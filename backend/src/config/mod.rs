@@ -188,16 +188,19 @@ impl Config {
                 .filter(|s| !s.is_empty())
                 .collect()
         } else {
-            // 生产模式：必须明确配置 CORS_ORIGINS
-            let origins = env::var("CORS_ORIGINS").unwrap_or_else(|_| {
-                tracing::warn!("CORS_ORIGINS not set in production, using restrictive defaults");
-                "".to_string()
-            });
-            origins
+            let origins = env::var("CORS_ORIGINS")
+                .map_err(|_| "CORS_ORIGINS is required in production (comma-separated origins)")?;
+            let origins: Vec<String> = origins
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
-                .collect()
+                .collect();
+            if origins.is_empty() {
+                return Err(
+                    "CORS_ORIGINS is required in production (comma-separated origins)".into(),
+                );
+            }
+            origins
         };
 
         let s3 = S3Config {

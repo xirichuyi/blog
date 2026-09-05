@@ -1,5 +1,5 @@
 // Read-only performance data relayed from the Barter bot records.
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+import { apiRequest } from './http'
 
 export interface QuantPoint {
   date: string
@@ -19,8 +19,5 @@ export interface QuantData {
 }
 
 export async function getQuant(): Promise<QuantData | null> {
-  const res = await fetch(`${API_BASE}/api/quant`)
-  if (!res.ok) throw new Error(`Request failed (${res.status})`)
-  const env = (await res.json()) as { code: number; data: QuantData | null }
-  return env.data
+  return apiRequest<QuantData | null>('/quant')
 }

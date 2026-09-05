@@ -1,7 +1,7 @@
 use crate::database::DatabasePool;
 use crate::models::{
     AdjacentPost, AdjacentPosts, CreatePostRequest, Post, PostListQuery, PostStatus,
-    PostWithDetails, UpdatePostRequest,
+    UpdatePostRequest,
 };
 use crate::utils::{error::Result, text::truncate_safely};
 use sqlx::Row;
@@ -373,22 +373,6 @@ impl PostRepository {
                 });
         }
         Ok(tags_by_post)
-    }
-
-    pub async fn list_with_details(
-        pool: &DatabasePool,
-        query: PostListQuery,
-    ) -> Result<(Vec<PostWithDetails>, i64)> {
-        let (posts, total) = Self::list_with_complete_info(pool, query).await?;
-        let posts = posts
-            .into_iter()
-            .map(|post| PostWithDetails {
-                tags: post.tags.clone(),
-                category_name: post.category_name.clone(),
-                post,
-            })
-            .collect();
-        Ok((posts, total))
     }
 
     pub async fn update(
