@@ -204,15 +204,6 @@
   letter-spacing: 0.04em;
 }
 
-.home-signoff {
-  margin-top: 4.5rem;
-  color: hsl(var(--muted-foreground) / 0.75);
-  font-family: var(--font-literary);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-align: center;
-}
-
 @keyframes quiet-arrival {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

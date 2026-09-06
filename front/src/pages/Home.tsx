@@ -140,7 +140,6 @@ export default function Home() {
         <Link to="/guestbook" className="transition-colors hover:text-primary">留言簿</Link>
         <a href="/rss.xml" className="transition-colors hover:text-primary">RSS</a>
       </nav>
-      <footer className="home-signoff">慢慢写，慢慢生活。</footer>
     </div>
   )
 }

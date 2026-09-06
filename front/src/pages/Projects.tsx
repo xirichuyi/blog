@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
-import { ExternalLink, Github, ArrowRight, Star, Loader2 } from 'lucide-react'
-import { getGithubProjects, type GhRepo } from '@/services/github'
+import { ExternalLink, ArrowRight } from 'lucide-react'
+import { COMMON_LINKS, faviconUrl } from '@/lib/common-links'
 
 interface Tool {
   name: string
@@ -15,79 +15,72 @@ interface Tool {
 // Public tools and services maintained for this site.
 const TOOLS: Tool[] = [
   {
-    name: 'GitBook → EPUB',
-    description: 'Paste a GitBook or bookdown URL and export a clean EPUB for offline reading.',
+    name: 'GitBook 转 EPUB',
+    description: '输入 GitBook 或 bookdown 地址，生成适合离线阅读的 EPUB 电子书。',
     internal: '/tools/gitbook2epub',
-    tags: ['Tool', 'Online'],
+    tags: ['工具', '在线'],
   },
   {
-    name: 'Mail Reader · IMAP',
-    description: 'Read recent messages from common IMAP providers. Credentials are used once and never stored.',
+    name: '邮件阅读器 · IMAP',
+    description: '读取常见 IMAP 邮箱的最近邮件，凭据只在本次使用中有效，不会保存。',
     internal: '/tools/mailbox',
-    tags: ['Tool', 'Online'],
+    tags: ['工具', '在线'],
   },
   {
-    name: 'Quant Performance · Barter',
-    description: 'A read-only equity curve and return snapshot for a self-hosted BTC market-making bot.',
+    name: '量化收益 · Barter',
+    description: '查看自托管 BTC 做市程序的只读收益曲线和表现快照。',
     internal: '/tools/quant',
-    tags: ['Quant', 'Live'],
+    tags: ['量化', '实时'],
   },
   {
-    name: 'Jianwei · Expense Analysis',
-    description: 'Turn a WeChat statement into a clear financial report. All data stays in your browser.',
+    name: '账单分析',
+    description: '将微信账单整理成清晰的财务报告，数据全部留在浏览器中处理。',
     url: 'https://bill.chuyi.uk/',
-    tags: ['Tool', 'Online'],
+    tags: ['工具', '在线'],
   },
   {
-    name: 'Proxy Node',
-    description: 'A private proxy node and connection status page for authorized devices.',
+    name: '代理节点',
+    description: '面向授权设备的代理节点与连接状态页面。',
     url: 'https://zhoumaosen.top/proxy',
-    tags: ['Proxy'],
+    tags: ['代理'],
   },
   {
-    name: 'Server Monitor · Beszel',
-    description: 'Live CPU, memory, disk, network, and uptime monitoring.',
+    name: '服务器监控',
+    description: '实时查看 CPU、内存、磁盘、网络和运行时长。',
     url: 'https://monitor.chuyi.uk/',
-    tags: ['Monitor'],
+    tags: ['监控'],
   },
   {
-    name: 'USDTPay · Payment Gateway',
-    description: 'A non-custodial multi-chain USDT gateway with direct wallet settlement, signed callbacks, and a REST API.',
+    name: 'USDTPay · 支付网关',
+    description: '非托管多链 USDT 支付网关，支持钱包直结算、签名回调和 REST API。',
     url: 'https://pay.chuyi.uk/',
-    tags: ['Tool', 'Online'],
+    tags: ['工具', '在线'],
   },
   {
-    name: 'Sub2API · AI Gateway',
-    description: 'A unified gateway for routing and managing requests across multiple AI providers.',
+    name: 'Sub2API · AI 网关',
+    description: '统一路由和管理多个 AI 服务商的请求。',
     url: 'https://sub2api.chuyi.uk',
-    tags: ['Tool', 'AI'],
+    tags: ['工具', 'AI'],
+  },
+  {
+    name: '商城',
+    description: '浏览和购买站点提供的商品与服务。',
+    url: 'https://shop.chuyi.uk/',
+    tags: ['服务', '在线'],
   },
 ]
 
-// GitHub-style language colors.
-const LANG_COLOR: Record<string, string> = {
-  TypeScript: '#3178c6',
-  JavaScript: '#f1e05a',
-  Go: '#00ADD8',
-  Rust: '#dea584',
-  Python: '#3572A5',
-  Ruby: '#701516',
-  'C#': '#178600',
-  Java: '#b07219',
-  Vue: '#41b883',
-  Shell: '#89e051',
+function WebsiteLogo({ name, href, lazy }: { name: string; href: string; lazy: boolean }) {
+  const [failed, setFailed] = useState(false)
+  const initials = name.slice(0, 2).toUpperCase()
+  return (
+    <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-border/70 bg-background text-xs font-semibold text-muted-foreground">
+      {failed ? initials : <img src={faviconUrl(href)} alt="" loading={lazy ? 'lazy' : 'eager'} className="size-6" onError={() => setFailed(true)} />}
+    </span>
+  )
 }
 
 export default function Projects() {
-  const [repos, setRepos] = useState<GhRepo[] | null>(null)
-  const [ghError, setGhError] = useState(false)
-
-  useEffect(() => {
-    getGithubProjects()
-      .then(setRepos)
-      .catch(() => setGhError(true))
-  }, [])
-
   return (
     <div className="mx-auto max-w-2xl px-6 py-16 sm:py-24">
       <Helmet>
@@ -100,9 +93,9 @@ export default function Projects() {
         <p>代码、工具与长期运行的服务。它们来自真实需要，也记录着不同阶段的兴趣。</p>
       </header>
 
-      {/* Online tools */}
+      {/* Self-built projects */}
       <section>
-        <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">在线工具</h2>
+        <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">自建项目</h2>
         <div className="hover-list flex flex-col">
           {TOOLS.map((p) => {
             const href = p.internal || p.url
@@ -132,60 +125,27 @@ export default function Projects() {
         </div>
       </section>
 
-      {/* Open-source projects loaded from GitHub. */}
       <section className="mt-12">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">开源项目</h2>
-          <a
-            href="https://github.com/xirichuyi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Github className="size-3.5" /> @xirichuyi
-          </a>
-        </div>
-
-        {!repos && !ghError && (
-          <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading…
-          </div>
-        )}
-        {ghError && <p className="py-6 text-sm text-muted-foreground">GitHub projects are temporarily unavailable. Please try again later.</p>}
-
-        {repos && (
-          <div className="hover-list flex flex-col">
-            {repos.map((r) => (
-              <a
-                key={r.name}
-                href={r.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block rounded-xl px-3 py-3 transition-colors hover:bg-accent"
-              >
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-[15px] font-medium text-foreground transition-colors group-hover:text-primary">{r.name}</span>
-                  <ExternalLink className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">{r.description}</p>
-                <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                  {r.language && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="size-2.5 rounded-full" style={{ background: LANG_COLOR[r.language] ?? '#888' }} />
-                      {r.language}
-                    </span>
-                  )}
-                  {r.stars > 0 && (
-                    <span className="inline-flex items-center gap-1">
-                      <Star className="size-3.5" /> {r.stars}
-                    </span>
-                  )}
-                </div>
+        <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">常用网址</h2>
+        <div className="hover-list grid gap-x-3 gap-y-1 sm:grid-cols-2" aria-label="常用网址列表">
+          {COMMON_LINKS.map((link, index) => {
+            const Icon = link.icon
+            return (
+              <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="group flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-accent">
+                <WebsiteLogo name={link.name} href={link.href} lazy={index > 5} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <strong className="truncate text-sm font-medium text-foreground transition-colors group-hover:text-primary">{link.name}</strong>
+                    <Icon className="size-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">{link.description}</span>
+                  <span className="mt-1 block truncate font-mono text-[10px] text-muted-foreground/70">{new URL(link.href, window.location.origin).hostname}</span>
+                </span>
+                <ExternalLink className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
               </a>
-            ))}
-            {repos.length === 0 && <p className="py-6 text-sm text-muted-foreground">No described public repositories yet.</p>}
-          </div>
-        )}
+            )
+          })}
+        </div>
       </section>
     </div>
   )
