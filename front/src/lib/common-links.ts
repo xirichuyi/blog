@@ -48,4 +48,5 @@ export const COMMON_LINKS: CommonLink[] = [
   { name: '墨刀', description: '在线原型设计、流程图和团队协作工具。', href: 'https://modao.cc/', icon: Monitor, category: '工作台' },
   { name: 'BOCE 网站测速', description: '测试网站 HTTP 访问速度、响应时间和可用性。', href: 'https://www.boce.com/http', icon: LineChart, category: '网络工具' },
   { name: 'DNS Checker', description: '从多个地区检查域名 DNS 记录是否解析生效。', href: 'https://dnschecker.org/', icon: Monitor, category: '网络工具' },
+  { name: '草料二维码', description: '生成、解析和管理二维码。', href: 'https://cli.im/', icon: Monitor, category: '工作台' },
 ]
