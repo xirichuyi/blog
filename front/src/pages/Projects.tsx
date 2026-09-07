@@ -71,7 +71,7 @@ const TOOLS: Tool[] = [
   {
     name: 'Chrome',
     description: '通过网页访问自建的 Chrome 浏览器环境。',
-    url: 'https://chrome-1.chuyi.uk/',
+    url: 'https://chrome-1.chuyi.uk/vnc.html?autoconnect=1&resize=scale',
     tags: ['工具', '在线'],
   },
 ]
