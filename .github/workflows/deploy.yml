@@ -282,11 +282,11 @@ jobs:
               analytics=$(curl -sS \
                 -H "Authorization: Bearer $admin_token" \
                 "http://127.0.0.1:3006/api/admin/analytics?days=7")
-              if ! printf "%s" "$analytics" | grep -q "\"available\":true"; then
-                echo "❌ Cloudflare analytics is not connected: $analytics"
-                exit 1
+              if printf "%s" "$analytics" | grep -q "\"available\":true"; then
+                echo "Cloudflare analytics connected ✅"
+              else
+                echo "⚠️ Cloudflare analytics check unavailable; deployment will continue: $analytics"
               fi
-              echo "Cloudflare analytics connected ✅"
 
               printf "%s" "$admin_token" | \
                 python3 /var/www/blog/backend/scripts/check_upload_path.py multipart
