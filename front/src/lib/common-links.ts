@@ -49,4 +49,9 @@ export const COMMON_LINKS: CommonLink[] = [
   { name: 'BOCE 网站测速', description: '测试网站 HTTP 访问速度、响应时间和可用性。', href: 'https://www.boce.com/http', icon: LineChart, category: '网络工具' },
   { name: 'DNS Checker', description: '从多个地区检查域名 DNS 记录是否解析生效。', href: 'https://dnschecker.org/', icon: Monitor, category: '网络工具' },
   { name: '草料二维码', description: '生成、解析和管理二维码。', href: 'https://cli.im/', icon: Monitor, category: '工作台' },
+  { name: 'IT-Tools', description: '提供 JSON、时间戳、编码、哈希等常用开发工具。', href: 'https://it-tools.tech/', icon: FileText, category: '开发' },
+  { name: 'VirusTotal', description: '检测文件、网址、域名和 IP 的安全风险。', href: 'https://www.virustotal.com/gui/home/upload', icon: Monitor, category: '网络工具' },
+  { name: '账号泄露查询', description: '查询邮箱是否出现在已公开的数据泄露记录中。', href: 'https://haveibeenpwned.com/', icon: Monitor, category: '网络工具' },
+  { name: 'Can I Use', description: '查询 Web 功能在各浏览器中的兼容情况。', href: 'https://caniuse.com/', icon: FileText, category: '开发' },
+  { name: 'Photopea', description: '在浏览器中编辑 PSD、图片和常见设计文件。', href: 'https://www.photopea.com/', icon: ImageIcon, category: '工作台' },
 ]

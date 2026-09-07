@@ -68,6 +68,12 @@ const TOOLS: Tool[] = [
     url: 'https://shop.chuyi.uk/',
     tags: ['服务', '在线'],
   },
+  {
+    name: 'Chrome',
+    description: '通过网页访问自建的 Chrome 浏览器环境。',
+    url: 'https://chrome-1.chuyi.uk/',
+    tags: ['工具', '在线'],
+  },
 ]
 
 function WebsiteLogo({ name, href, lazy }: { name: string; href: string; lazy: boolean }) {
