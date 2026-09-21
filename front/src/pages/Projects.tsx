@@ -45,6 +45,12 @@ const TOOLS: Tool[] = [
     tags: ['代理'],
   },
   {
+    name: 'Jamie-Node · 订阅管理',
+    description: '管理订阅与兑换卡密。',
+    url: 'https://sub.chuyi.uk/',
+    tags: ['服务', '在线'],
+  },
+  {
     name: '服务器监控',
     description: '实时查看 CPU、内存、磁盘、网络和运行时长。',
     url: 'https://monitor.chuyi.uk/',
