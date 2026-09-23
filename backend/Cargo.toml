@@ -27,7 +27,7 @@ incremental = true
 [dependencies]
 # Web framework
 axum = { version = "0.7", features = ["http2"] }
-tower-http = { version = "0.5", features = ["cors", "compression-gzip", "compression-br", "trace"] }
+tower-http = { version = "0.7", features = ["cors", "compression-gzip", "compression-br", "trace"] }
 tokio = { version = "1.0", features = ["full"] }
 
 # Database
