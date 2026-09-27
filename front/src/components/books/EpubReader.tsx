@@ -4,6 +4,7 @@ import { ReaderLoading } from './ReaderLoading'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, List, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
+import type { RenditionOptions } from 'epubjs/types/rendition'
 import { Button } from '@/components/ui/button'
 import { ParagraphNotes, useReaderWorkspace, type ReaderSelection } from './ReaderWorkspace'
 import { prepareEpubContent } from '@/lib/epub-content'
@@ -150,7 +151,8 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           section.output = prepareEpubContent(section.output, section.url)
         })
         bookRef.current = activeBook
-        const rendition = activeBook.renderTo(viewportRef.current, {
+        // EPUB.js forwards gap to its layout manager, but omits it from its types.
+        const options: RenditionOptions & { gap: number } = {
           width: '100%',
           height: '100%',
           manager: flow === 'scrolled' ? 'continuous' : 'default',
@@ -160,7 +162,8 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           gap: 64, // Leave room for paragraph icons without covering text.
           // Only parent-owned reader listeners run; prepareEpubContent blocks book scripts.
           allowScriptedContent: true,
-        })
+        }
+        const rendition = activeBook.renderTo(viewportRef.current, options)
         renditionRef.current = rendition
         registerThemes(rendition)
         applyRenditionAppearance(rendition, themeRef.current, fontSizeRef.current)
