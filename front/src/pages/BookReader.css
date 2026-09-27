@@ -181,3 +181,19 @@
 .reader-note-underline line { stroke: var(--reader-accent); stroke-width: 1; }
 /* EPUB.js compensates scroll offsets when it prepends a chapter. */
 .epub-container { overflow-anchor: none; }
+.reader-back img { width:28px; height:28px; border-radius:50%; object-fit:cover; }
+.reader-toc button[aria-current="location"] { color:var(--reader-accent); background:var(--reader-bg); font-weight:600; }
+.reader-toc button[aria-current="location"]::after { content:''; display:inline-block; width:4px; height:4px; margin-left:8px; border-radius:50%; background:currentColor; vertical-align:middle; }
+.reader-margin-note { background:transparent; }
+.reader-selection-overlay { position:fixed; inset:0; z-index:43; pointer-events:none; }
+.reader-selected-text { position:absolute; background:rgb(108 151 186 / 24%); border-radius:2px; }
+.reader-selection-handle { position:absolute; width:36px; height:36px; pointer-events:auto; touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+.reader-selection-handle::after { content:''; position:absolute; left:12px; top:12px; width:12px; height:12px; border-radius:50%; background:#618aa6; box-shadow:0 0 0 2px var(--reader-paper); }
+.reader-annotation-card blockquote { -webkit-line-clamp:2; margin-bottom:12px; }
+.reader-annotation-card textarea { min-height:88px; }
+
+.reader-toc { scroll-padding-top:64px; scroll-padding-bottom:12px; }
+.reader-toc-heading { position:sticky; top:0; z-index:1; background:var(--reader-paper); }
+
+.reader-selection-action[data-placement="above"]::before { top:auto; bottom:-4px; }
+.reader-annotation-card:focus { outline:none; }

@@ -1,6 +1,6 @@
 import { readPreference, writePreference } from '@/lib/browser-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Maximize2, Minimize2, Minus, Plus, ArrowLeft } from 'lucide-react'
+import { Maximize2, Minimize2, Minus, Plus } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { EpubReader, type ReaderFlow, type ReaderTheme } from '@/components/books/EpubReader'
 import { ReaderWorkspace, ReaderAccount } from '@/components/books/ReaderWorkspace'
@@ -182,7 +182,7 @@ export default function BookReader() {
       {fullscreenError && <button type="button" className="reader-toast" onClick={() => setFullscreenError('')} role="status">{fullscreenError}</button>}
       <ReaderWorkspace key={file.id} bookId={book.id} file={file}>
         <header className="reader-toolbar" aria-label="阅读工具栏">
-          <button className="reader-back" type="button" aria-label="返回书架" onClick={() => navigate('/books')}><ArrowLeft size={18} /></button>
+          <button className="reader-back" type="button" aria-label="返回书架" onClick={() => navigate('/books')}><img src="https://avatars.githubusercontent.com/u/144898416" alt="" width={28} height={28} draggable={false} /></button>
           <div className="book-reader-title"><strong>{book.title}</strong>{book.author && <span>{book.author}</span>}</div>
           <div ref={setToolbarHost} className="reader-toolbar-navigation" />
           <ReaderPreferences format={format} flow={flow} fontSize={fontSize} fullscreen={fullscreen} theme={theme} visible={uiVisible} onFlow={changeFlow} onFontSize={changeFontSize} onTheme={changeTheme} onFullscreen={toggleFullscreen} files={readableFiles} fileId={file.id} onFile={changeFile} />

@@ -51,6 +51,7 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
   let touchStart: GestureStart | null = null
   let lastTouchAt = Number.NEGATIVE_INFINITY
   let moved = false
+  let dismissMouseSelection = false
   const pointers = new Set<number>()
   const local = options.toLocalPoint ?? ((x: number, y: number) => ({ x, y }))
 
@@ -124,7 +125,7 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
   }
   const onPointerDown = (rawEvent: Event) => {
     const event = rawEvent as PointerEvent
-    if (event.pointerType === 'mouse') return
+    if (event.pointerType === 'mouse') { dismissMouseSelection = Boolean(options.getSelection().trim()); return }
     lastTouchAt = performance.now()
     pointers.add(event.pointerId)
     if (pointers.size !== 1 || !event.isPrimary || isInteractiveTarget(event.target)) { touchStart = null; return }
@@ -147,6 +148,7 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
   }
   const onClick = (rawEvent: Event) => {
     const event = rawEvent as MouseEvent
+    if (dismissMouseSelection) { dismissMouseSelection = false; return }
     if (event.button !== 0 || performance.now() - lastTouchAt <= 1000 || options.getSelection().trim() || isInteractiveTarget(event.target)) return
     handleTap(event.clientX, event.clientY)
   }

@@ -1,13 +1,14 @@
 import { createPortal } from 'react-dom'
-import { groupNoteMarkers, visibleRangeAnchor, type NoteMarker } from '@/lib/reader-annotations'
+import { groupNoteMarkers, visibleRangeAnchor, visibleRangeRects, noteMarkerPoint, type NoteMarker } from '@/lib/reader-annotations'
 import { ReaderLoading } from './ReaderLoading'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, List, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, List, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
 import type { RenditionOptions } from 'epubjs/types/rendition'
 import { Button } from '@/components/ui/button'
-import { ParagraphNotes, useReaderWorkspace, type ReaderSelection } from './ReaderWorkspace'
+import { ParagraphNotes, useReaderWorkspace } from './ReaderWorkspace'
 import { prepareEpubContent } from '@/lib/epub-content'
+import { bindReaderSelection, clearReaderSelection } from '@/lib/reader-selection'
 import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
@@ -83,13 +84,13 @@ function applyRenditionAppearance(rendition: Rendition, theme: ReaderTheme, font
   visibleContents(rendition).forEach((contents) => applyContentAppearance(contents, theme))
 }
 
-function TableOfContents({ items, onSelect }: { items: NavItem[]; onSelect: (href: string) => void }) {
+function TableOfContents({ items, active, onSelect }: { items: NavItem[]; active: string; onSelect: (href: string) => void }) {
   return (
     <ol>
       {items.map((item) => (
         <li key={`${item.id}-${item.href}`}>
-          <button type="button" onClick={() => onSelect(item.href)}>{item.label.trim()}</button>
-          {!!item.subitems?.length && <TableOfContents items={item.subitems} onSelect={onSelect} />}
+          <button type="button" aria-current={item.href === active ? 'location' : undefined} onClick={() => onSelect(item.href)}>{item.label.trim()}</button>
+          {!!item.subitems?.length && <TableOfContents items={item.subitems} active={active} onSelect={onSelect} />}
         </li>
       ))}
     </ol>
@@ -100,8 +101,9 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
   const { session, snapshot, setSelection } = useReaderWorkspace()
   const [markers, setMarkers] = useState<NoteMarker[]>([])
   const bookRef = useRef<EpubBook | null>(null)
-  const sectionRef = useRef(0)
-  const [chapters, setChapters] = useState({ previous: false, next: false })
+  const [activeChapter, setActiveChapter] = useState('')
+  const tocRef = useRef<HTMLElement>(null)
+  const selections = useRef(new Map<Contents, ReturnType<typeof bindReaderSelection>>())
   const [navigationError, setNavigationError] = useState('')
   const [renderVersion, setRenderVersion] = useState(0)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -116,6 +118,12 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
+  useEffect(() => {
+    if (!tocOpen) return
+    const current = tocRef.current?.querySelector<HTMLElement>('[aria-current="location"]')
+    current?.scrollIntoView({ block: 'center' })
+    current?.focus({ preventScroll: true })
+  }, [tocOpen, activeChapter])
   const [phase, setPhase] = useState('正在下载 EPUB…')
   const fileCache = useRef<{ url: string; bytes: ArrayBuffer } | null>(null)
 
@@ -178,11 +186,26 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           visibleContents(rendition).forEach((contents) => {
             applyContentAppearance(contents, themeRef.current)
             if (interactionCleanups.has(contents)) return
+            const selection = bindReaderSelection(contents.document.body, value => {
+              if (!value) { setSelection(null); return }
+              const bounds = viewportRef.current?.getBoundingClientRect()
+              const frame = contents.window.frameElement?.getBoundingClientRect()
+              if (!bounds || !frame) return
+              const rects = visibleRangeRects(value.range, bounds, { x: frame.left, y: frame.top })
+              const anchor = rects.at(-1)
+              if (!anchor) { setSelection(null); return }
+              const progress = session.getProgress()
+              setSelection({ position: { kind: 'epub', cfi: contents.cfiFromRange(value.range), percent: progress?.kind === 'epub' ? progress.percent : 0 }, quote: value.range.toString().trim(), anchor, ...(value.custom ? { touch: { rects, adjust: value.adjust } } : {}) })
+            }, (x, y) => {
+              const frame = contents.window.frameElement!.getBoundingClientRect()
+              return { x: x - frame.left, y: y - frame.top }
+            })
+            selections.current.set(contents, selection)
             const cleanup = bindReaderGestures(contents.document, {
               getWindow: () => contents.window,
               pageNavigation: flow === 'paginated',
               getHeight: () => viewportRef.current?.clientHeight ?? window.innerHeight,
-              getSelection: () => contents.window.getSelection()?.toString() ?? '',
+              getSelection: () => selection.text(),
               getWidth: () => viewportRef.current?.clientWidth ?? window.innerWidth,
               toLocalPoint: (x, y) => {
                 const frame = contents.window.frameElement?.getBoundingClientRect()
@@ -196,44 +219,45 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
             })
             const cleanupKeyboard = bindReaderKeyboard(contents.document, {
               pageNavigation: flow === 'paginated',
-              getSelection: () => contents.window.getSelection()?.toString() ?? '',
+              getSelection: () => selection.text(),
               onNext: () => void rendition.next(),
               onPrevious: () => void rendition.prev(),
             })
             interactionCleanups.set(contents, () => {
               cleanup()
               cleanupKeyboard()
+              selection.dispose()
+              selections.current.delete(contents)
             })
           })
         }
         rendition.on('rendered', bindVisibleContents)
-        rendition.on('selected', (cfi: string, contents: Contents) => {
-          const quote = contents.window.getSelection()?.toString().trim() ?? ''
-          if (!quote || disposed) return
-          const viewport = viewportRef.current?.getBoundingClientRect()
-          const frame = contents.window.frameElement?.getBoundingClientRect()
-          if (!viewport || !frame) return
-          const anchor = visibleRangeAnchor(contents.range(cfi), viewport, { x: frame.left, y: frame.top })
-          if (!anchor) return
-          const progress = session.getProgress()
-          setSelection({ position: { kind: 'epub', cfi, percent: progress?.kind === 'epub' ? progress.percent : 0 }, quote, anchor })
-        })
         const nav = (await activeBook.loaded.navigation).toc
         if (disposed) return
         setNavigation(nav)
-        let lastCfi = ''
+        const flatten = (items: NavItem[]): NavItem[] => items.flatMap(item => [item, ...flatten(item.subitems ?? [])])
+        const chapters = flatten(nav)
         rendition.on('relocated', (nextLocation: Location) => {
           if (!activeBook || disposed) return
-          if (lastCfi !== nextLocation.start.cfi) setSelection(null)
-          lastCfi = nextLocation.start.cfi
           const percent = progressFromLocation(activeBook, nextLocation)
           setPosition({
             atEnd: nextLocation.atEnd,
             atStart: nextLocation.atStart,
           })
-          sectionRef.current = nextLocation.start.index
-          const section = activeBook.spine.get(nextLocation.start.index)
-          setChapters({ previous: Boolean(section?.prev()), next: Boolean(section?.next()) })
+          const candidates = chapters.filter(item => activeBook?.spine.get(item.href.split('#')[0])?.index === nextLocation.start.index)
+          let current = candidates[0]
+          const contents = visibleContents(rendition).find(content => content.sectionIndex === nextLocation.start.index)
+          if (contents) {
+            try {
+              const start = contents.range(nextLocation.start.cfi)
+              for (const item of candidates) {
+                const fragment = item.href.split('#')[1]
+                const element = fragment ? contents.document.getElementById(decodeURIComponent(fragment)) : null
+                if (element && start.comparePoint(element, 0) <= 0) current = item
+              }
+            } catch { /* Fall back to the chapter when a fragment is missing. */ }
+          }
+          setActiveChapter(current?.href ?? '')
           session.saveProgress({ kind: 'epub', cfi: nextLocation.start.cfi, percent })
         })
         const saved = session.getProgress()
@@ -277,7 +301,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
 
   useEffect(() => bindReaderKeyboard(window, {
     pageNavigation: flow === 'paginated',
-    getSelection: () => window.getSelection()?.toString() ?? '',
+    getSelection: () => Array.from(selections.current.values()).map(selection => selection.text()).join('') || window.getSelection()?.toString() || '',
     onNext: () => void renditionRef.current?.next(),
     onPrevious: () => void renditionRef.current?.prev(),
   }), [flow])
@@ -306,28 +330,21 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
       scheduled = requestAnimationFrame(() => {
         const bounds = viewport.getBoundingClientRect()
         const points: { id: string; x: number; y: number }[] = []
-        let selection: ReaderSelection | null = null
         for (const contents of visibleContents(rendition)) {
           const frame = contents.window.frameElement?.getBoundingClientRect()
           if (!frame) continue
-          const native = contents.window.getSelection()
-          if (native?.rangeCount && native.toString().trim()) {
-            const range = native.getRangeAt(0)
-            const anchor = visibleRangeAnchor(range, bounds, { x: frame.left, y: frame.top })
-            if (anchor) selection = { position: { kind: 'epub', cfi: contents.cfiFromRange(range), percent: session.getProgress()?.kind === 'epub' ? (session.getProgress() as { percent: number }).percent : 0 }, quote: native.toString().trim(), anchor }
-          }
           for (const entry of snapshot.data.entries) {
             if (!entry.note || !entry.quote || entry.position.kind !== 'epub') continue
             try {
               const section = bookRef.current?.spine.get(entry.position.cfi)
               if (section?.index !== contents.sectionIndex) continue
               const anchor = visibleRangeAnchor(contents.range(entry.position.cfi), bounds, { x: frame.left, y: frame.top })
-              if (anchor) points.push({ id: entry.id, x: bounds.width >= 1100 && flow === 'paginated' && anchor.right < bounds.left + bounds.width / 2 ? bounds.left + bounds.width / 2 - 14 : bounds.right - 14, y: (anchor.top + anchor.bottom) / 2 })
+              if (anchor) points.push({ id: entry.id, ...noteMarkerPoint(anchor, bounds) })
             } catch { /* A removed chapter must not prevent reading. */ }
           }
         }
         setMarkers(groupNoteMarkers(points))
-        setSelection(selection)
+        selections.current.forEach(selection => selection.refresh())
       })
     }
     const scroll = update
@@ -350,20 +367,18 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
 
   const displayChapter = (href: string) => {
     setNavigationError('')
+    clearReaderSelection()
     setSelection(null)
     void renditionRef.current?.display(href).catch(() => setNavigationError('章节打开失败，请重试。'))
     setTocOpen(false)
   }
-  const changeChapter = (direction: 'prev' | 'next') => {
-    const target = bookRef.current?.spine.get(sectionRef.current)?.[direction]()
-    if (target?.href) displayChapter(target.href)
-  }
+
 
   return (
     <div className={`epub-reader reader-flow-${flow}`}>
-      {tocOpen && <aside className={tocOpen ? 'reader-toc is-open' : 'reader-toc'} aria-label="Table of contents">
+      {tocOpen && <aside ref={tocRef} className={tocOpen ? 'reader-toc is-open' : 'reader-toc'} aria-label="Table of contents">
         <div className="reader-toc-heading"><span>目录</span><Button size="icon" variant="ghost" aria-label="关闭目录" onClick={() => setTocOpen(false)}><X /></Button></div>
-        {navigation.length ? <TableOfContents items={navigation} onSelect={displayChapter} /> : <p>No table of contents.</p>}
+        {navigation.length ? <TableOfContents items={navigation} active={activeChapter} onSelect={displayChapter} /> : <p>No table of contents.</p>}
       </aside>}
       {tocOpen && <button className="reader-toc-scrim" type="button" aria-label="Close table of contents" onClick={() => setTocOpen(false)} />}
       <section className="reader-canvas-wrap">
@@ -374,10 +389,8 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
       <ParagraphNotes markers={markers} />
       {toolbarHost && createPortal(<div className="reader-chapter-controls" aria-label="Chapter navigation">
         <Button size="icon" variant="ghost" onClick={() => setTocOpen(true)} aria-label="Open table of contents"><List /></Button>
-        <Button size="icon" variant="ghost" disabled={loading || !chapters.previous} onClick={() => changeChapter('prev')} aria-label="上一章"><ChevronsLeft /></Button>
-        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atStart} onClick={() => void renditionRef.current?.prev()} aria-label="Previous page"><ChevronLeft /></Button>
-        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atEnd} onClick={() => void renditionRef.current?.next()} aria-label="Next page"><ChevronRight /></Button>
-        <Button size="icon" variant="ghost" disabled={loading || !chapters.next} onClick={() => changeChapter('next')} aria-label="下一章"><ChevronsRight /></Button>
+        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atStart} onClick={() => { clearReaderSelection(); void renditionRef.current?.prev() }} aria-label="Previous page"><ChevronLeft /></Button>
+        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atEnd} onClick={() => { clearReaderSelection(); void renditionRef.current?.next() }} aria-label="Next page"><ChevronRight /></Button>
       </div>, toolbarHost)}
       {navigationError && <button type="button" className="reader-navigation-error" onClick={() => setNavigationError('')}>{navigationError}</button>}
     </div>

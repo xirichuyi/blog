@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { groupNoteMarkers, visibleRangeAnchor, type NoteMarker } from '@/lib/reader-annotations'
+import { groupNoteMarkers, visibleRangeRects, noteMarkerPoint, type NoteMarker } from '@/lib/reader-annotations'
 import type { TextLayer } from 'pdfjs-dist'
 import { ReaderLoading } from './ReaderLoading'
 import { useEffect, useRef, useState } from 'react'
@@ -8,6 +8,7 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Button } from '@/components/ui/button'
 import { ParagraphNotes, useReaderWorkspace } from './ReaderWorkspace'
+import { bindReaderSelection } from '@/lib/reader-selection'
 import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
@@ -22,10 +23,10 @@ interface PdfReaderProps {
 }
 
 type PdfOutline = NonNullable<Awaited<ReturnType<PDFDocumentProxy['getOutline']>>>
-function Outline({ items, onSelect }: { items: PdfOutline; onSelect: (item: PdfOutline[number]) => void }) {
+function Outline({ items, active, onSelect }: { items: PdfOutline; active: PdfOutline[number] | null; onSelect: (item: PdfOutline[number]) => void }) {
   return <ol>{items.map((item, index) => <li key={index}>
-    <button type="button" disabled={!item.dest} onClick={() => onSelect(item)}>{item.title}</button>
-    {!!item.items?.length && <Outline items={item.items} onSelect={onSelect} />}
+    <button type="button" aria-current={item === active ? 'location' : undefined} disabled={!item.dest} onClick={() => onSelect(item)}>{item.title}</button>
+    {!!item.items?.length && <Outline items={item.items} active={active} onSelect={onSelect} />}
   </li>)}</ol>
 }
 
@@ -34,6 +35,9 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
   const restoredPage = () => { const saved = session.getProgress(); return saved?.kind === 'pdf' ? saved.page : 1 }
   const [outline, setOutline] = useState<PdfOutline>([])
   const [tocOpen, setTocOpen] = useState(false)
+  const tocRef = useRef<HTMLElement>(null)
+  const selectionRef = useRef<ReturnType<typeof bindReaderSelection> | null>(null)
+  const [outlinePages, setOutlinePages] = useState<{ item: PdfOutline[number]; page: number }[]>([])
   const [navigationError, setNavigationError] = useState('')
   const pageRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -147,7 +151,7 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
       pageNavigation: zoom <= 1,
       toLocalPoint: (x, y) => { const rect = frame.getBoundingClientRect(); return { x: x - rect.left, y: y - rect.top } },
       getHeight: () => frame.clientHeight,
-      getSelection: () => window.getSelection()?.toString() ?? '',
+      getSelection: () => selectionRef.current?.text() || window.getSelection()?.toString() || '',
       getWidth: () => frame.clientWidth,
       onNext: () => setPage((current) => Math.min(pages || 1, current + 1)),
       onPrevious: () => setPage((current) => Math.max(1, current - 1)),
@@ -157,31 +161,55 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
   }, [onToggleUi, onTopHoverChange, pages, zoom])
 
   useEffect(() => bindReaderKeyboard(window, {
-    getSelection: () => window.getSelection()?.toString() ?? '',
+    getSelection: () => selectionRef.current?.text() || window.getSelection()?.toString() || '',
     onNext: () => setPage((current) => Math.min(pages || 1, current + 1)),
     onPrevious: () => setPage((current) => Math.max(1, current - 1)),
   }), [pages])
 
   useEffect(() => {
-    const onSelection = () => {
-      const selection = window.getSelection()
-      if (!selection?.rangeCount || !selection.toString().trim()) { setSelection(null); return }
-      const range = selection.getRangeAt(0)
+    const root = textRef.current
+    if (!root) return
+    const selection = bindReaderSelection(root, value => {
+      if (!value) { setSelection(null); return }
+      const range = value.range
       const pageBounds = pageRef.current?.getBoundingClientRect()
       const bounds = frameRef.current?.getBoundingClientRect()
-      if (!textRef.current?.contains(range.commonAncestorContainer) || !pageBounds || !bounds) return
-      const anchor = visibleRangeAnchor(range, bounds)
-      if (!anchor) return
+      if (!pageBounds || !bounds) return
+      const visible = visibleRangeRects(range, bounds)
+      const anchor = visible.at(-1)
+      if (!anchor) { setSelection(null); return }
       const rects = Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0).slice(0, 100).map(rect => {
         const x = Math.max(0, Math.min(1, (rect.left - pageBounds.left) / pageBounds.width))
         const y = Math.max(0, Math.min(1, (rect.top - pageBounds.top) / pageBounds.height))
         return { x, y, width: Math.min(1 - x, rect.width / pageBounds.width), height: Math.min(1 - y, rect.height / pageBounds.height) }
       }).filter(rect => rect.width > 0 && rect.height > 0)
-      if (rects.length) setSelection({ position: { kind: 'pdf', page, pages }, quote: selection.toString().trim(), anchor, rects })
-    }
-    window.document.addEventListener('selectionchange', onSelection)
-    return () => window.document.removeEventListener('selectionchange', onSelection)
+      if (rects.length) setSelection({ position: { kind: 'pdf', page, pages }, quote: range.toString().trim(), anchor, rects, ...(value.custom ? { touch: { rects: visible, adjust: value.adjust } } : {}) })
+    })
+    selectionRef.current = selection
+    return () => { selection.dispose(); selectionRef.current = null }
   }, [page, pages, setSelection])
+
+  useEffect(() => {
+    if (!document) return
+    let disposed = false
+    const flatten = (items: PdfOutline): PdfOutline => items.flatMap(item => [item, ...flatten(item.items)])
+    void Promise.all(flatten(outline).map(async item => {
+      try {
+        const dest = typeof item.dest === 'string' ? await document.getDestination(item.dest) : item.dest
+        if (!dest) return null
+        const index = typeof dest[0] === 'number' ? dest[0] : await document.getPageIndex(dest[0])
+        return { item, page: index + 1 }
+      } catch { return null }
+    })).then(items => { if (!disposed) setOutlinePages(items.filter((item): item is { item: PdfOutline[number]; page: number } => item !== null)) })
+    return () => { disposed = true }
+  }, [document, outline])
+  const activeChapter = outlinePages.filter(item => item.page <= page).sort((a, b) => a.page - b.page).at(-1)?.item ?? null
+  useEffect(() => {
+    if (!tocOpen) return
+    const current = tocRef.current?.querySelector<HTMLElement>('[aria-current="location"]')
+    current?.scrollIntoView({ block: 'center' })
+    current?.focus({ preventScroll: true })
+  }, [tocOpen, activeChapter])
 
   useEffect(() => {
     const frame = frameRef.current
@@ -195,12 +223,12 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
         if (!entry.note || entry.position.kind !== 'pdf' || entry.position.page !== page) continue
         const last = entry.rects?.at(-1)
         if (!last) continue
-        const y = rect.top + (last.y + last.height / 2) * rect.height
-        if (y > bounds.top && y < bounds.bottom) points.push({ id: entry.id, x: Math.min(bounds.right - 16, rect.right + 12), y })
+        const anchor = { left: rect.left + last.x * rect.width, right: rect.left + (last.x + last.width) * rect.width, top: rect.top + last.y * rect.height, bottom: rect.top + (last.y + last.height) * rect.height }
+        if (anchor.bottom > bounds.top && anchor.top < bounds.bottom && anchor.right > bounds.left && anchor.left < bounds.right) points.push({ id: entry.id, ...noteMarkerPoint(anchor, bounds) })
       }
       setMarkers(groupNoteMarkers(points))
     }
-    const scroll = () => { setSelection(null); update() }
+    const scroll = () => { selectionRef.current?.refresh(); update() }
     frame.addEventListener('scroll', scroll)
     const observer = new ResizeObserver(update)
     observer.observe(sheet)
@@ -223,9 +251,9 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
   return (
     <div className="pdf-reader">
       {tocOpen && <>
-        <aside className="reader-toc is-open" aria-label="PDF 目录">
+        <aside ref={tocRef} className="reader-toc is-open" aria-label="PDF 目录">
           <div className="reader-toc-heading"><span>目录</span><Button size="icon" variant="ghost" aria-label="关闭目录" onClick={() => setTocOpen(false)}><X /></Button></div>
-          {outline.length ? <Outline items={outline} onSelect={item => void displayChapter(item)} /> : <p>此 PDF 没有内嵌目录，可使用页码跳转。</p>}
+          {outline.length ? <Outline items={outline} active={activeChapter} onSelect={item => void displayChapter(item)} /> : <p>此 PDF 没有内嵌目录，可使用页码跳转。</p>}
         </aside>
         <button className="reader-toc-scrim" type="button" aria-label="关闭目录遮罩" onClick={() => setTocOpen(false)} />
       </>}

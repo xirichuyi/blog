@@ -3,10 +3,11 @@ import { CloudOff, MessageCircle, PenLine, Trash2, UserRound, X } from 'lucide-r
 import { ReaderSession, type ReaderEntry, type ReaderSnapshot, type NoteRect } from '@/lib/reader-state'
 import type { ReaderProgress } from '@/lib/book-progress'
 import type { NoteAnchor, NoteMarker } from '@/lib/reader-annotations'
+import { clearReaderSelection, type ReaderRange } from '@/lib/reader-selection'
 import { googleLoginUrl } from '@/services/admin'
 import type { BookFile } from '@/services/api'
 
-export interface ReaderSelection { position: ReaderProgress; quote: string; anchor: NoteAnchor; rects?: NoteRect[] }
+export interface ReaderSelection { position: ReaderProgress; quote: string; anchor: NoteAnchor; rects?: NoteRect[]; touch?: { rects: NoteAnchor[]; adjust: ReaderRange['adjust'] } }
 interface NotePanel { serial: number; ids: string[]; anchor: NoteAnchor; selection?: ReaderSelection }
 interface ReaderContextValue {
   session: ReaderSession
@@ -48,16 +49,26 @@ function WorkspaceSession({ session, loginHref, children }: { session: ReaderSes
   }, [])
   useEffect(() => {
     if (!panel) return
-    window.getSelection()?.removeAllRanges()
-    document.querySelectorAll<HTMLIFrameElement>('.epub-viewport iframe').forEach(frame => {
-      try { frame.contentWindow?.getSelection()?.removeAllRanges() } catch { /* Unavailable chapter. */ }
-    })
+    clearReaderSelection()
   }, [panel])
+  useEffect(() => {
+    if (!selection) return
+    const dismiss = (event: PointerEvent) => {
+      if ((event.target as Element).closest?.('.reader-selection-action,.reader-selection-handle,dialog')) return
+      clearReaderSelection()
+      setSelection(null)
+    }
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { clearReaderSelection(); setSelection(null) } }
+    document.addEventListener('pointerdown', dismiss, true)
+    document.addEventListener('keydown', escape)
+    return () => { document.removeEventListener('pointerdown', dismiss, true); document.removeEventListener('keydown', escape) }
+  }, [selection])
   if (!snapshot.ready) return <div className="reader-route-state" role="status">
     <span>{snapshot.message || '正在打开…'}</span>
     {snapshot.status === 'error' && <button type="button" onClick={() => void session.start()}>重试</button>}
   </div>
   const percent = snapshot.data.progress?.kind === 'epub' ? snapshot.data.progress.percent : snapshot.data.progress ? snapshot.data.progress.page / snapshot.data.progress.pages * 100 : 0
+  const selectionAbove = Boolean(selection && selection.anchor.bottom + 72 > window.innerHeight)
   const openSelection = () => {
     if (!selection) return
     const existing = snapshot.data.entries.find(entry => entry.highlight && entry.position.kind === 'epub' && selection.position.kind === 'epub' && entry.position.cfi === selection.position.cfi)
@@ -71,9 +82,22 @@ function WorkspaceSession({ session, loginHref, children }: { session: ReaderSes
       <span>{positionLabel(snapshot.data.progress)}</span>
       <ReaderSyncIssue />
     </div>
-    {selection && !panel && <button className="reader-selection-action" type="button" style={{ left: Math.max(72, Math.min(window.innerWidth - 72, (selection.anchor.left + selection.anchor.right) / 2)), top: Math.min(window.innerHeight - 72, Math.max(12, selection.anchor.bottom + 10)) }} onPointerDown={event => event.preventDefault()} onPointerUp={event => { event.preventDefault(); openSelection() }} onClick={openSelection}><PenLine size={15} />写批注</button>}
+    {selection?.touch && !panel && <SelectionOverlay selection={selection} />}
+    {selection && !panel && <button className="reader-selection-action" type="button" data-placement={selectionAbove ? 'above' : 'below'} style={{ left: Math.max(72, Math.min(window.innerWidth - 72, (selection.anchor.left + selection.anchor.right) / 2)), top: selectionAbove ? Math.max(12, (selection.touch?.rects[0]?.top ?? selection.anchor.top) - 52) : selection.anchor.bottom + 24 }} onPointerDown={event => event.preventDefault()} onPointerUp={event => { event.preventDefault(); openSelection() }} onClick={openSelection}><PenLine size={15} />写批注</button>}
     {panel && <AnnotationCard key={panel.serial} panel={panel} onClose={() => { setPanel(null); setSelection(null) }} />}
   </ReaderContext.Provider>
+}
+
+function SelectionOverlay({ selection }: { selection: ReaderSelection }) {
+  const touch = selection.touch!
+  const first = touch.rects[0], last = touch.rects.at(-1)
+  return <div className="reader-selection-overlay" aria-hidden="true">
+    {touch.rects.map((rect, index) => <span key={index} className="reader-selected-text" style={{ left: rect.left, top: rect.top, width: rect.right - rect.left, height: rect.bottom - rect.top }} />)}
+    {first && last && (['start', 'end'] as const).map(edge => {
+      const rect = edge === 'start' ? first : last
+      return <span key={edge} data-edge={edge} className="reader-selection-handle" style={{ left: (edge === 'start' ? rect.left : rect.right) - 18, top: (edge === 'start' ? rect.top : rect.bottom) - 18 }} onPointerDown={event => { event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId) }} onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) { event.preventDefault(); touch.adjust(edge, event.clientX, event.clientY) } }} onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId) }} />
+    })}
+  </div>
 }
 
 export function ReaderAccount() {
@@ -96,13 +120,19 @@ function AnnotationCard({ panel, onClose }: { panel: NotePanel; onClose: () => v
   const { session, snapshot, loginHref } = useReaderWorkspace()
   const dialog = useRef<HTMLDialogElement>(null)
   const backdropPressed = useRef(false)
+  const input = useRef<HTMLTextAreaElement>(null)
   const [editId, setEditId] = useState<string | null>(panel.selection ? 'new' : null)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
   const entries = snapshot.data.entries.filter(entry => panel.ids.includes(entry.id))
   const editing = entries.find(entry => entry.id === editId)
   const quote = panel.selection?.quote ?? editing?.quote ?? ''
-  useEffect(() => { dialog.current?.showModal(); return () => dialog.current?.close() }, [])
+  useEffect(() => {
+    dialog.current?.showModal()
+    if (panel.selection) input.current?.focus({ preventScroll: true })
+    else dialog.current?.focus({ preventScroll: true })
+    return () => dialog.current?.close()
+  }, [])
   const save = () => {
     if (!draft.trim()) return
     if (panel.selection && snapshot.data.entries.length >= 500) { setError('批注已达上限，请先整理已有批注。'); return }
@@ -112,15 +142,15 @@ function AnnotationCard({ panel, onClose }: { panel: NotePanel; onClose: () => v
     } else if (editing) session.update(data => ({ ...data, entries: data.entries.map(entry => entry.id === editing.id ? { ...entry, note: draft.trim() } : entry) }))
     onClose()
   }
-  return <dialog ref={dialog} className="reader-annotation-card" aria-label="段落批注" style={{ '--note-left': `${Math.max(12, Math.min(window.innerWidth - 352, panel.anchor.right - 320))}px`, '--note-top': `${Math.max(20, Math.min(window.innerHeight - 360, panel.anchor.bottom + 12))}px` } as React.CSSProperties} onCancel={onClose} onPointerDown={event => { backdropPressed.current = event.target === event.currentTarget }} onClick={event => { if (backdropPressed.current && event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}>
-    <header className="reader-note-header"><span>{editId ? '写下想法' : '批注'}</span><button type="button" className="reader-note-close" aria-label="关闭批注" onClick={onClose}><X size={17} /></button></header>
+  return <dialog ref={dialog} tabIndex={-1} className="reader-annotation-card" aria-label="段落批注" style={{ '--note-left': `${Math.max(12, Math.min(window.innerWidth - 352, panel.anchor.right - 320))}px`, '--note-top': `${Math.max(20, Math.min(window.innerHeight - 360, panel.anchor.bottom + 12))}px` } as React.CSSProperties} onCancel={onClose} onPointerDown={event => { backdropPressed.current = event.target === event.currentTarget }} onClick={event => { if (backdropPressed.current && event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}>
+    <header className="reader-note-header"><span>批注</span><button type="button" className="reader-note-close" aria-label="关闭批注" onClick={onClose}><X size={17} /></button></header>
     {editId ? <>
       <blockquote>{quote}</blockquote>
-      <textarea aria-label="批注内容" autoFocus value={draft} onChange={event => setDraft(event.target.value)} maxLength={5000} placeholder="这一段，让你想到了什么？" />
+      <textarea ref={input} aria-label="批注内容" autoFocus value={draft} onChange={event => setDraft(event.target.value)} maxLength={5000} placeholder="写批注…" />
       {error && <p className="reader-note-error" role="alert">{error}</p>}
       <footer className="reader-note-footer">
         {editing ? <button type="button" className="reader-note-delete" aria-label="删除批注" onClick={() => { session.update(data => ({ ...data, entries: data.entries.filter(entry => entry.id !== editing.id) })); onClose() }}><Trash2 size={17} /></button> : <span />}
-        <button type="button" className="reader-note-done" disabled={!draft.trim()} onClick={save}>保存批注</button>
+        <button type="button" className="reader-note-done" disabled={!draft.trim()} onClick={save} aria-label="保存批注">保存</button>
       </footer>
     </> : <>
       <div className="reader-note-thread">{entries.map(entry => <article key={entry.id}>
