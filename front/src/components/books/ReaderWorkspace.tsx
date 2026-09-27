@@ -113,7 +113,7 @@ export function ParagraphNotes({ markers }: { markers: NoteMarker[] }) {
     event.stopPropagation()
     const rect = event.currentTarget.getBoundingClientRect()
     openNotes(marker.ids, rect)
-  }}><MessageCircle size={14} strokeWidth={1.6} />{marker.ids.length > 1 && <small>{marker.ids.length}</small>}</button>)}</div>
+  }}><MessageCircle size={12} strokeWidth={1.5} />{marker.ids.length > 1 && <small>{marker.ids.length}</small>}</button>)}</div>
 }
 
 function AnnotationCard({ panel, onClose }: { panel: NotePanel; onClose: () => void }) {
@@ -142,16 +142,16 @@ function AnnotationCard({ panel, onClose }: { panel: NotePanel; onClose: () => v
     } else if (editing) session.update(data => ({ ...data, entries: data.entries.map(entry => entry.id === editing.id ? { ...entry, note: draft.trim() } : entry) }))
     onClose()
   }
-  return <dialog ref={dialog} tabIndex={-1} className="reader-annotation-card" aria-label="段落批注" style={{ '--note-left': `${Math.max(12, Math.min(window.innerWidth - 352, panel.anchor.right - 320))}px`, '--note-top': `${Math.max(20, Math.min(window.innerHeight - 360, panel.anchor.bottom + 12))}px` } as React.CSSProperties} onCancel={onClose} onPointerDown={event => { backdropPressed.current = event.target === event.currentTarget }} onClick={event => { if (backdropPressed.current && event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}>
-    <header className="reader-note-header"><span>批注</span><button type="button" className="reader-note-close" aria-label="关闭批注" onClick={onClose}><X size={17} /></button></header>
+  return <dialog ref={dialog} tabIndex={-1} className="reader-annotation-card" aria-label="段落批注" style={{ '--note-left': `${Math.max(12, Math.min(window.innerWidth - 312, panel.anchor.right - 280))}px`, '--note-top': `${Math.max(20, Math.min(window.innerHeight - 360, panel.anchor.bottom + 12))}px` } as React.CSSProperties} onCancel={onClose} onPointerDown={event => { backdropPressed.current = event.target === event.currentTarget }} onClick={event => { if (backdropPressed.current && event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}>
+    <header className="reader-note-header"><span>批注</span><div className="reader-note-actions">
+      {editId && <button type="button" className="reader-note-done" disabled={!draft.trim()} onClick={save} aria-label="保存批注">保存</button>}
+      <button type="button" className="reader-note-close" aria-label="关闭批注" onClick={onClose}><X size={15} /></button>
+    </div></header>
     {editId ? <>
       <blockquote>{quote}</blockquote>
       <textarea ref={input} aria-label="批注内容" autoFocus value={draft} onChange={event => setDraft(event.target.value)} maxLength={5000} placeholder="写批注…" />
       {error && <p className="reader-note-error" role="alert">{error}</p>}
-      <footer className="reader-note-footer">
-        {editing ? <button type="button" className="reader-note-delete" aria-label="删除批注" onClick={() => { session.update(data => ({ ...data, entries: data.entries.filter(entry => entry.id !== editing.id) })); onClose() }}><Trash2 size={17} /></button> : <span />}
-        <button type="button" className="reader-note-done" disabled={!draft.trim()} onClick={save} aria-label="保存批注">保存</button>
-      </footer>
+      {editing && <footer className="reader-note-footer"><button type="button" className="reader-note-delete" aria-label="删除批注" onClick={() => { session.update(data => ({ ...data, entries: data.entries.filter(entry => entry.id !== editing.id) })); onClose() }}><Trash2 size={14} /></button></footer>}
     </> : <>
       <div className="reader-note-thread">{entries.map(entry => <article key={entry.id}>
         <blockquote>{entry.quote}</blockquote>
