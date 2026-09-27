@@ -68,7 +68,10 @@ function WorkspaceSession({ session, loginHref, children }: { session: ReaderSes
     {snapshot.status === 'error' && <button type="button" onClick={() => void session.start()}>重试</button>}
   </div>
   const percent = snapshot.data.progress?.kind === 'epub' ? snapshot.data.progress.percent : snapshot.data.progress ? snapshot.data.progress.page / snapshot.data.progress.pages * 100 : 0
-  const selectionAbove = Boolean(selection && selection.anchor.bottom + 72 > window.innerHeight)
+  const selectionStart = selection?.touch?.rects[0] ?? selection?.anchor
+  const selectionEnd = selection?.touch?.rects.at(-1) ?? selection?.anchor
+  const selectionAbove = Boolean(selectionStart && selectionStart.top >= 66)
+  const actionAnchor = selectionAbove ? selectionStart : selectionEnd
   const openSelection = () => {
     if (!selection) return
     const existing = snapshot.data.entries.find(entry => entry.highlight && entry.position.kind === 'epub' && selection.position.kind === 'epub' && entry.position.cfi === selection.position.cfi)
@@ -83,7 +86,7 @@ function WorkspaceSession({ session, loginHref, children }: { session: ReaderSes
       <ReaderSyncIssue />
     </div>
     {selection?.touch && !panel && <SelectionOverlay selection={selection} />}
-    {selection && !panel && <button className="reader-selection-action" type="button" data-placement={selectionAbove ? 'above' : 'below'} style={{ left: Math.max(72, Math.min(window.innerWidth - 72, (selection.anchor.left + selection.anchor.right) / 2)), top: selectionAbove ? Math.max(12, (selection.touch?.rects[0]?.top ?? selection.anchor.top) - 52) : selection.anchor.bottom + 24 }} onPointerDown={event => event.preventDefault()} onPointerUp={event => { event.preventDefault(); openSelection() }} onClick={openSelection}><PenLine size={15} />写批注</button>}
+    {selection && !panel && <button className="reader-selection-action" type="button" aria-label="写批注" data-placement={selectionAbove ? 'above' : 'below'} style={{ left: Math.max(72, Math.min(window.innerWidth - 72, (actionAnchor!.left + actionAnchor!.right) / 2)), top: selectionAbove ? selectionStart!.top - 54 : Math.min(window.innerHeight - 56, selectionEnd!.bottom + 10) }} onPointerDown={event => event.preventDefault()} onPointerUp={event => { event.preventDefault(); openSelection() }} onClick={openSelection}><PenLine size={13} strokeWidth={1.6} /><span>批注</span></button>}
     {panel && <AnnotationCard key={panel.serial} panel={panel} onClose={() => { setPanel(null); setSelection(null) }} />}
   </ReaderContext.Provider>
 }
