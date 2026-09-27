@@ -25,7 +25,7 @@ export function HoverSurface({ children, className, label }: { children: ReactNo
     const hidePreview = () => {
       previewRequest++
       previewRow = null
-      setPreview((previous) => previous ? { ...previous, shown: false } : null)
+      setPreview((previous) => previous?.shown ? { ...previous, shown: false } : previous)
     }
     const previewPosition = (row: HTMLElement) => {
       const rect = row.getBoundingClientRect()
@@ -56,8 +56,8 @@ export function HoverSurface({ children, className, label }: { children: ReactNo
     const cancelHide = () => clearTimeout(hideTimer)
     const position = (row: HTMLElement, scale: number) => {
       // Layout dimensions exclude the row's CSS hover scale.
-      indicator.style.width = `${row.offsetWidth}px`
-      indicator.style.height = `${row.offsetHeight}px`
+      const width = row.offsetWidth
+      const height = row.offsetHeight
       let x = 0
       let y = 0
       let node: HTMLElement | null = row
@@ -66,10 +66,14 @@ export function HoverSurface({ children, className, label }: { children: ReactNo
         y += node.offsetTop
         node = node.offsetParent as HTMLElement | null
       }
+      indicator.style.width = `${width}px`
+      indicator.style.height = `${height}px`
       indicator.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`
     }
     const show = (row: HTMLElement) => {
       cancelHide()
+      // Descendant pointer transitions must not repeat layout reads or preview work.
+      if (active === row && indicator.style.opacity === '1') return
       active = row
       showPreview(row)
       if (indicator.style.opacity !== '1') {
@@ -122,7 +126,7 @@ export function HoverSurface({ children, className, label }: { children: ReactNo
       if (active) position(active, 1)
       if (previewRow) {
         const next = previewPosition(previewRow)
-        setPreview((previous) => previous ? { ...previous, ...next } : null)
+        setPreview((previous) => previous && (previous.left !== next.left || previous.top !== next.top) ? { ...previous, ...next } : previous)
       }
     })
     observer.observe(list)

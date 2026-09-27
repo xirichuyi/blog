@@ -236,7 +236,14 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
         if (disposed) return
         setNavigation(nav)
         const flatten = (items: NavItem[]): NavItem[] => items.flatMap(item => [item, ...flatten(item.subitems ?? [])])
-        const chapters = flatten(nav)
+        const chaptersBySpine = new Map<number, NavItem[]>()
+        for (const item of flatten(nav)) {
+          const index = activeBook.spine.get(item.href.split('#')[0])?.index
+          if (index === undefined) continue
+          const group = chaptersBySpine.get(index)
+          if (group) group.push(item)
+          else chaptersBySpine.set(index, [item])
+        }
         rendition.on('relocated', (nextLocation: Location) => {
           if (!activeBook || disposed) return
           const percent = progressFromLocation(activeBook, nextLocation)
@@ -244,7 +251,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
             atEnd: nextLocation.atEnd,
             atStart: nextLocation.atStart,
           })
-          const candidates = chapters.filter(item => activeBook?.spine.get(item.href.split('#')[0])?.index === nextLocation.start.index)
+          const candidates = chaptersBySpine.get(nextLocation.start.index) ?? []
           let current = candidates[0]
           const contents = visibleContents(rendition).find(content => content.sectionIndex === nextLocation.start.index)
           if (contents) {

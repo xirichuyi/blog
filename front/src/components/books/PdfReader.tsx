@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import { groupNoteMarkers, visibleRangeRects, noteMarkerPoint, type NoteMarker } from '@/lib/reader-annotations'
 import type { TextLayer } from 'pdfjs-dist'
 import { ReaderLoading } from './ReaderLoading'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Minus, Plus, ZoomIn, List, X } from 'lucide-react'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist/types/src/display/api'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
@@ -200,10 +200,22 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
         const index = typeof dest[0] === 'number' ? dest[0] : await document.getPageIndex(dest[0])
         return { item, page: index + 1 }
       } catch { return null }
-    })).then(items => { if (!disposed) setOutlinePages(items.filter((item): item is { item: PdfOutline[number]; page: number } => item !== null)) })
+    })).then(items => { if (!disposed) setOutlinePages(items.filter((item): item is { item: PdfOutline[number]; page: number } => item !== null).sort((a, b) => a.page - b.page)) })
     return () => { disposed = true }
   }, [document, outline])
-  const activeChapter = outlinePages.filter(item => item.page <= page).sort((a, b) => a.page - b.page).at(-1)?.item ?? null
+  const activeChapter = useMemo(() => {
+    // Sorted once when the outline loads; upper-bound search preserves the last
+    // matching subchapter when several entries point at the same page.
+    let low = 0
+    let high = outlinePages.length
+    while (low < high) {
+      const middle = (low + high) >>> 1
+      if (outlinePages[middle].page <= page) low = middle + 1
+      else high = middle
+    }
+    return outlinePages[low - 1]?.item ?? null
+  }, [outlinePages, page])
+  const pageNotes = useMemo(() => snapshot.data.entries.filter(entry => entry.note && entry.position.kind === 'pdf' && entry.position.page === page), [snapshot.data.entries, page])
   useEffect(() => {
     if (!tocOpen) return
     const current = tocRef.current?.querySelector<HTMLElement>('[aria-current="location"]')
@@ -215,26 +227,37 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
     const frame = frameRef.current
     const sheet = pageRef.current
     if (!frame || !sheet) return
+    let scheduled = 0
     const update = () => {
+      scheduled = 0
+      selectionRef.current?.refresh()
+      // Most pages have no notes: avoid geometry reads and state updates entirely.
+      if (!pageNotes.length) {
+        setMarkers(previous => previous.length ? [] : previous)
+        return
+      }
       const bounds = frame.getBoundingClientRect()
       const rect = sheet.getBoundingClientRect()
       const points: { id: string; x: number; y: number }[] = []
-      for (const entry of snapshot.data.entries) {
-        if (!entry.note || entry.position.kind !== 'pdf' || entry.position.page !== page) continue
+      for (const entry of pageNotes) {
         const last = entry.rects?.at(-1)
         if (!last) continue
         const anchor = { left: rect.left + last.x * rect.width, right: rect.left + (last.x + last.width) * rect.width, top: rect.top + last.y * rect.height, bottom: rect.top + (last.y + last.height) * rect.height }
         if (anchor.bottom > bounds.top && anchor.top < bounds.bottom && anchor.right > bounds.left && anchor.left < bounds.right) points.push({ id: entry.id, ...noteMarkerPoint(anchor, bounds) })
       }
-      setMarkers(groupNoteMarkers(points))
+      const next = groupNoteMarkers(points)
+      setMarkers(previous => previous.length === next.length && previous.every((marker, index) => {
+        const other = next[index]
+        return marker.x === other.x && marker.y === other.y && marker.ids.length === other.ids.length && marker.ids.every((id, i) => id === other.ids[i])
+      }) ? previous : next)
     }
-    const scroll = () => { selectionRef.current?.refresh(); update() }
-    frame.addEventListener('scroll', scroll)
-    const observer = new ResizeObserver(update)
+    const scroll = () => { if (!scheduled) scheduled = requestAnimationFrame(update) }
+    frame.addEventListener('scroll', scroll, { passive: true })
+    const observer = new ResizeObserver(scroll)
     observer.observe(sheet)
     update()
-    return () => { frame.removeEventListener('scroll', scroll); observer.disconnect() }
-  }, [snapshot.data.entries, page, renderVersion, setSelection])
+    return () => { cancelAnimationFrame(scheduled); frame.removeEventListener('scroll', scroll); observer.disconnect() }
+  }, [pageNotes, renderVersion])
 
   const displayChapter = async (item: PdfOutline[number]) => {
     if (!document || !item.dest) return
@@ -261,7 +284,7 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
         <div ref={pageRef} className="pdf-page">
           <canvas ref={canvasRef} />
           <div ref={textRef} className="textLayer" />
-          {snapshot.data.entries.filter(entry => entry.note && entry.position.kind === 'pdf' && entry.position.page === page).flatMap(entry => (entry.rects ?? []).map((rect, index) => <span key={`${entry.id}-${index}`} className="pdf-note-underline" style={{ left: `${rect.x * 100}%`, top: `${(rect.y + rect.height) * 100}%`, width: `${rect.width * 100}%` }} />))}
+          {pageNotes.flatMap(entry => (entry.rects ?? []).map((rect, index) => <span key={`${entry.id}-${index}`} className="pdf-note-underline" style={{ left: `${rect.x * 100}%`, top: `${(rect.y + rect.height) * 100}%`, width: `${rect.width * 100}%` }} />))}
         </div>
         {loading && <ReaderLoading title={title} cover={cover} message="正在打开 PDF…" />}
         {error && <div className="reader-state reader-error"><strong>Could not open this PDF</strong><span>{error}</span><Button variant="outline" onClick={() => setRetry(value => value + 1)}>重试</Button></div>}

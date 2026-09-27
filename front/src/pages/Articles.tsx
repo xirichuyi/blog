@@ -57,16 +57,14 @@ export default function Articles() {
   }, [all, filter])
 
   const groups = useMemo(() => {
-    const g: { year: string; items: Article[] }[] = []
-    for (const a of filtered) {
-      const y = a.rawDate ? String(new Date(a.rawDate).getFullYear()) : '—'
-      let x = g.find((z) => z.year === y)
-      if (!x) {
-        x = { year: y, items: [] }
-        g.push(x)
-      }
-      x.items.push(a)
+    const byYear = new Map<string, Article[]>()
+    for (const article of filtered) {
+      const year = article.rawDate ? String(new Date(article.rawDate).getFullYear()) : '—'
+      const items = byYear.get(year)
+      if (items) items.push(article)
+      else byYear.set(year, [article])
     }
+    const g = Array.from(byYear, ([year, items]) => ({ year, items }))
     g.sort((a, b) => b.year.localeCompare(a.year))
     return g
   }, [filtered])

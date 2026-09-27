@@ -1,9 +1,10 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type MotionValue } from 'framer-motion'
+import { cancelFrame, frame, motion, useMotionValue, useReducedMotion, useSpring, useTransform, type MotionValue } from 'framer-motion'
 import { Home, FileText, Wrench, Moon, Sun, BookOpen, MessageCircle, type LucideIcon } from 'lucide-react'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
+import { dockCenters } from '@/lib/dock-layout'
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'Home', icon: Home },
@@ -17,25 +18,24 @@ const BASE = 36
 const MAX = 48
 const RANGE = 120 // px proximity falloff
 
+type DockPointer = { x: number; centers: number[] }
+
 function DockItem({
-  mouseX,
+  pointer,
+  index,
   icon: Icon,
   label,
   active,
   onClick,
 }: {
-  mouseX: MotionValue<number>
+  pointer: MotionValue<DockPointer>
+  index: number
   icon: LucideIcon
   label: string
   active?: boolean
   onClick: () => void
 }) {
-  const ref = useRef<HTMLButtonElement>(null)
-
-  const distance = useTransform(mouseX, (val) => {
-    const b = ref.current?.getBoundingClientRect() ?? { x: 0, width: BASE }
-    return val - b.x - b.width / 2
-  })
+  const distance = useTransform(pointer, ({ x, centers }) => x - (centers[index] ?? 0))
   const widthTarget = useTransform(distance, [-RANGE, 0, RANGE], [BASE, MAX, BASE])
   const width = useSpring(widthTarget, { mass: 0.1, stiffness: 170, damping: 14 })
   // Icon scales from the bottom — the bar's height stays fixed; magnified
@@ -44,7 +44,7 @@ function DockItem({
 
   return (
     <motion.button
-      ref={ref}
+      data-dock-item
       type="button"
       style={{ width, height: BASE }}
       onClick={onClick}
@@ -84,25 +84,79 @@ export function Dock() {
   const location = useLocation()
   const { theme, toggle } = useTheme()
   const reduceMotion = useReducedMotion()
-  const mouseX = useMotionValue(Infinity)
+  const pointer = useMotionValue<DockPointer>({ x: Infinity, centers: [] })
+  const containerRef = useRef<HTMLDivElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    const bar = barRef.current
+    if (!container || !bar) return
+    const buttons = Array.from(bar.querySelectorAll<HTMLButtonElement>('[data-dock-item]'))
+    let baseline: { center: number; width: number }[] = []
+    let latestX = Infinity
+
+    const update = () => {
+      if (baseline.length !== buttons.length || !Number.isFinite(latestX)) return
+      // Inline styles contain the widths Motion actually rendered, rather than
+      // the next spring values. Reading them does not force style/layout work.
+      const widths = buttons.map(button => Number.parseFloat(button.style.width) || BASE)
+      pointer.set({ x: latestX, centers: dockCenters(baseline, widths) })
+    }
+    const measure = () => {
+      baseline = buttons.map(button => {
+        const bounds = button.getBoundingClientRect()
+        return { center: bounds.x + bounds.width / 2, width: bounds.width }
+      })
+      update()
+    }
+    const scheduleMeasure = () => { frame.read(measure) }
+    const move = (event: MouseEvent) => {
+      if (reduceMotion || event.clientX === latestX) return
+      latestX = event.clientX
+      // Motion deduplicates this callback: use only the newest position in a frame.
+      frame.read(update)
+    }
+    const leave = () => {
+      latestX = Infinity
+      cancelFrame(update)
+      pointer.set({ x: Infinity, centers: [] })
+    }
+    leave()
+    scheduleMeasure()
+    // Observe the fixed outer container, not the bar whose width animates.
+    const observer = new ResizeObserver(scheduleMeasure)
+    observer.observe(container)
+    window.addEventListener('resize', scheduleMeasure)
+    bar.addEventListener('mousemove', move)
+    bar.addEventListener('mouseleave', leave)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', scheduleMeasure)
+      bar.removeEventListener('mousemove', move)
+      bar.removeEventListener('mouseleave', leave)
+      cancelFrame(measure)
+      cancelFrame(update)
+    }
+  }, [pointer, reduceMotion])
 
   const isActive = (to: string) => (to === '/' ? location.pathname === '/' : location.pathname.startsWith(to))
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+    <div ref={containerRef} className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
       <motion.div
-        onMouseMove={(event) => !reduceMotion && mouseX.set(event.clientX)}
-        onMouseLeave={() => mouseX.set(Infinity)}
+        ref={barRef}
         className="flex items-end gap-1.5 rounded-[1.4rem] border border-border/80 bg-background/72 px-2.5 pb-1.5 pt-1 shadow-[0_12px_40px_hsl(var(--foreground)/0.08)] backdrop-blur-2xl"
       >
-        {NAV.map((n) => (
-          <DockItem key={n.to} mouseX={mouseX} icon={n.icon} label={n.label} active={isActive(n.to)} onClick={() => navigate(n.to)} />
+        {NAV.map((n, index) => (
+          <DockItem key={n.to} pointer={pointer} index={index} icon={n.icon} label={n.label} active={isActive(n.to)} onClick={() => navigate(n.to)} />
         ))}
 
         <span className="mx-1 mb-2 w-px self-stretch bg-border" />
 
         <DockItem
-          mouseX={mouseX}
+          pointer={pointer}
+          index={NAV.length}
           icon={theme === 'dark' ? Sun : Moon}
           label={theme === 'dark' ? 'Light' : 'Dark'}
           onClick={toggle}
