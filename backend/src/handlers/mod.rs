@@ -8,6 +8,7 @@ pub mod health_handler;
 pub mod mail_handler;
 pub mod post_handler;
 pub mod quant_handler;
+pub mod reader_handler;
 pub mod seo_handler;
 pub mod tag_handler;
 pub mod tools_handler;

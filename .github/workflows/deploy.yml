@@ -33,11 +33,12 @@ jobs:
         working-directory: front
         run: npm ci
 
-      - name: Check Markdown editor in Chromium
+      - name: Check editor and mobile readers
         working-directory: front
         run: |
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
           npm run test:editor
+          npm run test:reader
 
       - name: Build (production)
         working-directory: front

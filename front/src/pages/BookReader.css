@@ -44,6 +44,7 @@
 .book-reader-page.is-reader-ui-hidden .book-reader-settings,
 .book-reader-page.is-reader-ui-hidden .reader-chapter-controls {
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 
@@ -541,4 +542,93 @@
   .reader-chapter-controls {
     transition: none;
   }
+}
+
+/* Menus remain reachable independently of iframe gestures and hover capability. */
+.reader-workspace { height: 100%; min-height: 0; }
+.reader-menu-toggle,
+.reader-notes-launcher > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--reader-line);
+  border-radius: 999px;
+  background: var(--reader-paper);
+  color: var(--reader-ink);
+  box-shadow: 0 3px 18px rgb(0 0 0 / 10%);
+  font-size: 0.75rem;
+}
+.reader-menu-toggle {
+  position: absolute;
+  z-index: 35;
+  left: max(0.6rem, env(safe-area-inset-left));
+  bottom: max(0.6rem, env(safe-area-inset-bottom));
+}
+.reader-notes-launcher {
+  position: absolute;
+  z-index: 34;
+  right: max(0.6rem, env(safe-area-inset-right));
+  bottom: max(0.6rem, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  max-width: calc(100% - 6rem);
+}
+.reader-sync-status {
+  max-width: 12rem;
+  padding: 0.35rem;
+  border-radius: 0.5rem;
+  background: var(--reader-paper);
+  color: var(--reader-soft);
+  font-size: 0.65rem;
+}
+.reader-sync-status.is-error, .reader-sync-status.is-conflict { color: #bd503b; }
+.reader-selection-action { position: absolute; right: 0; bottom: 3.2rem; white-space: nowrap; }
+.reader-notes-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(36rem, calc(100% - 1.25rem));
+  max-height: min(85dvh, 50rem);
+  overflow: auto;
+  border: 1px solid var(--reader-line);
+  border-radius: 1rem;
+  padding: 1.1rem;
+  background: var(--reader-paper);
+  color: var(--reader-ink);
+  font-size: 0.85rem;
+}
+.reader-notes-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+.reader-notes-header, .reader-entry-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.reader-notes-header h2 { font-size: 1.05rem; font-weight: 650; }
+.reader-notes-dialog button, .reader-notes-dialog select {
+  min-height: 44px;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--reader-line);
+  background: var(--reader-bg);
+}
+.reader-notes-dialog button:disabled { opacity: 0.5; }
+.reader-sync-detail, .reader-note-help { margin: 0.8rem 0; color: var(--reader-soft); }
+.reader-note-actions, .reader-conflict-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.reader-note-actions button { display: flex; align-items: center; gap: 0.35rem; }
+.reader-entry-list { display: grid; gap: 1rem; margin: 1rem 0; }
+.reader-entry-list li { padding: 0.6rem; border: 1px solid var(--reader-line); border-radius: 0.6rem; }
+.reader-entry-list blockquote { margin: 0.75rem 0; padding-left: 0.75rem; border-left: 3px solid #e5b84b; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reader-notes-dialog label { display: grid; gap: 0.4rem; margin-top: 0.7rem; }
+.reader-notes-dialog textarea { display: block; width: 100%; min-height: 5rem; padding: 0.65rem; border: 1px solid var(--reader-line); border-radius: 0.5rem; background: var(--reader-bg); color: inherit; resize: vertical; font-size: 16px; }
+.reader-review { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--reader-line); }
+.reader-review h3 { font-weight: 650; }
+.reader-fullscreen-message, .reader-navigation-error { position: absolute; z-index: 36; top: 5rem; left: 10%; width: 80%; padding: 0.75rem; background: var(--reader-paper); border: 1px solid var(--reader-line); border-radius: 0.5rem; }
+.epub-viewport { min-height: 0; }
+@media (max-width: 640px) {
+  .reader-chapter-controls { top: max(3.6rem, calc(env(safe-area-inset-top) + 3rem)); right: 0.5rem; max-width: calc(100% - 1rem); }
+  .reader-chapter-controls button { min-width: 44px; min-height: 44px; }
+  .reader-pdf-controls { flex-wrap: wrap; justify-content: center; }
+  .reader-sync-status { position: absolute; right: 0; bottom: 3.1rem; width: max-content; max-width: min(16rem, 65vw); }
+  .reader-selection-action { bottom: 6rem; }
+  .reader-notes-launcher > button { flex-shrink: 0; }
 }

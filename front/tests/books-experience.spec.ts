@@ -5,6 +5,7 @@ const book = { id: 1, title: '慢慢读一本书', author: '作者', reading_sta
   cover_url: 'http://127.0.0.1:4175/test-cover.png', files: [{ id: 7, format: 'epub', file_url: 'http://127.0.0.1:4175/test-book.epub' }] }
 async function mock(page: Page) {
   await page.route('**/api/**', route => route.fulfill({ json: { code: 200, message: 'ok', data: [book] } }))
+  await page.route('**/api/auth/session', route => route.fulfill({ status: 401, json: { code: 401, message: 'Guest', data: null } }))
   await page.route('**/test-cover.png', route => route.fulfill({ contentType: 'image/png', body: png }))
 }
 

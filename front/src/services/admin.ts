@@ -100,9 +100,9 @@ export function googleLoginUrl(): string {
   return `${base}/api/auth/google/start`
 }
 
-export async function getAdminSession(): Promise<AdminSession | null> {
+export async function getAdminSession(signal?: AbortSignal): Promise<AdminSession | null> {
   try {
-    return await apiRequest<AdminSession>('/auth/session', { credentials: 'include' })
+    return await apiRequest<AdminSession>('/auth/session', { credentials: 'include', signal })
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) return null
     throw error

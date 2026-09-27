@@ -26,6 +26,9 @@ pub enum AppError {
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
 
+    #[error("Conflict: {0}")]
+    Conflict(String),
+
     #[error("Bad request: {0}")]
     BadRequest(String),
 
@@ -75,6 +78,7 @@ impl IntoResponse for AppError {
                 tracing::warn!("Unauthorized: {}", message);
                 (StatusCode::UNAUTHORIZED, message.as_str())
             }
+            AppError::Conflict(ref message) => (StatusCode::CONFLICT, message.as_str()),
             AppError::BadRequest(ref message) => {
                 tracing::warn!("Bad request: {}", message);
                 (StatusCode::BAD_REQUEST, message.as_str())

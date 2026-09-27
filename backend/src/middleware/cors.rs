@@ -59,7 +59,12 @@ fn create_production_cors(config: &Config) -> Result<CorsLayer, String> {
             Method::DELETE,
             Method::OPTIONS,
         ])
-        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT])
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::AUTHORIZATION,
+            header::ACCEPT,
+            axum::http::HeaderName::from_static("x-reader-account"),
+        ])
         .allow_credentials(true)
         .max_age(std::time::Duration::from_secs(3600)); // 预检请求缓存 1 小时
 

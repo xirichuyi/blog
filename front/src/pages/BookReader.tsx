@@ -1,8 +1,9 @@
 import { readPreference, writePreference } from '@/lib/browser-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Maximize2, Minimize2, Minus, Plus } from 'lucide-react'
+import { Maximize2, Minimize2, Minus, Plus, Menu } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { EpubReader, type ReaderFlow, type ReaderTheme } from '@/components/books/EpubReader'
+import { ReaderWorkspace } from '@/components/books/ReaderWorkspace'
 import { PdfReader } from '@/components/books/PdfReader'
 import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { SEO } from '@/components/SEO'
@@ -107,6 +108,7 @@ export default function BookReader() {
   const [fontSize, setFontSize] = useState(initialFontSize)
   const [flow, setFlow] = useState<ReaderFlow>(initialReaderFlow)
   const [fullscreen, setFullscreen] = useState(false)
+  const [fullscreenError, setFullscreenError] = useState('')
   const [uiVisible, setUiVisible] = useState(false)
 
   useEffect(() => {
@@ -137,9 +139,13 @@ export default function BookReader() {
     setFlow(next)
     writePreference('book-reader-flow', next)
   }
-  const toggleFullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen()
-    else void pageRef.current?.requestFullscreen()
+  const toggleFullscreen = async () => {
+    setFullscreenError('')
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen()
+      else if (pageRef.current?.requestFullscreen) await pageRef.current.requestFullscreen()
+      else setFullscreenError('当前浏览器不支持全屏，可继续正常阅读。')
+    } catch { setFullscreenError('浏览器未允许全屏，可继续正常阅读。') }
   }
   const toggleUi = useCallback(() => setUiVisible((current) => !current), [])
   const syncUiWithTopHover = useCallback((hovered: boolean) => setUiVisible(hovered), [])
@@ -159,6 +165,8 @@ export default function BookReader() {
       }}
     >
       <SEO title={`Read ${book.title}`} description={`Read ${book.title} by ${book.author || 'Unknown author'}.`} path={`/books/${book.id}/read`} />
+      <button type="button" className="reader-menu-toggle" aria-label="阅读菜单" aria-expanded={uiVisible} onClick={toggleUi}><Menu size={20} /><span>菜单</span></button>
+      {fullscreenError && <button type="button" className="reader-fullscreen-message" onClick={() => setFullscreenError('')} role="status">{fullscreenError}</button>}
       <div className="book-reader-back"><MagneticBackButton onClick={() => navigate('/books')} /></div>
       <div className="book-reader-title" aria-label="Current book">
         <strong>{book.title}</strong>
@@ -187,9 +195,11 @@ export default function BookReader() {
         />
       </div>
       <div className="book-reader-surface">
-        {format === 'epub'
-          ? <EpubReader key={file.id} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />
-          : <PdfReader key={file.id} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />}
+        <ReaderWorkspace key={file.id} bookId={book.id} file={file}>
+          {format === 'epub'
+            ? <EpubReader key={file.id} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />
+            : <PdfReader key={file.id} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />}
+        </ReaderWorkspace>
       </div>
     </main>
   )

@@ -4,6 +4,7 @@ interface ReaderGestureOptions {
   getHeight: () => number
   getSelection: () => string
   getWidth: () => number
+  toLocalPoint?: (x: number, y: number) => { x: number; y: number }
   onNext: () => void
   onPrevious: () => void
   onTopHoverChange?: (hovered: boolean) => void
@@ -49,12 +50,16 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 export function bindReaderGestures(source: EventTarget, options: ReaderGestureOptions): () => void {
   let touchStart: GestureStart | null = null
   let lastTouchAt = Number.NEGATIVE_INFINITY
+  let moved = false
+  const pointers = new Set<number>()
+  const local = options.toLocalPoint ?? ((x: number, y: number) => ({ x, y }))
 
   const handleTap = (clientX: number, clientY: number) => {
     const width = Math.max(1, options.getWidth())
     const height = Math.max(1, options.getHeight())
-    const relativeX = clientX / width
-    const relativeY = clientY / height
+    const point = local(clientX, clientY)
+    const relativeX = point.x / width
+    const relativeY = point.y / height
     if (options.pageNavigation !== false && relativeX <= 0.2) options.onPrevious()
     else if (options.pageNavigation !== false && relativeX >= 0.8) options.onNext()
     else if (relativeX >= 0.22 && relativeX <= 0.78 && relativeY >= 0.12 && relativeY <= 0.88) options.onToggleControls?.()
@@ -73,7 +78,7 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
       else options.onPrevious()
       return
     }
-    if (distance < 24 && now - gestureStart.time < 650) {
+    if (!moved && distance < 24 && now - gestureStart.time < 650) {
       handleTap(clientX, clientY)
     }
   }
@@ -81,7 +86,7 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
   const onMouseMove = (rawEvent: Event) => {
     const event = rawEvent as MouseEvent
     if (performance.now() - lastTouchAt > 1000 && isReaderHoverDevice(options.getWindow())) {
-      options.onTopHoverChange?.(isReaderTopHover(event.clientY, options.getHeight()))
+      options.onTopHoverChange?.(isReaderTopHover(local(event.clientX, event.clientY).y, options.getHeight()))
     }
   }
 
@@ -92,6 +97,7 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
       touchStart = null
       return
     }
+    moved = false
     const touch = event.touches[0]
     touchStart = { id: touch.identifier, time: performance.now(), x: touch.clientX, y: touch.clientY }
   }
@@ -111,24 +117,53 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
     touchStart = null
   }
 
-  source.addEventListener('mousemove', onMouseMove)
-  source.addEventListener('touchstart', onTouchStart, { capture: true, passive: true })
-  source.addEventListener('touchend', onTouchEnd, { capture: true, passive: true })
-  source.addEventListener('touchcancel', onTouchCancel, { capture: true, passive: true })
-
-  return () => {
-    source.removeEventListener('mousemove', onMouseMove)
-    source.removeEventListener('touchstart', onTouchStart, true)
-    source.removeEventListener('touchend', onTouchEnd, true)
-    source.removeEventListener('touchcancel', onTouchCancel, true)
+  const onTouchMove = (rawEvent: Event) => {
+    const event = rawEvent as TouchEvent
+    const touch = Array.from(event.touches).find(item => item.identifier === touchStart?.id)
+    if (touch && touchStart && Math.hypot(touch.clientX - touchStart.x, touch.clientY - touchStart.y) >= 24) moved = true
   }
+  const onPointerDown = (rawEvent: Event) => {
+    const event = rawEvent as PointerEvent
+    if (event.pointerType === 'mouse') return
+    lastTouchAt = performance.now()
+    pointers.add(event.pointerId)
+    if (pointers.size !== 1 || !event.isPrimary || isInteractiveTarget(event.target)) { touchStart = null; return }
+    moved = false
+    touchStart = { id: event.pointerId, time: performance.now(), x: event.clientX, y: event.clientY }
+  }
+  const onPointerMove = (rawEvent: Event) => {
+    const event = rawEvent as PointerEvent
+    if (touchStart?.id === event.pointerId && Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) >= 24) moved = true
+  }
+  const onPointerEnd = (rawEvent: Event) => {
+    const event = rawEvent as PointerEvent
+    pointers.delete(event.pointerId)
+    if (event.pointerType === 'mouse') return
+    lastTouchAt = performance.now()
+    const start = touchStart
+    touchStart = null
+    if (event.type === 'pointercancel' || !start || start.id !== event.pointerId || options.getSelection().trim() || isInteractiveTarget(event.target)) return
+    completeGesture(start, event.clientX, event.clientY)
+  }
+  const onClick = (rawEvent: Event) => {
+    const event = rawEvent as MouseEvent
+    if (event.button !== 0 || performance.now() - lastTouchAt <= 1000 || options.getSelection().trim() || isInteractiveTarget(event.target)) return
+    handleTap(event.clientX, event.clientY)
+  }
+  const bindings: [string, EventListener][] = 'PointerEvent' in options.getWindow()
+    ? [['pointerdown', onPointerDown], ['pointermove', onPointerMove], ['pointerup', onPointerEnd], ['pointercancel', onPointerEnd]]
+    : [['touchstart', onTouchStart], ['touchmove', onTouchMove], ['touchend', onTouchEnd], ['touchcancel', onTouchCancel]]
+  bindings.push(['mousemove', onMouseMove], ['click', onClick])
+  for (const [type, listener] of bindings) source.addEventListener(type, listener, { capture: true, passive: true })
+  return () => { for (const [type, listener] of bindings) source.removeEventListener(type, listener, true) }
 }
 
 export function bindReaderKeyboard(source: EventTarget, options: ReaderKeyboardOptions): () => void {
   const onKeyDown = (rawEvent: Event) => {
     const event = rawEvent as KeyboardEvent
     if (
-      event.defaultPrevented
+      document.querySelector('dialog[open]') !== null
+      || event.defaultPrevented
       || event.isComposing
       || event.metaKey
       || event.ctrlKey

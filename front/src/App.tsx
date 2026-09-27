@@ -68,6 +68,9 @@ export default function App() {
           <Route path="changelog" element={<ChangelogManager />} />
         </Route>
 
+        {/* The full-screen reader owns its controls; the public Dock must not overlay them. */}
+        <Route path="/books/:id/read" element={<BookReader />} />
+
         {/* Public */}
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
@@ -80,7 +83,6 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/guestbook" element={<Guestbook />} />
           <Route path="/books" element={<Books />} />
-          <Route path="/books/:id/read" element={<BookReader />} />
           <Route path="/changelog" element={<Changelog />} />
           <Route path="*" element={<NotFound />} />
         </Route>

@@ -8,7 +8,8 @@
     "typecheck": "tsc -b --noEmit",
     "build": "vite build",
     "preview": "vite preview",
-    "test:editor": "playwright test"
+    "test:editor": "playwright test",
+    "test:reader": "playwright test -c playwright.reader.config.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.0",
@@ -31,6 +32,7 @@
     "@radix-ui/react-tooltip": "^1.2.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dompurify": "^3.4.16",
     "epubjs": "^0.3.93",
     "framer-motion": "^11.18.2",
     "highlight.js": "^11.10.0",
