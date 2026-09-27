@@ -22,12 +22,22 @@ pub enum Position {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NoteRect {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Entry {
     pub id: String,
     pub position: Position,
     pub quote: String,
     pub note: String,
     pub highlight: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rects: Option<Vec<NoteRect>>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -75,7 +85,24 @@ fn validate(state: &ReaderState, format: &str) -> Result<()> {
                 || entry.quote.len() > 10_000
                 || entry.note.len() > 20_000
                 || !validate_position(&entry.position, format)
-                || (entry.highlight && !matches!(&entry.position, Position::Epub { .. }))
+                || entry.rects.as_ref().is_some_and(|rects| {
+                    rects.is_empty()
+                        || rects.len() > 100
+                        || rects.iter().any(|rect| {
+                            ![rect.x, rect.y, rect.width, rect.height]
+                                .iter()
+                                .all(|v| v.is_finite())
+                                || rect.x < 0.0
+                                || rect.y < 0.0
+                                || rect.width <= 0.0
+                                || rect.height <= 0.0
+                                || rect.x + rect.width > 1.001
+                                || rect.y + rect.height > 1.001
+                        })
+                })
+                || (entry.highlight
+                    && matches!(&entry.position, Position::Pdf { .. })
+                    && entry.rects.is_none())
         })
     {
         return Err(AppError::BadRequest(
@@ -258,8 +285,39 @@ mod tests {
             quote: "".into(),
             note: "note".into(),
             highlight: false,
+            rects: None,
         };
         state.entries = vec![entry.clone(), entry];
+        assert!(validate(&state, "pdf").is_err());
+    }
+
+    #[test]
+    fn pdf_notes_require_bounded_text_rectangles() {
+        let mut state = ReaderState {
+            entries: vec![Entry {
+                id: "pdf-note".into(),
+                position: Position::Pdf { page: 1, pages: 3 },
+                quote: "Selected text".into(),
+                note: "A thought".into(),
+                highlight: true,
+                rects: Some(vec![NoteRect {
+                    x: 0.1,
+                    y: 0.2,
+                    width: 0.6,
+                    height: 0.03,
+                }]),
+            }],
+            ..Default::default()
+        };
+        assert!(validate(&state, "pdf").is_ok());
+        let encoded = serde_json::to_string(&state).unwrap();
+        let decoded: ReaderState = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(decoded.entries[0].rects.as_ref().unwrap()[0].width, 0.6);
+        state.entries[0].rects.as_mut().unwrap()[0].width = 1.0;
+        assert!(validate(&state, "pdf").is_err());
+        state.entries[0].rects = Some(vec![]);
+        assert!(validate(&state, "pdf").is_err());
+        state.entries[0].rects = None;
         assert!(validate(&state, "pdf").is_err());
     }
 

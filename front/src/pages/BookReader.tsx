@@ -1,11 +1,10 @@
 import { readPreference, writePreference } from '@/lib/browser-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Maximize2, Minimize2, Minus, Plus, Menu } from 'lucide-react'
+import { Maximize2, Minimize2, Minus, Plus, ArrowLeft } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { EpubReader, type ReaderFlow, type ReaderTheme } from '@/components/books/EpubReader'
-import { ReaderWorkspace } from '@/components/books/ReaderWorkspace'
+import { ReaderWorkspace, ReaderAccount } from '@/components/books/ReaderWorkspace'
 import { PdfReader } from '@/components/books/PdfReader'
-import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
 import { isReaderHoverDevice } from '@/lib/reader-gestures'
@@ -33,7 +32,10 @@ function initialReaderFlow(): ReaderFlow {
   return readPreference('book-reader-flow') === 'scrolled' ? 'scrolled' : 'paginated'
 }
 
-function ReaderPreferences({ format, flow, fontSize, fullscreen, theme, visible, onFlow, onFontSize, onTheme, onFullscreen }: {
+function ReaderPreferences({ format, flow, fontSize, fullscreen, theme, visible, onFlow, onFontSize, onTheme, onFullscreen, files, fileId, onFile }: {
+  files: BookFile[]
+  fileId: number
+  onFile: (id: number) => void
   format: string
   flow: ReaderFlow
   fontSize: number
@@ -80,18 +82,20 @@ function ReaderPreferences({ format, flow, fontSize, fullscreen, theme, visible,
               <Button type="button" size="icon" variant="ghost" disabled={fontSize >= 150} onClick={() => onFontSize(Math.min(150, fontSize + 10))} aria-label="Increase font size"><Plus /></Button>
             </div>
             <div className="reader-flow-options" role="group" aria-label="Reading mode">
-              <button type="button" aria-pressed={flow === 'paginated'} className={flow === 'paginated' ? 'is-selected' : ''} onClick={() => onFlow('paginated')}>Pages</button>
-              <button type="button" aria-pressed={flow === 'scrolled'} className={flow === 'scrolled' ? 'is-selected' : ''} onClick={() => onFlow('scrolled')}>Scroll</button>
+              <button type="button" aria-pressed={flow === 'paginated'} className={flow === 'paginated' ? 'is-selected' : ''} onClick={() => onFlow('paginated')}>翻页</button>
+              <button type="button" aria-pressed={flow === 'scrolled'} className={flow === 'scrolled' ? 'is-selected' : ''} onClick={() => onFlow('scrolled')}>滚动</button>
             </div>
           </>
         )}
         <div className="reader-theme-options" role="group" aria-label="Page appearance">
-          <button type="button" aria-pressed={theme === 'paper'} className={theme === 'paper' ? 'is-selected' : ''} onClick={() => onTheme('paper')}><i className="reader-theme-swatch is-paper" />Light</button>
-          <button type="button" aria-pressed={theme === 'night'} className={theme === 'night' ? 'is-selected' : ''} onClick={() => onTheme('night')}><i className="reader-theme-swatch is-night" />Dark</button>
+          <button type="button" aria-pressed={theme === 'paper'} className={theme === 'paper' ? 'is-selected' : ''} onClick={() => onTheme('paper')}><i className="reader-theme-swatch is-paper" />浅色</button>
+          <button type="button" aria-pressed={theme === 'night'} className={theme === 'night' ? 'is-selected' : ''} onClick={() => onTheme('night')}><i className="reader-theme-swatch is-night" />深色</button>
         </div>
         <Button type="button" variant="ghost" onClick={onFullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Enter full screen'}>
-          {fullscreen ? <Minimize2 /> : <Maximize2 />}<span>{fullscreen ? 'Exit full screen' : 'Full screen'}</span>
+          {fullscreen ? <Minimize2 /> : <Maximize2 />}<span>{fullscreen ? '退出全屏' : '全屏阅读'}</span>
         </Button>
+        {files.length > 1 && <label className="reader-edition">版本<select aria-label="阅读版本" value={fileId} onChange={event => onFile(Number(event.target.value))}>{files.map(file => <option key={file.id} value={file.id}>{file.format.toUpperCase()}</option>)}</select></label>}
+        <ReaderAccount />
       </div>}
     </div>
   )
@@ -110,6 +114,7 @@ export default function BookReader() {
   const [fullscreen, setFullscreen] = useState(false)
   const [fullscreenError, setFullscreenError] = useState('')
   const [uiVisible, setUiVisible] = useState(false)
+  const [toolbarHost, setToolbarHost] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     listBooks().then(setBooks).catch((loadError) => setError((loadError as Error).message))
@@ -120,6 +125,15 @@ export default function BookReader() {
     document.addEventListener('fullscreenchange', syncFullscreen)
     return () => document.removeEventListener('fullscreenchange', syncFullscreen)
   }, [])
+
+  useEffect(() => {
+    const failure = searchParams.get('auth_error')
+    if (!failure) return
+    setFullscreenError(failure === 'access_denied' ? '登录已取消，可继续阅读。' : failure === 'account_not_allowed' ? '此账号暂未开通登录权限。' : '登录未完成，请稍后重试。')
+    const next = new URLSearchParams(searchParams)
+    next.delete('auth_error')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const book = useMemo(() => books?.find((item) => item.id === Number(id)), [books, id])
   const readableFiles = useMemo(() => book?.files.filter(isReadable) ?? [], [book])
@@ -165,42 +179,20 @@ export default function BookReader() {
       }}
     >
       <SEO title={`Read ${book.title}`} description={`Read ${book.title} by ${book.author || 'Unknown author'}.`} path={`/books/${book.id}/read`} />
-      <button type="button" className="reader-menu-toggle" aria-label="阅读菜单" aria-expanded={uiVisible} onClick={toggleUi}><Menu size={20} /><span>菜单</span></button>
-      {fullscreenError && <button type="button" className="reader-fullscreen-message" onClick={() => setFullscreenError('')} role="status">{fullscreenError}</button>}
-      <div className="book-reader-back"><MagneticBackButton onClick={() => navigate('/books')} /></div>
-      <div className="book-reader-title" aria-label="Current book">
-        <strong>{book.title}</strong>
-        {book.author && <span>{book.author}</span>}
-      </div>
-      {readableFiles.length > 1 && (
-        <label className="book-reader-file-select">
-          <span className="sr-only">Edition</span>
-          <select value={file.id} onChange={(event) => changeFile(Number(event.target.value))}>
-            {readableFiles.map((item) => <option key={item.id} value={item.id}>{item.format.toUpperCase()}</option>)}
-          </select>
-        </label>
-      )}
-      <div className="book-reader-settings">
-        <ReaderPreferences
-          format={format}
-          flow={flow}
-          fontSize={fontSize}
-          fullscreen={fullscreen}
-          theme={theme}
-          visible={uiVisible}
-          onFlow={changeFlow}
-          onFontSize={changeFontSize}
-          onTheme={changeTheme}
-          onFullscreen={toggleFullscreen}
-        />
-      </div>
-      <div className="book-reader-surface">
-        <ReaderWorkspace key={file.id} bookId={book.id} file={file}>
+      {fullscreenError && <button type="button" className="reader-toast" onClick={() => setFullscreenError('')} role="status">{fullscreenError}</button>}
+      <ReaderWorkspace key={file.id} bookId={book.id} file={file}>
+        <header className="reader-toolbar" aria-label="阅读工具栏">
+          <button className="reader-back" type="button" aria-label="返回书架" onClick={() => navigate('/books')}><ArrowLeft size={18} /></button>
+          <div className="book-reader-title"><strong>{book.title}</strong>{book.author && <span>{book.author}</span>}</div>
+          <div ref={setToolbarHost} className="reader-toolbar-navigation" />
+          <ReaderPreferences format={format} flow={flow} fontSize={fontSize} fullscreen={fullscreen} theme={theme} visible={uiVisible} onFlow={changeFlow} onFontSize={changeFontSize} onTheme={changeTheme} onFullscreen={toggleFullscreen} files={readableFiles} fileId={file.id} onFile={changeFile} />
+        </header>
+        <div className="book-reader-surface">
           {format === 'epub'
-            ? <EpubReader key={file.id} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />
-            : <PdfReader key={file.id} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />}
-        </ReaderWorkspace>
-      </div>
+            ? <EpubReader toolbarHost={toolbarHost} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} flow={flow} fontSize={fontSize} theme={theme} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />
+            : <PdfReader toolbarHost={toolbarHost} title={book.title} cover={imageUrl(book.cover_url ?? undefined)} bookId={book.id} file={file} onTopHoverChange={syncUiWithTopHover} onToggleUi={toggleUi} />}
+        </div>
+      </ReaderWorkspace>
     </main>
   )
 }

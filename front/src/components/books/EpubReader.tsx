@@ -1,9 +1,11 @@
+import { createPortal } from 'react-dom'
+import { groupNoteMarkers, visibleRangeAnchor, type NoteMarker } from '@/lib/reader-annotations'
 import { ReaderLoading } from './ReaderLoading'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, List, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
 import { Button } from '@/components/ui/button'
-import { useReaderWorkspace } from './ReaderWorkspace'
+import { ParagraphNotes, useReaderWorkspace, type ReaderSelection } from './ReaderWorkspace'
 import { prepareEpubContent } from '@/lib/epub-content'
 import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
@@ -12,6 +14,7 @@ export type ReaderTheme = 'paper' | 'night'
 export type ReaderFlow = 'paginated' | 'scrolled'
 
 interface EpubReaderProps {
+  toolbarHost: HTMLElement | null
   title: string
   cover?: string
   bookId: number
@@ -44,13 +47,13 @@ function progressFromLocation(book: EpubBook, location: Location): number {
 function registerThemes(rendition: Rendition): void {
   rendition.themes.register('paper', {
     html: { background: '#fbfaf6', color: '#252925' },
-    body: { background: '#fbfaf6', color: '#252925', 'font-family': 'Georgia, "Noto Serif SC", serif', padding: '0 4%' },
+    body: { background: '#fbfaf6', color: '#252925', 'font-family': 'Georgia, "Noto Serif SC", serif', padding: '0 6%' },
     p: { 'line-height': '1.85' },
     a: { color: '#526a5e' },
   })
   rendition.themes.register('night', {
     html: { background: '#191c19', color: '#e5e8e5' },
-    body: { background: '#191c19', color: '#e5e8e5', 'font-family': 'Georgia, "Noto Serif SC", serif', padding: '0 4%' },
+    body: { background: '#191c19', color: '#e5e8e5', 'font-family': 'Georgia, "Noto Serif SC", serif', padding: '0 6%' },
     p: { 'line-height': '1.85' },
     a: { color: '#a8c0b3' },
   })
@@ -92,8 +95,9 @@ function TableOfContents({ items, onSelect }: { items: NavItem[]; onSelect: (hre
   )
 }
 
-export function EpubReader({ title, cover, bookId, file, flow, fontSize, onTopHoverChange, onToggleUi, theme }: EpubReaderProps) {
-  const { session, snapshot, setSelection, jump } = useReaderWorkspace()
+export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, fontSize, onTopHoverChange, onToggleUi, theme }: EpubReaderProps) {
+  const { session, snapshot, setSelection } = useReaderWorkspace()
+  const [markers, setMarkers] = useState<NoteMarker[]>([])
   const bookRef = useRef<EpubBook | null>(null)
   const sectionRef = useRef(0)
   const [chapters, setChapters] = useState({ previous: false, next: false })
@@ -153,6 +157,7 @@ export function EpubReader({ title, cover, bookId, file, flow, fontSize, onTopHo
           spread: flow === 'scrolled' ? 'none' : 'auto',
           flow: flow === 'scrolled' ? 'scrolled-doc' : 'paginated',
           minSpreadWidth: 1100,
+          gap: 64, // Leave room for paragraph icons without covering text.
           // Only parent-owned reader listeners run; prepareEpubContent blocks book scripts.
           allowScriptedContent: true,
         })
@@ -202,14 +207,22 @@ export function EpubReader({ title, cover, bookId, file, flow, fontSize, onTopHo
         rendition.on('selected', (cfi: string, contents: Contents) => {
           const quote = contents.window.getSelection()?.toString().trim() ?? ''
           if (!quote || disposed) return
+          const viewport = viewportRef.current?.getBoundingClientRect()
+          const frame = contents.window.frameElement?.getBoundingClientRect()
+          if (!viewport || !frame) return
+          const anchor = visibleRangeAnchor(contents.range(cfi), viewport, { x: frame.left, y: frame.top })
+          if (!anchor) return
           const progress = session.getProgress()
-          setSelection({ position: { kind: 'epub', cfi, percent: progress?.kind === 'epub' ? progress.percent : 0 }, quote })
+          setSelection({ position: { kind: 'epub', cfi, percent: progress?.kind === 'epub' ? progress.percent : 0 }, quote, anchor })
         })
         const nav = (await activeBook.loaded.navigation).toc
         if (disposed) return
         setNavigation(nav)
+        let lastCfi = ''
         rendition.on('relocated', (nextLocation: Location) => {
           if (!activeBook || disposed) return
+          if (lastCfi !== nextLocation.start.cfi) setSelection(null)
+          lastCfi = nextLocation.start.cfi
           const percent = progressFromLocation(activeBook, nextLocation)
           setPosition({
             atEnd: nextLocation.atEnd,
@@ -271,19 +284,66 @@ export function EpubReader({ title, cover, bookId, file, flow, fontSize, onTopHo
     if (!rendition || loading) return
     const added: string[] = []
     for (const entry of snapshot.data.entries) {
-      if (!entry.highlight || entry.position.kind !== 'epub') continue
+      if (!entry.note || !entry.quote || entry.position.kind !== 'epub') continue
       try {
-        rendition.annotations.highlight(entry.position.cfi, {}, undefined, 'reader-highlight', { fill: '#e5b84b', 'fill-opacity': '0.35', 'mix-blend-mode': 'multiply' })
+        rendition.annotations.underline(entry.position.cfi, {}, undefined, 'reader-note-underline', { stroke: '#809588', 'stroke-opacity': '0.5', 'stroke-width': '1' })
         added.push(entry.position.cfi)
       } catch { /* An invalid location in a replaced file must not prevent reading. */ }
     }
-    return () => { for (const cfi of added) { try { rendition.annotations.remove(cfi, 'highlight') } catch { /* Rendition already destroyed. */ } } }
+    return () => { for (const cfi of added) { try { rendition.annotations.remove(cfi, 'underline') } catch { /* Rendition already destroyed. */ } } }
   }, [snapshot.data.entries, renderVersion, loading])
 
   useEffect(() => {
-    if (!jump || jump.position.kind !== 'epub' || loading) return
-    void renditionRef.current?.display(jump.position.cfi).catch(() => setNavigationError('无法定位此标记，书籍文件可能已更换。'))
-  }, [jump, loading, renderVersion])
+    const rendition = renditionRef.current
+    const viewport = viewportRef.current
+    if (!rendition || !viewport || loading) return
+    let scheduled = 0
+    const update = () => {
+      cancelAnimationFrame(scheduled)
+      scheduled = requestAnimationFrame(() => {
+        const bounds = viewport.getBoundingClientRect()
+        const points: { id: string; x: number; y: number }[] = []
+        let selection: ReaderSelection | null = null
+        for (const contents of visibleContents(rendition)) {
+          const frame = contents.window.frameElement?.getBoundingClientRect()
+          if (!frame) continue
+          const native = contents.window.getSelection()
+          if (native?.rangeCount && native.toString().trim()) {
+            const range = native.getRangeAt(0)
+            const anchor = visibleRangeAnchor(range, bounds, { x: frame.left, y: frame.top })
+            if (anchor) selection = { position: { kind: 'epub', cfi: contents.cfiFromRange(range), percent: session.getProgress()?.kind === 'epub' ? (session.getProgress() as { percent: number }).percent : 0 }, quote: native.toString().trim(), anchor }
+          }
+          for (const entry of snapshot.data.entries) {
+            if (!entry.note || !entry.quote || entry.position.kind !== 'epub') continue
+            try {
+              const section = bookRef.current?.spine.get(entry.position.cfi)
+              if (section?.index !== contents.sectionIndex) continue
+              const anchor = visibleRangeAnchor(contents.range(entry.position.cfi), bounds, { x: frame.left, y: frame.top })
+              if (anchor) points.push({ id: entry.id, x: bounds.width >= 1100 && flow === 'paginated' && anchor.right < bounds.left + bounds.width / 2 ? bounds.left + bounds.width / 2 - 14 : bounds.right - 14, y: (anchor.top + anchor.bottom) / 2 })
+            } catch { /* A removed chapter must not prevent reading. */ }
+          }
+        }
+        setMarkers(groupNoteMarkers(points))
+        setSelection(selection)
+      })
+    }
+    const scroll = update
+    rendition.on('rendered', update)
+    rendition.on('relocated', update)
+    rendition.on('resized', update)
+    viewport.addEventListener('scroll', scroll, true)
+    const observer = new ResizeObserver(update)
+    observer.observe(viewport)
+    update()
+    return () => {
+      cancelAnimationFrame(scheduled)
+      rendition.off('rendered', update)
+      rendition.off('relocated', update)
+      rendition.off('resized', update)
+      viewport.removeEventListener('scroll', scroll, true)
+      observer.disconnect()
+    }
+  }, [snapshot.data.entries, loading, renderVersion, fontSize, flow, setSelection, session])
 
   const displayChapter = (href: string) => {
     setNavigationError('')
@@ -308,13 +368,14 @@ export function EpubReader({ title, cover, bookId, file, flow, fontSize, onTopHo
         {loading && <ReaderLoading title={title} cover={cover} message={phase} />}
         {error && <div className="reader-state reader-error"><strong>Could not open this EPUB</strong><span>{error}</span><Button variant="outline" onClick={() => { fileCache.current = null; setRetry(value => value + 1) }}>重试</Button></div>}
       </section>
-      <div className="reader-chapter-controls" aria-label="Chapter navigation">
+      <ParagraphNotes markers={markers} />
+      {toolbarHost && createPortal(<div className="reader-chapter-controls" aria-label="Chapter navigation">
         <Button size="icon" variant="ghost" onClick={() => setTocOpen(true)} aria-label="Open table of contents"><List /></Button>
         <Button size="icon" variant="ghost" disabled={loading || !chapters.previous} onClick={() => changeChapter('prev')} aria-label="上一章"><ChevronsLeft /></Button>
         <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atStart} onClick={() => void renditionRef.current?.prev()} aria-label="Previous page"><ChevronLeft /></Button>
         <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atEnd} onClick={() => void renditionRef.current?.next()} aria-label="Next page"><ChevronRight /></Button>
         <Button size="icon" variant="ghost" disabled={loading || !chapters.next} onClick={() => changeChapter('next')} aria-label="下一章"><ChevronsRight /></Button>
-      </div>
+      </div>, toolbarHost)}
       {navigationError && <button type="button" className="reader-navigation-error" onClick={() => setNavigationError('')}>{navigationError}</button>}
     </div>
   )

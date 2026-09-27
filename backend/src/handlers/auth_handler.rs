@@ -18,7 +18,13 @@ const GOOGLE_AUTHORIZE_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth
 const GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL: &str = "https://openidconnect.googleapis.com/v1/userinfo";
 const OAUTH_STATE_COOKIE: &str = "blog_google_oauth_state";
+const OAUTH_RETURN_COOKIE: &str = "blog_google_oauth_return";
 const OAUTH_STATE_TTL_SECONDS: u64 = 10 * 60;
+
+#[derive(Debug, Default, Deserialize)]
+pub struct GoogleStartQuery {
+    return_to: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct GoogleCallbackQuery {
@@ -68,9 +74,13 @@ impl CallbackFailure {
     }
 }
 
-pub async fn google_start(State(state): State<AppState>) -> Response {
+pub async fn google_start(
+    State(state): State<AppState>,
+    Query(query): Query<GoogleStartQuery>,
+) -> Response {
+    let return_to = query.return_to.as_deref().and_then(reader_return_path);
     let Some(config) = state.config.google_auth.as_ref() else {
-        return login_error_redirect(CallbackFailure::NotConfigured);
+        return login_error_redirect(CallbackFailure::NotConfigured, return_to.as_deref());
     };
 
     let oauth_state = uuid::Uuid::new_v4().simple().to_string();
@@ -78,13 +88,21 @@ pub async fn google_start(State(state): State<AppState>) -> Response {
         Ok(url) => url,
         Err(error) => {
             tracing::error!("Failed to build Google authorization URL: {}", error);
-            return login_error_redirect(CallbackFailure::NotConfigured);
+            return login_error_redirect(CallbackFailure::NotConfigured, return_to.as_deref());
         }
     };
     let mut response = Redirect::to(authorize_url.as_str()).into_response();
     append_cookie(
         &mut response,
         state_cookie(&oauth_state, &state.config, OAUTH_STATE_TTL_SECONDS),
+    );
+    append_cookie(
+        &mut response,
+        return_cookie(
+            return_to.as_deref().unwrap_or(""),
+            &state.config,
+            OAUTH_STATE_TTL_SECONDS,
+        ),
     );
     prevent_caching(&mut response);
     response
@@ -95,11 +113,15 @@ pub async fn google_callback(
     Query(query): Query<GoogleCallbackQuery>,
     headers: HeaderMap,
 ) -> Response {
+    let return_to = cookie_value(&headers, OAUTH_RETURN_COOKIE)
+        .and_then(|value| urlencoding::decode(value).ok())
+        .and_then(|value| reader_return_path(&value));
     let result = complete_google_callback(&state, &headers, query).await;
     let mut response = match result {
         Ok(identity) => match issue_session_token(&identity, &state.config.jwt.secret) {
             Ok(token) => {
-                let mut response = Redirect::to("/admin").into_response();
+                let mut response =
+                    Redirect::to(return_to.as_deref().unwrap_or("/admin")).into_response();
                 append_cookie(
                     &mut response,
                     session_cookie(&token, &state.config, ADMIN_SESSION_TTL_SECONDS),
@@ -108,12 +130,13 @@ pub async fn google_callback(
             }
             Err(error) => {
                 tracing::error!("Failed to establish Google admin session: {}", error);
-                login_error_redirect(CallbackFailure::Session)
+                login_error_redirect(CallbackFailure::Session, return_to.as_deref())
             }
         },
-        Err(failure) => login_error_redirect(failure),
+        Err(failure) => login_error_redirect(failure, return_to.as_deref()),
     };
     append_cookie(&mut response, state_cookie("", &state.config, 0));
+    append_cookie(&mut response, return_cookie("", &state.config, 0));
     prevent_caching(&mut response);
     response
 }
@@ -245,11 +268,54 @@ fn build_authorize_url(
     Ok(url)
 }
 
-fn login_error_redirect(failure: CallbackFailure) -> Response {
-    let mut response =
-        Redirect::to(&format!("/admin/login?error={}", failure.query_value())).into_response();
+// Only a canonical reader path may be used as an OAuth destination. Never accept
+// absolute URLs, encoded path separators, fragments or arbitrary query strings.
+fn reader_return_path(value: &str) -> Option<String> {
+    if value.len() > 200 {
+        return None;
+    }
+    let (path, query) = value
+        .split_once('?')
+        .map_or((value, None), |(p, q)| (p, Some(q)));
+    let id = path.strip_prefix("/books/")?.strip_suffix("/read")?;
+    let positive_id = |v: &str| {
+        !v.is_empty()
+            && v.bytes().all(|b| b.is_ascii_digit())
+            && v.parse::<i64>().is_ok_and(|n| n > 0)
+    };
+    if !positive_id(id) {
+        return None;
+    }
+    if let Some(query) = query {
+        if !positive_id(query.strip_prefix("file=")?) {
+            return None;
+        }
+    }
+    Some(value.to_string())
+}
+
+fn login_error_redirect(failure: CallbackFailure, return_to: Option<&str>) -> Response {
+    let target = match return_to {
+        Some(path) => format!(
+            "{path}{}auth_error={}",
+            if path.contains('?') { "&" } else { "?" },
+            failure.query_value()
+        ),
+        None => format!("/admin/login?error={}", failure.query_value()),
+    };
+    let mut response = Redirect::to(&target).into_response();
     prevent_caching(&mut response);
     response
+}
+
+fn return_cookie(value: &str, config: &Config, max_age: u64) -> String {
+    build_cookie(
+        OAUTH_RETURN_COOKIE,
+        &urlencoding::encode(value),
+        "/api/auth/google/callback",
+        max_age,
+        config.environment.is_production(),
+    )
 }
 
 fn state_cookie(value: &str, config: &Config, max_age: u64) -> String {
@@ -332,6 +398,39 @@ mod tests {
         assert_eq!(
             params.get("redirect_uri").map(String::as_str),
             Some("https://blog.example/api/auth/google/callback")
+        );
+    }
+
+    #[test]
+    fn reader_sign_in_returns_to_the_exact_edition_without_open_redirects() {
+        assert_eq!(
+            reader_return_path("/books/12/read?file=7").as_deref(),
+            Some("/books/12/read?file=7")
+        );
+        assert!(reader_return_path("/books/12/read").is_some());
+        for invalid in [
+            "https://evil.example",
+            "//evil.example",
+            "/\\evil.example",
+            "/books/../read",
+            "/books/0/read",
+            "/books/12/read?file=7&next=https://evil.example",
+            "/books/%2f/read",
+            "/books/12/read#evil",
+            "/books/12/read\r\nLocation:evil",
+            "/admin",
+        ] {
+            assert!(reader_return_path(invalid).is_none(), "{invalid}");
+        }
+        let response = login_error_redirect(CallbackFailure::Denied, Some("/books/12/read?file=7"));
+        assert_eq!(
+            response.headers()[header::LOCATION],
+            "/books/12/read?file=7&auth_error=access_denied"
+        );
+        let response = login_error_redirect(CallbackFailure::Denied, None);
+        assert_eq!(
+            response.headers()[header::LOCATION],
+            "/admin/login?error=access_denied"
         );
     }
 

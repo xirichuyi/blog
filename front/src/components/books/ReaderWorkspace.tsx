@@ -1,18 +1,20 @@
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { BookmarkPlus, NotebookPen, X } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { ReaderSession, type ReaderEntry, type ReaderSnapshot } from '@/lib/reader-state'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { CloudOff, MessageCircle, PenLine, Trash2, UserRound, X } from 'lucide-react'
+import { ReaderSession, type ReaderEntry, type ReaderSnapshot, type NoteRect } from '@/lib/reader-state'
 import type { ReaderProgress } from '@/lib/book-progress'
+import type { NoteAnchor, NoteMarker } from '@/lib/reader-annotations'
+import { googleLoginUrl } from '@/services/admin'
 import type { BookFile } from '@/services/api'
 
-interface Selection { position: ReaderProgress; quote: string }
+export interface ReaderSelection { position: ReaderProgress; quote: string; anchor: NoteAnchor; rects?: NoteRect[] }
+interface NotePanel { serial: number; ids: string[]; anchor: NoteAnchor; selection?: ReaderSelection }
 interface ReaderContextValue {
   session: ReaderSession
   snapshot: ReaderSnapshot
-  selection: Selection | null
-  setSelection: (selection: Selection | null) => void
-  jump: { position: ReaderProgress; id: number } | null
-  navigate: (position: ReaderProgress) => void
+  selection: ReaderSelection | null
+  setSelection: (selection: ReaderSelection | null) => void
+  openNotes: (ids: string[], anchor: NoteAnchor) => void
+  loginHref: string
 }
 const ReaderContext = createContext<ReaderContextValue | null>(null)
 export function useReaderWorkspace() {
@@ -21,7 +23,7 @@ export function useReaderWorkspace() {
   return value
 }
 export function positionLabel(position: ReaderProgress | null) {
-  return !position ? '正在定位' : position.kind === 'pdf' ? `第 ${position.page} / ${position.pages} 页` : `${Math.round(position.percent)}%`
+  return !position ? '—' : position.kind === 'pdf' ? `${position.page} / ${position.pages}` : `${Math.round(position.percent)}%`
 }
 
 export function ReaderWorkspace({ bookId, file, children }: { bookId: number; file: BookFile; children: ReactNode }) {
@@ -32,88 +34,123 @@ export function ReaderWorkspace({ bookId, file, children }: { bookId: number; fi
     void next.start()
     return () => next.dispose()
   }, [bookId, file.id, file.format])
-  return session ? <WorkspaceSession session={session}>{children}</WorkspaceSession> : <div className="reader-route-state">正在恢复阅读数据…</div>
+  return session ? <WorkspaceSession session={session} loginHref={googleLoginUrl(`/books/${bookId}/read?file=${file.id}`)}>{children}</WorkspaceSession> : <div className="reader-route-state">正在打开…</div>
 }
 
-function WorkspaceSession({ session, children }: { session: ReaderSession; children: ReactNode }) {
+function WorkspaceSession({ session, loginHref, children }: { session: ReaderSession; loginHref: string; children: ReactNode }) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot)
-  const [selection, setSelection] = useState<Selection | null>(null)
-  const [jump, setJump] = useState<{ position: ReaderProgress; id: number; generation: number } | null>(null)
-  const navigate = (position: ReaderProgress) => {
+  const [selection, setSelection] = useState<ReaderSelection | null>(null)
+  const [panel, setPanel] = useState<NotePanel | null>(null)
+  const serial = useRef(0)
+  const openNotes = useCallback((ids: string[], anchor: NoteAnchor) => {
     setSelection(null)
-    setJump(previous => ({ position, id: (previous?.id ?? 0) + 1, generation: snapshot.generation }))
-  }
+    setPanel({ ids, anchor, serial: ++serial.current })
+  }, [])
+  useEffect(() => {
+    if (!panel) return
+    window.getSelection()?.removeAllRanges()
+    document.querySelectorAll<HTMLIFrameElement>('.epub-viewport iframe').forEach(frame => {
+      try { frame.contentWindow?.getSelection()?.removeAllRanges() } catch { /* Unavailable chapter. */ }
+    })
+  }, [panel])
   if (!snapshot.ready) return <div className="reader-route-state" role="status">
-    <span>{snapshot.message || '正在恢复阅读数据…'}</span>
+    <span>{snapshot.message || '正在打开…'}</span>
     {snapshot.status === 'error' && <button type="button" onClick={() => void session.start()}>重试</button>}
   </div>
-  return <ReaderContext.Provider value={{ session, snapshot, selection, setSelection, jump: jump?.generation === snapshot.generation ? jump : null, navigate }}>
+  const percent = snapshot.data.progress?.kind === 'epub' ? snapshot.data.progress.percent : snapshot.data.progress ? snapshot.data.progress.page / snapshot.data.progress.pages * 100 : 0
+  const openSelection = () => {
+    if (!selection) return
+    const existing = snapshot.data.entries.find(entry => entry.highlight && entry.position.kind === 'epub' && selection.position.kind === 'epub' && entry.position.cfi === selection.position.cfi)
+    setPanel({ ids: existing ? [existing.id] : [], selection: existing ? undefined : selection, anchor: selection.anchor, serial: ++serial.current })
+    setSelection(null)
+  }
+  return <ReaderContext.Provider value={{ session, snapshot, selection, setSelection, openNotes, loginHref }}>
     <div className="reader-workspace" key={snapshot.generation}>{children}</div>
-    <ReaderNotes />
+    <div className="reader-progress" aria-label={`阅读进度 ${positionLabel(snapshot.data.progress)}`}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" /><circle className="reader-progress-fill" cx="8" cy="8" r="6" pathLength="100" strokeDasharray={`${percent} 100`} /></svg>
+      <span>{positionLabel(snapshot.data.progress)}</span>
+      <ReaderSyncIssue />
+    </div>
+    {selection && !panel && <button className="reader-selection-action" type="button" style={{ left: Math.max(72, Math.min(window.innerWidth - 72, (selection.anchor.left + selection.anchor.right) / 2)), top: Math.min(window.innerHeight - 72, Math.max(12, selection.anchor.bottom + 10)) }} onPointerDown={event => event.preventDefault()} onPointerUp={event => { event.preventDefault(); openSelection() }} onClick={openSelection}><PenLine size={15} />写批注</button>}
+    {panel && <AnnotationCard key={panel.serial} panel={panel} onClose={() => { setPanel(null); setSelection(null) }} />}
   </ReaderContext.Provider>
 }
 
-function ReaderNotes() {
-  const { session, snapshot, selection, setSelection, navigate } = useReaderWorkspace()
-  const [open, setOpen] = useState(false)
-  const [notice, setNotice] = useState('')
-  const dialogRef = useRef<HTMLDialogElement>(null)
-  const data = snapshot.data
-  useEffect(() => {
-    if (open) dialogRef.current?.showModal()
-    else dialogRef.current?.close()
-  }, [open])
-  const add = (highlight: boolean) => {
-    const position = highlight ? selection?.position : data.progress
-    if (!position) return
-    if (data.entries.length >= 500) { setNotice('本书最多保存 500 条标记，请先整理已有标记。'); return }
-    const duplicate = data.entries.find(e => e.highlight === highlight && (e.position.kind === 'epub' && position.kind === 'epub' ? e.position.cfi === position.cfi : e.position.kind === 'pdf' && position.kind === 'pdf' && e.position.page === position.page))
-    if (duplicate) { setNotice('此位置已经标记，可在下方编辑笔记。'); return }
-    const entry: ReaderEntry = {
-      id: typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      position, quote: highlight ? (selection?.quote ?? '').slice(0, 2000) : '', note: '', highlight,
-    }
-    session.update(current => ({ ...current, entries: [...current.entries, entry] }))
-    setNotice(highlight ? '已添加高亮，可在下方记录想法。' : '已添加书签，可在下方记录想法。')
-    if (highlight) setSelection(null)
-    setOpen(true)
+export function ReaderAccount() {
+  const { session, snapshot, loginHref } = useReaderWorkspace()
+  return snapshot.account && snapshot.status !== 'error'
+    ? <div className="reader-account" title={snapshot.account}><UserRound size={16} /><span>{snapshot.account}</span></div>
+    : <a className="reader-login" href={loginHref} onClick={() => session.prepareLogin()}><UserRound size={16} /><span>登录</span></a>
+}
+
+export function ParagraphNotes({ markers }: { markers: NoteMarker[] }) {
+  const { openNotes } = useReaderWorkspace()
+  return <div className="reader-margin-notes">{markers.map(marker => <button key={marker.ids.join(',')} type="button" className="reader-margin-note" aria-label={marker.ids.length > 1 ? `查看 ${marker.ids.length} 条批注` : '查看批注'} style={{ left: marker.x - 14, top: marker.y - 14 }} onClick={event => {
+    event.stopPropagation()
+    const rect = event.currentTarget.getBoundingClientRect()
+    openNotes(marker.ids, rect)
+  }}><MessageCircle size={14} strokeWidth={1.6} />{marker.ids.length > 1 && <small>{marker.ids.length}</small>}</button>)}</div>
+}
+
+function AnnotationCard({ panel, onClose }: { panel: NotePanel; onClose: () => void }) {
+  const { session, snapshot, loginHref } = useReaderWorkspace()
+  const dialog = useRef<HTMLDialogElement>(null)
+  const backdropPressed = useRef(false)
+  const [editId, setEditId] = useState<string | null>(panel.selection ? 'new' : null)
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState('')
+  const entries = snapshot.data.entries.filter(entry => panel.ids.includes(entry.id))
+  const editing = entries.find(entry => entry.id === editId)
+  const quote = panel.selection?.quote ?? editing?.quote ?? ''
+  useEffect(() => { dialog.current?.showModal(); return () => dialog.current?.close() }, [])
+  const save = () => {
+    if (!draft.trim()) return
+    if (panel.selection && snapshot.data.entries.length >= 500) { setError('批注已达上限，请先整理已有批注。'); return }
+    if (panel.selection) {
+      const entry: ReaderEntry = { id: crypto.randomUUID(), position: panel.selection.position, quote: panel.selection.quote.slice(0, 2000), note: draft.trim(), highlight: true, ...(panel.selection.rects ? { rects: panel.selection.rects } : {}) }
+      session.update(data => ({ ...data, entries: [...data.entries, entry] }))
+    } else if (editing) session.update(data => ({ ...data, entries: data.entries.map(entry => entry.id === editing.id ? { ...entry, note: draft.trim() } : entry) }))
+    onClose()
   }
-  const retry = () => void session.refresh()
+  return <dialog ref={dialog} className="reader-annotation-card" aria-label="段落批注" style={{ '--note-left': `${Math.max(12, Math.min(window.innerWidth - 352, panel.anchor.right - 320))}px`, '--note-top': `${Math.max(20, Math.min(window.innerHeight - 360, panel.anchor.bottom + 12))}px` } as React.CSSProperties} onCancel={onClose} onPointerDown={event => { backdropPressed.current = event.target === event.currentTarget }} onClick={event => { if (backdropPressed.current && event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}>
+    <header className="reader-note-header"><span>{editId ? '写下想法' : '批注'}</span><button type="button" className="reader-note-close" aria-label="关闭批注" onClick={onClose}><X size={17} /></button></header>
+    {editId ? <>
+      <blockquote>{quote}</blockquote>
+      <textarea aria-label="批注内容" autoFocus value={draft} onChange={event => setDraft(event.target.value)} maxLength={5000} placeholder="这一段，让你想到了什么？" />
+      {error && <p className="reader-note-error" role="alert">{error}</p>}
+      <footer className="reader-note-footer">
+        {editing ? <button type="button" className="reader-note-delete" aria-label="删除批注" onClick={() => { session.update(data => ({ ...data, entries: data.entries.filter(entry => entry.id !== editing.id) })); onClose() }}><Trash2 size={17} /></button> : <span />}
+        <button type="button" className="reader-note-done" disabled={!draft.trim()} onClick={save}>保存批注</button>
+      </footer>
+    </> : <>
+      <div className="reader-note-thread">{entries.map(entry => <article key={entry.id}>
+        <blockquote>{entry.quote}</blockquote>
+        <p>{entry.note || '还没有写下想法。'}</p>
+        <button type="button" className="reader-note-edit" aria-label="编辑批注" onClick={() => { setEditId(entry.id); setDraft(entry.note) }}><PenLine size={14} />编辑</button>
+      </article>)}</div>
+      {!entries.length && <p>这条批注已被移除。</p>}
+      {!snapshot.account && <a className="reader-note-login" href={loginHref} onClick={() => session.prepareLogin()}>登录</a>}
+    </>}
+  </dialog>
+}
+
+function ReaderSyncIssue() {
+  const { session, snapshot } = useReaderWorkspace()
+  const [open, setOpen] = useState(false)
+  const dialog = useRef<HTMLDialogElement>(null)
+  const issue = snapshot.status === 'error' || snapshot.status === 'conflict' || snapshot.message.includes('不可用')
+  useEffect(() => { if (open && issue) dialog.current?.showModal(); else { dialog.current?.close(); setOpen(false) } }, [open, issue])
+  if (!issue) return null
   return <>
-    <div className="reader-notes-launcher">
-      {selection && <button type="button" className="reader-selection-action" onClick={() => add(true)}>高亮选中文字</button>}
-      <button type="button" aria-label="书签、笔记与书评" onClick={() => setOpen(true)}><NotebookPen size={18} /><span>{positionLabel(data.progress)}</span></button>
-      <span role="status" className={`reader-sync-status is-${snapshot.status}`}>
-        {snapshot.status === 'error' || snapshot.status === 'conflict' ? <button type="button" onClick={() => setOpen(true)}>{snapshot.status === 'conflict' ? '同步冲突' : '同步失败'} · 查看</button> : snapshot.message}
-      </span>
-    </div>
-    <dialog ref={dialogRef} className="reader-notes-dialog" aria-label="书签、笔记与书评" onCancel={() => setOpen(false)} onClick={event => { if (event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) setOpen(false) } }}>
-      <div className="reader-notes-header"><h2>书签、笔记与书评</h2><button type="button" aria-label="关闭笔记" onClick={() => setOpen(false)}><X size={20} /></button></div>
-      <p className="reader-sync-detail" role="status">{snapshot.message}</p>
-      {!snapshot.account && <Link to="/admin">登录以启用云端同步</Link>}
-      {snapshot.status === 'error' && <button type="button" onClick={retry}>重试同步</button>}
-      {snapshot.status === 'conflict' && <div className="reader-conflict-actions">
-        <button type="button" onClick={() => void session.refresh(true)}>{snapshot.account ? '使用云端版本，放弃本地修改' : '使用另一页面的本地版本'}</button>
-        <button type="button" onClick={() => void session.keepLocal()}>{snapshot.account ? '用当前版本覆盖云端' : '保留当前本地版本'}</button>
-      </div>}
-      <div className="reader-note-actions">
-        <button type="button" disabled={!data.progress} onClick={() => add(false)}><BookmarkPlus size={18} />添加当前位置书签</button>
-        {selection && <button type="button" onClick={() => add(true)}>高亮并记录选中文字</button>}
-      </div>
-      <p className="reader-note-help">EPUB 长按选中文字后可高亮批注。PDF 支持页码书签和页面笔记。内容仅对当前账号可见。</p>
-      {notice && <p role="status">{notice}</p>}
-      <ol className="reader-entry-list">
-        {data.entries.map(entry => <li key={entry.id}>
-          <div className="reader-entry-heading"><button type="button" onClick={() => { navigate(entry.position); setOpen(false) }}>{entry.highlight ? '高亮' : '书签'} · {positionLabel(entry.position)} · 跳转</button><button type="button" aria-label="删除标记" onClick={() => session.update(current => ({ ...current, entries: current.entries.filter(item => item.id !== entry.id) }))}>删除</button></div>
-          {entry.quote && <blockquote>{entry.quote}</blockquote>}
-          <label>笔记<textarea aria-label={`笔记 ${entry.id}`} value={entry.note} maxLength={5000} placeholder="记录想法（自动保存）" onChange={event => { const note = event.target.value; session.update(current => ({ ...current, entries: current.entries.map(item => item.id === entry.id ? { ...item, note } : item) })) }} /></label>
-        </li>)}
-      </ol>
-      {!data.entries.length && <p>还没有标记。</p>}
-      <section className="reader-review"><h3>此版本书评</h3>
-        <label>评分<select aria-label="图书评分" value={data.rating ?? ''} onChange={event => { const rating = event.target.value ? Number(event.target.value) : null; session.update(current => ({ ...current, rating })) }}><option value="">未评分</option>{[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} 星</option>)}</select></label>
-        <label>书评<textarea aria-label="书评" value={data.review} maxLength={5000} placeholder="写下读后感（自动保存）" onChange={event => { const review = event.target.value; session.update(current => ({ ...current, review })) }} /></label>
-      </section>
+    <button type="button" className="reader-save-issue" aria-label="查看保存问题" onClick={() => setOpen(true)}><CloudOff size={13} /></button>
+    <dialog ref={dialog} className="reader-annotation-card reader-sync-dialog" aria-label="保存问题" onCancel={() => setOpen(false)}>
+      <header className="reader-note-header"><span>保存遇到问题</span><button type="button" aria-label="关闭提示" onClick={() => setOpen(false)}><X size={17} /></button></header>
+      <p>{snapshot.message}</p>
+      <div className="reader-conflict-actions">{snapshot.status === 'conflict' ? <>
+        <button type="button" onClick={() => void session.refresh(true)}>使用另一份记录</button>
+        <button type="button" onClick={() => void session.keepLocal()}>保留当前记录</button>
+      </> : <button type="button" onClick={() => void session.refresh()}>重试保存</button>}</div>
+      <ReaderAccount />
     </dialog>
   </>
 }

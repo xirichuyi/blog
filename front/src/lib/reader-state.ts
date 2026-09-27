@@ -2,12 +2,14 @@ import { getAdminSession } from '@/services/admin'
 import { ApiError, apiRequest } from '@/services/http'
 import { loadReaderProgress, type ReaderProgress } from './book-progress'
 
+export interface NoteRect { x: number; y: number; width: number; height: number }
 export interface ReaderEntry {
   id: string
   position: ReaderProgress
   quote: string
   note: string
   highlight: boolean
+  rects?: NoteRect[]
 }
 export interface ReaderData {
   revision: number
@@ -38,7 +40,7 @@ function validData(value: unknown): value is ReaderData {
   if (!value || typeof value !== 'object') return false
   const d = value as ReaderData
   return Number.isSafeInteger(d.revision) && d.revision >= 0 && (d.progress === null || validPosition(d.progress))
-    && Array.isArray(d.entries) && d.entries.length <= 500 && d.entries.every(e => e && typeof e.id === 'string' && validPosition(e.position) && typeof e.quote === 'string' && typeof e.note === 'string' && typeof e.highlight === 'boolean')
+    && Array.isArray(d.entries) && d.entries.length <= 500 && d.entries.every(e => e && typeof e.id === 'string' && validPosition(e.position) && typeof e.quote === 'string' && typeof e.note === 'string' && typeof e.highlight === 'boolean' && (e.rects === undefined || (Array.isArray(e.rects) && e.rects.length > 0 && e.rects.length <= 100 && e.rects.every(r => r && [r.x, r.y, r.width, r.height].every(Number.isFinite) && r.x >= 0 && r.y >= 0 && r.width > 0 && r.height > 0 && r.x + r.width <= 1.001 && r.y + r.height <= 1.001))))
     && typeof d.review === 'string' && (d.rating === null || (Number.isInteger(d.rating) && d.rating >= 1 && d.rating <= 5))
 }
 
@@ -87,6 +89,12 @@ export class ReaderSession {
     try { return await apiRequest<T>(this.path, { ...init, credentials: 'include', headers: { 'X-Reader-Account': this.snapshot.account ?? '' }, signal: controller.signal }) }
     finally { clearTimeout(timeout) }
   }
+  prepareLogin() {
+    if (!this.snapshot.account) {
+      try { sessionStorage.setItem(`reader-login:${this.bookId}:${this.fileId}`, JSON.stringify({ data: this.snapshot.data, at: Date.now() })) } catch { /* Local guest cache still remains. */ }
+    }
+    void this.flush(true)
+  }
   async start() {
     try {
       const controller = new AbortController()
@@ -103,7 +111,23 @@ export class ReaderSession {
       const data = cached?.data ?? { ...emptyData(), progress: validPosition(legacy) && legacy.kind === this.format ? legacy : null }
       this.dirty = cached?.dirty ?? false
       this.publish({ data, account: account?.email ?? null })
-      if (account) await this.refresh()
+      if (account) {
+        await this.refresh()
+        try {
+          const key = `reader-login:${this.bookId}:${this.fileId}`
+          const intent = JSON.parse(sessionStorage.getItem(key) || 'null')
+          if (intent && validData(intent.data) && Date.now() - intent.at < 10 * 60 * 1000) {
+            const ids = new Set(this.snapshot.data.entries.map(entry => entry.id))
+            const entries = [...this.snapshot.data.entries, ...intent.data.entries.filter((entry: ReaderEntry) => !ids.has(entry.id))]
+            if (entries.length <= 500) {
+              const moved = intent.data.progress && JSON.stringify(intent.data.progress) !== JSON.stringify(this.snapshot.data.progress)
+              this.update(data => ({ ...data, entries, progress: intent.data.progress ?? data.progress }))
+              if (moved) this.publish({ generation: this.snapshot.generation + 1 })
+              sessionStorage.removeItem(key)
+            }
+          }
+        } catch { /* A failed login cannot remove the guest's original cache. */ }
+      }
       else this.publish({ ready: true, status: 'local', message: '仅保存在此浏览器；登录后可同步到其他设备' })
       if (this.disposed) return
       window.addEventListener('online', this.onOnline)

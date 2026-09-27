@@ -95,9 +95,9 @@ export interface AdminSession {
   picture?: string | null
 }
 
-export function googleLoginUrl(): string {
+export function googleLoginUrl(returnTo?: string): string {
   const base = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
-  return `${base}/api/auth/google/start`
+  return `${base}/api/auth/google/start${returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : ''}`
 }
 
 export async function getAdminSession(signal?: AbortSignal): Promise<AdminSession | null> {
