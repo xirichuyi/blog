@@ -183,6 +183,58 @@ test('guest login returns to the edition and preserves paragraph notes', async (
   await expect(page.getByRole('dialog')).toContainText('登录前的想法')
 })
 
+test('signing in restores existing account progress instead of guest progress', async ({ page }) => {
+  const server: Server = { data: { ...empty(), revision: 4, progress: { kind: 'pdf', page: 3, pages: 3 } }, writes: 0, guest: true }
+  await mock(page, server, 'pdf')
+  await open(page, 'pdf')
+  await saveNote(page, '游客批注仍然保留', 'pdf')
+  await menu(page)
+  await expect(page.getByLabel('Current page')).toHaveValue('1')
+  await page.getByRole('button', { name: 'Reading preferences', exact: true }).tap()
+  await page.route('**/api/auth/google/start?*', async route => {
+    server.guest = false
+    await route.fulfill({ contentType: 'text/html', body: '<script>location.replace("/books/1/read?file=7")</script>' })
+  })
+  await page.getByRole('link', { name: '登录', exact: true }).tap()
+  await expect.poll(() => server.data.entries[0]?.note).toBe('游客批注仍然保留')
+  await expect(page.locator('.textLayer span').first()).toBeVisible()
+  await menu(page)
+  await expect(page.getByLabel('Current page')).toHaveValue('3')
+  expect(server.data.progress).toEqual({ kind: 'pdf', page: 3, pages: 3 })
+  await page.reload()
+  await expect(page.locator('.textLayer span').first()).toBeVisible()
+  await menu(page)
+  await expect(page.getByLabel('Current page')).toHaveValue('3')
+})
+
+test('failed cloud read defers guest import until account progress is known', async ({ page }) => {
+  const server: Server = { data: { ...empty(), revision: 4, progress: { kind: 'pdf', page: 3, pages: 3 } }, writes: 0, offline: true }
+  await mock(page, server, 'pdf')
+  await page.goto('/')
+  const result = await page.evaluate(async () => {
+    const modulePath = '/src/lib/reader-state.ts'
+    const { ReaderSession } = await import(modulePath)
+    sessionStorage.setItem('reader-login:1:7', JSON.stringify({
+      at: Date.now(), data: { revision: 0, progress: { kind: 'pdf', page: 1, pages: 3 }, entries: [], review: '', rating: null },
+    }))
+    const session = new ReaderSession(1, 7, 'pdf')
+    await session.start()
+    const snapshot = session.getSnapshot()
+    session.dispose()
+    return { status: snapshot.status, progress: snapshot.data.progress, intent: sessionStorage.getItem('reader-login:1:7') }
+  })
+  expect(result.status).toBe('error')
+  expect(result.progress).toBeNull()
+  expect(result.intent).not.toBeNull()
+  expect(server.writes).toBe(0)
+  server.offline = false
+  await open(page, 'pdf')
+  await menu(page)
+  await expect(page.getByLabel('Current page')).toHaveValue('3')
+  expect(await page.evaluate(() => sessionStorage.getItem('reader-login:1:7'))).toBeNull()
+  expect(server.data.progress).toEqual({ kind: 'pdf', page: 3, pages: 3 })
+})
+
 test('touching the visible center of a long scrolled chapter opens controls', async ({ page }) => {
   const server: Server = { data: empty(), writes: 0, guest: true }
   await mock(page, server)

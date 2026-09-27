@@ -113,20 +113,6 @@ export class ReaderSession {
       this.publish({ data, account: account?.email ?? null })
       if (account) {
         await this.refresh()
-        try {
-          const key = `reader-login:${this.bookId}:${this.fileId}`
-          const intent = JSON.parse(sessionStorage.getItem(key) || 'null')
-          if (intent && validData(intent.data) && Date.now() - intent.at < 10 * 60 * 1000) {
-            const ids = new Set(this.snapshot.data.entries.map(entry => entry.id))
-            const entries = [...this.snapshot.data.entries, ...intent.data.entries.filter((entry: ReaderEntry) => !ids.has(entry.id))]
-            if (entries.length <= 500) {
-              const moved = intent.data.progress && JSON.stringify(intent.data.progress) !== JSON.stringify(this.snapshot.data.progress)
-              this.update(data => ({ ...data, entries, progress: intent.data.progress ?? data.progress }))
-              if (moved) this.publish({ generation: this.snapshot.generation + 1 })
-              sessionStorage.removeItem(key)
-            }
-          }
-        } catch { /* A failed login cannot remove the guest's original cache. */ }
       }
       else this.publish({ ready: true, status: 'local', message: '仅保存在此浏览器；登录后可同步到其他设备' })
       if (this.disposed) return
@@ -138,6 +124,24 @@ export class ReaderSession {
     } catch {
       this.publish({ status: 'error', message: '无法确认登录状态，请重试' })
     }
+  }
+  private importGuestLogin() {
+    try {
+      const key = `reader-login:${this.bookId}:${this.fileId}`
+      const intent = JSON.parse(sessionStorage.getItem(key) || 'null')
+      if (!intent || !validData(intent.data) || !Number.isFinite(intent.at) || Date.now() - intent.at >= 10 * 60 * 1000) return
+      const current = this.snapshot.data
+      const ids = new Set(current.entries.map(entry => entry.id))
+      const entries = [...current.entries, ...intent.data.entries.filter((entry: ReaderEntry) => !ids.has(entry.id))]
+      if (entries.length > 500) return
+      // Signing in restores the account position; guest progress only fills an empty record.
+      const progress = current.progress ?? intent.data.progress
+      this.update(data => ({ ...data, entries, progress }))
+      if (JSON.stringify(progress) !== JSON.stringify(current.progress)) {
+        this.publish({ generation: this.snapshot.generation + 1 })
+      }
+      sessionStorage.removeItem(key)
+    } catch { /* The original guest cache remains available if importing fails. */ }
   }
   private onOnline = () => { void this.refresh() }
   private onFocus = () => { if (!this.dirty) void this.refresh() }
@@ -187,6 +191,7 @@ export class ReaderSession {
       if (importLegacy) this.dirty = true
       this.persist()
       this.publish({ ready: true, status: this.dirty ? 'pending' : 'saved', message: this.dirty ? '等待同步' : '已同步到云端' })
+      this.importGuestLogin()
       if (this.dirty) this.schedule()
     } catch {
       this.canSync = false
