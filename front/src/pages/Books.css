@@ -88,6 +88,12 @@
   outline: none;
 }
 
+.library-book.hover-list-item {
+  padding: 0.65rem;
+  margin: -0.65rem;
+  border-radius: 0.375rem;
+}
+
 .library-book-cover {
   position: relative;
   display: block;
@@ -198,16 +204,9 @@
   transition: color 200ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.library-book:hover .library-book-cover,
-.library-book:focus-visible .library-book-cover {
-  box-shadow: 8px 15px 24px hsl(var(--foreground) / 0.2);
-  transform: perspective(600px) rotateY(0deg) translateY(-0.3rem);
-}
-
 .library-book:hover .library-book-action,
 .library-book:focus-visible .library-book-action {
   color: hsl(var(--foreground));
-  transform: translateX(0.2rem);
 }
 
 .library-book:focus-visible {

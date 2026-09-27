@@ -1,3 +1,4 @@
+import { HoverSurface } from '@/components/HoverSurface'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LibraryBig } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -54,7 +55,7 @@ function BookCard({ book, lazy }: { book: Book; lazy: boolean }) {
   )
 
   return file ? (
-    <Link className="library-book" to={`/books/${book.id}/read?file=${file.id}`} aria-label={`Read ${book.title}`}>
+    <Link className="library-book hover-list-item" to={`/books/${book.id}/read?file=${file.id}`} aria-label={`Read ${book.title}`}>
       {content}
     </Link>
   ) : (
@@ -115,9 +116,9 @@ export default function Books() {
           return (
             <section className="library-group" key={status}>
               <header><h2>{STATUS[status]}</h2><span>{items.length}</span></header>
-              <div className="library-grid">
+              <HoverSurface className="library-grid">
                 {items.map((book, index) => <BookCard book={book} key={book.id} lazy={index >= 4} />)}
-              </div>
+              </HoverSurface>
             </section>
           )
         })}

@@ -1,3 +1,4 @@
+import { HoverSurface } from '@/components/HoverSurface'
 import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
@@ -108,14 +109,14 @@ export default function Projects() {
       {/* Self-built projects */}
       <section>
         <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">自建项目</h2>
-        <div className="hover-list flex flex-col">
+        <HoverSurface className="flex flex-col">
           {TOOLS.map((p) => {
             const href = p.internal || p.url
             const isInternal = Boolean(p.internal)
             const Wrapper: React.ElementType = !href ? 'div' : isInternal ? Link : 'a'
             const wp = !href ? {} : isInternal ? { to: p.internal! } : { href, target: '_blank', rel: 'noopener noreferrer' }
             return (
-              <Wrapper key={p.name} {...wp} className="group block rounded-xl px-3 py-3 transition-colors hover:bg-accent">
+              <Wrapper key={p.name} {...wp} className="hover-list-item group block rounded-md px-3 py-3">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-[15px] font-medium text-foreground transition-colors group-hover:text-primary">{p.name}</span>
                   {p.tags?.map((t) => (
@@ -134,16 +135,16 @@ export default function Projects() {
               </Wrapper>
             )
           })}
-        </div>
+        </HoverSurface>
       </section>
 
       <section className="mt-12">
         <h2 className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">常用网址</h2>
-        <div className="hover-list grid gap-x-3 gap-y-1 sm:grid-cols-2" aria-label="常用网址列表">
+        <HoverSurface className="grid gap-x-3 gap-y-1 sm:grid-cols-2" label="常用网址列表">
           {COMMON_LINKS.map((link, index) => {
             const Icon = link.icon
             return (
-              <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="group flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-accent">
+              <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="hover-list-item group flex min-w-0 items-center gap-3 rounded-md px-3 py-3">
                 <WebsiteLogo name={link.name} href={link.href} lazy={index > 5} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
@@ -157,7 +158,7 @@ export default function Projects() {
               </a>
             )
           })}
-        </div>
+        </HoverSurface>
       </section>
     </div>
   )

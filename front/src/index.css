@@ -264,6 +264,7 @@
 }
 
 .hover-list-item {
+  position: relative;
   transition: opacity 300ms ease, transform 300ms ease;
 }
 

@@ -1,3 +1,4 @@
+import { HoverSurface } from '@/components/HoverSurface'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
@@ -125,12 +126,14 @@ export default function Articles() {
               </div>
 
               {/* 归档行:左侧固定日期栏 + 标题,hover 由浅变深 */}
+              <HoverSurface>
               <ul>
                 {g.items.map((a) => (
                   <li key={a.id}>
                     <Link
                       to={`/article/${a.id}`}
-                      className="group flex items-baseline gap-4 rounded-lg px-2 py-2 transition-colors hover:bg-accent/60"
+                      data-cover-src={a.coverImage}
+                      className="hover-list-item group flex items-baseline gap-4 rounded-md px-2 py-2"
                     >
                       <span className="w-12 shrink-0 text-xs tabular-nums text-muted-foreground/70">
                         {monthDay(a.rawDate)}
@@ -142,6 +145,7 @@ export default function Articles() {
                   </li>
                 ))}
               </ul>
+              </HoverSurface>
             </section>
           ))}
         </div>
