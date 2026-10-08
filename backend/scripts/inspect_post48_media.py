@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import hmac
 import json
+import re
 from pathlib import Path
 import shlex
 import sqlite3
@@ -66,15 +67,34 @@ else:
 
 # Only paths matching the incident UUID; never enumerate private files.
 print(json.dumps({'check': 'server_file_copies', 'matches': [str(p.relative_to(ROOT)) for p in ROOT.rglob(f'*{UUID}*') if p.is_file()]}))
-for path in sorted((ROOT / 'data').rglob('*.db')):
+for path in sorted([*(ROOT / 'data').rglob('*.db'), *Path('/var/backups/chuyi-blog').glob('*.db')]):
     try:
         connection = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
         rows = connection.execute('SELECT id,title,updated_at FROM posts WHERE content LIKE ? OR cover_url LIKE ? OR post_images LIKE ?', (f'%{UUID}%',) * 3).fetchall()
         connection.close()
-        print(json.dumps({'check': 'database_references', 'database': str(path.relative_to(ROOT)), 'matches': rows}, ensure_ascii=False))
+        print(json.dumps({'check': 'database_references', 'database': path.name, 'matches': rows}, ensure_ascii=False))
     except sqlite3.Error:
         print(json.dumps({'check': 'database_references', 'database': path.name, 'status': 'unavailable_or_not_blog_schema'}))
 
 logs = subprocess.run(['journalctl', '-u', 'blog-backend', '--since', '2026-10-06', '--until', '2026-10-09', '-o', 'short-iso', '--no-pager'], capture_output=True, text=True, timeout=30)
 matches = [line for line in logs.stdout.splitlines() if UUID in line]
 print(json.dumps({'check': 'target_asset_logs', 'count': len(matches), 'events': [{'time': line.split(' ', 1)[0], 'delete_failure': 'Failed to delete' in line} for line in matches[-20:]]}))
+
+status, body, _ = request('GET', query={'lifecycle': ''})
+if status == 200:
+    root = ET.fromstring(body)
+    rules = []
+    for rule in root:
+        rules.append({element.tag.split('}')[-1]: element.text for element in rule.iter() if element.tag.split('}')[-1] in ('Status', 'Prefix', 'Days', 'Date')})
+    print(json.dumps({'check': 'bucket_lifecycle', 'status': status, 'rules': rules}))
+else:
+    print(json.dumps({'check': 'bucket_lifecycle', 'status': status}))
+requests = []
+for line in logs.stdout.splitlines():
+    if '/api/admin/posts/48' not in line:
+        continue
+    clean = re.sub(r'\x1b\[[0-9;]*m', '', line)
+    method = re.search(r'method=(GET|POST|PUT|PATCH|DELETE)', clean)
+    if method and method.group(1) != 'GET':
+        requests.append({'time': clean.split(' ', 1)[0], 'method': method.group(1)})
+print(json.dumps({'check': 'post48_mutating_requests', 'count': len(requests), 'events': requests[-30:]}))
