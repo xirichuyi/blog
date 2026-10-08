@@ -206,3 +206,70 @@ async fn updating_content_tracks_removed_images() {
         .expect("post exists");
     assert_eq!(updated.post_images.as_deref(), Some("[]"));
 }
+
+#[tokio::test]
+async fn saving_undoing_and_deleting_posts_never_delete_shared_media() {
+    use axum::{routing::any, Router};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let deletes = Arc::new(AtomicUsize::new(0));
+    let observed = deletes.clone();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let app = Router::new().fallback(any(move |method: axum::http::Method| {
+        let observed = observed.clone();
+        async move {
+            if method == axum::http::Method::DELETE {
+                observed.fetch_add(1, Ordering::SeqCst);
+            }
+            StatusCode::NO_CONTENT
+        }
+    }));
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let storage = Arc::new(R2Storage::new(&S3Config {
+        enabled: true,
+        endpoint,
+        bucket: "test-media".into(),
+        access_key: "test".into(),
+        secret_key: "test".into(),
+        region: "auto".into(),
+        public_url: "https://assets.example.com".into(),
+    }));
+    let service = PostService::new(setup_test_db().await, storage);
+    let url = "https://assets.example.com/images/shared.webp";
+    let content = format!(
+        ":::gallery\n![5](<{url}>)\n![6](<https://assets.example.com/images/other.jpg>)\n:::"
+    );
+    let mut request = create_request("first", None);
+    request.cover_url = Some(url.into());
+    request.content = content.clone();
+    let first = service.create_post(request).await.unwrap();
+    let mut request = create_request("also uses the same image", None);
+    request.cover_url = Some(url.into());
+    request.content = content.clone();
+    let second = service.create_post(request).await.unwrap();
+
+    let patch = serde_json::from_value(
+        serde_json::json!({"content": "temporarily removed", "cover_url": null}),
+    )
+    .unwrap();
+    let saved = service.update_post(first.id, patch).await.unwrap().unwrap();
+    assert_eq!(saved.post_images.as_deref(), Some("[]"));
+    assert_eq!(
+        deletes.load(Ordering::SeqCst),
+        0,
+        "saving must not destroy an image needed by undo or another post"
+    );
+
+    let patch = serde_json::from_value(serde_json::json!({"content": content})).unwrap();
+    let restored = service.update_post(first.id, patch).await.unwrap().unwrap();
+    assert!(restored.post_images.unwrap().contains(url));
+    assert!(service.delete_post(second.id).await.unwrap());
+    assert_eq!(
+        deletes.load(Ordering::SeqCst),
+        0,
+        "deleting an article must not delete shared media"
+    );
+    assert!(service.get_post_detail(first.id).await.unwrap().is_some());
+    server.abort();
+}

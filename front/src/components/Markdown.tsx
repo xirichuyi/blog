@@ -294,6 +294,7 @@ const GalleryImage = memo(function GalleryImage({
   interactive: boolean
 }) {
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [size, setSize] = useState({ width: 0, height: 0 })
 
   return (
@@ -306,12 +307,13 @@ const GalleryImage = memo(function GalleryImage({
         data-pswp-width={size.width || undefined}
         data-pswp-height={size.height || undefined}
         data-cropped="true"
-        data-zoomable={interactive ? 'true' : undefined}
+        data-zoomable={interactive && !failed ? 'true' : undefined}
         aria-label={interactive ? (item.alt ? `查看大图：${item.alt}` : '查看大图') : undefined}
         tabIndex={interactive ? undefined : -1}
         onClick={interactive ? undefined : (event) => event.preventDefault()}
       >
         <img
+          style={failed ? { display: 'none' } : undefined}
           src={item.src}
           alt={item.alt ?? ''}
           loading="lazy"
@@ -323,8 +325,11 @@ const GalleryImage = memo(function GalleryImage({
               height: event.currentTarget.naturalHeight,
             })
           }}
-          onError={() => setLoaded(true)}
+          onError={() => { setLoaded(true); setFailed(true) }}
         />
+        {failed && <span className="flex h-full w-56 items-center justify-center bg-muted px-4 text-center text-sm text-muted-foreground" role="img" aria-label={item.alt || '图片加载失败'}>
+          {interactive ? '图片暂时无法加载，点击打开原图' : '图片暂时无法加载'}
+        </span>}
       </a>
       {item.alt && <figcaption className="md-gallery-caption">{item.alt}</figcaption>}
     </figure>

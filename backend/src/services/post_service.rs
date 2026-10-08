@@ -4,20 +4,15 @@ use crate::models::{AdjacentPosts, CreatePostRequest, Post, PostListQuery, Updat
 use crate::utils::error::{AppError, Result};
 use crate::utils::text::markdown_image_urls;
 use crate::utils::R2Storage;
-use std::collections::HashSet;
 use std::sync::Arc;
 
 pub struct PostService {
     database: Database,
-    r2_storage: Arc<R2Storage>,
 }
 
 impl PostService {
-    pub fn new(database: Database, r2_storage: Arc<R2Storage>) -> Self {
-        Self {
-            database,
-            r2_storage,
-        }
+    pub fn new(database: Database, _r2_storage: Arc<R2Storage>) -> Self {
+        Self { database }
     }
 
     pub async fn create_post(&self, mut request: CreatePostRequest) -> Result<Post> {
@@ -49,9 +44,6 @@ impl PostService {
         id: i64,
         mut request: UpdatePostRequest,
     ) -> Result<Option<Post>> {
-        let Some(existing_post) = PostRepository::get_by_id(self.database.pool(), id).await? else {
-            return Ok(None);
-        };
         if let Some(content) = &request.content {
             request.post_images = crate::models::NullablePatch::Value(markdown_image_urls(content));
         }
@@ -70,23 +62,16 @@ impl PostService {
             PostRepository::update(self.database.pool(), id, request).await?
         };
 
-        if let Some(updated_post) = &updated_post {
-            self.delete_assets_removed_from_post(&existing_post, updated_post)
-                .await;
-        }
+        // Saving Markdown only changes references. Images can still be used by
+        // another post, an older revision, or an editor undo/local draft.
+        // Never permanently delete media as a side effect of saving a post.
         Ok(updated_post)
     }
 
     pub async fn delete_post(&self, id: i64) -> Result<bool> {
-        if let Some(post) = PostRepository::get_by_id(self.database.pool(), id).await? {
-            let deleted = PostRepository::delete(self.database.pool(), id).await?;
-            if deleted {
-                self.delete_asset_urls(post_asset_urls(&post)).await;
-            }
-            Ok(deleted)
-        } else {
-            Ok(false)
-        }
+        // Deleting an article is not permission to destroy potentially shared
+        // media. Object deletion remains an explicit storage operation.
+        PostRepository::delete(self.database.pool(), id).await
     }
 
     pub async fn get_post_tags(&self, post_id: i64) -> Result<Vec<crate::models::Tag>> {
@@ -101,36 +86,4 @@ impl PostService {
 
         TagRepository::update_post_tags(self.database.pool(), post_id, tag_ids).await
     }
-
-    async fn delete_assets_removed_from_post(&self, before: &Post, after: &Post) {
-        let before_urls = post_asset_urls(before);
-        let after_urls = post_asset_urls(after);
-        self.delete_asset_urls(before_urls.difference(&after_urls).cloned())
-            .await;
-    }
-
-    async fn delete_asset_urls(&self, urls: impl IntoIterator<Item = String>) {
-        for url in urls {
-            if let Err(error) = self.r2_storage.delete_public_url(&url).await {
-                tracing::warn!(
-                    "Failed to delete unreferenced post asset '{}': {}",
-                    url,
-                    error
-                );
-            }
-        }
-    }
-}
-
-fn post_asset_urls(post: &Post) -> HashSet<String> {
-    let mut urls: HashSet<String> = markdown_image_urls(&post.content).into_iter().collect();
-    if let Some(cover_url) = &post.cover_url {
-        urls.insert(cover_url.clone());
-    }
-    if let Some(stored_images) = &post.post_images {
-        if let Ok(stored_images) = serde_json::from_str::<Vec<String>>(stored_images) {
-            urls.extend(stored_images);
-        }
-    }
-    urls
 }

@@ -194,3 +194,27 @@ test('failed article image offers the original URL instead of opening a broken l
   await expect(link).not.toHaveAttribute('data-zoomable', 'true')
   await expect(link).toHaveAttribute('href', 'https://example.com/missing.png')
 })
+
+test('a missing gallery photo shows a readable fallback and cannot open the lightbox', async ({ page }) => {
+  await page.route('**/api/**', route => {
+    const path = new URL(route.request().url()).pathname
+    const data = path === '/api/posts/48'
+      ? { id: 48, title: '相册加载失败', content: ':::gallery\n![5](<https://example.com/missing.webp>)\n![6](<https://example.com/ok.svg>)\n:::', status: 1, tags: [], created_at: '2026-01-01T00:00:00Z' }
+      : path.endsWith('/adjacent') ? { newer: null, older: null } : []
+    return route.fulfill({ json: { code: 200, message: 'ok', data } })
+  })
+  await page.route('https://example.com/missing.webp', route => route.fulfill({ status: 404 }))
+  await page.route('https://example.com/ok.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="green"/></svg>' }))
+  await page.goto('/article/48')
+  const gallery = page.locator('.md-gallery')
+  await gallery.scrollIntoViewIfNeeded()
+  await expect(gallery.getByText('图片暂时无法加载，点击打开原图')).toBeVisible()
+  const missing = gallery.locator('.md-gallery-image').first()
+  await expect(missing).not.toHaveAttribute('data-zoomable', 'true')
+  await expect(missing).toHaveAttribute('href', 'https://example.com/missing.webp')
+  await expect(missing).toHaveCSS('height', /\d+px/)
+  const healthy = gallery.locator('.md-gallery-image').nth(1)
+  await healthy.scrollIntoViewIfNeeded()
+  await expect(healthy).toHaveAttribute('data-zoomable', 'true')
+  await expect(healthy.locator('img')).toHaveJSProperty('naturalWidth', 400)
+})
