@@ -85,7 +85,7 @@ if status == 200:
     root = ET.fromstring(body)
     rules = []
     for rule in root:
-        rules.append({element.tag.split('}')[-1]: element.text for element in rule.iter() if element.tag.split('}')[-1] in ('Status', 'Prefix', 'Days', 'Date')})
+        rules.append({element.tag.split('}')[-1]: element.text for element in rule.iter() if len(element) == 0})
     print(json.dumps({'check': 'bucket_lifecycle', 'status': status, 'rules': rules}))
 else:
     print(json.dumps({'check': 'bucket_lifecycle', 'status': status}))
