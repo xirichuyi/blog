@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 15_000 },
   workers: 2,
-  use: { ...base.use, trace: 'retain-on-failure' },
+  use: { ...base.use, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
     { name: 'mobile-chromium', use: { ...devices['Pixel 7'], browserName: 'chromium' } },
     { name: 'mobile-webkit', use: { ...devices['iPhone 13'], browserName: 'webkit' } },

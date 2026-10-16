@@ -131,6 +131,8 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
     let disposed = false
     const controller = new AbortController()
     let activeBook: EpubBook | null = null
+    let viewportObserver: ResizeObserver | undefined
+    let resizeFrame = 0
     const interactionCleanups = new Map<Contents, () => void>()
     const openBook = async () => {
       setLoading(true)
@@ -159,10 +161,35 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           section.output = prepareEpubContent(section.output, section.url)
         })
         bookRef.current = activeBook
+        // Percentage-sized stages can be measured before WebKit finishes layout.
+        // Wait for a usable viewport and track the container, not just window resize.
+        const viewport = viewportRef.current
+        const initialSize = await new Promise<{ width: number; height: number } | null>(resolve => {
+          controller.signal.addEventListener('abort', () => resolve(null), { once: true })
+          let previousWidth = 0
+          let previousHeight = 0
+          viewportObserver = new ResizeObserver(([entry]) => {
+            const width = Math.floor(entry.contentRect.width)
+            const height = Math.floor(entry.contentRect.height)
+            if (disposed || width <= 0 || height <= 0) return
+            if (width === previousWidth && height === previousHeight) return
+            previousWidth = width
+            previousHeight = height
+            resolve({ width, height })
+            if (renditionRef.current) {
+              cancelAnimationFrame(resizeFrame)
+              resizeFrame = requestAnimationFrame(() => {
+                if (!disposed) renditionRef.current?.resize(width, height)
+              })
+            }
+          })
+          viewportObserver.observe(viewport)
+        })
+        if (disposed || !initialSize) return
         // EPUB.js forwards gap to its layout manager, but omits it from its types.
         const options: RenditionOptions & { gap: number } = {
-          width: '100%',
-          height: '100%',
+          width: initialSize.width,
+          height: initialSize.height,
           manager: flow === 'scrolled' ? 'continuous' : 'default',
           spread: flow === 'scrolled' ? 'none' : 'auto',
           flow: flow === 'scrolled' ? 'scrolled-doc' : 'paginated',
@@ -171,7 +198,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           // Only parent-owned reader listeners run; prepareEpubContent blocks book scripts.
           allowScriptedContent: true,
         }
-        const rendition = activeBook.renderTo(viewportRef.current, options)
+        const rendition = activeBook.renderTo(viewport, options)
         renditionRef.current = rendition
         registerThemes(rendition)
         applyRenditionAppearance(rendition, themeRef.current, fontSizeRef.current)
@@ -285,6 +312,8 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
     return () => {
       disposed = true
       controller.abort()
+      viewportObserver?.disconnect()
+      cancelAnimationFrame(resizeFrame)
       renditionRef.current = null
       bookRef.current = null
       setSelection(null)

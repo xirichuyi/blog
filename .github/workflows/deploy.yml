@@ -40,6 +40,15 @@ jobs:
           npm run test:editor
           npm run test:reader
 
+      - name: Preserve browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-test-results
+          path: front/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Build (production)
         working-directory: front
         # VITE_API_URL is intentionally unset → production build uses same-origin

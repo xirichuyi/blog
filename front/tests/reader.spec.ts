@@ -67,6 +67,37 @@ async function saveNote(page: Page, note: string, format = 'epub') {
   await page.getByRole('button', { name: '保存批注' }).tap()
 }
 
+test('EPUB follows container size changes without a window resize', async ({ page }) => {
+  await mock(page, { data: empty(), writes: 0 })
+  await open(page)
+  await page.locator('.epub-viewport').evaluate(element => { element.style.height = '420px' })
+  const frame = page.locator('.epub-viewport iframe:visible').first()
+  await expect.poll(async () => (await frame.boundingBox())?.height).toBe(420)
+  await expect(frame.contentFrame().locator('#p0')).toBeInViewport()
+  await page.locator('.epub-viewport').evaluate(element => { element.style.height = '580px' })
+  await expect.poll(async () => (await frame.boundingBox())?.height).toBe(580)
+  await expect(frame.contentFrame().locator('#p0')).toBeInViewport()
+})
+
+test('EPUB opens when an initially collapsed viewport becomes measurable', async ({ page }) => {
+  await page.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style')
+      style.id = 'collapsed-reader'
+      style.textContent = '.epub-viewport { height: 0 !important; }'
+      document.head.append(style)
+    }, { once: true })
+  })
+  await mock(page, { data: empty(), writes: 0 })
+  await page.goto('/books/1/read?file=7')
+  await expect(page.locator('.epub-viewport')).toHaveCSS('height', '0px')
+  await expect(page.getByText('正在排版，即将打开…', { exact: true })).toBeVisible()
+  await page.locator('#collapsed-reader').evaluate(element => element.remove())
+  await expect(page.locator('.epub-viewport iframe').first()).toBeVisible()
+  await expect(page.locator('.reader-state')).toHaveCount(0)
+  await expect(page.frameLocator('.epub-viewport iframe').locator('#p0')).toBeInViewport()
+})
+
 test('single row mobile controls, chapter notes and cloud position restore in a fresh context', async ({ page, browser }) => {
   const server: Server = { data: empty(), writes: 0 }
   await mock(page, server)
