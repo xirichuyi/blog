@@ -24,7 +24,19 @@ async function mock(page: Page, server: Server, format = 'epub') {
 }
 async function open(page: Page, format = 'epub') {
   await page.goto('/books/1/read?file=7')
-  await expect(page.locator(format === 'epub' ? 'iframe' : '.textLayer span').first()).toBeVisible()
+  // EPUB.js can retain hidden views while rendering the active chapter.
+  // Wait for a displayed page instead of assuming the first frame is active.
+  try {
+    await expect(page.locator(format === 'epub' ? 'iframe:visible' : '.textLayer span').first()).toBeVisible()
+  } catch (error) {
+    console.error('Reader readiness failed', await page.locator('iframe').evaluateAll(frames => frames.map(frame => ({
+      width: frame.getBoundingClientRect().width,
+      height: frame.getBoundingClientRect().height,
+      visibility: getComputedStyle(frame).visibility,
+      title: frame.contentDocument?.title,
+    }))), await page.locator('.reader-state').allTextContents())
+    throw error
+  }
   await expect(page.locator('.reader-state')).toHaveCount(0)
 }
 async function menu(page: Page) {
