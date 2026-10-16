@@ -16,9 +16,14 @@ export function GiscusComments({
   description = 'Sign in with GitHub to join the conversation.',
 }: GiscusCommentsProps) {
   const { theme } = useTheme()
-  // Giscus loads this stylesheet inside its own iframe, so use an absolute URL.
+  // Production uses a commit-pinned CDN URL with CORS enabled for Giscus.
+  // Local Vite assets remain available for development and previews.
+  const themeBaseUrl = import.meta.env.VITE_GISCUS_THEME_BASE_URL
+  const themeUrl = themeBaseUrl
+    ? `${themeBaseUrl}/minimal-${theme === 'dark' ? 'dark' : 'light'}.css`
+    : theme === 'dark' ? darkThemeUrl : lightThemeUrl
   const giscusTheme = new URL(
-    theme === 'dark' ? darkThemeUrl : lightThemeUrl,
+    themeUrl,
     window.location.origin,
   ).href
 

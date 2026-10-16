@@ -51,11 +51,31 @@ jobs:
 
       - name: Build (production)
         working-directory: front
+        env:
+          VITE_GISCUS_THEME_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@${{ github.sha }}/front/src/components/giscus
         # VITE_API_URL is intentionally unset → production build uses same-origin
         # ('' + /api), which nginx reverse-proxies to the backend.
         run: |
           npm run typecheck
           npm run build
+
+      - name: Verify Giscus theme cross-origin access
+        env:
+          THEME_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@${{ github.sha }}/front/src/components/giscus
+        run: |
+          python3 - <<'PY'
+          import os
+          import urllib.request
+
+          for theme in ('light', 'dark'):
+              url = f"{os.environ['THEME_BASE_URL']}/minimal-{theme}.css"
+              request = urllib.request.Request(url, headers={'Origin': 'https://giscus.app'})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  assert response.headers.get('Access-Control-Allow-Origin') in ('*', 'https://giscus.app'), f'{theme}: CORS missing'
+                  assert 'text/css' in response.headers.get('Content-Type', ''), f'{theme}: invalid content type'
+                  assert 'background: transparent !important' in response.read().decode(), f'{theme}: unexpected theme content'
+              print(f'{theme} Giscus theme accessible')
+          PY
 
       - uses: actions/upload-artifact@v7
         with:
