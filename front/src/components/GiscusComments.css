@@ -11,8 +11,13 @@
 .giscus-comments giscus-widget::part(iframe) {
   min-height: 0;
   background: transparent;
+  color-scheme: light;
 }
 
 [data-theme='dark'] .giscus-comments {
+  color-scheme: dark;
+}
+
+[data-theme='dark'] .giscus-comments giscus-widget::part(iframe) {
   color-scheme: dark;
 }

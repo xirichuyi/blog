@@ -1,0 +1,261 @@
+@import url('https://giscus.app/themes/noborder_dark.css');
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+main {
+  background: transparent !important;
+}
+
+main {
+  --color-canvas-default: transparent;
+  --color-canvas-overlay: #1d211f;
+  --color-canvas-inset: rgb(188 208 197 / 6%);
+  --color-canvas-subtle: transparent;
+  --color-border-default: transparent;
+  --color-border-muted: transparent;
+  --color-fg-default: #e2e7e4;
+  --color-fg-muted: #9da7a1;
+  --color-fg-subtle: #717b75;
+  --color-accent-fg: #a9c1b4;
+  --color-accent-emphasis: #8ba89a;
+  --color-accent-muted: rgb(169 193 180 / 30%);
+  --color-accent-subtle: rgb(169 193 180 / 9%);
+  --color-btn-bg: transparent;
+  --color-btn-border: transparent;
+  --color-btn-shadow: none;
+  --color-btn-inset-shadow: none;
+  --color-btn-hover-bg: rgb(169 193 180 / 9%);
+  --color-btn-hover-border: transparent;
+  --color-btn-primary-bg: #789587;
+  --color-btn-primary-border: transparent;
+  --color-btn-primary-shadow: none;
+  --color-btn-primary-inset-shadow: none;
+  --color-btn-primary-hover-bg: #88a697;
+  --color-btn-primary-hover-border: transparent;
+}
+
+.gsc-main,
+.gsc-comments,
+.gsc-timeline {
+  gap: 1rem;
+}
+
+.gsc-reactions,
+.gsc-comments > .gsc-header,
+.gsc-comment-box-tabs,
+.gsc-comment-box-textarea-extras {
+  display: none !important;
+}
+
+.gsc-comment-box,
+.gsc-comment-box:not(.gsc-comment-box-is-reply),
+.gsc-comment,
+.gsc-replies,
+.gsc-reply-box {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.gsc-comment > div {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.gsc-comment-box-main {
+  margin: 0;
+}
+
+.gsc-comment-box-main:has(.gsc-comment-box-textarea:disabled) {
+  display: none;
+}
+
+.gsc-comment-box-write,
+.gsc-comment-box-write:focus-within {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.gsc-comment-box-textarea {
+  min-height: 4.5rem !important;
+  padding: 0.75rem 0.9rem !important;
+  border: 0 !important;
+  border-radius: 0.8rem !important;
+  background: rgb(188 208 197 / 6%) !important;
+  box-shadow: none !important;
+  resize: vertical;
+}
+
+.gsc-comment-box-bottom {
+  margin: 0.5rem 0 0;
+}
+
+.gsc-comment-box-buttons {
+  margin-left: 0;
+}
+
+.gsc-comment-box-buttons .btn {
+  margin-left: 0;
+  padding: 0.32rem 0.7rem;
+  border: 0 !important;
+  border-radius: 999px;
+  box-shadow: none !important;
+  font-size: 0.75rem;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-bottom {
+  justify-content: flex-end;
+  margin: 0 0 0.75rem;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary {
+  min-height: 1.75rem;
+  padding: 0.25rem 0.55rem;
+  color: var(--color-fg-muted) !important;
+  background: transparent !important;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary:hover,
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary:focus-visible {
+  color: var(--color-accent-fg) !important;
+  background: var(--color-btn-hover-bg) !important;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.gsc-comment-header,
+.gsc-comment-content,
+.gsc-reply {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.gsc-timeline {
+  gap: 1.35rem;
+}
+
+.gsc-comment-header {
+  padding-top: 0;
+  margin-bottom: 0.35rem;
+  gap: 0.45rem;
+}
+
+.gsc-comment-author {
+  gap: 0.4rem;
+}
+
+.gsc-comment-author-avatar img {
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-right: 0.35rem;
+}
+
+.gsc-comment-author > div {
+  display: none !important;
+}
+
+.gsc-comment-header .link-secondary {
+  text-decoration: none;
+  opacity: 0.66;
+}
+
+.gsc-comment-content {
+  padding-top: 0.15rem;
+  padding-bottom: 0.55rem;
+  border: 0 !important;
+  line-height: 1.7;
+}
+
+.gsc-comment-content > :first-child:last-child {
+  margin-bottom: 0;
+}
+
+.gsc-comment-footer {
+  min-height: 1.6rem;
+  margin: 0 !important;
+  align-items: center;
+}
+
+.gsc-comment-reactions {
+  margin-left: 0;
+  gap: 0.3rem;
+}
+
+.gsc-social-reaction-summary-item,
+.gsc-comment-footer .gsc-reactions-button {
+  height: 1.5rem;
+  min-width: 1.5rem;
+  padding: 0 0.25rem;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.gsc-comment-replies-count {
+  margin-right: 0;
+  opacity: 0.7;
+}
+
+.gsc-reply-box {
+  padding: 0.45rem 0 0;
+}
+
+.gsc-reply-box > button {
+  padding: 0.35rem 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.75rem;
+  opacity: 0.72;
+}
+
+.gsc-replies {
+  padding-top: 0.5rem;
+}
+
+.gsc-reply {
+  padding-top: 0.65rem;
+  padding-bottom: 0.35rem;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply) .gsc-comment-box-bottom > .link-secondary {
+  text-decoration: none;
+  font-size: 0.7rem;
+  opacity: 0.62;
+}
+
+/* Keep the signed-out entry compact, including on narrow screens. */
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+}
+
+.gsc-comment-box:not(.gsc-comment-box-is-reply):has(.gsc-comment-box-textarea:disabled) .gsc-comment-box-buttons .btn-primary {
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0;
+  white-space: normal;
+}

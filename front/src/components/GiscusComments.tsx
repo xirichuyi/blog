@@ -1,5 +1,7 @@
 import Giscus from '@giscus/react'
 import { useTheme } from '@/lib/theme'
+import lightThemeUrl from './giscus/minimal-light.css?url'
+import darkThemeUrl from './giscus/minimal-dark.css?url'
 import './GiscusComments.css'
 
 interface GiscusCommentsProps {
@@ -8,17 +10,17 @@ interface GiscusCommentsProps {
   description?: string
 }
 
-const GISCUS_THEME_ROOT =
-  'https://cdn.jsdelivr.net/gh/xirichuyi/blog@5c113e65b4046c08d0749bea701209258160bfab'
-
 export function GiscusComments({
   term,
   title = 'Discussion',
   description = 'Sign in with GitHub to join the conversation.',
 }: GiscusCommentsProps) {
   const { theme } = useTheme()
-  const themeName = theme === 'dark' ? 'dark' : 'light'
-  const giscusTheme = `${GISCUS_THEME_ROOT}/giscus-minimal-${themeName}.css`
+  // Giscus loads this stylesheet inside its own iframe, so use an absolute URL.
+  const giscusTheme = new URL(
+    theme === 'dark' ? darkThemeUrl : lightThemeUrl,
+    window.location.origin,
+  ).href
 
   return (
     <section className="giscus-comments" aria-labelledby="giscus-comments-title">
