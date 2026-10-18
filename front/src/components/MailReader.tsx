@@ -3,7 +3,14 @@ import { Loader2, Mail, ChevronDown, ArrowLeft, ShieldCheck } from 'lucide-react
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { fetchMailList, fetchMailBody, type MailSummary, type MailBody } from '@/services/mail'
+import {
+  fetchMailList,
+  fetchMailBody,
+  parseCombo,
+  type MailCreds,
+  type MailSummary,
+  type MailBody,
+} from '@/services/mail'
 
 // IMAP requests are relayed by the backend without persisting credentials.
 function fmtDate(s?: string | null): string {
@@ -19,6 +26,8 @@ export default function MailReader() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [messages, setMessages] = useState<MailSummary[] | null>(null)
+  // 解析后的凭据（可能来自「邮箱+密码」或商家给的整串），用于后续拉正文。
+  const [creds, setCreds] = useState<MailCreds | null>(null)
 
   // 当前展开的邮件 uid → 正文（缓存在本次会话里，避免重复请求）。
   const [openUid, setOpenUid] = useState<number | null>(null)
@@ -26,16 +35,27 @@ export default function MailReader() {
   const [bodyLoading, setBodyLoading] = useState(false)
   const [bodyError, setBodyError] = useState('')
 
+  // 把两个输入框合成一份凭据：任一框粘进了「邮箱----密码----refresh_token----client_id」
+  // 整串，就按整串解析；否则按「邮箱 + 应用专用密码」处理。
+  function resolveCreds(): MailCreds | null {
+    const combo = parseCombo(token) || parseCombo(email)
+    if (combo) return combo
+    if (!email.trim() || !token.trim()) return null
+    return { email: email.trim(), token }
+  }
+
   async function onLoad(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim() || !token.trim()) return
+    const c = resolveCreds()
+    if (!c) return
     setLoading(true)
     setError('')
     setMessages(null)
     setOpenUid(null)
     setBodyCache({})
+    setCreds(c)
     try {
-      const res = await fetchMailList(email.trim(), token, 20)
+      const res = await fetchMailList(c, 20)
       setMessages(res.messages)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load messages')
@@ -53,9 +73,10 @@ export default function MailReader() {
     setOpenUid(uid)
     setBodyError('')
     if (bodyCache[uid]) return
+    if (!creds) return
     setBodyLoading(true)
     try {
-      const body = await fetchMailBody(email.trim(), token, uid)
+      const body = await fetchMailBody(creds, uid)
       setBodyCache((m) => ({ ...m, [uid]: body }))
     } catch (err) {
       setBodyError(err instanceof Error ? err.message : 'Failed to load the message')
@@ -69,6 +90,7 @@ export default function MailReader() {
     setError('')
     setOpenUid(null)
     setBodyCache({})
+    setCreds(null)
   }
 
   return (
@@ -90,18 +112,18 @@ export default function MailReader() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="mail-token" className="text-xs text-muted-foreground">
-              IMAP app password (not your account password)
+              App password · or paste a full Outlook string
             </Label>
             <Input
               id="mail-token"
               type="password"
               autoComplete="off"
-              placeholder="App password generated in your provider settings"
+              placeholder="App password, or email----password----refresh_token----client_id"
               value={token}
               onChange={(e) => setToken(e.target.value)}
             />
           </div>
-          <Button type="submit" disabled={loading || !email.trim() || !token.trim()} className="mt-1 w-full">
+          <Button type="submit" disabled={loading || !resolveCreds()} className="mt-1 w-full">
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
             {loading ? 'Loading…' : 'Read mail'}
           </Button>
@@ -109,7 +131,12 @@ export default function MailReader() {
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              Supports Yahoo, Gmail, Outlook, iCloud, QQ, 163, 126, and other common providers. Credentials are used once and never stored.
+              Supports Yahoo, Gmail, iCloud, QQ, 163, 126, and more. Outlook/Hotmail personal
+              accounts no longer accept passwords — paste the full{' '}
+              <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+                email----password----refresh_token----client_id
+              </code>{' '}
+              string instead. Credentials are used once and never stored.
             </span>
           </p>
         </form>

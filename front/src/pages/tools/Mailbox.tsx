@@ -24,8 +24,10 @@ export default function Mailbox() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Mail Reader · IMAP</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Read recent messages from Yahoo, Gmail, Outlook, iCloud, QQ, 163, and other common IMAP providers.
-          Your app password is used only for this session and is never stored.
+          Read recent messages from Yahoo, Gmail, iCloud, QQ, 163, and other common IMAP providers.
+          For Outlook/Hotmail personal accounts, paste the full
+          email----password----refresh_token----client_id string. Credentials are used only
+          for this session and are never stored.
         </p>
       </header>
 
@@ -36,7 +38,12 @@ export default function Mailbox() {
           <span className="font-medium text-foreground/80">Note.</span>{' '}
           Browsers cannot connect directly to IMAP, so the backend relays each request without storing credentials or messages.
         </p>
-        <p>Use an app-specific password generated in your provider's IMAP settings, not your account password.</p>
+        <p>
+          For most providers, use an app-specific password generated in your IMAP settings, not your
+          account password. Outlook/Hotmail personal accounts no longer accept passwords over IMAP, so
+          paste the full email----password----refresh_token----client_id string instead — the server
+          exchanges the refresh token for a short-lived access token and signs in via XOAUTH2.
+        </p>
       </div>
     </div>
   )

@@ -47,10 +47,24 @@ const RATE_LIMIT: u32 = 30;
 static RATE: LazyLock<Mutex<HashMap<String, (Instant, u32)>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// 消费版 Outlook 的 IMAP 端点。微软已停用个人账号的「账号+密码」基础认证,
+/// 这类账号只能走 OAuth2(XOAUTH2):用 refresh_token + client_id 换 access_token。
+const OUTLOOK_HOST: &str = "outlook.office365.com";
+/// 换 token 的端点所在主机(白名单,防 SSRF:只会连微软)。
+const MS_LOGIN_HOST: &str = "login.microsoftonline.com";
+/// 读取 IMAP 需要的 scope。
+const OUTLOOK_IMAP_SCOPE: &str = "https://outlook.office.com/IMAP.AccessAsUser.All offline_access";
+
 #[derive(Deserialize)]
 pub struct ListReq {
     email: String,
     token: String,
+    /// Outlook OAuth2:商家给的那串里的 refresh_token(可选)。
+    #[serde(default)]
+    refresh_token: Option<String>,
+    /// Outlook OAuth2:那串里的 client_id(可选)。
+    #[serde(default)]
+    client_id: Option<String>,
     #[serde(default)]
     limit: Option<usize>,
 }
@@ -59,7 +73,69 @@ pub struct ListReq {
 pub struct BodyReq {
     email: String,
     token: String,
+    #[serde(default)]
+    refresh_token: Option<String>,
+    #[serde(default)]
+    client_id: Option<String>,
     uid: u32,
+}
+
+/// 一次请求用到的凭据。`secret` 要么是应用专用密码(走 LOGIN),
+/// 要么是 OAuth2 的 access_token(走 XOAUTH2,由 `xoauth2` 标记)。
+struct Creds {
+    email: String,
+    secret: String,
+    xoauth2: bool,
+}
+
+/// XOAUTH2 认证器:服务器给一个空挑战,客户端回 `user=…\x01auth=Bearer …\x01\x01`,
+/// imap crate 会自动 base64 编码后发回。
+struct XOAuth2 {
+    user: String,
+    access_token: String,
+}
+
+impl imap::Authenticator for XOAuth2 {
+    type Response = Vec<u8>;
+    fn process(&self, _challenge: &[u8]) -> Vec<u8> {
+        format!(
+            "user={}\x01auth=Bearer {}\x01\x01",
+            self.user, self.access_token
+        )
+        .into_bytes()
+    }
+}
+
+/// 用 refresh_token + client_id 向微软换一个短期 access_token。
+/// 个人号 token 一般签发在 `consumers` 租户,少数走 `common`,两个都试。
+async fn exchange_outlook_token(refresh_token: &str, client_id: &str) -> Result<String, String> {
+    let http = reqwest::Client::new();
+    for tenant in ["consumers", "common"] {
+        let url = format!("https://{MS_LOGIN_HOST}/{tenant}/oauth2/v2.0/token");
+        let resp = http
+            .post(&url)
+            .form(&[
+                ("client_id", client_id),
+                ("grant_type", "refresh_token"),
+                ("refresh_token", refresh_token),
+                ("scope", OUTLOOK_IMAP_SCOPE),
+            ])
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await;
+        if let Ok(r) = resp {
+            if r.status().is_success() {
+                if let Ok(v) = r.json::<serde_json::Value>().await {
+                    if let Some(t) = v.get("access_token").and_then(|x| x.as_str()) {
+                        if !t.is_empty() {
+                            return Ok(t.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Err("refresh_token / client_id 无效或已失效,无法登录该 Outlook 账号。".to_string())
 }
 
 /// 根据邮箱域名推断 IMAP 服务器（只覆盖常见服务商；未知域名直接拒绝，防 SSRF）。
@@ -182,10 +258,9 @@ fn friendly_imap_err(err: &imap::Error) -> String {
 
 /// 建立 IMAP 会话（带 TCP 超时）。返回已登录的 Session。
 fn connect_session(
-    email: &str,
-    token: &str,
+    creds: &Creds,
 ) -> Result<imap::Session<native_tls::TlsStream<TcpStream>>, String> {
-    let host = imap_host(email).ok_or_else(|| "暂不支持该邮箱服务商。".to_string())?;
+    let host = imap_host(&creds.email).ok_or_else(|| "暂不支持该邮箱服务商。".to_string())?;
 
     // 解析全部地址,**IPv4 优先**:本机 IPv6 出网不通,而 Gmail/Outlook 等会优先
     // 返回 AAAA(IPv6),若直接连第一个地址会卡到超时。逐个尝试直到连上。
@@ -220,9 +295,19 @@ fn connect_session(
     let mut client = imap::Client::new(tls);
     client.read_greeting().map_err(|e| friendly_imap_err(&e))?;
 
-    client
-        .login(email, token)
-        .map_err(|(e, _)| friendly_imap_err(&e))
+    if creds.xoauth2 {
+        let auth = XOAuth2 {
+            user: creds.email.clone(),
+            access_token: creds.secret.clone(),
+        };
+        client
+            .authenticate("XOAUTH2", &auth)
+            .map_err(|(e, _)| friendly_imap_err(&e))
+    } else {
+        client
+            .login(&creds.email, &creds.secret)
+            .map_err(|(e, _)| friendly_imap_err(&e))
+    }
 }
 
 /// 从邮件头里取出（已解码的）From / Subject / Date。
@@ -235,8 +320,8 @@ fn header_field(headers: &[mailparse::MailHeader], key: &str) -> String {
 }
 
 /// 拉取最近 limit 封邮件的摘要（最新在前）。阻塞实现，放进 spawn_blocking。
-fn list_blocking(email: String, token: String, limit: usize) -> Result<serde_json::Value, String> {
-    let mut session = connect_session(&email, &token)?;
+fn list_blocking(creds: Creds, limit: usize) -> Result<serde_json::Value, String> {
+    let mut session = connect_session(&creds)?;
     let mailbox = session.select("INBOX").map_err(|e| friendly_imap_err(&e))?;
     let total = mailbox.exists;
 
@@ -306,8 +391,8 @@ fn truncate(mut s: String) -> String {
 }
 
 /// 按 UID 拉取单封邮件正文。阻塞实现。
-fn body_blocking(email: String, token: String, uid: u32) -> Result<serde_json::Value, String> {
-    let mut session = connect_session(&email, &token)?;
+fn body_blocking(creds: Creds, uid: u32) -> Result<serde_json::Value, String> {
+    let mut session = connect_session(&creds)?;
     session.select("INBOX").map_err(|e| friendly_imap_err(&e))?;
 
     let fetches = session
@@ -351,27 +436,60 @@ async fn run_guarded<F>(
     ip: String,
     email: String,
     token: String,
+    refresh_token: Option<String>,
+    client_id: Option<String>,
     job: F,
 ) -> ApiResult<serde_json::Value>
 where
-    F: FnOnce(String, String) -> Result<serde_json::Value, String> + Send + 'static,
+    F: FnOnce(Creds) -> Result<serde_json::Value, String> + Send + 'static,
 {
-    if email.trim().is_empty() || token.trim().is_empty() {
+    let refresh_token = refresh_token.filter(|s| !s.trim().is_empty());
+    let client_id = client_id.filter(|s| !s.trim().is_empty());
+    let has_oauth = refresh_token.is_some() && client_id.is_some();
+
+    if email.trim().is_empty() {
+        return Err(AppError::BadRequest("请填写邮箱。".to_string()));
+    }
+    // 走 OAuth2 时无需应用专用密码,但 refresh_token + client_id 必须成对出现。
+    if !has_oauth && token.trim().is_empty() {
         return Err(AppError::BadRequest(
-            "请填写邮箱和应用专用密码。".to_string(),
+            "请填写应用专用密码,或提供 Outlook 的 refresh_token + client_id。".to_string(),
         ));
     }
     if !email.contains('@') {
         return Err(AppError::BadRequest("邮箱地址格式不正确。".to_string()));
     }
-    if imap_host(&email).is_none() {
-        return Err(AppError::BadRequest("暂不支持该邮箱服务商。".to_string()));
-    }
+    let host = match imap_host(&email) {
+        Some(h) => h,
+        None => return Err(AppError::BadRequest("暂不支持该邮箱服务商。".to_string())),
+    };
     if !rate_ok(&ip) {
         return Err(AppError::TooManyRequests(
             "尝试过于频繁，请稍后再试。".to_string(),
         ));
     }
+
+    // Outlook 个人号的密码登录已被微软停用:带了 refresh_token + client_id 就换
+    // access_token 走 XOAUTH2;否则维持原来的密码登录(兼容仍支持的服务商)。
+    let creds = if host == OUTLOOK_HOST && has_oauth {
+        let access_token = exchange_outlook_token(
+            refresh_token.as_deref().unwrap(),
+            client_id.as_deref().unwrap(),
+        )
+        .await
+        .map_err(AppError::BadGateway)?;
+        Creds {
+            email,
+            secret: access_token,
+            xoauth2: true,
+        }
+    } else {
+        Creds {
+            email,
+            secret: token,
+            xoauth2: false,
+        }
+    };
 
     let _permit = match MAIL_SEM.try_acquire() {
         Ok(p) => p,
@@ -382,7 +500,7 @@ where
         }
     };
 
-    let task = tokio::task::spawn_blocking(move || job(email, token));
+    let task = tokio::task::spawn_blocking(move || job(creds));
     match tokio::time::timeout(HARD_TIMEOUT, task).await {
         Ok(Ok(Ok(data))) => Ok(Json(ApiResponse::success(data))),
         Ok(Ok(Err(message))) => Err(AppError::BadGateway(message)),
@@ -400,9 +518,14 @@ where
 pub async fn list(headers: HeaderMap, Json(req): Json<ListReq>) -> ApiResult<serde_json::Value> {
     let ip = client_ip(&headers);
     let limit = req.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
-    run_guarded(ip, req.email, req.token, move |email, token| {
-        list_blocking(email, token, limit)
-    })
+    run_guarded(
+        ip,
+        req.email,
+        req.token,
+        req.refresh_token,
+        req.client_id,
+        move |creds| list_blocking(creds, limit),
+    )
     .await
 }
 
@@ -410,8 +533,13 @@ pub async fn list(headers: HeaderMap, Json(req): Json<ListReq>) -> ApiResult<ser
 pub async fn body(headers: HeaderMap, Json(req): Json<BodyReq>) -> ApiResult<serde_json::Value> {
     let ip = client_ip(&headers);
     let uid = req.uid;
-    run_guarded(ip, req.email, req.token, move |email, token| {
-        body_blocking(email, token, uid)
-    })
+    run_guarded(
+        ip,
+        req.email,
+        req.token,
+        req.refresh_token,
+        req.client_id,
+        move |creds| body_blocking(creds, uid),
+    )
     .await
 }
