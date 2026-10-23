@@ -1,22 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, ChevronDown, ImagePlus, Loader2, Settings2, Tags, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ExternalLink, ImagePlus, Loader2, PanelRight, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { MarkdownEditor } from '@/components/admin/MarkdownEditor'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { cn } from '@/lib/utils'
 import {
   adminGetPost,
   createPost,
@@ -82,6 +75,171 @@ function removeDraft(key: string) {
   try { localStorage.removeItem(key) } catch { /* Server save success is independent of local storage. */ }
 }
 
+/** Single-line title that wraps and grows instead of clipping long titles. */
+function TitleField({ value, onChange, autoFocus = false }: { value: string; onChange: (value: string) => void; autoFocus?: boolean }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  useLayoutEffect(() => {
+    const element = ref.current
+    if (!element) return
+    const fit = () => {
+      element.style.height = 'auto'
+      element.style.height = `${element.scrollHeight}px`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [value])
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(event) => onChange(event.target.value.replace(/\s*\n\s*/g, ' '))}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.preventDefault()
+      }}
+      autoFocus={autoFocus}
+      placeholder="文章标题"
+      aria-label="文章标题"
+      autoComplete="off"
+      autoCapitalize="sentences"
+      className="admin-editor-title block w-full resize-none overflow-hidden border-0 bg-transparent p-0 outline-none placeholder:text-muted-foreground/60"
+    />
+  )
+}
+
+const PROPERTIES_PREF = 'chuyi:editor-properties'
+const WIDE_LAYOUT = '(min-width: 1024px)'
+
+function readPropertiesPreference(): boolean {
+  try { return localStorage.getItem(PROPERTIES_PREF) !== 'hidden' } catch { return true }
+}
+
+interface PropertiesProps {
+  status: number
+  onStatus: (value: number) => void
+  categoryId: number | null
+  onCategory: (value: number | null) => void
+  categories: Category[]
+  tagIds: number[]
+  tagsList: Tag[]
+  onToggleTag: (id: number) => void
+  newTag: string
+  onNewTag: (value: string) => void
+  onAddTag: () => void
+  coverUrl: string | null
+  coverUploading: boolean
+  uploadDisabled: boolean
+  onPickCover: () => void
+  onRemoveCover: () => void
+}
+
+/** Everything about a post except its words: always visible beside the draft. */
+function PostProperties(props: PropertiesProps) {
+  const keyword = props.newTag.trim().toLocaleLowerCase()
+  const suggestions = props.tagsList
+    .filter((tag) => !props.tagIds.includes(Number(tag.id)))
+    .filter((tag) => !keyword || tag.name.toLocaleLowerCase().includes(keyword))
+    .slice(0, 12)
+
+  return (
+    <div className="admin-properties-body">
+      <div className="admin-property">
+        <Label htmlFor="post-status">状态</Label>
+        <Select value={String(props.status)} onValueChange={(value) => props.onStatus(Number(value))}>
+          <SelectTrigger id="post-status" className="w-full"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="admin-property">
+        <Label htmlFor="post-category">分类</Label>
+        <Select
+          value={props.categoryId === null ? 'none' : String(props.categoryId)}
+          onValueChange={(value) => props.onCategory(value === 'none' ? null : Number(value))}
+        >
+          <SelectTrigger id="post-category" className="w-full"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">未分类</SelectItem>
+            {props.categories.map((category) => (
+              <SelectItem key={category.id} value={String(category.id)}>{category.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="admin-property">
+        <Label htmlFor="post-new-tag">标签</Label>
+        {props.tagIds.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5" aria-label="已选标签">
+            {props.tagIds.map((tagId) => {
+              const tag = props.tagsList.find((item) => Number(item.id) === tagId)
+              return (
+                <li key={tagId} className="admin-tag-chip">
+                  {tag?.name ?? `#${tagId}`}
+                  <button type="button" aria-label={`移除标签 ${tag?.name ?? tagId}`} onClick={() => props.onToggleTag(tagId)}>
+                    <X className="size-3" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <Input
+          id="post-new-tag"
+          value={props.newTag}
+          onChange={(event) => props.onNewTag(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              props.onAddTag()
+            }
+          }}
+          placeholder="输入标签，回车添加"
+          autoComplete="off"
+        />
+        {suggestions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5" aria-label="可选标签">
+            {suggestions.map((tag) => (
+              <button key={tag.id} type="button" className="admin-tag-suggestion" onClick={() => props.onToggleTag(Number(tag.id))}>
+                <Plus className="size-3" /> {tag.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="admin-property">
+        <span className="text-sm font-medium leading-none">封面</span>
+        {props.coverUrl ? (
+          <>
+            <img src={imageUrl(props.coverUrl)} alt="文章封面" className="aspect-[1200/630] w-full rounded-md border object-cover" />
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="h-8 flex-1" onClick={props.onPickCover} disabled={props.uploadDisabled}>
+                {props.coverUploading ? <Loader2 className="animate-spin" /> : <ImagePlus />} 更换
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8" onClick={props.onRemoveCover}>
+                <X /> 移除
+              </Button>
+            </div>
+          </>
+        ) : (
+          <button type="button" className="admin-cover-drop" onClick={props.onPickCover} disabled={props.uploadDisabled}>
+            {props.coverUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+            {props.coverUploading ? '上传中…' : '上传封面'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function PostEditor() {
   const { id } = useParams<{ id: string }>()
   return <PostEditorSession key={id ?? 'new'} />
@@ -109,6 +267,8 @@ function PostEditorSession() {
   const [uploading, setUploading] = useState<'cover' | 'inline' | null>(null)
   const [error, setError] = useState('')
   const [hydrated, setHydrated] = useState(false)
+  const [propertiesOpen, setPropertiesOpen] = useState(readPropertiesPreference)
+  const [propertiesSheetOpen, setPropertiesSheetOpen] = useState(false)
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() => draftSnapshot(EMPTY_DRAFT))
   const [localBackupSnapshot, setLocalBackupSnapshot] = useState('')
 
@@ -339,187 +499,141 @@ function PostEditorSession() {
     )
   }
 
+  function toggleProperties() {
+    if (!window.matchMedia(WIDE_LAYOUT).matches) {
+      setPropertiesSheetOpen(true)
+      return
+    }
+    setPropertiesOpen((open) => {
+      try { localStorage.setItem(PROPERTIES_PREF, open ? 'hidden' : 'shown') } catch { /* Preference only. */ }
+      return !open
+    })
+  }
+
+  const properties = (
+    <PostProperties
+      status={status}
+      onStatus={setStatus}
+      categoryId={categoryId}
+      onCategory={setCategoryId}
+      categories={categories}
+      tagIds={tagIds}
+      tagsList={tagsList}
+      onToggleTag={toggleTag}
+      newTag={newTag}
+      onNewTag={setNewTag}
+      onAddTag={() => void addTag()}
+      coverUrl={coverUrl}
+      coverUploading={uploading === 'cover'}
+      uploadDisabled={Boolean(uploading)}
+      onPickCover={() => coverInputRef.current?.click()}
+      onRemoveCover={() => setCoverUrl(null)}
+    />
+  )
+
   return (
-    <Sheet>
-      <div
-        className="admin-writing-mode"
-        onKeyDown={(event) => {
-          if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-            event.preventDefault()
-            void save()
-          }
-        }}
-      >
+    <div
+      className="admin-writing-mode"
+      onKeyDown={(event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+          event.preventDefault()
+          void save()
+        }
+      }}
+    >
       <header className="admin-editor-actions">
         <div className="admin-editor-actions-inner">
           <div className="admin-editor-actions-left">
-            <Button variant="ghost" size="sm" className="h-8 px-2" onClick={leaveEditor}>
-              <ArrowLeft /> <span className="admin-editor-back-label">返回文章</span>
+            <Button variant="ghost" size="sm" className="h-8 px-2" onClick={leaveEditor} aria-label="返回文章">
+              <ArrowLeft /> <span className="admin-editor-back-label">文章</span>
             </Button>
             <span className="admin-editor-save-state">{saveState}</span>
           </div>
           <div className="admin-editor-actions-right">
-          {status !== POST_STATUS.Published && (
-            <Button variant="ghost" size="sm" className="admin-editor-save-draft h-8" disabled={saving || Boolean(uploading)} onClick={() => void save()}>
-              {saving && <Loader2 className="animate-spin" />} 保存草稿
+            {editing && status === POST_STATUS.Published && (
+              <Button asChild variant="ghost" size="sm" className="h-8 px-2">
+                <a href={`/article/${id}`} target="_blank" rel="noreferrer" aria-label="在博客中查看文章">
+                  <ExternalLink /> <span className="admin-editor-view-label">查看</span>
+                </a>
+              </Button>
+            )}
+            {status !== POST_STATUS.Published && (
+              <Button variant="ghost" size="sm" className="admin-editor-save-draft h-8" disabled={saving || Boolean(uploading)} onClick={() => void save()}>
+                {saving && <Loader2 className="animate-spin" />} 保存草稿
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn('admin-properties-toggle h-8', propertiesOpen && 'is-open')}
+              aria-pressed={propertiesOpen}
+              onClick={toggleProperties}
+            >
+              <PanelRight /> 属性
             </Button>
-          )}
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8">
-              <Settings2 /> 设置
+            <Button
+              onClick={() => void save(status === POST_STATUS.Published ? undefined : POST_STATUS.Published)}
+              disabled={saving || Boolean(uploading)}
+              size="sm"
+              className="h-8"
+            >
+              {saving && <Loader2 className="animate-spin" />}
+              {status === POST_STATUS.Published ? '更新' : '发布'}
             </Button>
-          </SheetTrigger>
-          <Button
-            onClick={() => void save(status === POST_STATUS.Published ? undefined : POST_STATUS.Published)}
-            disabled={saving || Boolean(uploading)}
-            size="sm"
-            className="h-8"
-          >
-            {saving && <Loader2 className="animate-spin" />}
-            {status === POST_STATUS.Published ? '更新' : '发布'}
-          </Button>
           </div>
         </div>
       </header>
 
-      <div className="admin-writing-canvas">
-
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle />
-          <AlertTitle>文章加载失败</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <Input
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        placeholder="文章标题"
-        aria-label="文章标题"
-        autoComplete="off"
-        autoCapitalize="sentences"
-        className="admin-editor-title h-auto border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) void pickCover(file)
+          event.target.value = ''
+        }}
       />
 
-      <SheetContent className="admin-settings-sheet w-full overflow-y-auto p-4 sm:max-w-xs">
-        <SheetHeader className="text-left">
-          <SheetTitle>文章设置</SheetTitle>
-        </SheetHeader>
-        <div className="mt-6 space-y-5">
-          <div className="space-y-2">
-            <Label>状态</Label>
-            <Select value={String(status)} onValueChange={(value) => setStatus(Number(value))}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className={cn('admin-editor-layout', propertiesOpen && 'has-properties')}>
+        <div className="admin-writing-canvas">
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle />
+              <AlertTitle>文章加载失败</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-          <div className="space-y-2">
-            <Label>分类</Label>
-            <Select
-              value={categoryId === null ? 'none' : String(categoryId)}
-              onValueChange={(value) => setCategoryId(value === 'none' ? null : Number(value))}
-            >
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">未分类</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={String(category.id)}>{category.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <TitleField value={title} onChange={setTitle} autoFocus={!editing} />
 
-          <div className="space-y-2">
-            <Label>标签</Label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full justify-between font-normal">
-                  <span className="flex items-center gap-1.5"><Tags className="size-4" /> 已选 {tagIds.length}</span>
-                  <ChevronDown className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
-                <DropdownMenuLabel>选择标签</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {tagsList.map((tag) => (
-                  <DropdownMenuCheckboxItem
-                    key={tag.id}
-                    checked={tagIds.includes(Number(tag.id))}
-                    onCheckedChange={() => toggleTag(Number(tag.id))}
-                    onSelect={(event) => event.preventDefault()}
-                  >
-                    {tag.name}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                {tagsList.length === 0 && <p className="px-2 py-3 text-xs text-muted-foreground">暂无标签</p>}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <div className="flex gap-2">
-              <Input
-                value={newTag}
-                onChange={(event) => setNewTag(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    void addTag()
-                  }
-                }}
-                placeholder="新标签（回车添加）"
-              />
-              <Button variant="secondary" className="shrink-0" disabled={!newTag.trim()} onClick={() => void addTag()}>添加</Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>封面</Label>
-            <div className="flex items-center gap-2">
-              {coverUrl && <img src={imageUrl(coverUrl)} alt="文章封面" className="h-8 w-12 rounded border object-cover" />}
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) void pickCover(file)
-                  event.target.value = ''
-                }}
-              />
-              <Button variant="outline" size="sm" className="h-8" onClick={() => coverInputRef.current?.click()} disabled={Boolean(uploading)}>
-                {uploading === 'cover' ? <Loader2 className="animate-spin" /> : <ImagePlus />}
-                {coverUrl ? '更换' : '上传'}
-              </Button>
-              {coverUrl && (
-                <Button variant="ghost" size="sm" className="h-8" onClick={() => setCoverUrl(null)}>
-                  <X /> 移除
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="border-t pt-5">
-            <Button variant="outline" className="w-full" disabled={saving} onClick={() => void save()}>
-              {saving && <Loader2 className="animate-spin" />} 保存当前状态
-            </Button>
-          </div>
+          <MarkdownEditor
+            key={id ?? 'new'}
+            value={content}
+            onChange={setContent}
+            onUploadImage={uploadInlineImage}
+            uploadingImage={Boolean(uploading)}
+          />
         </div>
-      </SheetContent>
 
-      <MarkdownEditor
-        key={id ?? 'new'}
-        value={content}
-        onChange={setContent}
-        onUploadImage={uploadInlineImage}
-        uploadingImage={Boolean(uploading)}
-      />
+        {propertiesOpen && (
+          <aside className="admin-properties" aria-label="文章属性">
+            <h2 className="admin-properties-title">文章属性</h2>
+            {properties}
+          </aside>
+        )}
       </div>
-      </div>
-    </Sheet>
+
+      <Sheet open={propertiesSheetOpen} onOpenChange={setPropertiesSheetOpen}>
+        <SheetContent side="bottom" className="admin-settings-sheet max-h-[85svh] overflow-y-auto p-4">
+          <SheetHeader className="text-left">
+            <SheetTitle>文章属性</SheetTitle>
+            <SheetDescription className="sr-only">状态、分类、标签和封面</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4">{properties}</div>
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 }

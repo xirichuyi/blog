@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BookOpen, FileUp, Loader2, MoreHorizontal, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { BookOpen, ChevronDown, FileUp, Loader2, MoreHorizontal, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
   adminListBooks,
@@ -54,6 +65,14 @@ function payloadFromBook(book: Book): BookPayload {
     finished_at: book.finished_at,
     is_public: book.is_public,
   }
+}
+
+type PendingDelete =
+  | { kind: 'book'; book: Book }
+  | { kind: 'file'; fileId: number; fileName: string }
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
 }
 
 function formatBytes(bytes: number): string {
@@ -112,7 +131,12 @@ export default function BooksManager() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [selectedEpub, setSelectedEpub] = useState<File | null>(null)
   const [embeddedCover, setEmbeddedCover] = useState<File | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const epubInputRef = useRef<HTMLInputElement>(null)
+  // Lives outside the row menu: the menu unmounts on close, before the file is chosen.
+  const bookFileInputRef = useRef<HTMLInputElement>(null)
+  const uploadTargetRef = useRef<Book | null>(null)
   const embeddedCoverUrl = useMemo(
     () => embeddedCover ? URL.createObjectURL(embeddedCover) : null,
     [embeddedCover],
@@ -147,6 +171,7 @@ export default function BooksManager() {
   }
 
   const closeEditor = () => {
+    if (busy) return
     setEditing(null)
     setSelectedEpub(null)
     setEmbeddedCover(null)
@@ -215,7 +240,9 @@ export default function BooksManager() {
       }
 
       await refresh()
-      closeEditor()
+      setEditing(null)
+      setSelectedEpub(null)
+      setEmbeddedCover(null)
       toast.success(editing === 'new' ? '书籍已添加' : '书籍已更新')
     } catch (error) {
       if (createdBookId !== null) await deleteBook(createdBookId).catch(() => undefined)
@@ -246,25 +273,23 @@ export default function BooksManager() {
     }
   }
 
-  const removeBook = async (book: Book) => {
-    if (!window.confirm(`确定删除“${book.title}”及其电子书文件吗？`)) return
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    setDeleting(true)
     try {
-      await deleteBook(book.id)
+      if (pendingDelete.kind === 'book') {
+        await deleteBook(pendingDelete.book.id)
+        toast.success('书籍已删除')
+      } else {
+        await deleteBookFile(pendingDelete.fileId)
+        toast.success('文件已删除')
+      }
+      setPendingDelete(null)
       await refresh()
-      toast.success('书籍已删除')
     } catch (error) {
-      toast.error('书籍删除失败', { description: (error as Error).message })
-    }
-  }
-
-  const removeFile = async (fileId: number) => {
-    if (!window.confirm('确定删除这个文件吗？')) return
-    try {
-      await deleteBookFile(fileId)
-      await refresh()
-      toast.success('文件已删除')
-    } catch (error) {
-      toast.error('文件删除失败', { description: (error as Error).message })
+      toast.error('删除失败', { description: (error as Error).message })
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -273,6 +298,18 @@ export default function BooksManager() {
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate} size="sm"><Plus /> 添加书籍</Button>
       </div>
+      <input
+        ref={bookFileInputRef}
+        type="file"
+        accept=".epub,application/epub+zip"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          const book = uploadTargetRef.current
+          if (file && book) void uploadFile(book, file)
+          event.target.value = ''
+        }}
+      />
 
       {!books && <div className="flex items-center gap-2 py-12 text-muted-foreground"><Loader2 className="animate-spin" /> 加载中…</div>}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -289,24 +326,23 @@ export default function BooksManager() {
                   <span>{book.is_public ? '公开' : '隐藏'}</span>
                 </div>
               </div>
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label={`操作：${book.title}`}><MoreHorizontal /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onSelect={() => openEdit(book)}><Pencil /> 编辑</DropdownMenuItem>
-                  <DropdownMenuItem asChild disabled={uploadingBookId !== null}>
-                    <label className="cursor-pointer">
-                      <FileUp /> {uploadingBookId === book.id ? `上传中 ${uploadProgress}%` : '上传 EPUB'}
-                      <input type="file" accept=".epub,application/epub+zip" className="hidden" disabled={uploadingBookId !== null} onChange={(event) => {
-                        const file = event.target.files?.[0]
-                        if (file) void uploadFile(book, file)
-                        event.target.value = ''
-                      }} />
-                    </label>
+                  <DropdownMenuItem
+                    disabled={uploadingBookId !== null}
+                    onSelect={() => {
+                      uploadTargetRef.current = book
+                      bookFileInputRef.current?.click()
+                    }}
+                  >
+                    <FileUp /> {uploadingBookId === book.id ? `上传中 ${uploadProgress}%` : '上传 EPUB'}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => void removeBook(book)}><Trash2 /> 删除</DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setPendingDelete({ kind: 'book', book })}><Trash2 /> 删除</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </CardHeader>
@@ -316,7 +352,7 @@ export default function BooksManager() {
                   <div key={file.id} className="flex items-center gap-2 rounded-md border px-3 py-2 text-xs">
                     <span className="font-medium">{file.format.toUpperCase()}</span>
                     <span className="min-w-0 flex-1 truncate text-muted-foreground">{file.file_name} · {formatBytes(file.file_size)}</span>
-                    <Button variant="ghost" size="icon" className="size-7" onClick={() => void removeFile(file.id)}><X /></Button>
+                    <Button variant="ghost" size="icon" className="size-7" aria-label={`删除 ${file.file_name}`} onClick={() => setPendingDelete({ kind: 'file', fileId: file.id, fileName: file.file_name })}><X /></Button>
                   </div>
                 ))}
                 {book.files.length === 0 && (
@@ -372,20 +408,27 @@ export default function BooksManager() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="书名"><Input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></Field>
               <Field label="作者"><Input value={form.author} onChange={(event) => setForm({ ...form, author: event.target.value })} /></Field>
-              <Field label="阅读状态"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.reading_status} onChange={(event) => setForm({ ...form, reading_status: event.target.value as ReadingStatus })}>{Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
-              <Field label="进度（0–100）"><Input type="number" min={0} max={100} value={form.progress} onChange={(event) => setForm({ ...form, progress: Number(event.target.value) })} /></Field>
+              <Field label="阅读状态">
+                <Select value={form.reading_status} onValueChange={(value) => setForm({ ...form, reading_status: value as ReadingStatus })}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="进度（0–100）"><Input type="number" min={0} max={100} value={form.progress} onChange={(event) => setForm({ ...form, progress: clamp(Number(event.target.value) || 0, 0, 100) })} /></Field>
             </div>
             <div className="flex flex-wrap gap-5 text-sm">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_public} onChange={(event) => setForm({ ...form, is_public: event.target.checked })} />显示在公开书架</label>
+              <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" className="size-4 accent-primary" checked={form.is_public} onChange={(event) => setForm({ ...form, is_public: event.target.checked })} />显示在公开书架</label>
             </div>
             <details className="group rounded-lg border">
-              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
                 更多信息
-                <span className="float-right text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
+                <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
               </summary>
               <div className="space-y-4 border-t p-4">
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <Field label="评分（1–5）"><Input type="number" min={1} max={5} value={form.rating ?? ''} onChange={(event) => setForm({ ...form, rating: event.target.value ? Number(event.target.value) : null })} /></Field>
+                  <Field label="评分（1–5）"><Input type="number" min={1} max={5} value={form.rating ?? ''} onChange={(event) => setForm({ ...form, rating: event.target.value ? clamp(Number(event.target.value) || 1, 1, 5) : null })} /></Field>
                   <Field label="开始日期"><Input type="date" value={form.started_at ?? ''} onChange={(event) => setForm({ ...form, started_at: event.target.value || null })} /></Field>
                   <Field label="完成日期"><Input type="date" value={form.finished_at ?? ''} onChange={(event) => setForm({ ...form, finished_at: event.target.value || null })} /></Field>
                 </div>
@@ -395,7 +438,7 @@ export default function BooksManager() {
             </details>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeEditor}>取消</Button>
+            <Button variant="outline" disabled={busy} onClick={closeEditor}>取消</Button>
             <Button disabled={busy || readingEpub || !form.title.trim() || (editing === 'new' && !selectedEpub)} onClick={() => void save()}>
               {busy && <Loader2 className="animate-spin" />}
               {busy && selectedEpub ? `上传中 ${uploadProgress}%` : editing === 'new' ? '添加书籍' : '保存'}
@@ -403,7 +446,51 @@ export default function BooksManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteBookDialog
+        pending={pendingDelete}
+        deleting={deleting}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
+  )
+}
+
+function DeleteBookDialog({
+  pending,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  pending: PendingDelete | null
+  deleting: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const title = pending?.kind === 'book' ? `删除「${pending.book.title}」？` : '删除这个文件？'
+  const description = pending?.kind === 'book'
+    ? '书籍信息和它的全部电子书文件都会被删除，无法恢复。'
+    : `「${pending?.kind === 'file' ? pending.fileName : ''}」会从书架中移除，无法恢复。`
+  return (
+    <AlertDialog open={Boolean(pending)} onOpenChange={(open) => !open && !deleting && onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={deleting}
+            onClick={(event) => { event.preventDefault(); onConfirm() }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleting && <Loader2 className="animate-spin" />} 删除
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, ExternalLink, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { AlertCircle, ExternalLink, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -123,7 +123,17 @@ export default function PostsList() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="admin-search relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、分类或标签" className="pl-9" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、分类或标签" className="pl-9 pr-8" aria-label="搜索文章" />
+          {query && (
+            <button
+              type="button"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="清空搜索"
+              onClick={() => setQuery('')}
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
         </div>
         <div className="admin-filters flex min-w-0 items-center gap-1 overflow-x-auto">
           {FILTERS.map((item) => (
@@ -175,7 +185,7 @@ export default function PostsList() {
                     {post.tags?.slice(0, 2).map((tag) => <span key={tag.id}>#{tag.name}</span>)}
                   </div>
                 </Link>
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="size-8 shrink-0 opacity-70 sm:opacity-0 sm:group-hover:opacity-100" disabled={busy === post.id} aria-label={`操作：${post.title || '无标题'}`}>
                       {busy === post.id ? <Loader2 className="animate-spin" /> : <MoreHorizontal />}
@@ -194,7 +204,13 @@ export default function PostsList() {
             {visiblePosts.length === 0 && (
               <div className="px-6 py-16 text-center">
                 <p className="text-sm font-medium">没有找到文章</p>
-                <p className="mt-1 text-xs text-muted-foreground">试试调整搜索内容或状态筛选。</p>
+                {query || filter !== 'all' ? (
+                  <Button variant="ghost" size="sm" className="mt-2" onClick={() => { setQuery(''); setFilter('all') }}>
+                    清除搜索和筛选
+                  </Button>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">还没有文章，从右上角开始写第一篇。</p>
+                )}
               </div>
             )}
           </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -37,6 +37,11 @@ import type { Category, Tag } from '@/services/api'
 
 type Item = Category | Tag
 
+function describeError(error: unknown, title: string): string {
+  const message = (error as Error).message || ''
+  return /already exists/i.test(message) ? `已经有同名的${title}了。` : message
+}
+
 interface SectionProps {
   title: string
   load: () => Promise<Item[]>
@@ -52,6 +57,7 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
   const [editName, setEditName] = useState('')
   const [pendingDelete, setPendingDelete] = useState<Item | null>(null)
   const [busy, setBusy] = useState(false)
+  const renameInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = async () => {
     try {
@@ -67,7 +73,7 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
 
   async function createItem() {
     const nextName = name.trim()
-    if (!nextName) return
+    if (!nextName || busy) return
     setBusy(true)
     try {
       await create(nextName)
@@ -75,7 +81,7 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
       await refresh()
       toast.success(`${title}已添加`)
     } catch (error) {
-      toast.error('添加失败', { description: (error as Error).message })
+      toast.error('添加失败', { description: describeError(error, title) })
     } finally {
       setBusy(false)
     }
@@ -83,7 +89,7 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
 
   async function renameItem() {
     const nextName = editName.trim()
-    if (!editing || !nextName) return
+    if (!editing || !nextName || busy) return
     setBusy(true)
     try {
       await rename(String(editing.id), nextName)
@@ -91,7 +97,7 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
       await refresh()
       toast.success(`${title}已更新`)
     } catch (error) {
-      toast.error('更新失败', { description: (error as Error).message })
+      toast.error('更新失败', { description: describeError(error, title) })
     } finally {
       setBusy(false)
     }
@@ -123,7 +129,7 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
             value={name}
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') void createItem()
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing) void createItem()
             }}
             placeholder={`新增${title}`}
           />
@@ -141,7 +147,7 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
           {items?.map((item) => (
             <div key={item.id} className="flex min-h-11 items-center gap-2 px-3 py-2">
               <span className="min-w-0 flex-1 truncate text-sm">{item.name}</span>
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="size-8" aria-label={`操作：${item.name}`}><MoreHorizontal /></Button>
                 </DropdownMenuTrigger>
@@ -161,18 +167,25 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
       </CardContent>
 
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent>
+        <DialogContent
+          onOpenAutoFocus={(event) => {
+            // Focus and select the current name so typing replaces it.
+            event.preventDefault()
+            renameInputRef.current?.focus()
+            renameInputRef.current?.select()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>重命名{title}</DialogTitle>
             <DialogDescription>修改后，已关联内容会继续保留。</DialogDescription>
           </DialogHeader>
           <Input
+            ref={renameInputRef}
             value={editName}
             onChange={(event) => setEditName(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') void renameItem()
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing) void renameItem()
             }}
-            autoFocus
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>

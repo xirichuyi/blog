@@ -65,7 +65,7 @@ export default function AdminLogin() {
             </div>
           ) : (
             <Button asChild variant="outline" className="admin-login-button h-11 w-full">
-              <a href={googleLoginUrl()}><GoogleMark /> 使用 Google 账号继续</a>
+              <a href={googleLoginUrl(from)}><GoogleMark /> 使用 Google 账号继续</a>
             </Button>
           )}
         </div>

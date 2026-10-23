@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, ImagePlus, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Markdown } from '@/components/Markdown'
@@ -23,15 +23,40 @@ export default function AboutEditor() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [savedSnapshot, setSavedSnapshot] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const snapshot = useMemo(
+    () => JSON.stringify({ title, subtitle, content, photoUrl }),
+    [content, photoUrl, subtitle, title],
+  )
+  // A failed load must never be saved back: it would overwrite the page with blanks.
+  const loaded = !loading && !error
+  const dirty = loaded && snapshot !== savedSnapshot
+
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
 
   useEffect(() => {
     getAboutRaw()
       .then((about) => {
-        setTitle(about.title || '')
-        setSubtitle(about.subtitle || '')
-        setContent(about.content || '')
-        setPhotoUrl((about as { photo_url?: string }).photo_url ?? null)
+        const next = {
+          title: about.title || '',
+          subtitle: about.subtitle || '',
+          content: about.content || '',
+          photoUrl: (about as { photo_url?: string }).photo_url ?? null,
+        }
+        setTitle(next.title)
+        setSubtitle(next.subtitle)
+        setContent(next.content)
+        setPhotoUrl(next.photoUrl)
+        setSavedSnapshot(JSON.stringify(next))
       })
       .catch((loadError) => setError(String(loadError.message || loadError)))
       .finally(() => setLoading(false))
@@ -50,10 +75,11 @@ export default function AboutEditor() {
   }
 
   async function save() {
+    if (!dirty || saving) return
     setSaving(true)
-    setError('')
     try {
       await updateAbout({ title, subtitle, content, photo_url: photoUrl })
+      setSavedSnapshot(snapshot)
       toast.success('关于页已保存')
     } catch (saveError) {
       toast.error('保存失败', { description: (saveError as Error).message })
@@ -71,9 +97,21 @@ export default function AboutEditor() {
   }
 
   return (
-    <div>
-      <div className="mb-4 flex justify-end">
-        <Button onClick={() => void save()} disabled={saving} size="sm">
+    <div
+      onKeyDown={(event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+          event.preventDefault()
+          void save()
+        }
+      }}
+    >
+      <div className="mb-4 flex items-center justify-end gap-3">
+        {loaded && (
+          <span className="text-xs text-muted-foreground" aria-live="polite">
+            {dirty ? '有未保存的修改' : '已保存'}
+          </span>
+        )}
+        <Button onClick={() => void save()} disabled={!dirty || saving || uploading} size="sm">
           {saving && <Loader2 className="animate-spin" />} 保存
         </Button>
       </div>
@@ -82,7 +120,7 @@ export default function AboutEditor() {
         <Alert variant="destructive" className="mb-4">
           <AlertCircle />
           <AlertTitle>关于页加载失败</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{error}。为避免覆盖已有内容，保存已停用，请刷新页面重试。</AlertDescription>
         </Alert>
       )}
 
@@ -128,7 +166,7 @@ export default function AboutEditor() {
           </div>
 
           <div className="space-y-2">
-            <Label>正文（Markdown）</Label>
+            <Label htmlFor="about-content">正文（Markdown）</Label>
             <Tabs defaultValue="write">
               <TabsList>
                 <TabsTrigger value="write">编辑</TabsTrigger>
@@ -136,6 +174,7 @@ export default function AboutEditor() {
               </TabsList>
               <TabsContent value="write">
                 <Textarea
+                  id="about-content"
                   value={content}
                   onChange={(event) => setContent(event.target.value)}
                   className="min-h-[42vh] resize-y font-mono leading-relaxed"

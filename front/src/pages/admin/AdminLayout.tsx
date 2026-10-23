@@ -1,19 +1,17 @@
-import { useState, type CSSProperties } from 'react'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
+  ArrowUpRight,
   BookOpen,
-  BarChart3,
   FileText,
-  History,
   LayoutDashboard,
   Loader2,
   LogOut,
-  Tags,
-  User,
+  PanelsTopLeft,
+  type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,61 +20,85 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { useAdminAuth } from '@/lib/admin-auth'
 import { cn } from '@/lib/utils'
 import './AdminLayout.css'
 
-const NAV = [
-  { to: '/admin', label: '工作台', icon: LayoutDashboard, exact: true },
-  { to: '/admin/analytics', label: '访问统计', icon: BarChart3 },
-  { to: '/admin/posts', label: '文章管理', icon: FileText },
-  { to: '/admin/taxonomy', label: '分类与标签', icon: Tags },
-  { to: '/admin/books', label: '我的书架', icon: BookOpen },
-  { to: '/admin/changelog', label: '更新日志', icon: History },
-  { to: '/admin/about', label: '关于页面', icon: User },
+interface SubPage {
+  to: string
+  label: string
+  title: string
+  description: string
+}
+
+interface Section {
+  to: string
+  label: string
+  icon: LucideIcon
+  exact?: boolean
+  pages: SubPage[]
+}
+
+// Four destinations; sections with several pages switch between them with tabs.
+const SECTIONS: Section[] = [
+  {
+    to: '/admin',
+    label: '概览',
+    icon: LayoutDashboard,
+    exact: true,
+    pages: [{ to: '/admin', label: '概览', title: '概览', description: '内容、访问与站点状态' }],
+  },
+  {
+    to: '/admin/posts',
+    label: '文章',
+    icon: FileText,
+    pages: [
+      { to: '/admin/posts', label: '全部文章', title: '文章', description: '创作、发布和整理你的文章' },
+      { to: '/admin/posts/taxonomy', label: '分类与标签', title: '文章', description: '整理文章使用的分类和标签' },
+    ],
+  },
+  {
+    to: '/admin/books',
+    label: '书架',
+    icon: BookOpen,
+    pages: [{ to: '/admin/books', label: '书架', title: '书架', description: '管理公开阅读的书籍' }],
+  },
+  {
+    to: '/admin/site',
+    label: '站点',
+    icon: PanelsTopLeft,
+    pages: [
+      { to: '/admin/site', label: '关于页面', title: '站点', description: '维护公开的个人介绍' },
+      { to: '/admin/site/changelog', label: '更新日志', title: '站点', description: '记录博客的每一次变化' },
+    ],
+  },
 ]
 
-const PAGE_META: Record<string, { title: string; description: string }> = {
-  '/admin': { title: '工作台', description: '管理文章与站点内容' },
-  '/admin/analytics': { title: '访问统计', description: '只属于你的访客足迹' },
-  '/admin/posts': { title: '文章管理', description: '创作、发布和整理你的文章' },
-  '/admin/taxonomy': { title: '分类与标签', description: '让内容保持清晰有序' },
-  '/admin/books': { title: '我的书架', description: '管理公开阅读的书籍' },
-  '/admin/changelog': { title: '更新日志', description: '记录博客的每一次变化' },
-  '/admin/about': { title: '关于页面', description: '维护公开的个人介绍' },
+function sectionFor(pathname: string): Section {
+  return [...SECTIONS].reverse().find((section) => (
+    section.exact ? pathname === section.to : pathname === section.to || pathname.startsWith(`${section.to}/`)
+  )) ?? SECTIONS[0]
 }
 
-function pathIsActive(pathname: string, to: string, exact = false) {
-  return exact ? pathname === to : pathname === to || pathname.startsWith(`${to}/`)
+function SectionLink({ section, className }: { section: Section; className: string }) {
+  const Icon = section.icon
+  return (
+    <NavLink
+      to={section.to}
+      end={section.exact}
+      className={({ isActive }) => cn(className, isActive && 'is-active')}
+    >
+      <Icon aria-hidden="true" />
+      <span>{section.label}</span>
+    </NavLink>
+  )
 }
 
-export default function AdminLayout() {
+function AccountMenu({ side, className, avatarClassName }: { side: 'right' | 'bottom'; className: string; avatarClassName: string }) {
   const { session, signOut } = useAdminAuth()
   const navigate = useNavigate()
-  const location = useLocation()
   const [signingOut, setSigningOut] = useState(false)
-  const editingPost = location.pathname === '/admin/posts/new' || /^\/admin\/posts\/\d+$/.test(location.pathname)
-  const meta = editingPost
-    ? {
-        title: location.pathname.endsWith('/new') ? '写文章' : '编辑文章',
-        description: '专注写作，完成后再处理发布设置',
-      }
-    : PAGE_META[location.pathname]
-      ?? PAGE_META[NAV.find((item) => pathIsActive(location.pathname, item.to, item.exact))?.to ?? '/admin']
 
   const logout = async () => {
     setSigningOut(true)
@@ -91,78 +113,99 @@ export default function AdminLayout() {
   }
 
   return (
-    <SidebarProvider className="admin-shell" style={{ '--sidebar-width': '10.75rem' } as CSSProperties}>
-      {!editingPost && (
-        <Sidebar collapsible="offcanvas" className="admin-sidebar">
-        <SidebarHeader className="admin-sidebar-header">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="admin-profile-trigger" aria-label="管理员账户">
-                <Avatar className="size-8">
-                  <AvatarImage src={session?.picture ?? undefined} alt={session?.name || ''} referrerPolicy="no-referrer" />
-                  <AvatarFallback>{session?.name?.slice(0, 1).toUpperCase() || 'A'}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start" className="w-60">
-              <DropdownMenuLabel className="font-normal">
-                <p className="truncate text-sm font-medium">{session?.name || '管理员'}</p>
-                <p className="truncate text-xs text-muted-foreground">{session?.email}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled={signingOut} onSelect={() => void logout()}>
-                {signingOut ? <Loader2 className="animate-spin" /> : <LogOut />} 退出登录
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarHeader>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className={className} aria-label="管理员账户">
+          <Avatar className={avatarClassName}>
+            <AvatarImage src={session?.picture ?? undefined} alt={session?.name || ''} referrerPolicy="no-referrer" />
+            <AvatarFallback>{session?.name?.slice(0, 1).toUpperCase() || 'A'}</AvatarFallback>
+          </Avatar>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side={side} align="end" className="w-60">
+        <DropdownMenuLabel className="font-normal">
+          <p className="truncate text-sm font-medium">{session?.name || '管理员'}</p>
+          <p className="truncate text-xs text-muted-foreground">{session?.email}</p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <a href="/" target="_blank" rel="noreferrer"><ArrowUpRight /> 返回博客</a>
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={signingOut} onSelect={() => void logout()}>
+          {signingOut ? <Loader2 className="animate-spin" /> : <LogOut />} 退出登录
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
-        <SidebarContent className="px-2">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
-                {NAV.map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      asChild
-                      className="admin-nav-item"
-                      isActive={pathIsActive(location.pathname, item.to, item.exact)}
-                    >
-                      <Link to={item.to}>
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
+export default function AdminLayout() {
+  const location = useLocation()
+  const editingPost = location.pathname === '/admin/posts/new' || /^\/admin\/posts\/\d+$/.test(location.pathname)
+  const section = sectionFor(location.pathname)
+  const page = section.pages.find((item) => item.to === location.pathname) ?? section.pages[0]
 
-        </Sidebar>
-      )}
+  // The editor is a full-screen writing view with its own action bar.
+  if (editingPost) {
+    return (
+      <div className="admin-shell">
+        <Outlet />
+        <Toaster richColors closeButton />
+      </div>
+    )
+  }
 
-      <SidebarInset className={cn('admin-workspace', editingPost && 'admin-workspace-editor')}>
-        {!editingPost && (
-          <header className="admin-topbar">
-          <div className="flex min-w-0 items-center gap-3">
-            <SidebarTrigger className="md:hidden" />
+  return (
+    <div className="admin-shell admin-console">
+      <nav className="admin-rail" aria-label="后台导航">
+        <div className="admin-rail-items">
+          {SECTIONS.map((item) => <SectionLink key={item.to} section={item} className="admin-rail-item" />)}
+        </div>
+        <div className="admin-rail-footer">
+          <a href="/" target="_blank" rel="noreferrer" className="admin-rail-item">
+            <ArrowUpRight aria-hidden="true" />
+            <span>博客</span>
+          </a>
+          <AccountMenu side="right" className="admin-rail-account" avatarClassName="size-8" />
+        </div>
+      </nav>
+
+      <div className="admin-workspace">
+        <header className="admin-topbar">
+          <div className="admin-topbar-row">
             <div className="min-w-0">
-              <h1>{meta.title}</h1>
-              <p>{meta.description}</p>
+              <h1>{page.title}</h1>
+              <p>{page.description}</p>
             </div>
+            <AccountMenu side="bottom" className="admin-topbar-account" avatarClassName="size-7" />
           </div>
-          </header>
-        )}
+          {section.pages.length > 1 && (
+            <nav className="admin-subtabs" aria-label={`${section.label}页面`}>
+              {section.pages.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end
+                  className={({ isActive }) => cn('admin-subtab', isActive && 'is-active')}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+          )}
+        </header>
 
-        <main className={cn('admin-main', editingPost && 'admin-main-editor')}>
-          <div className={cn('admin-container', editingPost && 'admin-container-editor')}>
+        <main className="admin-main">
+          <div className="admin-container">
             <Outlet />
           </div>
         </main>
-      </SidebarInset>
+      </div>
+
+      <nav className="admin-tabbar" aria-label="后台导航">
+        {SECTIONS.map((item) => <SectionLink key={item.to} section={item} className="admin-tabbar-item" />)}
+      </nav>
       <Toaster richColors closeButton />
-    </SidebarProvider>
+    </div>
   )
 }

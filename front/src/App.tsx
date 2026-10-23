@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Navigate, Routes, Route } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute'
 import { AdminAuthProvider } from '@/lib/admin-auth'
@@ -20,7 +20,6 @@ const NotFound = lazy(() => import('@/pages/NotFound'))
 const AdminLogin = lazy(() => import('@/pages/admin/Login'))
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'))
 const Dashboard = lazy(() => import('@/pages/admin/Dashboard'))
-const Analytics = lazy(() => import('@/pages/admin/Analytics'))
 const PostsList = lazy(() => import('@/pages/admin/PostsList'))
 const PostEditor = lazy(() => import('@/pages/admin/PostEditor'))
 const Taxonomy = lazy(() => import('@/pages/admin/Taxonomy'))
@@ -58,14 +57,18 @@ export default function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="analytics" element={<Analytics />} />
           <Route path="posts" element={<PostsList />} />
+          <Route path="posts/taxonomy" element={<Taxonomy />} />
           <Route path="posts/new" element={<PostEditor />} />
           <Route path="posts/:id" element={<PostEditor />} />
-          <Route path="taxonomy" element={<Taxonomy />} />
-          <Route path="about" element={<AboutEditor />} />
           <Route path="books" element={<BooksManager />} />
-          <Route path="changelog" element={<ChangelogManager />} />
+          <Route path="site" element={<AboutEditor />} />
+          <Route path="site/changelog" element={<ChangelogManager />} />
+          {/* Earlier addresses, kept so bookmarks still land somewhere sensible. */}
+          <Route path="analytics" element={<Navigate to="/admin" replace />} />
+          <Route path="taxonomy" element={<Navigate to="/admin/posts/taxonomy" replace />} />
+          <Route path="about" element={<Navigate to="/admin/site" replace />} />
+          <Route path="changelog" element={<Navigate to="/admin/site/changelog" replace />} />
         </Route>
 
         {/* The full-screen reader owns its controls; the public Dock must not overlay them. */}

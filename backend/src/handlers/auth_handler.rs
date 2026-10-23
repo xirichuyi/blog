@@ -79,7 +79,7 @@ pub async fn google_start(
     State(state): State<AppState>,
     Query(query): Query<GoogleStartQuery>,
 ) -> Response {
-    let return_to = query.return_to.as_deref().and_then(reader_return_path);
+    let return_to = query.return_to.as_deref().and_then(sign_in_return_path);
     let Some(config) = state.config.google_auth.as_ref() else {
         return login_error_redirect(CallbackFailure::NotConfigured, return_to.as_deref());
     };
@@ -116,7 +116,7 @@ pub async fn google_callback(
 ) -> Response {
     let return_to = cookie_value(&headers, OAUTH_RETURN_COOKIE)
         .and_then(|value| urlencoding::decode(value).ok())
-        .and_then(|value| reader_return_path(&value));
+        .and_then(|value| sign_in_return_path(&value));
     let result = complete_google_callback(&state, &headers, query).await;
     let mut response = match result {
         Ok(identity) => match issue_session_token(&identity, &state.config.jwt.secret) {
@@ -269,8 +269,25 @@ fn build_authorize_url(
     Ok(url)
 }
 
-// Only a canonical reader path may be used as an OAuth destination. Never accept
-// absolute URLs, encoded path separators, fragments or arbitrary query strings.
+// Only a canonical reader or admin path may be used as an OAuth destination.
+// Never accept absolute URLs, encoded path separators, fragments or arbitrary
+// query strings.
+fn sign_in_return_path(value: &str) -> Option<String> {
+    reader_return_path(value).or_else(|| admin_return_path(value))
+}
+
+/// An admin page to reopen after the session expired, e.g. `/admin/posts/12`.
+fn admin_return_path(value: &str) -> Option<String> {
+    let valid = value.len() <= 200
+        && (value == "/admin" || value.starts_with("/admin/"))
+        && !value.starts_with("/admin/login")
+        && !value.contains("//")
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'/' || b == b'-');
+    valid.then(|| value.to_string())
+}
+
 fn reader_return_path(value: &str) -> Option<String> {
     if value.len() > 200 {
         return None;
@@ -296,7 +313,8 @@ fn reader_return_path(value: &str) -> Option<String> {
 }
 
 fn login_error_redirect(failure: CallbackFailure, return_to: Option<&str>) -> Response {
-    let target = match return_to {
+    // Admin pages report sign-in errors on the login page; readers stay in place.
+    let target = match return_to.filter(|path| !path.starts_with("/admin")) {
         Some(path) => format!(
             "{path}{}auth_error={}",
             if path.contains('?') { "&" } else { "?" },
@@ -400,6 +418,26 @@ mod tests {
             params.get("redirect_uri").map(String::as_str),
             Some("https://blog.example/api/auth/google/callback")
         );
+    }
+
+    #[test]
+    fn admin_sign_in_returns_to_the_page_that_expired() {
+        assert_eq!(
+            sign_in_return_path("/admin/posts/12").as_deref(),
+            Some("/admin/posts/12")
+        );
+        assert!(sign_in_return_path("/admin").is_some());
+        for invalid in [
+            "/admin/login",
+            "/admin//evil.example",
+            "/admin/posts?x=1",
+            "/admin/../books",
+            "/administrator",
+            "https://evil.example/admin",
+            "/Admin/posts",
+        ] {
+            assert!(sign_in_return_path(invalid).is_none(), "{invalid}");
+        }
     }
 
     #[test]

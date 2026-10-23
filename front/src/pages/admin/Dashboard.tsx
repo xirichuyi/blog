@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDashboard, STATUS_NAME, type DashboardStats } from '@/services/admin'
+import Analytics from './Analytics'
 
 const STATUS_LABEL: Record<number, string> = {
   0: '草稿',
@@ -114,6 +115,13 @@ export default function Dashboard() {
           </div>
         </>
       )}
+
+      <section className="admin-overview-traffic" aria-labelledby="overview-traffic">
+        <div className="admin-section-heading">
+          <h3 id="overview-traffic">访问统计</h3>
+        </div>
+        <Analytics />
+      </section>
     </div>
   )
 }
