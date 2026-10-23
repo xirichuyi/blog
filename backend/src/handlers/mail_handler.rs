@@ -14,8 +14,13 @@
 //! - **超时**：TCP 读写超时 + 整体超时，避免卡死线程。
 
 use crate::models::ApiResponse;
+use crate::utils::client_ip::client_ip;
 use crate::utils::error::{ApiResult, AppError};
-use axum::{extract::Json, http::HeaderMap};
+use crate::utils::http::HTTP_CLIENT;
+use axum::{
+    extract::{ConnectInfo, Json},
+    http::HeaderMap,
+};
 use mailparse::ParsedMail;
 use native_tls::TlsConnector;
 use serde::Deserialize;
@@ -109,10 +114,9 @@ impl imap::Authenticator for XOAuth2 {
 /// 用 refresh_token + client_id 向微软换一个短期 access_token。
 /// 个人号 token 一般签发在 `consumers` 租户,少数走 `common`,两个都试。
 async fn exchange_outlook_token(refresh_token: &str, client_id: &str) -> Result<String, String> {
-    let http = reqwest::Client::new();
     for tenant in ["consumers", "common"] {
         let url = format!("https://{MS_LOGIN_HOST}/{tenant}/oauth2/v2.0/token");
-        let resp = http
+        let resp = HTTP_CLIENT
             .post(&url)
             .form(&[
                 ("client_id", client_id),
@@ -199,29 +203,6 @@ fn imap_host(email: &str) -> Option<&'static str> {
         _ => return None,
     };
     Some(host)
-}
-
-/// 取真实访客 IP：站点在 Cloudflare + nginx 后面，套接字对端是本机，
-/// 所以优先信 Cloudflare 注入的 `CF-Connecting-IP`，退而取 `X-Forwarded-For` 首段。
-fn client_ip(headers: &HeaderMap) -> String {
-    if let Some(ip) = headers
-        .get("cf-connecting-ip")
-        .and_then(|v| v.to_str().ok())
-    {
-        let t = ip.trim();
-        if !t.is_empty() {
-            return t.to_string();
-        }
-    }
-    if let Some(xff) = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()) {
-        if let Some(first) = xff.split(',').next() {
-            let t = first.trim();
-            if !t.is_empty() {
-                return t.to_string();
-            }
-        }
-    }
-    "unknown".to_string()
 }
 
 /// 固定窗口限流。返回 true 表示放行；false 表示该 IP 本窗口内已超限。
@@ -515,8 +496,12 @@ where
 }
 
 /// POST /api/mail/list —— 拉取最近邮件列表。
-pub async fn list(headers: HeaderMap, Json(req): Json<ListReq>) -> ApiResult<serde_json::Value> {
-    let ip = client_ip(&headers);
+pub async fn list(
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Json(req): Json<ListReq>,
+) -> ApiResult<serde_json::Value> {
+    let ip = client_ip(peer, &headers).to_string();
     let limit = req.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
     run_guarded(
         ip,
@@ -530,8 +515,12 @@ pub async fn list(headers: HeaderMap, Json(req): Json<ListReq>) -> ApiResult<ser
 }
 
 /// POST /api/mail/body —— 按 UID 拉取单封正文。
-pub async fn body(headers: HeaderMap, Json(req): Json<BodyReq>) -> ApiResult<serde_json::Value> {
-    let ip = client_ip(&headers);
+pub async fn body(
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Json(req): Json<BodyReq>,
+) -> ApiResult<serde_json::Value> {
+    let ip = client_ip(peer, &headers).to_string();
     let uid = req.uid;
     run_guarded(
         ip,

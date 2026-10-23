@@ -44,11 +44,10 @@ fn cdata(s: &str) -> String {
     s.replace("]]>", "]]]]><![CDATA[>")
 }
 
-/// Markdown/HTML → 纯文本摘要(给 description 用)。
-fn excerpt(content: &str, max: usize) -> String {
-    let mut t = content.to_string();
-    // 代码块、图片、链接(保留链接文字)、行内代码、标题/强调标记、HTML 标签
-    for (re, rep) in [
+/// 摘要清洗规则:代码块、图片、链接(保留链接文字)、行内代码、标题/强调标记、HTML 标签。
+/// 只编译一次,避免每次渲染页面都重新构建 9 个正则。
+static EXCERPT_RULES: LazyLock<Vec<(regex::Regex, &'static str)>> = LazyLock::new(|| {
+    [
         (r"(?s)```.*?```", ""),
         (r"!\[[^\]]*\]\([^)]*\)", ""),
         (r"\[([^\]]+)\]\([^)]*\)", "$1"),
@@ -58,11 +57,17 @@ fn excerpt(content: &str, max: usize) -> String {
         (r"<[^>]+>", ""),
         (r"https?://\S+", ""),
         (r"\s+", " "),
-    ] {
-        t = regex::Regex::new(re)
-            .unwrap()
-            .replace_all(&t, rep)
-            .into_owned();
+    ]
+    .into_iter()
+    .map(|(re, rep)| (regex::Regex::new(re).unwrap(), rep))
+    .collect()
+});
+
+/// Markdown/HTML → 纯文本摘要(给 description 用)。
+fn excerpt(content: &str, max: usize) -> String {
+    let mut t = content.to_string();
+    for (re, rep) in EXCERPT_RULES.iter() {
+        t = re.replace_all(&t, *rep).into_owned();
     }
     let t = t.trim();
     let chars: Vec<char> = t.chars().collect();

@@ -20,7 +20,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. 初始化日志
+    // 1. 初始化日志（先读 .env，RUST_LOG 才能生效）
+    dotenvy::dotenv().ok();
     init_logging();
 
     // 2. 加载配置
@@ -51,7 +52,7 @@ fn init_logging() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "cyrus_blog_backend=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "chuyi_uk_back=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -70,16 +71,19 @@ async fn start_server(
     config: &Config,
     app: axum::Router,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let host = std::env::var("HOST").unwrap_or_else(|_| config.server.host.clone());
-    let addr: SocketAddr = format!("{}:{}", host, config.server.port).parse()?;
+    let addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port).parse()?;
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
 
     tracing::info!("🚀 Chuyi's Blog 服务启动: http://{}", addr);
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    // 限流需要套接字对端地址来判断转发头是否可信。
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
 
     Ok(())
 }

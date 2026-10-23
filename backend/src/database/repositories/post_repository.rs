@@ -48,8 +48,8 @@ impl PostRepository {
             status: row.status as i32,
             post_images: row.post_images,
             tags: Vec::new(), // 单独创建时不获取标签
-            created_at: row.created_at.unwrap().and_utc(),
-            updated_at: row.updated_at.unwrap().and_utc(),
+            created_at: row.created_at.unwrap_or_default().and_utc(),
+            updated_at: row.updated_at.unwrap_or_default().and_utc(),
         })
     }
 
@@ -76,8 +76,8 @@ impl PostRepository {
             status: row.status as i32,
             post_images: row.post_images,
             tags: Vec::new(), // 单独查询时不获取标签
-            created_at: row.created_at.unwrap().and_utc(),
-            updated_at: row.updated_at.unwrap().and_utc(),
+            created_at: row.created_at.unwrap_or_default().and_utc(),
+            updated_at: row.updated_at.unwrap_or_default().and_utc(),
         }))
     }
 
@@ -113,11 +113,11 @@ impl PostRepository {
                     name: tag_row.get("name"),
                     created_at: tag_row
                         .get::<Option<chrono::NaiveDateTime>, _>("created_at")
-                        .unwrap()
+                        .unwrap_or_default()
                         .and_utc(),
                     updated_at: tag_row
                         .get::<Option<chrono::NaiveDateTime>, _>("updated_at")
-                        .unwrap()
+                        .unwrap_or_default()
                         .and_utc(),
                 })
                 .collect();
@@ -132,8 +132,8 @@ impl PostRepository {
                 status: row.status as i32,
                 post_images: row.post_images,
                 tags, // 包含完整的标签列表
-                created_at: row.created_at.unwrap().and_utc(),
-                updated_at: row.updated_at.unwrap().and_utc(),
+                created_at: row.created_at.unwrap_or_default().and_utc(),
+                updated_at: row.updated_at.unwrap_or_default().and_utc(),
             }))
         } else {
             Ok(None)
@@ -318,11 +318,11 @@ impl PostRepository {
                 tags, // 使用上面查询的标签列表
                 created_at: row
                     .get::<Option<chrono::NaiveDateTime>, _>("created_at")
-                    .unwrap()
+                    .unwrap_or_default()
                     .and_utc(),
                 updated_at: row
                     .get::<Option<chrono::NaiveDateTime>, _>("updated_at")
-                    .unwrap()
+                    .unwrap_or_default()
                     .and_utc(),
             };
 
@@ -461,8 +461,8 @@ impl PostRepository {
                 status: row.status as i32,
                 post_images: row.post_images,
                 tags: Vec::new(), // 事务中更新时不重新获取标签
-                created_at: row.created_at.unwrap().and_utc(),
-                updated_at: row.updated_at.unwrap().and_utc(),
+                created_at: row.created_at.unwrap_or_default().and_utc(),
+                updated_at: row.updated_at.unwrap_or_default().and_utc(),
             }))
         } else {
             Ok(None)

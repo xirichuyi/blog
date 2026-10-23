@@ -214,10 +214,9 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
               set -e
-              admin_token=$(sudo sed -n "s/^BLOG_ADMIN_TOKEN=//p" \
-                /var/www/blog/backend/.env | tail -n 1 | tr -d "\r")
-              test -n "$admin_token" || { echo "❌ BLOG_ADMIN_TOKEN is unavailable"; exit 1; }
-              printf "%s" "$admin_token" | \
+              admin_session=$(sudo python3 /var/www/blog/backend/scripts/issue_admin_session.py /var/www/blog/backend/.env)
+              test -n "$admin_session" || { echo "❌ admin session could not be issued"; exit 1; }
+              printf "%s" "$admin_session" | \
                 python3 /var/www/blog/backend/scripts/check_upload_path.py cors
             '
 
@@ -307,10 +306,10 @@ jobs:
               sudo -u www-data test -w /var/www/blog/backend/data/blog.db
               echo "SQLite paths writable ✅"
 
-              admin_token=$(sudo sed -n "s/^BLOG_ADMIN_TOKEN=//p" /var/www/blog/backend/.env | tail -n 1 | tr -d "\r")
-              test -n "$admin_token" || { echo "❌ BLOG_ADMIN_TOKEN is unavailable"; exit 1; }
+              admin_session=$(sudo python3 /var/www/blog/backend/scripts/issue_admin_session.py /var/www/blog/backend/.env)
+              test -n "$admin_session" || { echo "❌ admin session could not be issued"; exit 1; }
               analytics=$(curl -sS \
-                -H "Authorization: Bearer $admin_token" \
+                -H "Cookie: blog_admin_session=$admin_session" \
                 "http://127.0.0.1:3006/api/admin/analytics?days=7")
               if printf "%s" "$analytics" | grep -q "\"available\":true"; then
                 echo "Cloudflare analytics connected ✅"
@@ -318,7 +317,7 @@ jobs:
                 echo "⚠️ Cloudflare analytics check unavailable; deployment will continue: $analytics"
               fi
 
-              printf "%s" "$admin_token" | \
+              printf "%s" "$admin_session" | \
                 python3 /var/www/blog/backend/scripts/check_upload_path.py multipart
               echo "R2 multipart resume connected ✅"
             '

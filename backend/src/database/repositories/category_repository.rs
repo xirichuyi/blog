@@ -31,8 +31,8 @@ impl CategoryRepository {
         Ok(Category {
             id: row.id,
             name: row.name,
-            created_at: row.created_at.unwrap().and_utc(),
-            updated_at: row.updated_at.unwrap().and_utc(),
+            created_at: row.created_at.unwrap_or_default().and_utc(),
+            updated_at: row.updated_at.unwrap_or_default().and_utc(),
         })
     }
 
@@ -47,8 +47,8 @@ impl CategoryRepository {
         Ok(row.map(|row| Category {
             id: row.id,
             name: row.name,
-            created_at: row.created_at.unwrap().and_utc(),
-            updated_at: row.updated_at.unwrap().and_utc(),
+            created_at: row.created_at.unwrap_or_default().and_utc(),
+            updated_at: row.updated_at.unwrap_or_default().and_utc(),
         }))
     }
 
@@ -64,8 +64,8 @@ impl CategoryRepository {
             .map(|row| Category {
                 id: row.id.unwrap(),
                 name: row.name,
-                created_at: row.created_at.unwrap().and_utc(),
-                updated_at: row.updated_at.unwrap().and_utc(),
+                created_at: row.created_at.unwrap_or_default().and_utc(),
+                updated_at: row.updated_at.unwrap_or_default().and_utc(),
             })
             .collect();
 
@@ -114,8 +114,8 @@ impl CategoryRepository {
         Ok(Some(Category {
             id: row.id.unwrap(),
             name: row.name,
-            created_at: row.created_at.unwrap().and_utc(),
-            updated_at: row.updated_at.unwrap().and_utc(),
+            created_at: row.created_at.unwrap_or_default().and_utc(),
+            updated_at: row.updated_at.unwrap_or_default().and_utc(),
         }))
     }
 

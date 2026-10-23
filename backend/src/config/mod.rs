@@ -5,11 +5,8 @@ use std::{env, fmt};
 pub mod constants {
     /// 默认配置值
     pub const DEFAULT_DATABASE_URL: &str = "sqlite:data/blog.db";
-    pub const DEFAULT_HOST: &str = "0.0.0.0";
+    pub const DEFAULT_HOST: &str = "127.0.0.1";
     pub const DEFAULT_PORT: u16 = 3006;
-
-    /// Bearer token前缀
-    pub const BEARER_PREFIX: &str = "Bearer ";
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -59,7 +56,6 @@ pub struct DatabaseConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JwtConfig {
     pub secret: String,
-    pub admin_token: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,13 +149,6 @@ impl Config {
             }
         });
 
-        let admin_token = env::var("BLOG_ADMIN_TOKEN").unwrap_or_else(|_| {
-            if environment.is_development() {
-                "dev-admin-token-not-for-production".to_string()
-            } else {
-                panic!("BLOG_ADMIN_TOKEN environment variable is required in production")
-            }
-        });
         let google_auth = load_google_auth_config();
 
         let host = env::var("HOST").unwrap_or_else(|_| constants::DEFAULT_HOST.to_string());
@@ -240,10 +229,7 @@ impl Config {
         Ok(Config {
             environment,
             database: DatabaseConfig { url: database_url },
-            jwt: JwtConfig {
-                secret: jwt_secret,
-                admin_token,
-            },
+            jwt: JwtConfig { secret: jwt_secret },
             google_auth,
             server: ServerConfig {
                 host,

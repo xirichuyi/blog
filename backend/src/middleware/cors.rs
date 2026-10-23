@@ -91,7 +91,6 @@ mod tests {
             },
             jwt: JwtConfig {
                 secret: "test-secret".to_string(),
-                admin_token: "test-token".to_string(),
             },
             google_auth: None,
             server: ServerConfig {

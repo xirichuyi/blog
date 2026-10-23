@@ -219,7 +219,6 @@ mod tests {
             },
             jwt: JwtConfig {
                 secret: "reader-test-secret".into(),
-                admin_token: "emergency".into(),
             },
             google_auth: Some(GoogleAuthConfig {
                 client_id: "test".into(),

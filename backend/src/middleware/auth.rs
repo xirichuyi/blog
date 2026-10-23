@@ -1,4 +1,4 @@
-use crate::config::{constants::BEARER_PREFIX, Config};
+use crate::config::Config;
 use crate::routes::AppState;
 use crate::utils::error::{AppError, Result};
 use axum::{
@@ -41,9 +41,7 @@ pub async fn admin_middleware(
     request: Request,
     next: Next,
 ) -> Result<Response> {
-    if has_emergency_token(&headers, &app_state.config.jwt.admin_token)
-        || authorized_session(&headers, &app_state.config).is_ok()
-    {
+    if authorized_session(&headers, &app_state.config).is_ok() {
         return Ok(next.run(request).await);
     }
 
@@ -133,14 +131,6 @@ pub(crate) fn secure_eq(provided: &str, expected: &str) -> bool {
             difference | (left ^ right)
         })
         == 0
-}
-
-fn has_emergency_token(headers: &HeaderMap, expected: &str) -> bool {
-    headers
-        .get(header::AUTHORIZATION)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix(BEARER_PREFIX))
-        .is_some_and(|provided| secure_eq(provided, expected))
 }
 
 fn unix_timestamp() -> Result<usize> {

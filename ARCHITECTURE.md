@@ -13,6 +13,13 @@ implementations from drifting apart.
 - The frontend sends all API traffic through `front/src/services/http.ts`.
   Admin authentication is added by `front/src/services/admin.ts`; feature code
   does not create another HTTP client.
+- Admin routes accept only the Google sign-in session cookie. There is no
+  static admin token; deployment checks sign a ten-minute session with
+  `backend/scripts/issue_admin_session.py` from the production `.env`.
+- The backend listens on `127.0.0.1` behind nginx. Public rate limits read the
+  visitor IP from the last `X-Forwarded-For` hop appended by nginx
+  (`$proxy_add_x_forwarded_for`) and trust `CF-Connecting-IP` only when that
+  hop is a Cloudflare address.
 - File bytes never pass through the API. The browser uploads directly to R2
   from a session created by `/api/admin/uploads`.
 - Multipart upload identifiers are kept in browser storage for six days. A

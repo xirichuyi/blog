@@ -5,6 +5,7 @@ use crate::middleware::auth::{
 };
 use crate::models::ApiResponse;
 use crate::routes::AppState;
+use crate::utils::http::HTTP_CLIENT;
 use axum::{
     extract::{Query, State},
     http::{header, HeaderMap, HeaderValue},
@@ -201,7 +202,7 @@ async fn exchange_code(
     config: &GoogleAuthConfig,
     code: &str,
 ) -> std::result::Result<String, CallbackFailure> {
-    let response = reqwest::Client::new()
+    let response = HTTP_CLIENT
         .post(GOOGLE_TOKEN_URL)
         .form(&[
             ("code", code),
@@ -233,7 +234,7 @@ async fn exchange_code(
 async fn fetch_user_info(
     access_token: &str,
 ) -> std::result::Result<GoogleUserInfo, CallbackFailure> {
-    let response = reqwest::Client::new()
+    let response = HTTP_CLIENT
         .get(GOOGLE_USERINFO_URL)
         .bearer_auth(access_token)
         .send()

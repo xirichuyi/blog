@@ -9,6 +9,8 @@ import sys
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+SESSION_COOKIE = "blog_admin_session"
+
 
 def api_request(
     base_url: str, token: str, path: str, payload: dict, method: str = "POST"
@@ -18,7 +20,7 @@ def api_request(
         data=json.dumps(payload).encode(),
         method=method,
         headers={
-            "Authorization": f"Bearer {token}",
+            "Cookie": f"{SESSION_COOKIE}={token}",
             "Content-Type": "application/json",
         },
     )
@@ -154,7 +156,7 @@ def main() -> int:
     args = parser.parse_args()
     token = sys.stdin.read().strip()
     if not token:
-        raise RuntimeError("admin token was not provided on stdin")
+        raise RuntimeError("admin session token was not provided on stdin")
     if args.mode == "cors":
         check_cors(args.base_url, token, args.origin, verify_put=False)
     else:

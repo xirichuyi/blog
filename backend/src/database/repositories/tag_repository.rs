@@ -29,8 +29,8 @@ impl TagRepository {
         Ok(Tag {
             id: row.id,
             name: row.name,
-            created_at: row.created_at.unwrap().and_utc(),
-            updated_at: row.updated_at.unwrap().and_utc(),
+            created_at: row.created_at.unwrap_or_default().and_utc(),
+            updated_at: row.updated_at.unwrap_or_default().and_utc(),
         })
     }
 
@@ -45,8 +45,8 @@ impl TagRepository {
         Ok(row.map(|row| Tag {
             id: row.id,
             name: row.name,
-            created_at: row.created_at.unwrap().and_utc(),
-            updated_at: row.updated_at.unwrap().and_utc(),
+            created_at: row.created_at.unwrap_or_default().and_utc(),
+            updated_at: row.updated_at.unwrap_or_default().and_utc(),
         }))
     }
 
@@ -61,8 +61,8 @@ impl TagRepository {
             .map(|row| Tag {
                 id: row.id.unwrap(),
                 name: row.name,
-                created_at: row.created_at.unwrap().and_utc(),
-                updated_at: row.updated_at.unwrap().and_utc(),
+                created_at: row.created_at.unwrap_or_default().and_utc(),
+                updated_at: row.updated_at.unwrap_or_default().and_utc(),
             })
             .collect();
 
@@ -96,8 +96,8 @@ impl TagRepository {
         Ok(Some(Tag {
             id: row.id.unwrap(),
             name: row.name,
-            created_at: row.created_at.unwrap().and_utc(),
-            updated_at: row.updated_at.unwrap().and_utc(),
+            created_at: row.created_at.unwrap_or_default().and_utc(),
+            updated_at: row.updated_at.unwrap_or_default().and_utc(),
         }))
     }
 
@@ -160,8 +160,8 @@ impl TagRepository {
             .map(|row| Tag {
                 id: row.id,
                 name: row.name,
-                created_at: row.created_at.unwrap().and_utc(),
-                updated_at: row.updated_at.unwrap().and_utc(),
+                created_at: row.created_at.unwrap_or_default().and_utc(),
+                updated_at: row.updated_at.unwrap_or_default().and_utc(),
             })
             .collect();
 
