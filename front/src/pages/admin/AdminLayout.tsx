@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { PageActionsSlot } from '@/components/admin/PageActions'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowUpRight,
+  BarChart3,
   BookOpen,
   FileText,
-  LayoutDashboard,
   Loader2,
   LogOut,
   PanelsTopLeft,
@@ -44,10 +45,10 @@ interface Section {
 const SECTIONS: Section[] = [
   {
     to: '/admin',
-    label: '概览',
-    icon: LayoutDashboard,
+    label: '统计',
+    icon: BarChart3,
     exact: true,
-    pages: [{ to: '/admin', label: '概览', title: '概览', description: '内容、访问与站点状态' }],
+    pages: [{ to: '/admin', label: '统计', title: '统计', description: '访客从哪里来、读了什么' }],
   },
   {
     to: '/admin/posts',
@@ -144,6 +145,7 @@ export default function AdminLayout() {
   const editingPost = location.pathname === '/admin/posts/new' || /^\/admin\/posts\/\d+$/.test(location.pathname)
   const section = sectionFor(location.pathname)
   const page = section.pages.find((item) => item.to === location.pathname) ?? section.pages[0]
+  const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null)
 
   // The editor is a full-screen writing view with its own action bar.
   if (editingPost) {
@@ -177,7 +179,10 @@ export default function AdminLayout() {
               <h1>{page.title}</h1>
               <p>{page.description}</p>
             </div>
-            <AccountMenu side="bottom" className="admin-topbar-account" avatarClassName="size-7" />
+            <div className="admin-topbar-actions">
+              <div ref={setActionsSlot} className="admin-page-actions" />
+              <AccountMenu side="bottom" className="admin-topbar-account" avatarClassName="size-7" />
+            </div>
           </div>
           {section.pages.length > 1 && (
             <nav className="admin-subtabs" aria-label={`${section.label}页面`}>
@@ -197,7 +202,9 @@ export default function AdminLayout() {
 
         <main className="admin-main">
           <div className="admin-container">
-            <Outlet />
+            <PageActionsSlot.Provider value={actionsSlot}>
+              <Outlet />
+            </PageActionsSlot.Provider>
           </div>
         </main>
       </div>
@@ -205,7 +212,7 @@ export default function AdminLayout() {
       <nav className="admin-tabbar" aria-label="后台导航">
         {SECTIONS.map((item) => <SectionLink key={item.to} section={item} className="admin-tabbar-item" />)}
       </nav>
-      <Toaster richColors closeButton />
+      <Toaster richColors closeButton mobileOffset={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} />
     </div>
   )
 }

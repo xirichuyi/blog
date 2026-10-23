@@ -224,7 +224,7 @@ function Section({ title, load, create, rename, remove }: SectionProps) {
 export default function Taxonomy() {
   return (
     <div>
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid items-start gap-5 lg:grid-cols-2">
         <Section
           title="分类"
           load={listCategories}

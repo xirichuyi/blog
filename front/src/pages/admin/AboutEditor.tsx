@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, ImagePlus, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Markdown } from '@/components/Markdown'
+import { PageActions } from '@/components/admin/PageActions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -105,16 +106,16 @@ export default function AboutEditor() {
         }
       }}
     >
-      <div className="mb-4 flex items-center justify-end gap-3">
+      <PageActions>
         {loaded && (
-          <span className="text-xs text-muted-foreground" aria-live="polite">
+          <span className="hidden text-xs text-muted-foreground sm:inline" aria-live="polite">
             {dirty ? '有未保存的修改' : '已保存'}
           </span>
         )}
         <Button onClick={() => void save()} disabled={!dirty || saving || uploading} size="sm">
           {saving && <Loader2 className="animate-spin" />} 保存
         </Button>
-      </div>
+      </PageActions>
 
       {error && (
         <Alert variant="destructive" className="mb-4">

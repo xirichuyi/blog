@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { PageActions } from '@/components/admin/PageActions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -295,9 +296,9 @@ export default function BooksManager() {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <PageActions>
         <Button onClick={openCreate} size="sm"><Plus /> 添加书籍</Button>
-      </div>
+      </PageActions>
       <input
         ref={bookFileInputRef}
         type="file"

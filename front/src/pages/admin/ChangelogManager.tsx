@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { PageActions } from '@/components/admin/PageActions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -100,9 +101,9 @@ export default function ChangelogManager() {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <PageActions>
         <Button size="sm" onClick={openCreate}><Plus /> 新增记录</Button>
-      </div>
+      </PageActions>
       {!entries && <div className="flex items-center gap-2 py-12 text-muted-foreground"><Loader2 className="animate-spin" /> 加载中…</div>}
       <div className="space-y-3">
         {entries?.map((entry) => (

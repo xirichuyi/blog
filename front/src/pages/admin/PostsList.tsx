@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { PageActions } from '@/components/admin/PageActions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -120,7 +121,10 @@ export default function PostsList() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <PageActions>
+        <Button asChild size="sm"><Link to="/admin/posts/new"><Plus /> 写文章</Link></Button>
+      </PageActions>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="admin-search relative min-w-0 flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、分类或标签" className="pl-9 pr-8" aria-label="搜索文章" />
@@ -150,7 +154,6 @@ export default function PostsList() {
             </button>
           ))}
         </div>
-        <Button asChild className="shrink-0"><Link to="/admin/posts/new"><Plus /> 写文章</Link></Button>
       </div>
 
       {error && (

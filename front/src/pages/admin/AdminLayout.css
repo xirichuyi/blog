@@ -145,7 +145,7 @@
   content: '';
 }
 
-.admin-rail-account {
+.admin-shell .admin-rail-account {
   border: 1px solid hsl(var(--primary) / 0.24);
   border-radius: 50%;
   padding: 0.1rem;
@@ -202,7 +202,20 @@
   white-space: nowrap;
 }
 
-.admin-topbar-account {
+.admin-topbar-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-shell .admin-topbar-account {
   display: none;
   border: 1px solid hsl(var(--primary) / 0.24);
   border-radius: 50%;
@@ -261,9 +274,27 @@
   display: none;
 }
 
-.admin-overview-traffic {
+.admin-content-summary {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.25rem;
+  border-top: 1px solid hsl(var(--border) / 0.5);
+  padding-top: 2rem;
+}
+
+.admin-content-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.admin-content-summary .admin-stat-line {
+  border-top: 0;
+}
+
+.admin-content-caption {
+  margin-bottom: 0.25rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
 }
 
 /* Use the same restrained component language as the public blog. */
@@ -415,7 +446,7 @@
 
 .admin-editor-actions-inner {
   display: flex;
-  width: min(100% - 2rem, 72rem);
+  width: calc(100% - 2.5rem);
   min-height: 4rem;
   margin-inline: auto;
   align-items: center;
@@ -764,7 +795,8 @@
 
 .admin-stat-line {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   border-block: 1px solid hsl(var(--border) / 0.68);
 }
 
@@ -1361,6 +1393,20 @@
 
   .admin-writing-action {
     width: 100%;
+  }
+
+  /* The chart scales down with its viewBox; keep axis labels legible. */
+  .admin-trend-chart text {
+    font-size: 20px;
+  }
+
+  .admin-stat-line {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-stat:nth-child(odd)::before {
+    display: none;
   }
 
   .admin-stat {
