@@ -54,7 +54,7 @@ const TOOLS: Tool[] = [
   {
     name: '服务器监控',
     description: '实时查看 CPU、内存、磁盘、网络和运行时长。',
-    url: 'https://monitor.chuyi.uk/',
+    url: 'https://nodes.chuyi.uk/',
     tags: ['监控'],
   },
   {
