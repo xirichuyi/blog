@@ -325,6 +325,30 @@ test('wide layout keeps notes beside the paragraph after resizing', async ({ pag
   await page.screenshot({ path: testInfo.outputPath('desktop-note.png') })
   await page.getByRole('button', { name: '关闭批注' }).tap()
   await page.setViewportSize({ width: 390, height: 844 })
+  // setViewportSize finishes before ResizeObserver and EPUB.js finish reflowing.
+  // Wait for the new chapter layout and its matching marker, not the old button
+  // that can still be visible at the desktop coordinates for a few frames.
+  await expect.poll(() => page.locator('.epub-viewport').evaluate(viewport => {
+    const bounds = viewport.getBoundingClientRect()
+    const frame = viewport.querySelector('iframe')
+    const paragraph = frame?.contentDocument?.querySelector('#p0')
+    const marker = document.querySelector('.reader-margin-note')
+    if (!frame || !paragraph || !marker) return false
+    const frameBounds = frame.getBoundingClientRect()
+    if (Math.abs(frameBounds.height - bounds.height) > 1) return false
+    const range = paragraph.ownerDocument.createRange()
+    range.selectNodeContents(paragraph)
+    const rect = Array.from(range.getClientRects()).filter(rect =>
+      rect.right + frameBounds.left > bounds.left && rect.left + frameBounds.left < bounds.right &&
+      rect.bottom + frameBounds.top > bounds.top && rect.top + frameBounds.top < bounds.bottom,
+    ).at(-1)
+    if (!rect) return false
+    const markerBounds = marker.getBoundingClientRect()
+    const x = Math.min(bounds.right - 12, Math.min(bounds.right, rect.right + frameBounds.left) + 8)
+    const y = Math.max(bounds.top + 12, Math.max(bounds.top, rect.top + frameBounds.top) - 4)
+    return Math.abs(markerBounds.x + markerBounds.width / 2 - x) < 2 &&
+      Math.abs(markerBounds.y + markerBounds.height / 2 - y) < 2
+  })).toBe(true)
   await page.getByRole('button', { name: '查看批注', exact: true }).tap()
   await expect(page.getByRole('dialog')).toContainText('随排版保留的段落批注')
 })
