@@ -8,6 +8,7 @@ import { PdfReader } from '@/components/books/PdfReader'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
 import { isReaderHoverDevice } from '@/lib/reader-gestures'
+import { useReaderAppearance } from '@/lib/reader-appearance'
 import { imageUrl, listBooks, type Book, type BookFile } from '@/services/api'
 import './BookReader.css'
 
@@ -16,7 +17,9 @@ function isReadable(file: BookFile): boolean {
 }
 
 function initialReaderTheme(): ReaderTheme {
-  return readPreference('book-reader-theme') === 'night' ? 'night' : 'paper'
+  const saved = readPreference('book-reader-theme')
+  if (saved === 'night' || saved === 'paper') return saved
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'paper'
 }
 
 const DEFAULT_READER_FONT_SIZE = 100
@@ -115,6 +118,18 @@ export default function BookReader() {
   const [fullscreenError, setFullscreenError] = useState('')
   const [uiVisible, setUiVisible] = useState(false)
   const [toolbarHost, setToolbarHost] = useState<HTMLDivElement | null>(null)
+
+  useReaderAppearance(theme)
+
+  useEffect(() => {
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
+    const syncSystemTheme = () => {
+      const saved = readPreference('book-reader-theme')
+      if (saved !== 'paper' && saved !== 'night') setTheme(systemTheme.matches ? 'night' : 'paper')
+    }
+    systemTheme.addEventListener('change', syncSystemTheme)
+    return () => systemTheme.removeEventListener('change', syncSystemTheme)
+  }, [])
 
   useEffect(() => {
     listBooks().then(setBooks).catch((loadError) => setError((loadError as Error).message))

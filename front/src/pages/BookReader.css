@@ -1,4 +1,4 @@
-.book-reader-page {
+html[data-reader-theme], .book-reader-page {
   --reader-paper: #fbfaf6;
   --reader-bg: #f1f0eb;
   --reader-ink: #303630;
@@ -8,6 +8,9 @@
   --reader-glass: rgb(251 250 246 / 88%);
   --graphite: var(--reader-ink);
   --sage: var(--reader-accent);
+  color-scheme: light;
+}
+.book-reader-page {
   position: fixed;
   z-index: 80;
   inset: 0;
@@ -16,7 +19,7 @@
   color: var(--reader-ink);
   -webkit-font-smoothing: antialiased;
 }
-.book-reader-page.reader-theme-night {
+html[data-reader-theme="night"], .book-reader-page.reader-theme-night {
   --reader-paper: #191c19;
   --reader-bg: #242824;
   --reader-ink: #dce2d9;
@@ -24,6 +27,13 @@
   --reader-line: rgb(220 230 218 / 9%);
   --reader-accent: #a1baa5;
   --reader-glass: rgb(30 34 30 / 90%);
+  color-scheme: dark;
+}
+/* Keep the default viewport fit: the browser reserves the notch/home-indicator
+   insets, and paints them using this matching document background. */
+html[data-reader-theme], html[data-reader-theme] body {
+  background: var(--reader-paper);
+  color: var(--reader-ink);
 }
 .book-reader-page button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .book-reader-page button:disabled { opacity: 0.28; }

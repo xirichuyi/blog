@@ -67,6 +67,49 @@ async function saveNote(page: Page, note: string, format = 'epub') {
   await page.getByRole('button', { name: '保存批注' }).tap()
 }
 
+test('reader follows system appearance and restores the blog document on exit', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await mock(page, { data: empty(), writes: 0 })
+  await open(page)
+  for (const selector of ['html', 'body', '.book-reader-page']) {
+    await expect(page.locator(selector)).toHaveCSS('background-color', 'rgb(25, 28, 25)')
+    await expect(page.locator(selector)).toHaveCSS('color-scheme', 'dark')
+  }
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#191c19')
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(251, 250, 246)')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#fbfaf6')
+  await menu(page)
+  await page.getByRole('button', { name: 'Reading preferences', exact: true }).tap()
+  await page.getByRole('button', { name: '深色', exact: true }).tap()
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(25, 28, 25)')
+  await page.reload()
+  await expect(page.locator('.book-reader-page')).toHaveCSS('background-color', 'rgb(25, 28, 25)')
+  await expect(page.locator('iframe:visible').first()).toBeVisible()
+  await expect(page.locator('.reader-state')).toHaveCount(0)
+  await menu(page)
+  await page.getByRole('button', { name: '返回书架', exact: true }).tap()
+  await expect(page).toHaveURL(/\/books$/)
+  await expect(page.locator('html')).not.toHaveAttribute('data-reader-theme')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveCount(0)
+  await expect(page.locator('body')).not.toHaveCSS('background-color', 'rgb(25, 28, 25)')
+})
+
+test('explicit paper preference wins over system dark mode, including PDF', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.addInitScript(() => localStorage.setItem('book-reader-theme', 'paper'))
+  await mock(page, { data: empty(), writes: 0 }, 'pdf')
+  await open(page, 'pdf')
+  await expect(page.locator('html')).toHaveCSS('color-scheme', 'light')
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(251, 250, 246)')
+  await menu(page)
+  await page.getByRole('button', { name: 'Reading preferences', exact: true }).tap()
+  await page.getByRole('button', { name: '深色', exact: true }).tap()
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark')
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(25, 28, 25)')
+})
+
 test('EPUB follows container size changes without a window resize', async ({ page }) => {
   await mock(page, { data: empty(), writes: 0 })
   await open(page)
