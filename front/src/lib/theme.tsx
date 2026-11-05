@@ -1,5 +1,6 @@
 import { readPreference, writePreference } from '@/lib/browser-storage'
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from 'react'
+import { syncDocumentTheme } from '@/lib/document-theme'
 
 type Theme = 'light' | 'dark'
 
@@ -15,8 +16,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return saved === 'dark' ? 'dark' : 'light'
   })
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
+    syncDocumentTheme()
     writePreference('theme', theme)
   }, [theme])
 

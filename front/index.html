@@ -6,6 +6,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="https://avatars.githubusercontent.com/u/144898416" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- Modern iOS derives the standalone status bar from the page background. -->
+    <meta name="theme-color" content="#faf8f5" />
+    <script>
+      // Apply the saved blog appearance before React/lazy page styles load.
+      // Keep the palette aligned with document-theme.ts and index.css.
+      (() => {
+        let dark = false;
+        try { dark = localStorage.getItem('theme') === 'dark'; } catch {}
+        const root = document.documentElement;
+        root.dataset.theme = dark ? 'dark' : 'light';
+        root.style.colorScheme = dark ? 'dark' : 'light';
+        root.style.backgroundColor = dark ? '#101412' : '#faf8f5';
+        document.querySelector('meta[name="theme-color"]').content = dark ? '#101412' : '#faf8f5';
+      })();
+    </script>
     <meta name="description" content="chuyi's blog — full-stack development, tech notes & thoughts" />
     <title>chuyi's Blog</title>
   </head>

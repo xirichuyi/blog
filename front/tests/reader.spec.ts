@@ -91,8 +91,38 @@ test('reader follows system appearance and restores the blog document on exit', 
   await page.getByRole('button', { name: '返回书架', exact: true }).tap()
   await expect(page).toHaveURL(/\/books$/)
   await expect(page.locator('html')).not.toHaveAttribute('data-reader-theme')
-  await expect(page.locator('meta[name="theme-color"]')).toHaveCount(0)
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#faf8f5')
   await expect(page.locator('body')).not.toHaveCSS('background-color', 'rgb(25, 28, 25)')
+})
+
+test('saved blog dark mode colors the document before the app loads and survives a reader round trip', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
+  await mock(page, { data: empty(), writes: 0 })
+  // Hold the app entrypoint to exercise the installed app's launch background.
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/src/main.tsx', async route => { await pending; await route.continue() })
+  try {
+    await page.goto('/books', { waitUntil: 'commit' })
+    await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(16, 20, 18)')
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#101412')
+    await expect(page.locator('meta[name="apple-mobile-web-app-status-bar-style"]')).toHaveCount(0)
+  } finally { release() }
+  await expect(page.getByRole('button', { name: 'Light', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Light', exact: true }).tap()
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(250, 248, 245)')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#faf8f5')
+  await page.getByRole('button', { name: 'Dark', exact: true }).tap()
+  await page.locator('a.library-book').first().tap()
+  await expect(page.locator('.reader-state')).toHaveCount(0)
+  await expect(page.locator('iframe:visible').first()).toBeVisible()
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#fbfaf6')
+  await menu(page)
+  await page.getByRole('button', { name: '返回书架', exact: true }).tap()
+  await expect(page).toHaveURL(/\/books$/)
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(16, 20, 18)')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#101412')
+  await expect(page.locator('body')).toHaveCSS('color-scheme', 'dark')
 })
 
 test('explicit paper preference wins over system dark mode, including PDF', async ({ page }) => {
