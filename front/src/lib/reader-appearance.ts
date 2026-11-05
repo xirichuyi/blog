@@ -11,7 +11,10 @@ export function useReaderAppearance(theme: 'paper' | 'night') {
     const meta = existing ?? document.createElement('meta')
     const previousContent = meta.getAttribute('content')
     meta.name = 'theme-color'
-    meta.content = getComputedStyle(root).getPropertyValue('--reader-paper').trim()
+    // WebKit can expose an empty custom property while the lazy reader CSS is
+    // settling. Browser chrome must have a valid color on the first render.
+    // Keep these colors aligned with --reader-paper in BookReader.css.
+    meta.content = theme === 'night' ? '#191c19' : '#fbfaf6'
     if (!existing) document.head.append(meta)
 
     return () => {
