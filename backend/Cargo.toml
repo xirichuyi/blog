@@ -75,7 +75,7 @@ url = "2.5"
 # IMAP 邮箱读取（在线工具：邮箱阅读）。native-tls 已在依赖树中（reqwest 默认 TLS）。
 imap = "2.4"
 native-tls = "0.2"
-mailparse = "0.15"
+mailparse = "0.16"
 
 thiserror = "1.0"
 
