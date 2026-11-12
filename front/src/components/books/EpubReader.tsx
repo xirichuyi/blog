@@ -61,7 +61,21 @@ function registerThemes(rendition: Rendition): void {
   })
 }
 
-function applyContentAppearance(contents: Contents, theme: ReaderTheme): void {
+/** Widest comfortable text column in scroll mode, in CSS pixels. */
+const SCROLL_MEASURE = 760
+
+function applyContentAppearance(contents: Contents, theme: ReaderTheme, flow: ReaderFlow): void {
+  if (flow === 'scrolled' && !contents.document.getElementById('reader-scroll-measure')) {
+    // Scroll mode lays a chapter out as one column the width of the window.
+    // Pad it so lines stay readable on wide screens. EPUB.js rewrites the
+    // body's inline padding on every resize, so this has to be a stylesheet
+    // rule that outranks it.
+    const inset = `max(6%, calc(50% - ${SCROLL_MEASURE / 2}px))`
+    const style = contents.document.createElement('style')
+    style.id = 'reader-scroll-measure'
+    style.textContent = `body { padding-left: ${inset} !important; padding-right: ${inset} !important; }`
+    contents.document.head?.appendChild(style)
+  }
   const paper = theme === 'night' ? '#191c19' : '#fbfaf6'
   const ink = theme === 'night' ? '#e5e8e5' : '#252925'
   const root = contents.document.documentElement as HTMLElement
@@ -78,10 +92,10 @@ function visibleContents(rendition: Rendition): Contents[] {
   return rendition.getContents() as unknown as Contents[]
 }
 
-function applyRenditionAppearance(rendition: Rendition, theme: ReaderTheme, fontSize: number): void {
+function applyRenditionAppearance(rendition: Rendition, theme: ReaderTheme, fontSize: number, flow: ReaderFlow): void {
   rendition.themes.select(theme)
   rendition.themes.fontSize(`${fontSize}%`)
-  visibleContents(rendition).forEach((contents) => applyContentAppearance(contents, theme))
+  visibleContents(rendition).forEach((contents) => applyContentAppearance(contents, theme, flow))
 }
 
 function TableOfContents({ items, active, onSelect }: { items: NavItem[]; active: string; onSelect: (href: string) => void }) {
@@ -201,7 +215,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
         const rendition = activeBook.renderTo(viewport, options)
         renditionRef.current = rendition
         registerThemes(rendition)
-        applyRenditionAppearance(rendition, themeRef.current, fontSizeRef.current)
+        applyRenditionAppearance(rendition, themeRef.current, fontSizeRef.current, flow)
         const unbindRemovedView = (view: { contents?: Contents }) => {
           const contents = view.contents
           if (!contents) return
@@ -211,7 +225,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
         rendition.hooks.unloaded.register(unbindRemovedView)
         const bindVisibleContents = () => {
           visibleContents(rendition).forEach((contents) => {
-            applyContentAppearance(contents, themeRef.current)
+            applyContentAppearance(contents, themeRef.current, flow)
             if (interactionCleanups.has(contents)) return
             const selection = bindReaderSelection(contents.document.body, value => {
               if (!value) { setSelection(null); return }
@@ -231,6 +245,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
             const cleanup = bindReaderGestures(contents.document, {
               getWindow: () => contents.window,
               pageNavigation: flow === 'paginated',
+              wheelNavigation: flow === 'paginated',
               getHeight: () => viewportRef.current?.clientHeight ?? window.innerHeight,
               getSelection: () => selection.text(),
               getWidth: () => viewportRef.current?.clientWidth ?? window.innerWidth,
@@ -273,7 +288,12 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
         }
         rendition.on('relocated', (nextLocation: Location) => {
           if (!activeBook || disposed) return
-          const percent = progressFromLocation(activeBook, nextLocation)
+          // Until the location index is built (a few seconds after opening) the
+          // book cannot report a percentage; keep the saved one instead of 0%.
+          const known = session.getProgress()
+          const percent = activeBook.locations.length() === 0 && known?.kind === 'epub'
+            ? known.percent
+            : progressFromLocation(activeBook, nextLocation)
           setPosition({
             atEnd: nextLocation.atEnd,
             atStart: nextLocation.atStart,
@@ -326,14 +346,14 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
   useEffect(() => {
     themeRef.current = theme
     const rendition = renditionRef.current
-    if (rendition) applyRenditionAppearance(rendition, theme, fontSizeRef.current)
-  }, [theme])
+    if (rendition) applyRenditionAppearance(rendition, theme, fontSizeRef.current, flow)
+  }, [theme, flow])
 
   useEffect(() => {
     fontSizeRef.current = fontSize
     const rendition = renditionRef.current
-    if (rendition) applyRenditionAppearance(rendition, themeRef.current, fontSize)
-  }, [fontSize])
+    if (rendition) applyRenditionAppearance(rendition, themeRef.current, fontSize, flow)
+  }, [fontSize, flow])
 
   useEffect(() => bindReaderKeyboard(window, {
     pageNavigation: flow === 'paginated',

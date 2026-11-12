@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock3,
   Focus,
+  List,
   Loader2,
   Lock,
   LockOpen,
@@ -30,6 +31,7 @@ import { Separator } from '@/components/ui/separator'
 import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { GiscusComments } from '@/components/GiscusComments'
 import { ArticleLock } from '@/components/ArticleLock'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useSiteUI } from '@/lib/site-ui'
 import { cn } from '@/lib/utils'
 
@@ -54,6 +56,7 @@ export default function ArticleDetail() {
   const [hoveredHeadingId, setHoveredHeadingId] = useState<string | null>(null)
   const [tocHighlightedHeadingId, setTocHighlightedHeadingId] = useState<string | null>(null)
   const [shared, setShared] = useState(false)
+  const [tocSheetOpen, setTocSheetOpen] = useState(false)
   const [coverFailed, setCoverFailed] = useState(false)
   const [coverSize, setCoverSize] = useState({ width: 0, height: 0 })
   const contentRef = useRef<HTMLDivElement>(null)
@@ -310,6 +313,30 @@ export default function ArticleDetail() {
     if (tocHoverTimerRef.current !== null) window.clearTimeout(tocHoverTimerRef.current)
   }, [])
 
+  // On small screens the floating back button and the dock sit on top of the
+  // text. Step them aside while the reader scrolls down and bring them back on
+  // the first scroll up (styles in index.css apply below the lg breakpoint).
+  useEffect(() => {
+    const root = document.documentElement
+    let lastY = window.scrollY
+    let travelled = 0
+    const onScroll = () => {
+      const y = window.scrollY
+      const delta = y - lastY
+      lastY = y
+      // A change of direction starts a new run, so jitter does not toggle.
+      travelled = Math.sign(delta) === Math.sign(travelled) ? travelled + delta : delta
+      const atEnd = window.innerHeight + y >= root.scrollHeight - 80
+      if (y < 160 || atEnd || travelled < -12) root.removeAttribute('data-reading-scroll')
+      else if (travelled > 24) root.setAttribute('data-reading-scroll', 'down')
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      root.removeAttribute('data-reading-scroll')
+    }
+  }, [id])
+
   useEffect(() => {
     if (tocHighlightTimerRef.current !== null) {
       window.clearTimeout(tocHighlightTimerRef.current)
@@ -455,6 +482,18 @@ export default function ArticleDetail() {
         <article ref={mainRef} className="article-main article-enter mx-auto w-full min-w-0 max-w-[680px]">
           <div className="article-actions article-reveal mb-8 flex items-center justify-end gap-2">
             <div className="flex items-center gap-1">
+              {headings.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full lg:hidden"
+                  onClick={() => setTocSheetOpen(true)}
+                  aria-label="Table of contents"
+                  title="目录"
+                >
+                  <List />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -587,6 +626,36 @@ export default function ArticleDetail() {
             </div>
           )}
         </article>
+
+        <Sheet open={tocSheetOpen} onOpenChange={setTocSheetOpen}>
+          <SheetContent side="bottom" className="max-h-[75dvh] overflow-y-auto rounded-t-2xl lg:hidden">
+            <SheetHeader className="text-left">
+              <SheetTitle>目录</SheetTitle>
+              <SheetDescription className="sr-only">跳转到文章中的章节</SheetDescription>
+            </SheetHeader>
+            <nav className="mt-3 flex flex-col pb-4" aria-label="Table of contents">
+              {headings.map((heading) => (
+                <button
+                  key={heading.id}
+                  type="button"
+                  aria-current={activeId === heading.id ? 'location' : undefined}
+                  className={cn(
+                    'rounded-md px-3 py-2.5 text-left text-sm leading-snug text-muted-foreground transition-colors active:bg-secondary',
+                    heading.level === 3 && 'pl-7',
+                    activeId === heading.id && 'bg-secondary font-medium text-foreground',
+                  )}
+                  onClick={() => {
+                    setTocSheetOpen(false)
+                    // Let the sheet release its scroll lock before moving the page.
+                    window.setTimeout(() => goTo(heading.id), 250)
+                  }}
+                >
+                  {heading.text}
+                </button>
+              ))}
+            </nav>
+          </SheetContent>
+        </Sheet>
 
         {headings.length > 0 && !zen && (
           <aside className="article-aside hidden lg:block">

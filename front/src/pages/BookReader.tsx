@@ -116,7 +116,15 @@ export default function BookReader() {
   const [flow, setFlow] = useState<ReaderFlow>(initialReaderFlow)
   const [fullscreen, setFullscreen] = useState(false)
   const [fullscreenError, setFullscreenError] = useState('')
-  const [uiVisible, setUiVisible] = useState(false)
+  // The toolbar shows while the pointer rests near the top edge (hover) or
+  // after a tap/click in the middle of the page (pinned). They are tracked
+  // apart so that moving the mouse does not dismiss a toolbar that was
+  // opened by a click.
+  const [uiPinned, setUiPinned] = useState(false)
+  const [uiHovered, setUiHovered] = useState(false)
+  const uiVisible = uiPinned || uiHovered
+  const uiVisibleRef = useRef(uiVisible)
+  uiVisibleRef.current = uiVisible
   const [toolbarHost, setToolbarHost] = useState<HTMLDivElement | null>(null)
 
   useReaderAppearance(theme)
@@ -176,8 +184,12 @@ export default function BookReader() {
       else setFullscreenError('当前浏览器不支持全屏，可继续正常阅读。')
     } catch { setFullscreenError('浏览器未允许全屏，可继续正常阅读。') }
   }
-  const toggleUi = useCallback(() => setUiVisible((current) => !current), [])
-  const syncUiWithTopHover = useCallback((hovered: boolean) => setUiVisible(hovered), [])
+  const toggleUi = useCallback(() => {
+    const next = !uiVisibleRef.current
+    setUiPinned(next)
+    if (!next) setUiHovered(false)
+  }, [])
+  const syncUiWithTopHover = useCallback((hovered: boolean) => setUiHovered(hovered), [])
 
   if (!books && !error) return <div className="reader-route-state">Opening reader…</div>
   if (error) return <div className="reader-route-state"><strong>Could not load the bookshelf.</strong><span>{error}</span><Link to="/books">Back to Books</Link></div>

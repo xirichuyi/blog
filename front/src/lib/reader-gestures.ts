@@ -1,6 +1,8 @@
 interface ReaderGestureOptions {
   getWindow: () => Window
   pageNavigation?: boolean
+  /** Turn pages with the mouse wheel or a trackpad swipe. Only for layouts that do not scroll. */
+  wheelNavigation?: boolean
   getHeight: () => number
   getSelection: () => string
   getWidth: () => number
@@ -46,6 +48,12 @@ function targetMatches(target: EventTarget | null, selector: string): boolean {
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return targetMatches(target, INTERACTIVE_SELECTOR)
 }
+
+// One page per wheel gesture: a trackpad flick keeps sending events while it
+// coasts, so further events are ignored until the stream pauses. The state is
+// shared by every binding because turning into a new chapter swaps the document
+// (and its listeners) in the middle of a gesture.
+const wheelGesture: { total: number; locked: boolean; idleTimer?: ReturnType<typeof setTimeout> } = { total: 0, locked: false }
 
 export function bindReaderGestures(source: EventTarget, options: ReaderGestureOptions): () => void {
   let touchStart: GestureStart | null = null
@@ -152,12 +160,28 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
     if (event.button !== 0 || performance.now() - lastTouchAt <= 1000 || options.getSelection().trim() || isInteractiveTarget(event.target)) return
     handleTap(event.clientX, event.clientY)
   }
+  const onWheel = (rawEvent: Event) => {
+    const event = rawEvent as WheelEvent
+    if (event.ctrlKey || event.metaKey || isInteractiveTarget(event.target)) return
+    clearTimeout(wheelGesture.idleTimer)
+    wheelGesture.idleTimer = setTimeout(() => { wheelGesture.total = 0; wheelGesture.locked = false }, 160)
+    if (wheelGesture.locked) return
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+    wheelGesture.total += event.deltaMode === 0 ? delta : delta * 40
+    if (Math.abs(wheelGesture.total) < 40) return
+    wheelGesture.locked = true
+    if (wheelGesture.total > 0) options.onNext()
+    else options.onPrevious()
+  }
   const bindings: [string, EventListener][] = 'PointerEvent' in options.getWindow()
     ? [['pointerdown', onPointerDown], ['pointermove', onPointerMove], ['pointerup', onPointerEnd], ['pointercancel', onPointerEnd]]
     : [['touchstart', onTouchStart], ['touchmove', onTouchMove], ['touchend', onTouchEnd], ['touchcancel', onTouchCancel]]
   bindings.push(['mousemove', onMouseMove], ['click', onClick])
+  if (options.wheelNavigation) bindings.push(['wheel', onWheel])
   for (const [type, listener] of bindings) source.addEventListener(type, listener, { capture: true, passive: true })
-  return () => { for (const [type, listener] of bindings) source.removeEventListener(type, listener, true) }
+  return () => {
+    for (const [type, listener] of bindings) source.removeEventListener(type, listener, true)
+  }
 }
 
 export function bindReaderKeyboard(source: EventTarget, options: ReaderKeyboardOptions): () => void {
