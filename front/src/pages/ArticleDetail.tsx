@@ -237,7 +237,7 @@ export default function ArticleDetail() {
         const tocEntry = tocEntriesById.get(activeHeading.id)
         if (tocEntry && tocProgressRef.current) {
           const progressHeight = tocEntry.offsetTop + activeProgress * tocEntry.offsetHeight
-          tocProgressRef.current.style.height = `${progressHeight}px`
+          tocProgressRef.current.style.clipPath = `inset(0 0 calc(100% - ${progressHeight}px) 0)`
         }
       }
     }
@@ -283,9 +283,9 @@ export default function ArticleDetail() {
       }
 
       pill.style.opacity = '1'
-      pill.style.top = `${target.offsetTop}px`
+      // Position by transform so the move is composited rather than laid out.
+      pill.style.transform = `translate3d(${target.offsetLeft}px, ${target.offsetTop}px, 0)`
       pill.style.height = `${target.offsetHeight}px`
-      pill.style.left = `${target.offsetLeft}px`
       pill.style.width = `${target.offsetWidth}px`
 
       if (!tocPillReadyRef.current) {

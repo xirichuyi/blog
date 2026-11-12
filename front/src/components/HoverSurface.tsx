@@ -152,8 +152,8 @@ export function HoverSurface({ children, className, label }: { children: ReactNo
       {children}
       {preview && createPortal(
         <div
-          className="hover-list-preview pointer-events-none absolute z-[60] hidden w-[232px] -translate-y-1/2 lg:block"
-          style={{ left: preview.left, top: preview.top, opacity: preview.shown ? 1 : 0 }}
+          className="hover-list-preview pointer-events-none absolute z-[60] hidden w-[232px] lg:block"
+          style={{ transform: `translate3d(${preview.left}px, ${preview.top}px, 0) translateY(-50%)`, opacity: preview.shown ? 1 : 0 }}
           aria-hidden="true"
         >
           <div className="aspect-[16/10] overflow-hidden rounded-xl border border-border bg-muted shadow-2xl">

@@ -199,6 +199,10 @@ html[data-reader-theme], html[data-reader-theme] body {
 .reader-note-underline line { stroke: var(--reader-accent); stroke-width: 1; }
 /* EPUB.js compensates scroll offsets when it prepends a chapter. */
 .epub-container { overflow-anchor: none; }
+/* Paginated pages move by transform; keep the chapter strip on its own layer so a page turn only composites. */
+.reader-flow-paginated .epub-container > * { will-change: transform; backface-visibility: hidden; }
+.reader-margin-notes { transition: opacity 120ms ease; }
+.is-page-sliding .reader-margin-notes { opacity: 0; transition: none; }
 .reader-back img { width:28px; height:28px; border-radius:50%; object-fit:cover; }
 .reader-toc button[aria-current="location"] { color:var(--reader-accent); background:var(--reader-bg); font-weight:600; }
 .reader-toc button[aria-current="location"]::after { content:''; display:inline-block; width:4px; height:4px; margin-left:8px; border-radius:50%; background:currentColor; vertical-align:middle; }

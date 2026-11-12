@@ -223,6 +223,10 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           getPageDelta: () => manager()?.layout?.delta ?? 0,
           next: () => rendition.next(),
           previous: () => rendition.prev(),
+          hasChapterBeyond: (direction) => {
+            const location = rendition.location as Location | undefined
+            return !(direction > 0 ? location?.atEnd : location?.atStart)
+          },
           reducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
         }) : null
         sliderRef.current = slider
