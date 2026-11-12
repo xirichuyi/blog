@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, ExternalLink, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { AlertCircle, ExternalLink, Loader2, Lock, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -183,6 +183,7 @@ export default function PostsList() {
                   <h2 className="truncate text-[15px] font-medium text-foreground group-hover:text-primary">{post.title || '(无标题)'}</h2>
                   <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
                     <Status value={post.status} />
+                    {post.locked && <span className="inline-flex items-center gap-1"><Lock className="size-3" aria-hidden="true" />加密</span>}
                     <span>{post.category_name || '未分类'}</span>
                     <span>{formatDate(post.created_at)}</span>
                     {post.tags?.slice(0, 2).map((tag) => <span key={tag.id}>#{tag.name}</span>)}

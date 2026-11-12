@@ -45,8 +45,23 @@ pub struct Post {
     #[serde(default)]
     #[sqlx(skip)]
     pub tags: Vec<super::tag::Tag>, // 文章标签列表
+    /// 是否设置了访问密码。密码哈希本身从不离开数据库层。
+    #[serde(default)]
+    pub locked: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl Post {
+    /// 公开接口使用：加密文章只保留标题、封面、分类等展示信息，去掉正文和
+    /// 正文里的图片地址。未加密的文章原样返回。
+    pub fn redacted(mut self) -> Self {
+        if self.locked {
+            self.content = String::new();
+            self.post_images = None;
+        }
+        self
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -159,6 +174,14 @@ pub struct CreatePostRequest {
     pub post_images: Option<Vec<String>>,
     #[serde(default)]
     pub tag_ids: Option<Vec<i64>>,
+    /// 访问密码明文；空或缺省表示不加密。
+    #[serde(default)]
+    pub password: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnlockPostRequest {
+    pub password: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -174,6 +197,9 @@ pub struct UpdatePostRequest {
     pub post_images: NullablePatch<Vec<String>>,
     #[serde(default)]
     pub tag_ids: Option<Vec<i64>>,
+    /// 缺省 = 保持现状；null 或空串 = 取消加密；字符串 = 设置新密码。
+    #[serde(default)]
+    pub password: NullablePatch<String>,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
@@ -196,6 +222,10 @@ pub struct PostListQuery {
     pub status: Option<PostStatus>,
     pub search: Option<String>,
     pub tag_id: Option<i64>,
+    /// 仅后台置为 true：列表返回加密文章的摘要，搜索也匹配其正文。
+    /// 不接受来自查询字符串的值。
+    #[serde(skip)]
+    pub reveal_locked: bool,
 }
 
 impl Default for PostListQuery {
@@ -207,6 +237,7 @@ impl Default for PostListQuery {
             status: None,
             search: None,
             tag_id: None,
+            reveal_locked: false,
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::database::DatabasePool;
 use crate::models::{
-    AdjacentPost, AdjacentPosts, CreatePostRequest, Post, PostListQuery, PostStatus,
+    AdjacentPost, AdjacentPosts, CreatePostRequest, NullablePatch, Post, PostListQuery, PostStatus,
     UpdatePostRequest,
 };
 use crate::utils::{error::Result, text::truncate_safely};
@@ -13,6 +13,7 @@ impl PostRepository {
     pub async fn create_in_tx(
         tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
         request: CreatePostRequest,
+        password_hash: Option<String>,
     ) -> Result<Post> {
         let post_images_json = request
             .post_images
@@ -24,8 +25,8 @@ impl PostRepository {
 
         let row = sqlx::query!(
             r#"
-            INSERT INTO posts (title, cover_url, content, category_id, status, post_images)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO posts (title, cover_url, content, category_id, status, post_images, password_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             RETURNING id, title, cover_url, content, category_id, status, post_images, created_at, updated_at
             "#,
             request.title,
@@ -33,7 +34,8 @@ impl PostRepository {
             request.content,
             request.category_id,
             status_i32,
-            post_images_json
+            post_images_json,
+            password_hash
         )
         .fetch_one(&mut **tx)
         .await?;
@@ -48,6 +50,7 @@ impl PostRepository {
             status: row.status as i32,
             post_images: row.post_images,
             tags: Vec::new(), // 单独创建时不获取标签
+            locked: password_hash.is_some(),
             created_at: row.created_at.unwrap_or_default().and_utc(),
             updated_at: row.updated_at.unwrap_or_default().and_utc(),
         })
@@ -56,7 +59,8 @@ impl PostRepository {
     pub async fn get_by_id(pool: &DatabasePool, id: i64) -> Result<Option<Post>> {
         let row = sqlx::query!(
             r#"
-            SELECT id, title, cover_url, content, category_id, status, post_images, created_at, updated_at
+            SELECT id, title, cover_url, content, category_id, status, post_images, created_at, updated_at,
+                   password_hash IS NOT NULL AS "locked!: bool"
             FROM posts
             WHERE id = ? AND status != ?
             "#,
@@ -76,6 +80,7 @@ impl PostRepository {
             status: row.status as i32,
             post_images: row.post_images,
             tags: Vec::new(), // 单独查询时不获取标签
+            locked: row.locked,
             created_at: row.created_at.unwrap_or_default().and_utc(),
             updated_at: row.updated_at.unwrap_or_default().and_utc(),
         }))
@@ -88,7 +93,8 @@ impl PostRepository {
         let row = sqlx::query!(
             r#"
             SELECT p.id, p.title, p.cover_url, p.content, p.category_id, p.status, p.post_images,
-                   p.created_at, p.updated_at, c.name as category_name
+                   p.created_at, p.updated_at, c.name as category_name,
+                   p.password_hash IS NOT NULL AS "locked!: bool"
             FROM posts p
             LEFT JOIN categories c ON p.category_id = c.id
             WHERE p.id = ? AND p.status != ?
@@ -132,12 +138,26 @@ impl PostRepository {
                 status: row.status as i32,
                 post_images: row.post_images,
                 tags, // 包含完整的标签列表
+                locked: row.locked,
                 created_at: row.created_at.unwrap_or_default().and_utc(),
                 updated_at: row.updated_at.unwrap_or_default().and_utc(),
             }))
         } else {
             Ok(None)
         }
+    }
+
+    /// 外层 None = 文章不存在或未发布；内层 None = 文章未加密。
+    pub async fn get_published_password_hash(
+        pool: &DatabasePool,
+        id: i64,
+    ) -> Result<Option<Option<String>>> {
+        let row = sqlx::query("SELECT password_hash FROM posts WHERE id = ? AND status = ?")
+            .bind(id)
+            .bind(PostStatus::Published as i32)
+            .fetch_optional(pool)
+            .await?;
+        Ok(row.map(|row| row.get("password_hash")))
     }
 
     pub async fn get_adjacent_published(
@@ -212,7 +232,12 @@ impl PostRepository {
         }
 
         if query.search.is_some() {
-            where_conditions.push("(p.title LIKE ? OR p.content LIKE ?)".to_string());
+            // 公开搜索不匹配加密文章的正文，否则可以靠搜索结果逐词试出内容。
+            where_conditions.push(if query.reveal_locked {
+                "(p.title LIKE ? OR p.content LIKE ?)".to_string()
+            } else {
+                "(p.title LIKE ? OR (p.password_hash IS NULL AND p.content LIKE ?))".to_string()
+            });
         }
 
         if query.tag_id.is_some() {
@@ -258,7 +283,8 @@ impl PostRepository {
         let posts_query = format!(
             "SELECT p.id, p.title, p.cover_url, substr(p.content, 1, 400) AS content,
                     p.category_id, p.status, p.post_images,
-                    p.created_at, p.updated_at, c.name as category_name
+                    p.created_at, p.updated_at, c.name as category_name,
+                    p.password_hash IS NOT NULL AS locked
              FROM posts p
              LEFT JOIN categories c ON p.category_id = c.id
              WHERE {} ORDER BY p.created_at DESC LIMIT ? OFFSET ?",
@@ -306,6 +332,7 @@ impl PostRepository {
             let full_content: String = row.get("content");
             let content_summary = truncate_safely(&full_content, 200);
 
+            let locked: bool = row.get("locked");
             let post = Post {
                 id: post_id,
                 title: row.get("title"),
@@ -316,6 +343,7 @@ impl PostRepository {
                 status: row.get::<i32, _>("status"),
                 post_images: row.get("post_images"),
                 tags, // 使用上面查询的标签列表
+                locked,
                 created_at: row
                     .get::<Option<chrono::NaiveDateTime>, _>("created_at")
                     .unwrap_or_default()
@@ -326,7 +354,11 @@ impl PostRepository {
                     .and_utc(),
             };
 
-            posts_with_complete_info.push(post);
+            posts_with_complete_info.push(if query.reveal_locked {
+                post
+            } else {
+                post.redacted()
+            });
         }
 
         Ok((posts_with_complete_info, total))
@@ -379,9 +411,10 @@ impl PostRepository {
         pool: &DatabasePool,
         id: i64,
         request: UpdatePostRequest,
+        password_hash: NullablePatch<String>,
     ) -> Result<Option<Post>> {
         let mut tx = pool.begin().await?;
-        let post = Self::update_in_tx(&mut tx, id, request).await?;
+        let post = Self::update_in_tx(&mut tx, id, request, password_hash).await?;
         tx.commit().await?;
         Ok(post)
     }
@@ -402,10 +435,11 @@ impl PostRepository {
         tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
         id: i64,
         request: UpdatePostRequest,
+        password_hash: NullablePatch<String>,
     ) -> Result<Option<Post>> {
         // Get current post data
         let current = sqlx::query!(
-            "SELECT title, cover_url, content, category_id, status, post_images FROM posts WHERE id = ?",
+            "SELECT title, cover_url, content, category_id, status, post_images, password_hash FROM posts WHERE id = ?",
             id
         )
         .fetch_optional(&mut **tx)
@@ -421,12 +455,11 @@ impl PostRepository {
                 .map(|value| value as i64)
                 .unwrap_or(current.status);
             let post_images = match request.post_images {
-                crate::models::NullablePatch::Missing => current.post_images,
-                crate::models::NullablePatch::Null => None,
-                crate::models::NullablePatch::Value(images) => {
-                    Some(serde_json::to_string(&images)?)
-                }
+                NullablePatch::Missing => current.post_images,
+                NullablePatch::Null => None,
+                NullablePatch::Value(images) => Some(serde_json::to_string(&images)?),
             };
+            let password_hash = password_hash.resolve(current.password_hash);
             let row = sqlx::query!(
                 r#"
                 UPDATE posts
@@ -436,6 +469,7 @@ impl PostRepository {
                     category_id = ?,
                     status = ?,
                     post_images = ?,
+                    password_hash = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 RETURNING id, title, cover_url, content, category_id, status, post_images, created_at, updated_at
@@ -446,6 +480,7 @@ impl PostRepository {
                 category_id,
                 status,
                 post_images,
+                password_hash,
                 id
             )
             .fetch_one(&mut **tx)
@@ -461,6 +496,7 @@ impl PostRepository {
                 status: row.status as i32,
                 post_images: row.post_images,
                 tags: Vec::new(), // 事务中更新时不重新获取标签
+                locked: password_hash.is_some(),
                 created_at: row.created_at.unwrap_or_default().and_utc(),
                 updated_at: row.updated_at.unwrap_or_default().and_utc(),
             }))

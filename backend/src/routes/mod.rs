@@ -118,6 +118,7 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         // Public content resources
         .route("/posts", get(post_handler::list_posts))
         .route("/posts/:id", get(post_handler::get_post))
+        .route("/posts/:id/unlock", post(post_handler::unlock_post))
         .route("/posts/:id/adjacent", get(post_handler::get_adjacent_posts))
         .route("/posts/:id/tags", get(post_handler::get_post_tags_public))
         .route("/categories", get(category_handler::list_categories))

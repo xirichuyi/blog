@@ -38,6 +38,8 @@ export interface AdminPost {
   category_id?: number | null
   category_name?: string | null
   status: number
+  /** An access password is set. The password itself is never sent back. */
+  locked?: boolean
   created_at: string
   updated_at?: string
   tags?: Array<{ id: number; name: string }>
@@ -142,6 +144,8 @@ export interface PostPayload {
   category_id?: number | null
   status: number
   tag_ids?: number[]
+  /** Omitted keeps the current lock, null removes it, a string sets a new password. */
+  password?: string | null
 }
 
 export async function createPost(p: PostPayload): Promise<AdminPost> {

@@ -1,6 +1,7 @@
 pub mod client_ip;
 pub mod error;
 pub mod http;
+pub mod password;
 pub mod r2_storage;
 pub mod text;
 

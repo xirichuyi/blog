@@ -28,6 +28,12 @@ const TOOLS: Tool[] = [
     tags: ['工具', '在线'],
   },
   {
+    name: '2FA 验证码',
+    description: '填入 2FA 密钥或粘贴二维码截图，即时生成动态验证码，全程只在浏览器中计算。',
+    internal: '/tools/2fa',
+    tags: ['工具', '在线'],
+  },
+  {
     name: '量化收益 · Barter',
     description: '查看自托管 BTC 做市程序的只读收益曲线和表现快照。',
     internal: '/tools/quant',

@@ -20,6 +20,7 @@ use crate::routes::AppState;
 const SITE: &str = "https://blog.chuyi.uk";
 const SITE_NAME: &str = "chuyi's blog";
 const DEFAULT_DESC: &str = "chuyi's blog —— 全栈开发、技术笔记与思考。";
+const LOCKED_DESC: &str = "这篇文章已加密，输入访问密码后可阅读。";
 
 /// 构建好的 dist/index.html 路径(prod);可用环境变量覆盖。每次请求读取,
 /// **不缓存**:每次部署都会换带哈希的新 bundle,缓存旧外壳会指向已删除的 js。
@@ -124,9 +125,8 @@ fn article_jsonld(p: &Post, url: &str, image: &Option<String>) -> String {
         "@context": "https://schema.org",
         "@type": "Article",
         "headline": p.title,
-        "description": excerpt(&p.content, 150),
+        "description": if p.locked { LOCKED_DESC.to_string() } else { excerpt(&p.content, 150) },
         "inLanguage": "zh-CN",
-        "wordCount": p.content.chars().count(),
         "datePublished": p.created_at.to_rfc3339(),
         "dateModified": p.updated_at.to_rfc3339(),
         "author": { "@type": "Person", "name": "chuyi" },
@@ -206,6 +206,12 @@ fn static_meta(path: &str) -> Meta {
             "index,follow",
             StatusCode::OK,
         ),
+        "/tools/2fa" => (
+            format!("2FA 验证码 · {SITE_NAME}"),
+            "填入 2FA 密钥或粘贴二维码截图，在浏览器本地生成 TOTP 动态验证码。".to_string(),
+            "index,follow",
+            StatusCode::OK,
+        ),
         "/tools/mailbox" => (
             format!("邮箱阅读 · {SITE_NAME}"),
             "临时读取支持 IMAP 的邮箱，凭据不在服务端保存。".to_string(),
@@ -246,11 +252,16 @@ async fn build_meta(state: &AppState, path: &str) -> Meta {
                 if post.status != PostStatus::Published as i32 {
                     return static_meta(path);
                 }
+                // 加密文章的正文不能进入 description / JSON-LD。
+                let locked = post.locked;
+                let post = post.redacted();
                 let url = format!("{SITE}/article/{id}");
                 let image = post.cover_url.as_deref().map(abs_url);
                 let desc = {
                     let e = excerpt(&post.content, 150);
-                    if e.is_empty() {
+                    if locked {
+                        LOCKED_DESC.to_string()
+                    } else if e.is_empty() {
                         DEFAULT_DESC.to_string()
                     } else {
                         e
@@ -387,6 +398,7 @@ async fn sitemap(state: &AppState) -> Response {
         status: Some(PostStatus::Published),
         search: None,
         tag_id: None,
+        reveal_locked: false,
     };
     let posts = state
         .services
@@ -408,6 +420,7 @@ async fn sitemap(state: &AppState) -> Response {
         ("/guestbook", "monthly"),
         ("/tools/gitbook2epub", "monthly"),
         ("/tools/quant", "daily"),
+        ("/tools/2fa", "monthly"),
         ("/about", "monthly"),
     ] {
         xml.push_str(&format!(
@@ -437,6 +450,7 @@ async fn rss(state: &AppState) -> Response {
         status: Some(PostStatus::Published),
         search: None,
         tag_id: None,
+        reveal_locked: false,
     };
     let posts = state
         .services
@@ -463,7 +477,11 @@ async fn rss(state: &AppState) -> Response {
              <pubDate>{}</pubDate><description><![CDATA[{}]]></description></item>",
             esc(&post.title),
             post.created_at.to_rfc2822(),
-            cdata(&post.content),
+            cdata(if post.locked {
+                LOCKED_DESC
+            } else {
+                &post.content
+            }),
         ));
     }
     xml.push_str("</channel></rss>");

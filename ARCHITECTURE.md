@@ -27,6 +27,17 @@ implementations from drifting apart.
   refreshes expired signed URLs, and uploads only missing parts. Explicit user
   cancellation aborts and removes the multipart session.
 
+## Password-protected posts
+
+- A post is public unless `posts.password_hash` is set; locking is per post and
+  independent of its status. Only a salted PBKDF2 hash is stored.
+- Public responses (`/posts`, `/posts/:id`, RSS, injected SEO meta) go through
+  `Post::redacted()`: a locked post keeps its title, cover, category and tags,
+  and loses its body and image list. Public search does not match locked bodies.
+- `POST /api/posts/:id/unlock` trades the password for the full post. Failed
+  attempts are limited per visitor IP. Any new public surface that returns post
+  content must redact locked posts the same way.
+
 ## Data ownership
 
 - SQLite stores posts, categories, tags, book metadata, and changelog entries.

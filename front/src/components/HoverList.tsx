@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Lock } from 'lucide-react'
 import type { Article } from '@/services/api'
 import { HoverSurface } from '@/components/HoverSurface'
 
@@ -12,7 +13,10 @@ export function HoverList({ articles }: { articles: Article[] }) {
           to={`/article/${a.id}`}
           className="hover-list-item group relative flex w-fit max-w-full flex-col gap-0.5 rounded-md px-3 py-2.5"
         >
-          <span className="max-w-full truncate text-[15px] font-medium text-foreground/55 transition-colors duration-300 group-hover:text-foreground group-focus-visible:text-foreground">{a.title}</span>
+          <span className="flex max-w-full items-center gap-1.5 text-[15px] font-medium text-foreground/55 transition-colors duration-300 group-hover:text-foreground group-focus-visible:text-foreground">
+            <span className="truncate">{a.title}</span>
+            {a.locked && <Lock className="size-3 shrink-0 opacity-70" aria-label="加密文章" />}
+          </span>
           <span className="max-w-full truncate text-xs text-muted-foreground transition-colors group-hover:text-foreground/60">
             {a.category}
             {a.tags.length > 0 && ` · ${a.tags.slice(0, 2).join(' · ')}`} · {a.date}

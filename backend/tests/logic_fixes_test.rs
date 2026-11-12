@@ -8,8 +8,10 @@ use chuyi_uk_back::database::repositories::{PostRepository, TagRepository};
 use chuyi_uk_back::database::Database;
 use chuyi_uk_back::handlers::post_handler;
 use chuyi_uk_back::models::{
-    ApiResponse, CreatePostRequest, CreateTagRequest, NullablePatch, PostStatus, UpdatePostRequest,
+    ApiResponse, CreatePostRequest, CreateTagRequest, NullablePatch, PostListQuery, PostStatus,
+    UpdatePostRequest,
 };
+use chuyi_uk_back::services::post_service::UnlockOutcome;
 use chuyi_uk_back::services::{PostService, Services};
 use chuyi_uk_back::utils::R2Storage;
 use sqlx::sqlite::SqlitePoolOptions;
@@ -42,6 +44,7 @@ fn create_request(title: &str, tag_ids: Option<Vec<i64>>) -> CreatePostRequest {
         status: Some(PostStatus::Published),
         post_images: None,
         tag_ids,
+        password: None,
     }
 }
 
@@ -127,6 +130,7 @@ async fn update_can_clear_nullable_fields_and_save_tags_atomically() {
                 status: None,
                 post_images: NullablePatch::Null,
                 tag_ids: Some(vec![tag.id]),
+                password: NullablePatch::Missing,
             },
         )
         .await
@@ -194,6 +198,7 @@ async fn updating_content_tracks_removed_images() {
                 status: None,
                 post_images: NullablePatch::Missing,
                 tag_ids: None,
+                password: NullablePatch::Missing,
             },
         )
         .await
@@ -272,4 +277,153 @@ async fn saving_undoing_and_deleting_posts_never_delete_shared_media() {
     );
     assert!(service.get_post_detail(first.id).await.unwrap().is_some());
     server.abort();
+}
+
+fn password_patch(json: &str) -> UpdatePostRequest {
+    serde_json::from_str(json).expect("deserialize password patch")
+}
+
+#[tokio::test]
+async fn locked_posts_hide_content_until_the_password_matches() {
+    let database = setup_test_db().await;
+    let service = post_service(database.clone());
+
+    let mut request = create_request("locked title", None);
+    request.content = "secret body ![img](https://assets.example.com/a.webp)".to_string();
+    request.password = Some("open sesame".to_string());
+    let post = service.create_post(request).await.expect("create post");
+    assert!(post.locked);
+
+    // The stored value is a salted hash, never the password itself.
+    let stored: String = sqlx::query_scalar("SELECT password_hash FROM posts WHERE id = ?")
+        .bind(post.id)
+        .fetch_one(database.pool())
+        .await
+        .expect("read hash");
+    assert!(!stored.contains("open sesame"));
+
+    // Public detail: title stays, body and image URLs are withheld.
+    let detail = service
+        .get_post_detail(post.id)
+        .await
+        .expect("load post")
+        .expect("post exists")
+        .redacted();
+    assert_eq!(detail.title, "locked title");
+    assert!(detail.locked);
+    assert!(detail.content.is_empty());
+    assert!(detail.post_images.is_none());
+    let json = serde_json::to_string(&detail).expect("serialize post");
+    assert!(!json.contains("secret") && !json.contains("password_hash"));
+
+    // Public list and search never see the body; the admin list does.
+    let public = |search: Option<&str>| PostListQuery {
+        status: Some(PostStatus::Published),
+        search: search.map(str::to_string),
+        ..Default::default()
+    };
+    let (listed, _) = service.list_posts(public(None)).await.expect("list");
+    assert!(listed[0].locked && listed[0].content.is_empty() && listed[0].post_images.is_none());
+    let (_, by_body) = service
+        .list_posts(public(Some("secret")))
+        .await
+        .expect("search");
+    assert_eq!(by_body, 0);
+    let (_, by_title) = service
+        .list_posts(public(Some("locked")))
+        .await
+        .expect("search");
+    assert_eq!(by_title, 1);
+    let admin = PostListQuery {
+        search: Some("secret".to_string()),
+        reveal_locked: true,
+        ..Default::default()
+    };
+    let (admin_listed, admin_total) = service.list_posts(admin).await.expect("admin list");
+    assert_eq!(admin_total, 1);
+    assert!(admin_listed[0].content.contains("secret"));
+
+    // Unlocking.
+    assert!(matches!(
+        service
+            .unlock_post(post.id, "wrong".to_string())
+            .await
+            .expect("unlock"),
+        UnlockOutcome::WrongPassword
+    ));
+    match service
+        .unlock_post(post.id, "open sesame".to_string())
+        .await
+        .expect("unlock")
+    {
+        UnlockOutcome::Unlocked(full) => assert!(full.content.contains("secret body")),
+        _ => panic!("the correct password must unlock the post"),
+    }
+    assert!(matches!(
+        service
+            .unlock_post(post.id + 100, "open sesame".to_string())
+            .await
+            .expect("unlock"),
+        UnlockOutcome::NotFound
+    ));
+
+    // An update that does not mention the password keeps the lock.
+    service
+        .update_post(post.id, password_patch(r#"{"title":"renamed"}"#))
+        .await
+        .expect("update")
+        .expect("post exists");
+    assert!(matches!(
+        service
+            .unlock_post(post.id, "wrong".to_string())
+            .await
+            .expect("unlock"),
+        UnlockOutcome::WrongPassword
+    ));
+
+    // Changing the password invalidates the old one.
+    let changed = service
+        .update_post(post.id, password_patch(r#"{"password":"new pass"}"#))
+        .await
+        .expect("update")
+        .expect("post exists");
+    assert!(changed.locked);
+    assert!(matches!(
+        service
+            .unlock_post(post.id, "open sesame".to_string())
+            .await
+            .expect("unlock"),
+        UnlockOutcome::WrongPassword
+    ));
+
+    // null removes the lock; drafts stay unreachable through unlock.
+    let opened = service
+        .update_post(post.id, password_patch(r#"{"password":null}"#))
+        .await
+        .expect("update")
+        .expect("post exists");
+    assert!(!opened.locked);
+    let detail = service
+        .get_post_detail(post.id)
+        .await
+        .expect("load")
+        .expect("exists")
+        .redacted();
+    assert!(detail.content.contains("secret body"));
+
+    service
+        .update_post(
+            post.id,
+            password_patch(r#"{"password":"again","status":"Draft"}"#),
+        )
+        .await
+        .expect("update")
+        .expect("post exists");
+    assert!(matches!(
+        service
+            .unlock_post(post.id, "again".to_string())
+            .await
+            .expect("unlock"),
+        UnlockOutcome::NotFound
+    ));
 }

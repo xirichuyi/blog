@@ -2,6 +2,7 @@ import { HoverSurface } from '@/components/HoverSurface'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
+import { Lock } from 'lucide-react'
 import { listArticles, getCategories, getTags, type Article, type Category, type Tag } from '@/services/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -139,6 +140,7 @@ export default function Articles() {
                       <span className="min-w-0 flex-1 truncate text-[15px] text-foreground/60 transition-colors group-hover:text-foreground">
                         {a.title}
                       </span>
+                      {a.locked && <Lock className="size-3 shrink-0 self-center text-muted-foreground/70" aria-label="加密文章" />}
                     </Link>
                   </li>
                 ))}

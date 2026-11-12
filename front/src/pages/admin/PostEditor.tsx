@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, ExternalLink, ImagePlus, Loader2, PanelRight, Plus, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ExternalLink, ImagePlus, Loader2, Lock, PanelRight, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { MarkdownEditor } from '@/components/admin/MarkdownEditor'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -134,6 +134,11 @@ interface PropertiesProps {
   uploadDisabled: boolean
   onPickCover: () => void
   onRemoveCover: () => void
+  locked: boolean
+  password: string
+  onPassword: (value: string) => void
+  removeLock: boolean
+  onRemoveLock: (value: boolean) => void
 }
 
 /** Everything about a post except its words: always visible beside the draft. */
@@ -216,6 +221,51 @@ function PostProperties(props: PropertiesProps) {
       </div>
 
       <div className="admin-property">
+        <Label htmlFor="post-password">访问密码</Label>
+        {props.locked && (
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <Lock className="size-3.5" aria-hidden="true" />
+              {props.removeLock ? '保存后取消加密' : '已加密'}
+            </span>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => props.onRemoveLock(!props.removeLock)}>
+              {props.removeLock ? '保留加密' : '取消加密'}
+            </Button>
+          </div>
+        )}
+        {!props.removeLock && (
+          <div className="flex gap-2">
+            <Input
+              id="post-password"
+              type="text"
+              value={props.password}
+              onChange={(event) => props.onPassword(event.target.value)}
+              placeholder={props.locked ? '输入新密码以修改' : '留空则公开'}
+              maxLength={128}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 shrink-0"
+              onClick={() => {
+                const value = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000
+                props.onPassword(String(value).padStart(6, '0'))
+              }}
+            >
+              随机 6 位
+            </Button>
+          </div>
+        )}
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {props.locked
+            ? '保存后无法再查看密码，记得先复制；忘记时在这里设置一个新的。'
+            : '设置后，文章仍出现在列表里，但读者输入密码才能看到正文。'}
+        </p>
+      </div>
+
+      <div className="admin-property">
         <span className="text-sm font-medium leading-none">封面</span>
         {props.coverUrl ? (
           <>
@@ -259,6 +309,10 @@ function PostEditorSession() {
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
   const [tagIds, setTagIds] = useState<number[]>([])
+  // The password is never part of the local draft backup; only a pending change is held here.
+  const [locked, setLocked] = useState(false)
+  const [password, setPassword] = useState('')
+  const [removeLock, setRemoveLock] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [tagsList, setTagsList] = useState<Tag[]>([])
   const [newTag, setNewTag] = useState('')
@@ -281,7 +335,8 @@ function PostEditorSession() {
     tagIds,
   }), [categoryId, content, coverUrl, status, tagIds, title])
   const currentSnapshot = useMemo(() => draftSnapshot(currentDraft), [currentDraft])
-  const dirty = hydrated && currentSnapshot !== lastSavedSnapshot
+  const passwordChange: string | null | undefined = removeLock ? null : password || undefined
+  const dirty = hydrated && (currentSnapshot !== lastSavedSnapshot || passwordChange !== undefined)
   const latestDraft = useRef({ draft: currentDraft, dirty })
   latestDraft.current = { draft: currentDraft, dirty }
 
@@ -331,6 +386,7 @@ function PostEditorSession() {
           coverUrl: post.cover_url ?? null,
           tagIds: (post.tags ?? []).map((tag) => Number(tag.id)),
         }
+        setLocked(Boolean(post.locked))
         const serverSnapshot = draftSnapshot(serverDraft)
         const localDraft = readLocalDraft(draftKey(id))
         const serverUpdatedAt = Date.parse(post.updated_at || post.created_at || '') || 0
@@ -443,6 +499,7 @@ function PostEditorSession() {
         category_id: categoryId,
         cover_url: coverUrl,
         tag_ids: tagIds,
+        ...(passwordChange !== undefined ? { password: passwordChange } : {}),
       }
       let postId = Number(id)
       if (editing) {
@@ -457,6 +514,12 @@ function PostEditorSession() {
       }
       setTitle(afterSave.title)
       setStatus(afterSave.status)
+      if (passwordChange !== undefined) {
+        setLocked(passwordChange !== null)
+        // Keep anything typed while the request was in flight as the next pending change.
+        setPassword((current) => (current === passwordChange ? '' : current))
+        setRemoveLock(false)
+      }
       const savedSnapshot = draftSnapshot({ ...currentDraft, title: payload.title, status: nextStatus })
       const stillDirty = draftSnapshot(afterSave) !== savedSnapshot
       setLastSavedSnapshot(savedSnapshot)
@@ -528,6 +591,11 @@ function PostEditorSession() {
       uploadDisabled={Boolean(uploading)}
       onPickCover={() => coverInputRef.current?.click()}
       onRemoveCover={() => setCoverUrl(null)}
+      locked={locked}
+      password={password}
+      onPassword={setPassword}
+      removeLock={removeLock}
+      onRemoveLock={setRemoveLock}
     />
   )
 

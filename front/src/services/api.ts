@@ -1,6 +1,6 @@
 // Typed API client for the Rust/Axum blog backend.
 // In prod the SPA is same-origin behind nginx; media assets are public R2 URLs.
-import { apiRequest, apiUrl, assetUrl, type ApiPage } from './http'
+import { ApiError, apiRequest, apiUrl, assetUrl, type ApiPage } from './http'
 
 export interface Article {
   id: string
@@ -13,6 +13,10 @@ export interface Article {
   category: string
   tags: string[]
   coverImage?: string
+  /** Password-protected. `content` stays empty until the post is unlocked. */
+  locked: boolean
+  /** Set once the reader supplied the right password. */
+  unlocked?: boolean
 }
 export interface AdjacentArticle {
   id: string
@@ -100,6 +104,7 @@ interface RawPost {
   category_name?: string
   category_id?: number
   status: number
+  locked?: boolean
   created_at: string
   updated_at?: string
   // tags live inside `post` and may be objects or plain strings
@@ -163,6 +168,7 @@ function toArticle(post: RawPost): Article {
     category: post.category_name || 'Uncategorized',
     tags: tagNames(post.tags),
     coverImage: imageUrl(post.cover_url),
+    locked: Boolean(post.locked),
   }
 }
 
@@ -185,9 +191,44 @@ export async function listArticles(params: {
   }
 }
 
+const unlockKey = (id: string) => `chuyi:post-unlock:${id}`
+
+/** The password of a post unlocked in this tab, so a reload does not ask again. */
+function rememberedPassword(id: string): string | null {
+  try { return sessionStorage.getItem(unlockKey(id)) } catch { return null }
+}
+
+function rememberPassword(id: string, password: string | null): void {
+  try {
+    if (password === null) sessionStorage.removeItem(unlockKey(id))
+    else sessionStorage.setItem(unlockKey(id), password)
+  } catch { /* Without storage the reader types the password again after a reload. */ }
+}
+
+/** Exchange the access password for the full post. Rejects with ApiError 401 when it is wrong. */
+export async function unlockArticle(id: string, password: string, signal?: AbortSignal): Promise<Article> {
+  const post = await apiRequest<RawPost>(`/posts/${id}/unlock`, {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+    signal,
+  })
+  rememberPassword(id, password)
+  return { ...toArticle(post), unlocked: true }
+}
+
 export async function getArticle(id: string, signal?: AbortSignal): Promise<Article> {
   const post = await apiRequest<RawPost>(`/posts/${id}`, { signal })
-  const article = toArticle(post)
+  let article = toArticle(post)
+  const remembered = article.locked ? rememberedPassword(id) : null
+  if (remembered !== null) {
+    try {
+      article = await unlockArticle(id, remembered, signal)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') throw error
+      // The password changed (401) or the post moved: fall back to the prompt.
+      if (error instanceof ApiError && error.status !== 429) rememberPassword(id, null)
+    }
+  }
   // If the post payload didn't include tags, fetch them separately.
   if (article.tags.length === 0) {
     try {

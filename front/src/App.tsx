@@ -11,6 +11,7 @@ const Projects = lazy(() => import('@/pages/Projects'))
 const Gitbook2Epub = lazy(() => import('@/pages/tools/Gitbook2Epub'))
 const Mailbox = lazy(() => import('@/pages/tools/Mailbox'))
 const Quant = lazy(() => import('@/pages/tools/Quant'))
+const TwoFactor = lazy(() => import('@/pages/tools/TwoFactor'))
 const About = lazy(() => import('@/pages/About'))
 const Guestbook = lazy(() => import('@/pages/Guestbook'))
 const Books = lazy(() => import('@/pages/Books'))
@@ -82,6 +83,7 @@ export default function App() {
           <Route path="/tools/gitbook2epub" element={<Gitbook2Epub />} />
           <Route path="/tools/mailbox" element={<Mailbox />} />
           <Route path="/tools/quant" element={<Quant />} />
+          <Route path="/tools/2fa" element={<TwoFactor />} />
           <Route path="/article/:id" element={<ArticleDetail />} />
           <Route path="/about" element={<About />} />
           <Route path="/guestbook" element={<Guestbook />} />

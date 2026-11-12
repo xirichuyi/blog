@@ -10,6 +10,8 @@ import {
   Clock3,
   Focus,
   Loader2,
+  Lock,
+  LockOpen,
   AlertCircle,
   Share2,
 } from 'lucide-react'
@@ -27,6 +29,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { MagneticBackButton } from '@/components/MagneticBackButton'
 import { GiscusComments } from '@/components/GiscusComments'
+import { ArticleLock } from '@/components/ArticleLock'
 import { useSiteUI } from '@/lib/site-ui'
 import { cn } from '@/lib/utils'
 
@@ -408,6 +411,9 @@ export default function ArticleDetail() {
     )
   }
 
+  // Password-protected and not yet opened: the server has not sent the body.
+  const sealed = article.locked && !article.unlocked
+
   return (
     <div className="article-page container py-10 sm:py-14">
       <div ref={backDockRef} className="article-back-dock">
@@ -415,7 +421,7 @@ export default function ArticleDetail() {
       </div>
       <SEO
         title={article.title}
-        description={stripMarkdown(article.content, 150)}
+        description={article.locked ? '这篇文章已加密，输入访问密码后可阅读。' : stripMarkdown(article.content, 150)}
         path={`/article/${article.id}`}
         image={article.coverImage}
         type="article"
@@ -477,9 +483,20 @@ export default function ArticleDetail() {
             <span>{article.category}</span>
             <i aria-hidden="true" />
             <span>{article.date}</span>
-            <span className="inline-flex items-center gap-1">
-              <Clock3 className="size-3.5" /> {readMinutes} min read
-            </span>
+            {sealed ? (
+              <span className="inline-flex items-center gap-1">
+                <Lock className="size-3.5" /> 已加密
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <Clock3 className="size-3.5" /> {readMinutes} min read
+              </span>
+            )}
+            {article.unlocked && (
+              <span className="inline-flex items-center gap-1">
+                <LockOpen className="size-3.5" /> 已解锁
+              </span>
+            )}
           </div>
 
           <h1 className="article-title article-reveal">{article.title}</h1>
@@ -525,9 +542,13 @@ export default function ArticleDetail() {
 
           <Separator className="article-separator article-reveal my-9" />
 
-          <div ref={contentRef}>
-            <Markdown content={article.content} />
-          </div>
+          {sealed ? (
+            <ArticleLock articleId={article.id} onUnlocked={setArticle} />
+          ) : (
+            <div ref={contentRef}>
+              <Markdown content={article.content} />
+            </div>
+          )}
 
           {(adjacent.newer || adjacent.older) && (
             <nav className="article-pagination mt-20 grid gap-3 pt-7 sm:grid-cols-2" aria-label="Article navigation">
@@ -560,9 +581,11 @@ export default function ArticleDetail() {
             </nav>
           )}
 
-          <div className="mt-12">
-            <GiscusComments term={article.title} />
-          </div>
+          {!sealed && (
+            <div className="mt-12">
+              <GiscusComments term={article.title} />
+            </div>
+          )}
         </article>
 
         {headings.length > 0 && !zen && (
