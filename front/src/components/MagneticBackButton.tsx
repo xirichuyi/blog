@@ -1,4 +1,12 @@
-import { useEffect, useRef, type PointerEvent } from 'react'
+import { type PointerEvent } from 'react'
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 
 interface MagneticBackButtonProps {
@@ -7,88 +15,102 @@ interface MagneticBackButtonProps {
 
 const AVATAR_URL = 'https://avatars.githubusercontent.com/u/144898416'
 const POINTER_FACTOR = 0.08
-/** Scroll distance over which the avatar turns into the back arrow. */
 const SCROLL_TRANSITION_DISTANCE = 420
-const RESTING_SCALE = 0.78
-/** Browsers with scroll-driven animations run the scroll morph themselves (index.css). */
-const SCROLL_MORPH_IS_CSS_DRIVEN = typeof CSS !== 'undefined' && CSS.supports('animation-timeline: scroll()')
 
 function supportsFinePointer() {
   return window.matchMedia('(hover: hover) and (pointer: fine)').matches
 }
 
-// The avatar turns into a back arrow in step with the first 420px of scroll,
-// and fully while the button is hovered or focused, whichever is further
-// along. It also leans towards a nearby mouse.
-//
-// The scroll part and the hover part live on separate layers so each can be
-// run by the compositor: the scroll layers follow a CSS scroll timeline, the
-// hover layers are CSS transitions. Stacking them gives the "whichever is
-// further" result without script computing a frame (see index.css).
 export function MagneticBackButton({ onClick }: MagneticBackButtonProps) {
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const parallaxRef = useRef<HTMLSpanElement>(null)
+  const reduceMotion = useReducedMotion()
+  const { scrollY } = useScroll()
+  const hoverTarget = useMotionValue(0)
+  const xTarget = useMotionValue(0)
+  const yTarget = useMotionValue(0)
 
-  useEffect(() => {
-    const button = buttonRef.current
-    if (!button) return
-    let frame = 0
-    const sync = () => {
-      frame = 0
-      const progress = Math.min(1, Math.max(0, window.scrollY / SCROLL_TRANSITION_DISTANCE))
-      // How much hovering still has to enlarge the surface to reach full size.
-      button.style.setProperty('--back-hover-scale', String(1 / (RESTING_SCALE + (1 - RESTING_SCALE) * progress)))
-      // Fallback for browsers without scroll timelines: drive the scroll layers from here.
-      if (!SCROLL_MORPH_IS_CSS_DRIVEN) button.style.setProperty('--back-scroll', String(progress))
-    }
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(sync) }
-    sync()
-    window.addEventListener('scroll', schedule, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', schedule)
-      cancelAnimationFrame(frame)
-    }
-  }, [])
+  const rawScrollProgress = useTransform(scrollY, (value) =>
+    Math.min(1, Math.max(0, value / SCROLL_TRANSITION_DISTANCE)),
+  )
+  const scrollProgress = useSpring(rawScrollProgress, {
+    stiffness: 150,
+    damping: 28,
+    mass: 0.45,
+  })
+  const hoverProgress = useSpring(hoverTarget, {
+    stiffness: 260,
+    damping: 24,
+    mass: 0.35,
+  })
+  const magneticX = useSpring(xTarget, { stiffness: 300, damping: 25, mass: 0.3 })
+  const magneticY = useSpring(yTarget, { stiffness: 300, damping: 25, mass: 0.3 })
 
-  const lean = (x: number, y: number) => {
-    parallaxRef.current?.style.setProperty('--back-x', `${x}px`)
-    parallaxRef.current?.style.setProperty('--back-y', `${y}px`)
+  const activeScrollProgress = reduceMotion ? rawScrollProgress : scrollProgress
+  const activeHoverProgress = reduceMotion ? hoverTarget : hoverProgress
+  const revealProgress = useTransform(
+    [activeScrollProgress, activeHoverProgress],
+    ([scroll, hover]) => Math.max(Number(scroll), Number(hover)),
+  )
+  const surfaceScale = useTransform(revealProgress, [0, 1], [0.78, 1])
+  const avatarOpacity = useTransform(revealProgress, [0, 0.55, 1], [1, 0.18, 0])
+  const arrowOpacity = useTransform(revealProgress, [0, 0.45, 1], [0, 0.2, 1])
+  const arrowScale = useTransform(revealProgress, [0, 1], [0.82, 1])
+
+  const setHovered = (hovered: boolean) => hoverTarget.set(hovered ? 1 : 0)
+
+  const resetMagnetism = () => {
+    xTarget.set(0)
+    yTarget.set(0)
   }
 
   const handlePointerMove = (event: PointerEvent<HTMLButtonElement>) => {
-    if (event.pointerType === 'touch' || !supportsFinePointer()) return
+    if (reduceMotion || event.pointerType === 'touch' || !supportsFinePointer()) return
     const bounds = event.currentTarget.getBoundingClientRect()
-    lean(
-      (event.clientX - bounds.left - bounds.width / 2) * POINTER_FACTOR,
-      (event.clientY - bounds.top - bounds.height / 2) * POINTER_FACTOR,
-    )
+    xTarget.set((event.clientX - bounds.left - bounds.width / 2) * POINTER_FACTOR)
+    yTarget.set((event.clientY - bounds.top - bounds.height / 2) * POINTER_FACTOR)
+  }
+
+  const handlePointerLeave = () => {
+    setHovered(false)
+    resetMagnetism()
   }
 
   return (
     <span className="article-back-slot">
       <button
-        ref={buttonRef}
         type="button"
         onClick={onClick}
+        onPointerEnter={(event) => event.pointerType !== 'touch' && setHovered(true)}
         onPointerMove={handlePointerMove}
-        onPointerLeave={() => lean(0, 0)}
+        onPointerLeave={handlePointerLeave}
+        onFocus={() => setHovered(true)}
+        onBlur={() => setHovered(false)}
         className="article-magnetic-back"
         aria-label="Go back"
       >
-        <span ref={parallaxRef} className="article-back-parallax" aria-hidden="true">
-          <span className="article-magnetic-back-hover">
-            <span className="article-magnetic-back-surface">
-              <span className="article-magnetic-back-feedback">
-                <span className="article-magnetic-back-avatar">
-                  <img src={AVATAR_URL} alt="" width="44" height="44" />
-                </span>
-                {/* Two identical arrows: one follows the scroll, one answers hover. */}
-                <span className="article-magnetic-back-arrow is-scroll"><ArrowLeft /></span>
-                <span className="article-magnetic-back-arrow is-hover"><ArrowLeft /></span>
-              </span>
+        <motion.span
+          className="article-back-parallax"
+          style={{ x: reduceMotion ? 0 : magneticX, y: reduceMotion ? 0 : magneticY }}
+          aria-hidden="true"
+        >
+          <motion.span className="article-magnetic-back-surface" style={{ scale: surfaceScale }}>
+            <span className="article-magnetic-back-feedback">
+              <motion.img
+                src={AVATAR_URL}
+                alt=""
+                className="article-magnetic-back-avatar"
+                width="44"
+                height="44"
+                style={{ opacity: avatarOpacity }}
+              />
+              <motion.span
+                className="article-magnetic-back-arrow"
+                style={{ opacity: arrowOpacity, scale: arrowScale }}
+              >
+                <ArrowLeft />
+              </motion.span>
             </span>
-          </span>
-        </span>
+          </motion.span>
+        </motion.span>
       </button>
     </span>
   )

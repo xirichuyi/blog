@@ -34,6 +34,7 @@
     "clsx": "^2.1.1",
     "dompurify": "^3.4.16",
     "epubjs": "^0.3.93",
+    "framer-motion": "^11.18.2",
     "highlight.js": "^11.10.0",
     "jsqr": "^1.4.0",
     "lucide-react": "^0.539.0",

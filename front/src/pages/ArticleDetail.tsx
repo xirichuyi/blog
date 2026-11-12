@@ -268,7 +268,6 @@ export default function ArticleDetail() {
     const targetId = hoveredHeadingId || activeId
     const entries = Array.from(toc?.querySelectorAll<HTMLElement>('.article-toc-entry') ?? [])
     const target = entries.find((entry) => entry.dataset.headingId === targetId)
-    const active = entries.find((entry) => entry.dataset.headingId === activeId)
 
     if (!toc || !pill || !target) {
       if (pill) pill.style.opacity = '0'
@@ -294,18 +293,24 @@ export default function ArticleDetail() {
     }
 
     updatePill()
-    if (!hoveredHeadingId && active) {
-      const tocBounds = toc.getBoundingClientRect()
-      const activeBounds = active.getBoundingClientRect()
-      const activeCenter = activeBounds.top + activeBounds.height / 2
-      const tocCenter = tocBounds.top + tocBounds.height / 2
-      toc.scrollBy({ top: activeCenter - tocCenter, behavior: reduceMotion ? 'auto' : 'smooth' })
-    }
 
     const resizeObserver = new ResizeObserver(updatePill)
     resizeObserver.observe(toc)
     return () => resizeObserver.disconnect()
   }, [activeId, hoveredHeadingId, reduceMotion])
+
+  // Follow a newly active section, never a hover exit. Otherwise the list
+  // moving beneath a stationary pointer can repeatedly change the hover target.
+  useEffect(() => {
+    const toc = tocRef.current
+    if (!toc || toc.matches(':hover')) return
+    const active = Array.from(toc.querySelectorAll<HTMLElement>('.article-toc-entry'))
+      .find(entry => entry.dataset.headingId === activeId)
+    if (!active) return
+    const bounds = toc.getBoundingClientRect()
+    const entry = active.getBoundingClientRect()
+    toc.scrollBy({ top: entry.top + entry.height / 2 - bounds.top - bounds.height / 2, behavior: reduceMotion ? 'auto' : 'smooth' })
+  }, [activeId, reduceMotion])
 
   useEffect(() => () => {
     if (tocHoverTimerRef.current !== null) window.clearTimeout(tocHoverTimerRef.current)
@@ -368,7 +373,10 @@ export default function ArticleDetail() {
 
   const goTo = (hid: string) => {
     const el = document.getElementById(hid)
-    if (el) el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' })
+    // Land just inside the 120px active-heading line; scrollIntoView adds
+    // root scroll-padding to heading scroll-margin and can leave the prior
+    // section selected after a TOC click.
+    if (el) window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - 112, behavior: reduceMotion ? 'auto' : 'smooth' })
   }
 
   const previewTocHeading = (headingId: string) => {
