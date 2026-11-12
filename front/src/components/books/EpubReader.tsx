@@ -84,7 +84,9 @@ function applyContentAppearance(contents: Contents, theme: ReaderTheme, flow: Re
   root.style.setProperty('color-scheme', theme === 'night' ? 'dark' : 'light')
   contents.document.body?.style.setProperty('background-color', paper, 'important')
   contents.document.body?.style.setProperty('color', ink, 'important')
-  root.style.touchAction = 'pan-y pinch-zoom'
+  // Paginated content has no vertical scrolling; keep diagonal swipes in
+  // the reader instead of letting the browser cancel them as a native pan.
+  root.style.touchAction = flow === 'paginated' ? 'pinch-zoom' : 'pan-y pinch-zoom'
   if (contents.document.body) contents.document.body.style.touchAction = root.style.touchAction
 }
 

@@ -174,7 +174,7 @@ export function createPageSlider(options: PageSliderOptions): PageSlider {
       const base = dragBase
       dragBase = null
       if (!container || base === null) return
-      const far = Math.abs(dx) > Math.min(90, container.clientWidth * 0.18)
+      const far = Math.abs(dx) >= Math.min(64, Math.max(36, container.clientWidth * 0.1))
       const flick = Math.abs(velocity) > 0.35 && Math.abs(dx) > 12 && Math.sign(velocity) === Math.sign(dx)
       if (far || flick) go(container, base, dx < 0 ? 1 : -1)
       else glideTo(container, base, SETTLE_MS)

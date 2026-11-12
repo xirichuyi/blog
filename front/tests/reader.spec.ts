@@ -540,3 +540,57 @@ test('desktop selection dismisses outside and still opens a concise note editor'
     await expect(page.getByRole('dialog')).toContainText('桌面批注')
   } finally { await context.close() }
 })
+
+for (const gesture of [
+  { name: 'short slow swipe', dx: -50, pause: 150, turns: true },
+  { name: 'single-move quick flick', dx: -30, pause: 20, turns: true },
+  { name: 'small slow drag', dx: -20, pause: 150, turns: false },
+  { name: 'cancelled swipe', dx: -80, pause: 20, cancel: true, turns: false },
+  { name: 'second finger cancels swipe', dx: -80, pause: 20, multi: true, turns: false },
+]) {
+  test(`paginated EPUB handles ${gesture.name}`, async ({ page }) => {
+    await mock(page, { data: empty(), writes: 0 })
+    await open(page)
+    const stage = page.locator('.epub-container')
+    const before = await stage.evaluate(element => element.scrollLeft)
+    await page.locator('iframe:visible').first().evaluate(async (element, gesture) => {
+      const frame = element as HTMLIFrameElement
+      const doc = frame.contentDocument!
+      const view = frame.contentWindow! as Window & typeof globalThis
+      const origin = frame.getBoundingClientRect().left + 220
+      const send = (type: string, dx: number, id = 1) => doc.body.dispatchEvent(new view.PointerEvent(type, {
+        bubbles: true, pointerType: 'touch', pointerId: id, isPrimary: id === 1,
+        clientX: origin + dx - frame.getBoundingClientRect().left, clientY: 250,
+      }))
+      send('pointerdown', 0)
+      await new Promise(resolve => setTimeout(resolve, gesture.pause))
+      send('pointermove', gesture.dx)
+      if (gesture.multi) send('pointerdown', gesture.dx, 2)
+      // Release at the same physical position even though the iframe moved.
+      send(gesture.cancel ? 'pointercancel' : 'pointerup', gesture.dx)
+      if (gesture.multi) send('pointerup', gesture.dx, 2)
+    }, gesture)
+    if (gesture.turns) await expect.poll(() => stage.evaluate(element => element.scrollLeft)).toBeGreaterThan(before)
+    else {
+      await expect(page.locator('.epub-reader')).not.toHaveClass(/is-page-sliding/)
+      expect(await stage.evaluate(element => element.scrollLeft)).toBe(before)
+    }
+  })
+}
+
+test('native diagonal touch swipe turns a paginated EPUB page', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Native touch injection requires Chromium CDP')
+  await mock(page, { data: empty(), writes: 0 })
+  await open(page)
+  const stage = page.locator('.epub-container')
+  const before = await stage.evaluate(element => element.scrollLeft)
+  const session = await page.context().newCDPSession(page)
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 260, y: 320 }] })
+  // Start vertically, then sweep sideways: the browser must not take over panning.
+  for (const [x, y] of [[258, 345], [240, 350], [210, 355], [175, 360]]) {
+    await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] })
+  }
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await expect.poll(() => stage.evaluate(element => element.scrollLeft)).toBeGreaterThan(before)
+  await session.detach()
+})
