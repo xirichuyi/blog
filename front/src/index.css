@@ -492,6 +492,107 @@
   justify-content: center;
 }
 
+/* Avatar → back arrow. Resting: avatar, slightly smaller. Revealed (page
+   scrolled, or the button hovered/focused): arrow at full size. Only
+   transform and opacity change, so the compositor runs the whole morph. */
+.article-back-parallax {
+  transform: translate3d(var(--back-x, 0px), var(--back-y, 0px), 0);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.article-magnetic-back-surface {
+  transform: scale(0.78);
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.article-magnetic-back-avatar,
+.article-magnetic-back-arrow {
+  transition: opacity 260ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.article-magnetic-back-arrow {
+  opacity: 0;
+  transform: scale(0.82);
+}
+
+.article-magnetic-back[data-scrolled] .article-magnetic-back-surface,
+.article-magnetic-back:focus-visible .article-magnetic-back-surface {
+  transform: scale(1);
+}
+
+.article-magnetic-back[data-scrolled] .article-magnetic-back-avatar,
+.article-magnetic-back:focus-visible .article-magnetic-back-avatar {
+  opacity: 0;
+}
+
+.article-magnetic-back[data-scrolled] .article-magnetic-back-arrow,
+.article-magnetic-back:focus-visible .article-magnetic-back-arrow {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .article-magnetic-back:hover .article-magnetic-back-surface { transform: scale(1); }
+  .article-magnetic-back:hover .article-magnetic-back-avatar { opacity: 0; }
+  .article-magnetic-back:hover .article-magnetic-back-arrow { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .article-back-parallax { transform: none; }
+  .article-back-parallax,
+  .article-magnetic-back-surface,
+  .article-magnetic-back-avatar,
+  .article-magnetic-back-arrow { transition: none; }
+}
+
+/* Dock magnification: positions and sizes come from CSS variables set on
+   pointer move; the transitions below are the only animation. */
+.dock-part {
+  transform: translate3d(var(--dock-x, 0px), 0, 0);
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dock-tile {
+  transform: scale(var(--dock-scale, 1));
+  transform-origin: bottom center;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease, color 150ms ease;
+}
+
+.dock-backdrop {
+  transform: scaleX(var(--dock-stretch, 1));
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-part, .dock-tile, .dock-backdrop { transition: none; }
+}
+
+/* Reading progress: where scroll-driven animations exist, the bar is tied
+   to the article body's position by the browser itself (compositor, no
+   script). The range matches the script fallback in ArticleDetail: from the
+   body's top reaching 120px below the viewport top, to its bottom reaching
+   45vh + 120px. */
+@supports (animation-timeline: view()) and (timeline-scope: --article-read) {
+  .article-page { timeline-scope: --article-read; }
+
+  .article-read-body {
+    view-timeline: --article-read block;
+    view-timeline-inset: 120px calc(55vh - 120px);
+  }
+
+  .article-progress {
+    animation: article-read-progress linear both;
+    animation-timeline: --article-read;
+    animation-range: contain 0% contain 100%;
+  }
+}
+
+@keyframes article-read-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 .article-magnetic-back-arrow svg {
   width: 1rem;
   height: 1rem;

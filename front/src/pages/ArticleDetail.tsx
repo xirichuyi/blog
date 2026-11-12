@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useReducedMotion } from 'framer-motion'
 import { useNavigate, useParams } from 'react-router-dom'
 import PhotoSwipeLightbox from 'photoswipe/lightbox'
 import {
@@ -41,6 +40,9 @@ interface Heading {
   level: number
 }
 
+const PROGRESS_IS_CSS_DRIVEN = typeof CSS !== 'undefined'
+  && CSS.supports('animation-timeline: view()')
+  && CSS.supports('timeline-scope: --article-read')
 const TOC_HOVER_INTENT_MS = 110
 const TOC_TEXT_HIGHLIGHT_DELAY_MS = 340
 
@@ -71,7 +73,7 @@ export default function ArticleDetail() {
   const tocHighlightTimerRef = useRef<number | null>(null)
   const progressRef = useRef<HTMLDivElement>(null)
   const shareTimerRef = useRef<number | null>(null)
-  const reduceMotion = useReducedMotion()
+  const reduceMotion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
 
   useEffect(() => {
     if (!id) return
@@ -200,7 +202,8 @@ export default function ArticleDetail() {
       frame = 0
       const scrollY = window.scrollY
       const ratio = Math.min(1, Math.max(0, (scrollY - contentStart) / contentDistance))
-      if (progressRef.current) {
+      // Browsers with scroll-driven animations move the bar themselves (index.css).
+      if (progressRef.current && !PROGRESS_IS_CSS_DRIVEN) {
         progressRef.current.style.transform = `scaleX(${ratio})`
       }
 
@@ -579,7 +582,7 @@ export default function ArticleDetail() {
           {sealed ? (
             <ArticleLock articleId={article.id} onUnlocked={setArticle} />
           ) : (
-            <div ref={contentRef}>
+            <div ref={contentRef} className="article-read-body">
               <Markdown content={article.content} />
             </div>
           )}
