@@ -624,3 +624,26 @@ test('a passage can be highlighted first, then opened by tapping it to add a tho
   await expect.poll(() => server.data.entries[0]?.note).toBe('后补的想法')
   await expect(page.getByRole('button', { name: '查看批注', exact: true })).toBeVisible()
 })
+
+test('the drawer lists every note in the book and jumps to the chosen one', async ({ page }) => {
+  const server: Server = { data: empty(), writes: 0 }
+  await mock(page, server)
+  await open(page)
+  await menu(page)
+  await page.getByRole('button', { name: 'Open table of contents', exact: true }).tap()
+  await page.getByRole('tab', { name: '批注' }).tap()
+  await expect(page.locator('.reader-notes-empty')).toBeVisible()
+  await page.getByRole('button', { name: '关闭目录', exact: true }).tap()
+  await saveNote(page, '列表里的批注')
+  await menu(page)
+  await page.getByRole('button', { name: 'Open table of contents', exact: true }).tap()
+  // The drawer remembers the last tab and shows the count.
+  await expect(page.getByRole('tab', { name: '批注 1' })).toHaveAttribute('aria-selected', 'true')
+  const item = page.getByRole('list', { name: '全书批注' }).getByRole('button')
+  await expect(item).toHaveCount(1)
+  await expect(item).toContainText('列表里的批注')
+  await expect(item).toContainText('Chapter One')
+  await item.tap()
+  await expect(page.locator('.reader-toc')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '查看批注', exact: true })).toBeVisible()
+})

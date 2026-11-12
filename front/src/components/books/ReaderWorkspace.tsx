@@ -146,6 +146,30 @@ export function ParagraphNotes({ markers }: { markers: NoteMarker[] }) {
   }}><MessageCircle size={12} strokeWidth={1.5} />{marker.ids.length > 1 && <small>{marker.ids.length}</small>}</button>)}</div>
 }
 
+export type DrawerTab = 'contents' | 'notes'
+
+/** Switches the reader's side drawer between the table of contents and the notes of the whole book. */
+export function DrawerTabs({ tab, onTab, notes }: { tab: DrawerTab; onTab: (tab: DrawerTab) => void; notes: number }) {
+  return <div className="reader-drawer-tabs" role="tablist" aria-label="目录与批注">
+    <button type="button" role="tab" aria-selected={tab === 'contents'} onClick={() => onTab('contents')}>目录</button>
+    <button type="button" role="tab" aria-selected={tab === 'notes'} onClick={() => onTab('notes')}>批注{notes > 0 && <small>{notes}</small>}</button>
+  </div>
+}
+
+export interface NoteListItem { entry: ReaderEntry; where: string }
+
+/** Every highlight and note in the book, in reading order; choosing one jumps to it. */
+export function NotesList({ items, onSelect }: { items: NoteListItem[]; onSelect: (entry: ReaderEntry) => void }) {
+  if (!items.length) return <p className="reader-notes-empty">还没有批注。选中文字后可以划线，或写下想法。</p>
+  return <ul className="reader-notes-list" aria-label="全书批注">{items.map(({ entry, where }) => <li key={entry.id}>
+    <button type="button" onClick={() => onSelect(entry)}>
+      {where && <span className="reader-notes-where">{where}</span>}
+      <span className="reader-notes-quote">{entry.quote}</span>
+      {entry.note && <span className="reader-notes-note">{entry.note}</span>}
+    </button>
+  </li>)}</ul>
+}
+
 function AnnotationCard({ panel, onClose }: { panel: NotePanel; onClose: () => void }) {
   const { session, snapshot, loginHref } = useReaderWorkspace()
   const dialog = useRef<HTMLDialogElement>(null)

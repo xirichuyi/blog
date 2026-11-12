@@ -1,12 +1,13 @@
 import { createPortal } from 'react-dom'
 import { groupNoteMarkers, visibleRangeAnchor, visibleRangeRects, noteMarkerPoint, type NoteMarker } from '@/lib/reader-annotations'
 import { ReaderLoading } from './ReaderLoading'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, List, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
 import type { RenditionOptions } from 'epubjs/types/rendition'
 import { Button } from '@/components/ui/button'
-import { ParagraphNotes, useReaderWorkspace } from './ReaderWorkspace'
+import { DrawerTabs, NotesList, ParagraphNotes, useReaderWorkspace, type DrawerTab, type NoteListItem } from './ReaderWorkspace'
+import type { ReaderEntry } from '@/lib/reader-state'
 import { prepareEpubContent } from '@/lib/epub-content'
 import { bindReaderSelection, clearReaderSelection } from '@/lib/reader-selection'
 import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
@@ -126,6 +127,10 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
   const viewportRef = useRef<HTMLDivElement>(null)
   const renditionRef = useRef<Rendition | null>(null)
   const sliderRef = useRef<PageSlider | null>(null)
+  const [drawerTab, setDrawerTab] = useState<DrawerTab>('contents')
+  // Filled in once the book is open: reading-order comparison and chapter titles for the notes list.
+  const noteOrderRef = useRef<((a: string, b: string) => number) | null>(null)
+  const chapterTitleRef = useRef<(cfi: string) => string>(() => '')
   const fontSizeRef = useRef(fontSize)
   const themeRef = useRef(theme)
   fontSizeRef.current = fontSize
@@ -168,7 +173,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           fileCache.current = { url, bytes }
         }
         setPhase('正在排版，即将打开…')
-        const { default: createEpub } = await import('epubjs')
+        const { default: createEpub, EpubCFI } = await import('epubjs')
         if (disposed || !viewportRef.current) return
         activeBook = createEpub(bytes.slice(0))
         // Wait until EPUB.js has registered its resource replacement hook, then
@@ -330,6 +335,14 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           if (group) group.push(item)
           else chaptersBySpine.set(index, [item])
         }
+        const locator = new EpubCFI()
+        noteOrderRef.current = (a, b) => { try { return locator.compare(a, b) } catch { return 0 } }
+        chapterTitleRef.current = (cfi) => {
+          try {
+            const index = activeBook?.spine.get(cfi)?.index
+            return index === undefined ? '' : chaptersBySpine.get(index)?.[0]?.label.trim() ?? ''
+          } catch { return '' }
+        }
         rendition.on('relocated', (nextLocation: Location) => {
           if (!activeBook || disposed) return
           // Until the location index is built (a few seconds after opening) the
@@ -473,6 +486,25 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
     }
   }, [snapshot.data.entries, loading, renderVersion, fontSize, flow, setSelection, session])
 
+  // Only needed while the drawer shows them; `loading` is a dependency
+  // because the ordering and chapter titles become available when the book opens.
+  const noteItems = useMemo<NoteListItem[]>(() => {
+    if (!tocOpen || drawerTab !== 'notes') return []
+    const order = noteOrderRef.current
+    const entries = snapshot.data.entries.filter(entry => entry.quote && entry.position.kind === 'epub')
+    if (order) entries.sort((a, b) => order((a.position as { cfi: string }).cfi, (b.position as { cfi: string }).cfi))
+    return entries.map(entry => ({ entry, where: chapterTitleRef.current((entry.position as { cfi: string }).cfi) }))
+  }, [snapshot.data.entries, tocOpen, drawerTab, loading])
+  const noteCount = useMemo(() => snapshot.data.entries.filter(entry => entry.quote && entry.position.kind === 'epub').length, [snapshot.data.entries])
+  const displayNote = (entry: ReaderEntry) => {
+    if (entry.position.kind !== 'epub') return
+    setNavigationError('')
+    clearReaderSelection()
+    setSelection(null)
+    void renditionRef.current?.display(entry.position.cfi).catch(() => setNavigationError('批注位置打开失败，请重试。'))
+    setTocOpen(false)
+  }
+
   const displayChapter = (href: string) => {
     setNavigationError('')
     clearReaderSelection()
@@ -485,8 +517,10 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
   return (
     <div className={`epub-reader reader-flow-${flow}`}>
       {tocOpen && <aside ref={tocRef} className={tocOpen ? 'reader-toc is-open' : 'reader-toc'} aria-label="Table of contents">
-        <div className="reader-toc-heading"><span>目录</span><Button size="icon" variant="ghost" aria-label="关闭目录" onClick={() => setTocOpen(false)}><X /></Button></div>
-        {navigation.length ? <TableOfContents items={navigation} active={activeChapter} onSelect={displayChapter} /> : <p>No table of contents.</p>}
+        <div className="reader-toc-heading"><DrawerTabs tab={drawerTab} onTab={setDrawerTab} notes={noteCount} /><Button size="icon" variant="ghost" aria-label="关闭目录" onClick={() => setTocOpen(false)}><X /></Button></div>
+        {drawerTab === 'notes'
+          ? <NotesList items={noteItems} onSelect={displayNote} />
+          : navigation.length ? <TableOfContents items={navigation} active={activeChapter} onSelect={displayChapter} /> : <p>No table of contents.</p>}
       </aside>}
       {tocOpen && <button className="reader-toc-scrim" type="button" aria-label="Close table of contents" onClick={() => setTocOpen(false)} />}
       <section className="reader-canvas-wrap">

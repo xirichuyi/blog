@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Minus, Plus, ZoomIn, List, X } from 'lucide-
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist/types/src/display/api'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Button } from '@/components/ui/button'
-import { ParagraphNotes, useReaderWorkspace } from './ReaderWorkspace'
+import { DrawerTabs, NotesList, ParagraphNotes, useReaderWorkspace, type DrawerTab, type NoteListItem } from './ReaderWorkspace'
 import { bindReaderSelection } from '@/lib/reader-selection'
 import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
@@ -35,6 +35,7 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
   const restoredPage = () => { const saved = session.getProgress(); return saved?.kind === 'pdf' ? saved.page : 1 }
   const [outline, setOutline] = useState<PdfOutline>([])
   const [tocOpen, setTocOpen] = useState(false)
+  const [drawerTab, setDrawerTab] = useState<DrawerTab>('contents')
   const tocRef = useRef<HTMLElement>(null)
   const selectionRef = useRef<ReturnType<typeof bindReaderSelection> | null>(null)
   const [outlinePages, setOutlinePages] = useState<{ item: PdfOutline[number]; page: number }[]>([])
@@ -259,6 +260,12 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
     return () => { cancelAnimationFrame(scheduled); frame.removeEventListener('scroll', scroll); observer.disconnect() }
   }, [pageNotes, renderVersion])
 
+  const noteItems = useMemo<NoteListItem[]>(() => snapshot.data.entries
+    .filter(entry => entry.quote && entry.position.kind === 'pdf')
+    .map(entry => ({ entry, page: entry.position.kind === 'pdf' ? entry.position.page : 0, top: entry.rects?.[0]?.y ?? 0 }))
+    .sort((a, b) => a.page - b.page || a.top - b.top)
+    .map(({ entry, page }) => ({ entry, where: `第 ${page} 页` })), [snapshot.data.entries])
+
   const displayChapter = async (item: PdfOutline[number]) => {
     if (!document || !item.dest) return
     try {
@@ -275,8 +282,10 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
     <div className="pdf-reader">
       {tocOpen && <>
         <aside ref={tocRef} className="reader-toc is-open" aria-label="PDF 目录">
-          <div className="reader-toc-heading"><span>目录</span><Button size="icon" variant="ghost" aria-label="关闭目录" onClick={() => setTocOpen(false)}><X /></Button></div>
-          {outline.length ? <Outline items={outline} active={activeChapter} onSelect={item => void displayChapter(item)} /> : <p>此 PDF 没有内嵌目录，可使用页码跳转。</p>}
+          <div className="reader-toc-heading"><DrawerTabs tab={drawerTab} onTab={setDrawerTab} notes={noteItems.length} /><Button size="icon" variant="ghost" aria-label="关闭目录" onClick={() => setTocOpen(false)}><X /></Button></div>
+          {drawerTab === 'notes'
+            ? <NotesList items={noteItems} onSelect={entry => { if (entry.position.kind === 'pdf') setPage(Math.max(1, Math.min(pages || 1, entry.position.page))); setTocOpen(false) }} />
+            : outline.length ? <Outline items={outline} active={activeChapter} onSelect={item => void displayChapter(item)} /> : <p>此 PDF 没有内嵌目录，可使用页码跳转。</p>}
         </aside>
         <button className="reader-toc-scrim" type="button" aria-label="关闭目录遮罩" onClick={() => setTocOpen(false)} />
       </>}

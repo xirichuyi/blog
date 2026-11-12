@@ -183,6 +183,20 @@ html[data-reader-theme], html[data-reader-theme] body {
 
 
 
+/* ---------- Drawer: contents | notes ---------- */
+.reader-toc-heading { padding-left: 4px; }
+.reader-drawer-tabs { display: flex; gap: 2px; padding: 3px; border-radius: 11px; background: var(--reader-bg); }
+.reader-toc-heading .reader-drawer-tabs button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; color: var(--reader-soft); font-size: 12.5px; font-weight: 500; cursor: pointer; }
+.reader-toc-heading .reader-drawer-tabs button[aria-selected="true"] { background: var(--reader-paper); color: var(--reader-ink); box-shadow: 0 1px 3px rgb(20 28 21 / 8%); }
+.reader-drawer-tabs small { min-width: 16px; padding: 0 4px; border-radius: 8px; background: color-mix(in srgb, var(--reader-accent) 16%, transparent); color: var(--reader-accent); font-size: 10px; font-weight: 600; line-height: 16px; text-align: center; }
+.reader-notes-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.reader-toc .reader-notes-list li button { display: grid; gap: 6px; width: 100%; padding: 12px; border: 0; border-radius: 12px; background: transparent; text-align: left; cursor: pointer; }
+.reader-toc .reader-notes-list li button:hover { background: var(--reader-bg); }
+.reader-notes-where { color: var(--reader-soft); font-size: 11px; letter-spacing: 0.02em; }
+.reader-notes-quote { padding-left: 9px; border-left: 2px solid color-mix(in srgb, var(--reader-accent) 45%, transparent); color: var(--reader-soft); font-family: Georgia, 'Noto Serif SC', serif; font-size: 12.5px; line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.reader-notes-note { color: var(--reader-ink); font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.reader-toc > .reader-notes-empty { padding: 28px 12px; text-align: center; line-height: 1.7; }
+
 /* ---------- Annotations ---------- */
 /* Saved passages: a soft marker stroke drawn by EPUB.js in an SVG above the page. */
 .reader-note-highlight { fill: var(--reader-accent); fill-opacity: 0.2; mix-blend-mode: multiply; }
