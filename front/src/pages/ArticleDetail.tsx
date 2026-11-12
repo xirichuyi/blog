@@ -299,18 +299,26 @@ export default function ArticleDetail() {
     return () => resizeObserver.disconnect()
   }, [activeId, hoveredHeadingId, reduceMotion])
 
-  // Follow a newly active section, never a hover exit. Otherwise the list
-  // moving beneath a stationary pointer can repeatedly change the hover target.
+  // Reveal only entries outside the viewport. Animating the scroll container
+  // towards its centre while the pill also animates moves two coordinate
+  // systems at once, making the highlight reverse direction near the edges.
   useEffect(() => {
     const toc = tocRef.current
     if (!toc || toc.matches(':hover')) return
     const active = Array.from(toc.querySelectorAll<HTMLElement>('.article-toc-entry'))
       .find(entry => entry.dataset.headingId === activeId)
     if (!active) return
-    const bounds = toc.getBoundingClientRect()
-    const entry = active.getBoundingClientRect()
-    toc.scrollBy({ top: entry.top + entry.height / 2 - bounds.top - bounds.height / 2, behavior: reduceMotion ? 'auto' : 'smooth' })
-  }, [activeId, reduceMotion])
+    const viewport = toc.parentElement
+    if (!viewport) return
+    const top = toc.offsetTop + active.offsetTop
+    const bottom = top + active.offsetHeight
+    const margin = 4
+    let next = viewport.scrollTop
+    if (top < next + margin) next = top - margin
+    else if (bottom > next + viewport.clientHeight - margin) next = bottom - viewport.clientHeight + margin
+    next = Math.max(0, Math.min(viewport.scrollHeight - viewport.clientHeight, next))
+    if (Math.abs(next - viewport.scrollTop) > 1) viewport.scrollTo({ top: next, behavior: 'instant' })
+  }, [activeId])
 
   useEffect(() => () => {
     if (tocHoverTimerRef.current !== null) window.clearTimeout(tocHoverTimerRef.current)

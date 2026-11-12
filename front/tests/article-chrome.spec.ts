@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('bottom TOC entries receive pointer events and leaving them does not recenter the list', async ({ page }) => {
-  const toc = page.locator('.article-toc')
+  const toc = page.locator('.article-aside-inner')
   await toc.evaluate(element => { element.scrollTop = element.scrollHeight })
   const last = page.locator('.article-toc-entry').last()
   const bounds = (await last.boundingBox())!

@@ -618,22 +618,28 @@
   right: 1rem;
   display: flex;
   width: 160px;
-  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   min-height: 0;
   flex-direction: column;
+  /* One scroll viewport for the sidebar: metadata must not squeeze the TOC. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--hairline) transparent;
+  scrollbar-width: thin;
+  overflow-anchor: none;
 }
 
 .article-toc {
+  flex: none;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding-right: 0.25rem;
-  scrollbar-color: var(--hairline) transparent;
-  scrollbar-width: thin;
 }
 
 .article-toc-list {
   position: relative;
+  /* Decorations must not enlarge the scrollable area during transitions. */
+  overflow: clip;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
