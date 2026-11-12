@@ -56,3 +56,46 @@ test('bookshelf error can be retried without reloading the page', async ({ page 
   await expect(page.locator('a.library-book')).toBeVisible()
   expect(calls).toBe(2)
 })
+
+const cachedReader = (progress: unknown, dirty = false) => JSON.stringify({ data: { revision: 1, progress, entries: [], review: '', rating: null }, dirty })
+
+for (const mode of ['guest', 'cloud', 'unsynced', 'other-account', 'invalid'] as const) {
+  test(`bookshelf resume feedback uses ${mode} progress without writing reader data`, async ({ page }) => {
+    await mock(page)
+    const email = 'reader@example.com'
+    const position = { kind: 'epub', cfi: 'epubcfi(/6/2!/4/2:0)', percent: 37 }
+    const key = `reader-v2:${mode === 'guest' || mode === 'invalid' ? 'guest' : encodeURIComponent(mode === 'other-account' ? 'someone@example.com' : email)}:1:7`
+    await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), {
+      key, value: cachedReader(mode === 'invalid' ? { ...position, percent: 200 } : position, mode === 'unsynced'),
+    })
+    let writes = 0
+    if (mode === 'cloud' || mode === 'unsynced') {
+      await page.route('**/api/auth/session', route => route.fulfill({ json: { code: 200, message: 'ok', data: { email, name: 'Reader' } } }))
+    }
+    await page.route('**/api/books/1/files/7/reader', route => {
+      if (route.request().method() !== 'GET') writes++
+      return route.fulfill({ json: { code: 200, message: 'ok', data: { revision: 2, progress: { ...position, percent: 62 } } } })
+    })
+    await page.goto('/books')
+    const card = page.locator('a.library-book')
+    if (mode === 'invalid' || mode === 'other-account') {
+      await expect(card).toContainText('开始阅读 EPUB')
+      await expect(card.locator('.library-book-progress')).toHaveCount(0)
+    } else {
+      await expect(card).toContainText('继续阅读 EPUB')
+      await expect(card).toContainText(`上次读到 ${mode === 'cloud' ? 62 : 37}%`)
+      await expect(card).toHaveAttribute('href', '/books/1/read?file=7')
+    }
+    expect(writes).toBe(0)
+  })
+}
+
+test('bookshelf resumes the PDF edition that has a saved position', async ({ page }) => {
+  await mock(page)
+  await page.route('**/api/books', route => route.fulfill({ json: { code: 200, message: 'ok', data: [{ ...book, files: [...book.files, { id: 8, format: 'pdf', file_url: '/test.pdf' }] }] } }))
+  await page.addInitScript(value => localStorage.setItem('reader-v2:guest:1:8', value), cachedReader({ kind: 'pdf', page: 12, pages: 100 }))
+  await page.goto('/books')
+  await expect(page.locator('a.library-book')).toContainText('继续阅读 PDF')
+  await expect(page.locator('a.library-book')).toContainText('上次读到第 12 / 100 页')
+  await expect(page.locator('a.library-book')).toHaveAttribute('href', '/books/1/read?file=8')
+})

@@ -13,6 +13,11 @@ import {
 import './Books.css'
 import { BookCoverImage } from '@/components/books/BookCoverImage'
 import { Button } from '@/components/ui/button'
+import { getAdminSession } from '@/services/admin'
+import { loadBookshelfProgress } from '@/lib/bookshelf-progress'
+import type { ReaderProgress } from '@/lib/book-progress'
+
+type ShelfProgress = Record<number, ReaderProgress | null>
 
 const STATUS: Record<ReadingStatus, string> = {
   reading: '在读',
@@ -35,8 +40,11 @@ function BookCover({ book, lazy }: { book: Book; lazy: boolean }) {
   )
 }
 
-function BookCard({ book, lazy }: { book: Book; lazy: boolean }) {
-  const file = readableFile(book)
+function BookCard({ book, lazy, progress }: { book: Book; lazy: boolean; progress: ShelfProgress }) {
+  const file = book.files.find(file => progress[file.id]) ?? readableFile(book)
+  const position = file ? progress[file.id] : null
+  const percent = position ? position.kind === 'epub' ? position.percent : position.page / position.pages * 100 : null
+  const progressLabel = position ? position.kind === 'epub' ? `上次读到 ${Math.round(position.percent)}%` : `上次读到第 ${position.page} / ${position.pages} 页` : ''
   const content = (
     <>
       <BookCover book={book} lazy={lazy} />
@@ -44,12 +52,13 @@ function BookCard({ book, lazy }: { book: Book; lazy: boolean }) {
         <span className="library-book-status">{STATUS[book.reading_status]}</span>
         <strong>{book.title}</strong>
         <small>{book.author || '佚名'}</small>
-        {book.reading_status === 'reading' && (
-          <span className="library-book-progress" aria-label={`${book.progress}% read`}>
-            <i style={{ width: `${book.progress}%` }} />
+        {percent !== null && (
+          <span className="library-book-progress" aria-label={progressLabel}>
+            <i style={{ width: `${percent}%` }} />
           </span>
         )}
-        <span className="library-book-action">{file ? `开始阅读 ${file.format.toUpperCase()} →` : '仅有阅读笔记'}</span>
+        <span className="library-book-action">{file ? `${position ? '继续阅读' : '开始阅读'} ${file.format.toUpperCase()} →` : '仅有阅读笔记'}</span>
+        {position && <small>{progressLabel}</small>}
       </span>
     </>
   )
@@ -76,12 +85,30 @@ function EmptyBookshelf() {
 export default function Books() {
   const [books, setBooks] = useState<Book[] | null>(null)
   const [error, setError] = useState('')
+  const [progress, setProgress] = useState<ShelfProgress>({})
 
   const load = useCallback(() => {
     setError('')
     void listBooks().then(setBooks).catch((loadError) => setError((loadError as Error).message))
   }, [])
   useEffect(load, [load])
+
+  useEffect(() => {
+    if (!books) return
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    setProgress({})
+    void getAdminSession(controller.signal).then(async account => {
+      await Promise.all(books.flatMap(book => book.files
+        .filter(file => ['epub', 'pdf'].includes(file.format.toLowerCase()))
+        .map(async file => {
+          const position = await loadBookshelfProgress(book.id, file.id, file.format, account?.email ?? null, controller.signal)
+          if (!controller.signal.aborted) setProgress(current => ({ ...current, [file.id]: position }))
+        })))
+    }).catch(() => { /* Do not expose another account's cache if identity is unknown. */ })
+      .finally(() => clearTimeout(timeout))
+    return () => { controller.abort(); clearTimeout(timeout) }
+  }, [books])
 
   const grouped = useMemo(() => {
     const groups = new Map<ReadingStatus, Book[]>()
@@ -117,7 +144,7 @@ export default function Books() {
             <section className="library-group" key={status}>
               <header><h2>{STATUS[status]}</h2><span>{items.length}</span></header>
               <HoverSurface className="library-grid">
-                {items.map((book, index) => <BookCard book={book} key={book.id} lazy={index >= 4} />)}
+                {items.map((book, index) => <BookCard book={book} key={book.id} lazy={index >= 4} progress={progress} />)}
               </HoverSurface>
             </section>
           )

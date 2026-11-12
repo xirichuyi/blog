@@ -73,11 +73,6 @@ export default function ArticleDetail() {
   const shareTimerRef = useRef<number | null>(null)
   const reduceMotion = useReducedMotion()
 
-  useLayoutEffect(() => {
-    if (!id) return
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [id])
-
   useEffect(() => {
     if (!id) return
     const controller = new AbortController()
