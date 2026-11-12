@@ -223,17 +223,67 @@
   display: block;
 }
 
-/* Small screens: floating controls step aside while an article scrolls down. */
+/* Small screens: collapse towards the bottom centre, like minimizing a
+   window. Animate the visible bar, not its full-width positioning wrapper. */
 @media (max-width: 1023px) {
-  [data-reading-scroll="down"] .site-chrome,
-  [data-reading-scroll="down"] [data-dock-bar],
-  [data-reading-scroll="down"] .article-back-dock {
+  [data-dock-bar] {
+    transform-origin: 50% 100%;
+    transform: translate3d(0, 0, 0) scale(1);
+    clip-path: inset(-4rem -3rem -3rem);
+    opacity: 1;
+    visibility: visible;
+    transition:
+      transform 520ms cubic-bezier(0.16, 1.12, 0.3, 1),
+      clip-path 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms ease-out,
+      visibility 0s;
+  }
+
+  .article-page .article-back-dock {
+    transform-origin: 50% 50%;
+    visibility: visible;
+    transition:
+      left 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 440ms cubic-bezier(0.16, 1.12, 0.3, 1),
+      opacity 180ms ease-out,
+      visibility 0s;
+  }
+
+  [data-reading-scroll="down"] [data-dock-bar] {
+    /* Narrow horizontally as the bar sinks; fade only after it starts moving. */
+    transform: translate3d(0, 1.75rem, 0) scale(0.12, 0.18);
+    clip-path: inset(0 18% 0 18% round 1.4rem);
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
+    transition:
+      transform 400ms cubic-bezier(0.4, 0, 0.7, 0.3),
+      clip-path 340ms cubic-bezier(0.4, 0, 0.7, 0.3),
+      opacity 180ms ease-in 160ms,
+      visibility 0s linear 400ms;
   }
 
   [data-reading-scroll="down"] .article-back-dock {
-    transform: translateY(-0.5rem);
+    transform: translate3d(0, -0.65rem, 0) scale(0.55);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      left 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 320ms cubic-bezier(0.4, 0, 0.7, 0.3),
+      opacity 180ms ease-in 80ms,
+      visibility 0s linear 320ms;
+  }
+}
+
+@media (max-width: 1023px) and (prefers-reduced-motion: reduce) {
+  [data-dock-bar],
+  .article-page .article-back-dock,
+  [data-reading-scroll="down"] [data-dock-bar],
+  [data-reading-scroll="down"] .article-back-dock {
+    transform: none;
+    clip-path: none;
+    transition: none;
   }
 }
 
