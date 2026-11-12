@@ -115,7 +115,7 @@ function TableOfContents({ items, active, onSelect }: { items: NavItem[]; active
 }
 
 export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, fontSize, onTopHoverChange, onToggleUi, theme }: EpubReaderProps) {
-  const { session, snapshot, setSelection } = useReaderWorkspace()
+  const { session, snapshot, setSelection, openNotes } = useReaderWorkspace()
   const [markers, setMarkers] = useState<NoteMarker[]>([])
   const bookRef = useRef<EpubBook | null>(null)
   const [activeChapter, setActiveChapter] = useState('')
@@ -276,6 +276,27 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
                 const viewport = viewportRef.current?.getBoundingClientRect()
                 return { x: x + (frame?.left ?? 0) - (viewport?.left ?? 0), y: y + (frame?.top ?? 0) - (viewport?.top ?? 0) }
               },
+              // A tap on a highlighted passage opens its note instead of turning the page.
+              interceptTap: (x, y) => {
+                const frame = contents.window.frameElement?.getBoundingClientRect()
+                if (!frame) return false
+                const ids: string[] = []
+                let anchor: { left: number; top: number; right: number; bottom: number } | null = null
+                for (const entry of session.getSnapshot().data.entries) {
+                  if (!entry.quote || entry.position.kind !== 'epub') continue
+                  try {
+                    if (bookRef.current?.spine.get(entry.position.cfi)?.index !== contents.sectionIndex) continue
+                    const hit = Array.from(contents.range(entry.position.cfi).getClientRects())
+                      .find(rect => x >= rect.left - 2 && x <= rect.right + 2 && y >= rect.top - 2 && y <= rect.bottom + 2)
+                    if (!hit) continue
+                    ids.push(entry.id)
+                    anchor ??= { left: hit.left + frame.left, right: hit.right + frame.left, top: hit.top + frame.top, bottom: hit.bottom + frame.top }
+                  } catch { /* A location from a replaced file is ignored. */ }
+                }
+                if (!ids.length || !anchor) return false
+                openNotes(ids, anchor)
+                return true
+              },
               drag: slider ? { start: slider.dragStart, move: slider.dragMove, end: slider.dragEnd } : undefined,
               onNext: () => turnPage(1),
               onPrevious: () => turnPage(-1),
@@ -366,7 +387,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
       interactionCleanups.clear()
       activeBook?.destroy()
     }
-  }, [bookId, file.id, file.file_url, flow, retry, onTopHoverChange, onToggleUi, session, setSelection])
+  }, [bookId, file.id, file.file_url, flow, retry, onTopHoverChange, onToggleUi, session, setSelection, openNotes])
 
   useEffect(() => {
     themeRef.current = theme
@@ -397,13 +418,14 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
     if (!rendition || loading) return
     const added: string[] = []
     for (const entry of snapshot.data.entries) {
-      if (!entry.note || !entry.quote || entry.position.kind !== 'epub') continue
+      // Every saved passage is highlighted, with or without a written thought.
+      if (!entry.quote || entry.position.kind !== 'epub') continue
       try {
-        rendition.annotations.underline(entry.position.cfi, {}, undefined, 'reader-note-underline', { stroke: '#809588', 'stroke-opacity': '0.5', 'stroke-width': '1' })
+        rendition.annotations.highlight(entry.position.cfi, {}, undefined, 'reader-note-highlight', {})
         added.push(entry.position.cfi)
       } catch { /* An invalid location in a replaced file must not prevent reading. */ }
     }
-    return () => { for (const cfi of added) { try { rendition.annotations.remove(cfi, 'underline') } catch { /* Rendition already destroyed. */ } } }
+    return () => { for (const cfi of added) { try { rendition.annotations.remove(cfi, 'highlight') } catch { /* Rendition already destroyed. */ } } }
   }, [snapshot.data.entries, renderVersion, loading])
 
   useEffect(() => {

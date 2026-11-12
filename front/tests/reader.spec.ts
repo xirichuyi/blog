@@ -226,7 +226,9 @@ test('paragraph icon opens a note, supports edit and deletion', async ({ page },
   await expect.poll(() => server.data.entries[0]?.note).toBe('修改后的想法')
   await page.getByRole('button', { name: '查看批注', exact: true }).tap()
   await page.getByRole('button', { name: '编辑批注' }).tap()
-  await page.getByRole('button', { name: '删除批注' }).tap()
+  await page.getByRole('button', { name: '删除批注', exact: true }).tap()
+  await expect.poll(() => server.data.entries.length).toBe(1)
+  await page.getByRole('button', { name: '确认删除批注' }).tap()
   await expect.poll(() => server.data.entries.length).toBe(0)
   await expect(page.getByRole('button', { name: '查看批注', exact: true })).toHaveCount(0)
   await menu(page)
@@ -593,4 +595,32 @@ test('native diagonal touch swipe turns a paginated EPUB page', async ({ page, b
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   await expect.poll(() => stage.evaluate(element => element.scrollLeft)).toBeGreaterThan(before)
   await session.detach()
+})
+
+test('a passage can be highlighted first, then opened by tapping it to add a thought', async ({ page }) => {
+  const server: Server = { data: empty(), writes: 0 }
+  await mock(page, server)
+  await open(page)
+  const target = page.locator('iframe').last().contentFrame().locator('#p0')
+  const point = await target.evaluate(element => {
+    const range = element.ownerDocument.createRange()
+    range.setStart(element.firstChild!, 0); range.setEnd(element.firstChild!, 30)
+    const selection = element.ownerDocument.defaultView!.getSelection()!
+    selection.removeAllRanges(); selection.addRange(range)
+    element.ownerDocument.dispatchEvent(new Event('selectionchange'))
+    const rect = range.getClientRects()[0]
+    return { x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 }
+  })
+  await page.getByRole('button', { name: '划线', exact: true }).tap()
+  await expect.poll(() => server.data.entries[0]?.note).toBe('')
+  // A highlight without a thought has no margin marker; the text itself opens it.
+  await expect(page.getByRole('button', { name: '查看批注', exact: true })).toHaveCount(0)
+  const frame = (await page.locator('iframe').last().boundingBox())!
+  await page.touchscreen.tap(frame.x + point.x, frame.y + point.y)
+  await expect(page.getByRole('dialog', { name: '段落批注' })).toContainText('划线')
+  await page.getByRole('button', { name: '编辑批注' }).tap()
+  await page.getByRole('textbox', { name: '批注内容' }).fill('后补的想法')
+  await page.getByRole('button', { name: '保存批注' }).tap()
+  await expect.poll(() => server.data.entries[0]?.note).toBe('后补的想法')
+  await expect(page.getByRole('button', { name: '查看批注', exact: true })).toBeVisible()
 })

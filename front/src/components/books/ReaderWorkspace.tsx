@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { CloudOff, MessageCircle, PenLine, Trash2, UserRound, X } from 'lucide-react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { Check, CloudOff, Copy, Highlighter, MessageCircle, PenLine, Trash2, UserRound, X } from 'lucide-react'
 import { ReaderSession, type ReaderEntry, type ReaderSnapshot, type NoteRect } from '@/lib/reader-state'
 import type { ReaderProgress } from '@/lib/book-progress'
 import type { NoteAnchor, NoteMarker } from '@/lib/reader-annotations'
@@ -43,6 +43,7 @@ function WorkspaceSession({ session, loginHref, children }: { session: ReaderSes
   const [selection, setSelection] = useState<ReaderSelection | null>(null)
   const [panel, setPanel] = useState<NotePanel | null>(null)
   const serial = useRef(0)
+  const pressedAt = useRef(Number.NEGATIVE_INFINITY)
   const openNotes = useCallback((ids: string[], anchor: NoteAnchor) => {
     setSelection(null)
     setPanel({ ids, anchor, serial: ++serial.current })
@@ -72,12 +73,34 @@ function WorkspaceSession({ session, loginHref, children }: { session: ReaderSes
   const selectionEnd = selection?.touch?.rects.at(-1) ?? selection?.anchor
   const selectionAbove = Boolean(selectionStart && selectionStart.top >= 66)
   const actionAnchor = selectionAbove ? selectionStart : selectionEnd
+  const sameRange = (entry: ReaderEntry, target: ReaderSelection) => entry.highlight && entry.position.kind === 'epub' && target.position.kind === 'epub' && entry.position.cfi === target.position.cfi
   const openSelection = () => {
     if (!selection) return
-    const existing = snapshot.data.entries.find(entry => entry.highlight && entry.position.kind === 'epub' && selection.position.kind === 'epub' && entry.position.cfi === selection.position.cfi)
+    const existing = snapshot.data.entries.find(entry => sameRange(entry, selection))
     setPanel({ ids: existing ? [existing.id] : [], selection: existing ? undefined : selection, anchor: selection.anchor, serial: ++serial.current })
     setSelection(null)
   }
+  /** Mark the passage without writing anything; a thought can be added later. */
+  const highlightSelection = () => {
+    if (!selection) return
+    if (snapshot.data.entries.some(entry => sameRange(entry, selection)) || snapshot.data.entries.length >= 500) { openSelection(); return }
+    const entry: ReaderEntry = { id: crypto.randomUUID(), position: selection.position, quote: selection.quote.slice(0, 2000), note: '', highlight: true, ...(selection.rects ? { rects: selection.rects } : {}) }
+    session.update(data => ({ ...data, entries: [...data.entries, entry] }))
+    clearReaderSelection()
+    setSelection(null)
+  }
+  const copySelection = () => {
+    if (!selection) return
+    void navigator.clipboard?.writeText(selection.quote).catch(() => undefined)
+    clearReaderSelection()
+    setSelection(null)
+  }
+  // Touch browsers may skip the click after a prevented pointerdown, so act on
+  // pointerup and ignore the click that follows it.
+  const press = (action: () => void) => ({
+    onPointerUp: (event: React.PointerEvent) => { event.preventDefault(); pressedAt.current = performance.now(); action() },
+    onClick: () => { if (performance.now() - pressedAt.current > 500) action() },
+  })
   return <ReaderContext.Provider value={{ session, snapshot, selection, setSelection, openNotes, loginHref }}>
     <div className="reader-workspace" key={snapshot.generation}>{children}</div>
     <div className="reader-progress" aria-label={`阅读进度 ${positionLabel(snapshot.data.progress)}`}>
@@ -86,7 +109,11 @@ function WorkspaceSession({ session, loginHref, children }: { session: ReaderSes
       <ReaderSyncIssue />
     </div>
     {selection?.touch && !panel && <SelectionOverlay selection={selection} />}
-    {selection && !panel && <button className="reader-selection-action" type="button" aria-label="写批注" data-placement={selectionAbove ? 'above' : 'below'} style={{ left: Math.max(72, Math.min(window.innerWidth - 72, (actionAnchor!.left + actionAnchor!.right) / 2)), top: selectionAbove ? selectionStart!.top - 54 : Math.min(window.innerHeight - 56, selectionEnd!.bottom + 10) }} onPointerDown={event => event.preventDefault()} onPointerUp={event => { event.preventDefault(); openSelection() }} onClick={openSelection}><PenLine size={13} strokeWidth={1.6} /><span>批注</span></button>}
+    {selection && !panel && <div className="reader-selection-action" role="toolbar" aria-label="选中文字" data-placement={selectionAbove ? 'above' : 'below'} style={{ left: Math.max(112, Math.min(window.innerWidth - 112, (actionAnchor!.left + actionAnchor!.right) / 2)), top: selectionAbove ? selectionStart!.top - 54 : Math.min(window.innerHeight - 56, selectionEnd!.bottom + 10) }} onPointerDown={event => event.preventDefault()}>
+      <button type="button" aria-label="写批注" {...press(openSelection)}><PenLine size={14} strokeWidth={1.7} /><span>批注</span></button>
+      <button type="button" aria-label="划线" {...press(highlightSelection)}><Highlighter size={14} strokeWidth={1.7} /><span>划线</span></button>
+      <button type="button" aria-label="复制" {...press(copySelection)}><Copy size={14} strokeWidth={1.7} /><span>复制</span></button>
+    </div>}
     {panel && <AnnotationCard key={panel.serial} panel={panel} onClose={() => { setPanel(null); setSelection(null) }} />}
   </ReaderContext.Provider>
 }
@@ -126,16 +153,97 @@ function AnnotationCard({ panel, onClose }: { panel: NotePanel; onClose: () => v
   const input = useRef<HTMLTextAreaElement>(null)
   const [editId, setEditId] = useState<string | null>(panel.selection ? 'new' : null)
   const [draft, setDraft] = useState('')
+  const [original, setOriginal] = useState('')
   const [error, setError] = useState('')
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const entries = snapshot.data.entries.filter(entry => panel.ids.includes(entry.id))
   const editing = entries.find(entry => entry.id === editId)
   const quote = panel.selection?.quote ?? editing?.quote ?? ''
+  const dirty = Boolean(editId) && draft.trim() !== '' && draft.trim() !== original.trim()
+  const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'
+
   useEffect(() => {
     dialog.current?.showModal()
     if (panel.selection) input.current?.focus({ preventScroll: true })
     else dialog.current?.focus({ preventScroll: true })
     return () => dialog.current?.close()
   }, [])
+
+  // Desktop: a popover beside the passage, flipped above it when there is no
+  // room below. Phones: a bottom sheet that stays above the on-screen keyboard
+  // (iOS overlays the keyboard on fixed elements instead of resizing the page).
+  useLayoutEffect(() => {
+    const card = dialog.current
+    if (!card) return
+    const viewport = window.visualViewport
+    const place = () => {
+      const keyboard = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0
+      card.style.setProperty('--note-keyboard', `${keyboard}px`)
+      if (window.matchMedia('(max-width: 640px)').matches) return
+      const { width, height } = card.getBoundingClientRect()
+      const anchor = panel.anchor
+      const below = anchor.bottom + 10
+      const above = anchor.top - height - 10
+      const top = below + height <= window.innerHeight - 12 ? below : above >= 12 ? above : Math.max(12, window.innerHeight - height - 12)
+      const left = Math.max(12, Math.min(window.innerWidth - width - 12, (anchor.left + anchor.right) / 2 - width / 2))
+      card.style.setProperty('--note-top', `${Math.round(top)}px`)
+      card.style.setProperty('--note-left', `${Math.round(left)}px`)
+    }
+    place()
+    const observer = new ResizeObserver(place)
+    observer.observe(card)
+    window.addEventListener('resize', place)
+    viewport?.addEventListener('resize', place)
+    viewport?.addEventListener('scroll', place)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', place)
+      viewport?.removeEventListener('resize', place)
+      viewport?.removeEventListener('scroll', place)
+    }
+  }, [panel.anchor])
+
+  // The field grows with the text up to its CSS max-height.
+  useLayoutEffect(() => {
+    const field = input.current
+    if (!field) return
+    field.style.height = 'auto'
+    field.style.height = `${field.scrollHeight}px`
+  }, [draft, editId])
+
+  useEffect(() => {
+    if (!copiedId) return
+    const timer = window.setTimeout(() => setCopiedId(null), 1400)
+    return () => window.clearTimeout(timer)
+  }, [copiedId])
+
+  const startEditing = (entry: ReaderEntry) => {
+    setEditId(entry.id)
+    setDraft(entry.note)
+    setOriginal(entry.note)
+    setConfirmDelete(null)
+  }
+  // Entering the editor for an existing note: focus with the caret at the end,
+  // before the browser paints, so typing straight away appends.
+  useLayoutEffect(() => {
+    const field = input.current
+    if (!field || !editId || editId === 'new') return
+    field.focus({ preventScroll: true })
+    field.setSelectionRange(field.value.length, field.value.length)
+  }, [editId])
+  /** Leave the editor: back to the note when editing one, otherwise close the card. */
+  const leaveEditor = () => {
+    setConfirmDiscard(false)
+    setError('')
+    if (editing) setEditId(null)
+    else onClose()
+  }
+  const requestClose = () => {
+    if (dirty) setConfirmDiscard(true)
+    else onClose()
+  }
   const save = () => {
     if (!draft.trim()) return
     if (panel.selection && snapshot.data.entries.length >= 500) { setError('批注已达上限，请先整理已有批注。'); return }
@@ -145,24 +253,56 @@ function AnnotationCard({ panel, onClose }: { panel: NotePanel; onClose: () => v
     } else if (editing) session.update(data => ({ ...data, entries: data.entries.map(entry => entry.id === editing.id ? { ...entry, note: draft.trim() } : entry) }))
     onClose()
   }
-  return <dialog ref={dialog} tabIndex={-1} className="reader-annotation-card" aria-label="段落批注" style={{ '--note-left': `${Math.max(12, Math.min(window.innerWidth - 312, panel.anchor.right - 280))}px`, '--note-top': `${Math.max(20, Math.min(window.innerHeight - 360, panel.anchor.bottom + 12))}px` } as React.CSSProperties} onCancel={onClose} onPointerDown={event => { backdropPressed.current = event.target === event.currentTarget }} onClick={event => { if (backdropPressed.current && event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}>
-    <header className="reader-note-header"><span>批注</span><div className="reader-note-actions">
-      {editId && <button type="button" className="reader-note-done" disabled={!draft.trim()} onClick={save} aria-label="保存批注">保存</button>}
-      <button type="button" className="reader-note-close" aria-label="关闭批注" onClick={onClose}><X size={15} /></button>
-    </div></header>
+  const remove = (id: string) => {
+    if (confirmDelete !== id) { setConfirmDelete(id); return }
+    session.update(data => ({ ...data, entries: data.entries.filter(entry => entry.id !== id) }))
+    setConfirmDelete(null)
+    if (entries.length <= 1) onClose()
+    else setEditId(null)
+  }
+  const copy = (entry: ReaderEntry) => {
+    const text = entry.note ? `${entry.quote}\n\n${entry.note}` : entry.quote
+    void navigator.clipboard?.writeText(text).then(() => setCopiedId(entry.id)).catch(() => undefined)
+  }
+  const deleteButton = (id: string) => (
+    <button type="button" className="reader-note-delete" data-confirming={confirmDelete === id || undefined} aria-label={confirmDelete === id ? '确认删除批注' : '删除批注'} onClick={() => remove(id)} onBlur={() => setConfirmDelete(null)}>
+      <Trash2 size={14} />{confirmDelete === id && <span>确认删除</span>}
+    </button>
+  )
+  const title = panel.selection ? '写批注' : editId ? '编辑批注' : entries.length > 0 && entries.every(entry => !entry.note) ? '划线' : entries.length > 1 ? `${entries.length} 条批注` : '批注'
+
+  return <dialog ref={dialog} tabIndex={-1} className="reader-annotation-card" aria-label="段落批注" onCancel={event => { event.preventDefault(); requestClose() }} onPointerDown={event => { backdropPressed.current = event.target === event.currentTarget }} onClick={event => { if (backdropPressed.current && event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) requestClose() } }}>
+    <header className="reader-note-header"><span>{title}</span>
+      <button type="button" className="reader-note-close" aria-label="关闭批注" onClick={requestClose}><X size={16} /></button>
+    </header>
     {editId ? <>
       <blockquote>{quote}</blockquote>
-      <textarea ref={input} aria-label="批注内容" autoFocus value={draft} onChange={event => setDraft(event.target.value)} maxLength={5000} placeholder="写批注…" />
+      <textarea ref={input} aria-label="批注内容" autoFocus rows={3} value={draft} onChange={event => { setDraft(event.target.value); setError('') }} onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); save() } }} maxLength={5000} placeholder="写批注…" />
       {error && <p className="reader-note-error" role="alert">{error}</p>}
-      {editing && <footer className="reader-note-footer"><button type="button" className="reader-note-delete" aria-label="删除批注" onClick={() => { session.update(data => ({ ...data, entries: data.entries.filter(entry => entry.id !== editing.id) })); onClose() }}><Trash2 size={14} /></button></footer>}
+      {confirmDiscard
+        ? <footer className="reader-note-footer reader-note-discard" role="alert"><span>放弃未保存的内容？</span><div className="reader-note-buttons">
+          <button type="button" className="reader-note-quiet" onClick={() => { setConfirmDiscard(false); input.current?.focus({ preventScroll: true }) }}>继续编辑</button>
+          <button type="button" className="reader-note-danger" onClick={onClose}>放弃</button>
+        </div></footer>
+        : <footer className="reader-note-footer">
+          {editing ? deleteButton(editing.id) : <span className="reader-note-hint">{shortcut} + Enter 保存</span>}
+          <div className="reader-note-buttons">
+            <button type="button" className="reader-note-quiet" onClick={() => { if (dirty) setConfirmDiscard(true); else leaveEditor() }}>取消</button>
+            <button type="button" className="reader-note-done" disabled={!draft.trim()} onClick={save} aria-label="保存批注">保存</button>
+          </div>
+        </footer>}
     </> : <>
       <div className="reader-note-thread">{entries.map(entry => <article key={entry.id}>
         <blockquote>{entry.quote}</blockquote>
-        <p>{entry.note || '还没有写下想法。'}</p>
-        <button type="button" className="reader-note-edit" aria-label="编辑批注" onClick={() => { setEditId(entry.id); setDraft(entry.note) }}><PenLine size={14} />编辑</button>
+        {entry.note && <p>{entry.note}</p>}
+        <div className="reader-note-row">
+          <button type="button" className="reader-note-edit" aria-label="编辑批注" onClick={() => startEditing(entry)}><PenLine size={14} /><span>{entry.note ? '编辑' : '写想法'}</span></button>
+          <button type="button" className="reader-note-edit" aria-label="复制批注" onClick={() => copy(entry)}>{copiedId === entry.id ? <Check size={14} /> : <Copy size={14} />}<span>{copiedId === entry.id ? '已复制' : '复制'}</span></button>
+          {deleteButton(entry.id)}
+        </div>
       </article>)}</div>
-      {!entries.length && <p>这条批注已被移除。</p>}
-      {!snapshot.account && <a className="reader-note-login" href={loginHref} onClick={() => session.prepareLogin()}>登录</a>}
+      {!entries.length && <p className="reader-note-empty">这条批注已被移除。</p>}
+      {!snapshot.account && <p className="reader-note-sync">批注目前只保存在这台设备上，<a className="reader-note-login" href={loginHref} onClick={() => session.prepareLogin()}>登录</a>后可跨设备同步。</p>}
     </>}
   </dialog>
 }

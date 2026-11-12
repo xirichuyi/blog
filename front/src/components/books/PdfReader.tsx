@@ -215,7 +215,7 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
     }
     return outlinePages[low - 1]?.item ?? null
   }, [outlinePages, page])
-  const pageNotes = useMemo(() => snapshot.data.entries.filter(entry => entry.note && entry.position.kind === 'pdf' && entry.position.page === page), [snapshot.data.entries, page])
+  const pageNotes = useMemo(() => snapshot.data.entries.filter(entry => (entry.note || entry.rects?.length) && entry.position.kind === 'pdf' && entry.position.page === page), [snapshot.data.entries, page])
   useEffect(() => {
     if (!tocOpen) return
     const current = tocRef.current?.querySelector<HTMLElement>('[aria-current="location"]')
@@ -284,7 +284,7 @@ export function PdfReader({ toolbarHost, title, cover, bookId, file, onTopHoverC
         <div ref={pageRef} className="pdf-page">
           <canvas ref={canvasRef} />
           <div ref={textRef} className="textLayer" />
-          {pageNotes.flatMap(entry => (entry.rects ?? []).map((rect, index) => <span key={`${entry.id}-${index}`} className="pdf-note-underline" style={{ left: `${rect.x * 100}%`, top: `${(rect.y + rect.height) * 100}%`, width: `${rect.width * 100}%` }} />))}
+          {pageNotes.flatMap(entry => (entry.rects ?? []).map((rect, index) => <span key={`${entry.id}-${index}`} className="pdf-note-highlight" style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%` }} />))}
         </div>
         {loading && <ReaderLoading title={title} cover={cover} message="正在打开 PDF…" />}
         {error && <div className="reader-state reader-error"><strong>Could not open this PDF</strong><span>{error}</span><Button variant="outline" onClick={() => setRetry(value => value + 1)}>重试</Button></div>}

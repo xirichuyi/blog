@@ -13,6 +13,8 @@ interface ReaderGestureOptions {
     move: (dx: number) => void
     end: (dx: number, velocity: number) => void
   }
+  /** Called first for every tap, with client coordinates; return true to consume it. */
+  interceptTap?: (clientX: number, clientY: number) => boolean
   onNext: () => void
   onPrevious: () => void
   onTopHoverChange?: (hovered: boolean) => void
@@ -92,6 +94,7 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
   }
 
   const handleTap = (clientX: number, clientY: number) => {
+    if (options.interceptTap?.(clientX, clientY)) return
     const width = Math.max(1, options.getWidth())
     const height = Math.max(1, options.getHeight())
     const point = local(clientX, clientY)
