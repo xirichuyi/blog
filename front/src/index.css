@@ -492,58 +492,104 @@
   justify-content: center;
 }
 
-/* Avatar → back arrow. Resting: avatar, slightly smaller. Revealed (page
-   scrolled, or the button hovered/focused): arrow at full size. Only
-   transform and opacity change, so the compositor runs the whole morph. */
+/* Avatar → back arrow, in step with the first 420px of scroll and fully on
+   hover/focus, whichever is further. Scroll and hover act on separate layers
+   whose effects multiply or stack, so both can stay on the compositor:
+     surface size   = scroll scale (surface) × hover scale (wrapper)
+     avatar opacity = scroll opacity (wrapper) × hover opacity (image)
+     arrow          = a scroll-driven copy under a hover-driven copy */
 .article-back-parallax {
   transform: translate3d(var(--back-x, 0px), var(--back-y, 0px), 0);
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 
-.article-magnetic-back-surface {
-  transform: scale(0.78);
-  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+.article-magnetic-back-hover {
+  display: block;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.article-magnetic-back-avatar,
-.article-magnetic-back-arrow {
-  transition: opacity 260ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+.article-magnetic-back-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  user-select: none;
+  transition: opacity 220ms ease;
 }
 
-.article-magnetic-back-arrow {
+.article-magnetic-back-arrow.is-hover {
   opacity: 0;
   transform: scale(0.82);
+  transition: opacity 220ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.article-magnetic-back[data-scrolled] .article-magnetic-back-surface,
-.article-magnetic-back:focus-visible .article-magnetic-back-surface {
-  transform: scale(1);
+/* Scroll layers, script fallback: --back-scroll is 0…1 over the first 420px. */
+.article-magnetic-back-surface {
+  transform: scale(calc(0.78 + 0.22 * var(--back-scroll, 0)));
 }
 
-.article-magnetic-back[data-scrolled] .article-magnetic-back-avatar,
-.article-magnetic-back:focus-visible .article-magnetic-back-avatar {
-  opacity: 0;
+.article-magnetic-back-avatar {
+  opacity: max(1 - 1.4909 * var(--back-scroll, 0), 0.4 - 0.4 * var(--back-scroll, 0));
 }
 
-.article-magnetic-back[data-scrolled] .article-magnetic-back-arrow,
-.article-magnetic-back:focus-visible .article-magnetic-back-arrow {
-  opacity: 1;
-  transform: scale(1);
+.article-magnetic-back-arrow.is-scroll {
+  opacity: max(0.4444 * var(--back-scroll, 0), 1.4545 * var(--back-scroll, 0) - 0.4545);
+  transform: scale(calc(0.82 + 0.18 * var(--back-scroll, 0)));
 }
+
+/* Scroll layers, preferred: the browser ties them to the page scroll itself. */
+@supports (animation-timeline: scroll()) {
+  .article-magnetic-back-surface,
+  .article-magnetic-back-avatar,
+  .article-magnetic-back-arrow.is-scroll {
+    animation-duration: auto;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: scroll(root block);
+    animation-range: 0px 420px;
+  }
+
+  .article-magnetic-back-surface { animation-name: article-back-surface; }
+  .article-magnetic-back-avatar { animation-name: article-back-avatar; }
+  .article-magnetic-back-arrow.is-scroll { animation-name: article-back-arrow; }
+}
+
+@keyframes article-back-surface {
+  from { transform: scale(0.78); }
+  to { transform: scale(1); }
+}
+
+@keyframes article-back-avatar {
+  0% { opacity: 1; }
+  55% { opacity: 0.18; }
+  100% { opacity: 0; }
+}
+
+@keyframes article-back-arrow {
+  0% { opacity: 0; transform: scale(0.82); }
+  45% { opacity: 0.2; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Hover layers. --back-hover-scale is what is still missing to full size at
+   the current scroll position (1.28 at the top, 1 once fully scrolled). */
+.article-magnetic-back:focus-visible .article-magnetic-back-hover { transform: scale(var(--back-hover-scale, 1.2821)); }
+.article-magnetic-back:focus-visible .article-magnetic-back-avatar img { opacity: 0; }
+.article-magnetic-back:focus-visible .article-magnetic-back-arrow.is-hover { opacity: 1; transform: scale(1); }
 
 @media (hover: hover) and (pointer: fine) {
-  .article-magnetic-back:hover .article-magnetic-back-surface { transform: scale(1); }
-  .article-magnetic-back:hover .article-magnetic-back-avatar { opacity: 0; }
-  .article-magnetic-back:hover .article-magnetic-back-arrow { opacity: 1; transform: scale(1); }
+  .article-magnetic-back:hover .article-magnetic-back-hover { transform: scale(var(--back-hover-scale, 1.2821)); }
+  .article-magnetic-back:hover .article-magnetic-back-avatar img { opacity: 0; }
+  .article-magnetic-back:hover .article-magnetic-back-arrow.is-hover { opacity: 1; transform: scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .article-back-parallax { transform: none; }
   .article-back-parallax,
-  .article-magnetic-back-surface,
-  .article-magnetic-back-avatar,
-  .article-magnetic-back-arrow { transition: none; }
+  .article-magnetic-back-hover,
+  .article-magnetic-back-avatar img,
+  .article-magnetic-back-arrow.is-hover { transition: none; }
 }
 
 /* Dock magnification: positions and sizes come from CSS variables set on

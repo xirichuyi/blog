@@ -7,18 +7,24 @@ interface MagneticBackButtonProps {
 
 const AVATAR_URL = 'https://avatars.githubusercontent.com/u/144898416'
 const POINTER_FACTOR = 0.08
-/** Past this scroll offset the avatar has turned into the back arrow. */
-const SCROLL_REVEAL_AT = 160
+/** Scroll distance over which the avatar turns into the back arrow. */
+const SCROLL_TRANSITION_DISTANCE = 420
+const RESTING_SCALE = 0.78
+/** Browsers with scroll-driven animations run the scroll morph themselves (index.css). */
+const SCROLL_MORPH_IS_CSS_DRIVEN = typeof CSS !== 'undefined' && CSS.supports('animation-timeline: scroll()')
 
 function supportsFinePointer() {
   return window.matchMedia('(hover: hover) and (pointer: fine)').matches
 }
 
-// The avatar morphs into a back arrow once the page is scrolled, or while the
-// button is hovered or focused, and leans towards a nearby mouse. Script only
-// flips an attribute and writes two CSS variables; every tween is a CSS
-// transition on transform/opacity, so the compositor runs it at the display's
-// refresh rate (see .article-magnetic-back in index.css).
+// The avatar turns into a back arrow in step with the first 420px of scroll,
+// and fully while the button is hovered or focused, whichever is further
+// along. It also leans towards a nearby mouse.
+//
+// The scroll part and the hover part live on separate layers so each can be
+// run by the compositor: the scroll layers follow a CSS scroll timeline, the
+// hover layers are CSS transitions. Stacking them gives the "whichever is
+// further" result without script computing a frame (see index.css).
 export function MagneticBackButton({ onClick }: MagneticBackButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const parallaxRef = useRef<HTMLSpanElement>(null)
@@ -26,16 +32,22 @@ export function MagneticBackButton({ onClick }: MagneticBackButtonProps) {
   useEffect(() => {
     const button = buttonRef.current
     if (!button) return
-    let scrolled: boolean | null = null
+    let frame = 0
     const sync = () => {
-      const next = window.scrollY > SCROLL_REVEAL_AT
-      if (next === scrolled) return
-      scrolled = next
-      button.toggleAttribute('data-scrolled', next)
+      frame = 0
+      const progress = Math.min(1, Math.max(0, window.scrollY / SCROLL_TRANSITION_DISTANCE))
+      // How much hovering still has to enlarge the surface to reach full size.
+      button.style.setProperty('--back-hover-scale', String(1 / (RESTING_SCALE + (1 - RESTING_SCALE) * progress)))
+      // Fallback for browsers without scroll timelines: drive the scroll layers from here.
+      if (!SCROLL_MORPH_IS_CSS_DRIVEN) button.style.setProperty('--back-scroll', String(progress))
     }
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(sync) }
     sync()
-    window.addEventListener('scroll', sync, { passive: true })
-    return () => window.removeEventListener('scroll', sync)
+    window.addEventListener('scroll', schedule, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', schedule)
+      cancelAnimationFrame(frame)
+    }
   }, [])
 
   const lean = (x: number, y: number) => {
@@ -64,11 +76,15 @@ export function MagneticBackButton({ onClick }: MagneticBackButtonProps) {
         aria-label="Go back"
       >
         <span ref={parallaxRef} className="article-back-parallax" aria-hidden="true">
-          <span className="article-magnetic-back-surface">
-            <span className="article-magnetic-back-feedback">
-              <img src={AVATAR_URL} alt="" className="article-magnetic-back-avatar" width="44" height="44" />
-              <span className="article-magnetic-back-arrow">
-                <ArrowLeft />
+          <span className="article-magnetic-back-hover">
+            <span className="article-magnetic-back-surface">
+              <span className="article-magnetic-back-feedback">
+                <span className="article-magnetic-back-avatar">
+                  <img src={AVATAR_URL} alt="" width="44" height="44" />
+                </span>
+                {/* Two identical arrows: one follows the scroll, one answers hover. */}
+                <span className="article-magnetic-back-arrow is-scroll"><ArrowLeft /></span>
+                <span className="article-magnetic-back-arrow is-hover"><ArrowLeft /></span>
               </span>
             </span>
           </span>
