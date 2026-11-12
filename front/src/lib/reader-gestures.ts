@@ -7,6 +7,12 @@ interface ReaderGestureOptions {
   getSelection: () => string
   getWidth: () => number
   toLocalPoint?: (x: number, y: number) => { x: number; y: number }
+  /** Finger-following page drag. When a drag starts it replaces the swipe gesture. */
+  drag?: {
+    start: () => boolean
+    move: (dx: number) => void
+    end: (dx: number, velocity: number) => void
+  }
   onNext: () => void
   onPrevious: () => void
   onTopHoverChange?: (hovered: boolean) => void
@@ -62,6 +68,28 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
   let dismissMouseSelection = false
   const pointers = new Set<number>()
   const local = options.toLocalPoint ?? ((x: number, y: number) => ({ x, y }))
+  // Drag distances are measured in the reader's own coordinates: the chapter
+  // document moves under the finger while it is dragged, so its client
+  // coordinates would feed back into the motion.
+  let dragOrigin: { x: number; y: number } | null = null
+  let dragging = false
+  let dragSamples: { time: number; dx: number }[] = []
+  const DRAG_SLOP = 10
+
+  const dragTravel = (event: PointerEvent) => {
+    const point = local(event.clientX, event.clientY)
+    return { dx: point.x - dragOrigin!.x, dy: point.y - dragOrigin!.y }
+  }
+  const finishDrag = (dx: number) => {
+    const now = performance.now()
+    const recent = dragSamples.filter((sample) => now - sample.time <= 100)
+    const first = recent[0]
+    const velocity = first && now - first.time > 8 ? (dx - first.dx) / (now - first.time) : 0
+    dragging = false
+    dragOrigin = null
+    dragSamples = []
+    options.drag?.end(dx, velocity)
+  }
 
   const handleTap = (clientX: number, clientY: number) => {
     const width = Math.max(1, options.getWidth())
@@ -139,10 +167,29 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
     if (pointers.size !== 1 || !event.isPrimary || isInteractiveTarget(event.target)) { touchStart = null; return }
     moved = false
     touchStart = { id: event.pointerId, time: performance.now(), x: event.clientX, y: event.clientY }
+    dragOrigin = options.drag && options.pageNavigation !== false ? local(event.clientX, event.clientY) : null
+    dragSamples = []
   }
   const onPointerMove = (rawEvent: Event) => {
     const event = rawEvent as PointerEvent
-    if (touchStart?.id === event.pointerId && Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) >= 24) moved = true
+    if (touchStart?.id !== event.pointerId) return
+    if (dragOrigin) {
+      const { dx, dy } = dragTravel(event)
+      if (!dragging && Math.abs(dx) >= DRAG_SLOP && Math.abs(dx) > Math.abs(dy) * 1.2 && !options.getSelection().trim()) {
+        dragging = options.drag!.start()
+        if (!dragging) dragOrigin = null
+      }
+      if (dragging) {
+        moved = true
+        // Start from the slop so the page does not jump when the drag engages.
+        const travel = dx - Math.sign(dx) * DRAG_SLOP
+        dragSamples.push({ time: performance.now(), dx: travel })
+        if (dragSamples.length > 12) dragSamples.shift()
+        options.drag!.move(travel)
+        return
+      }
+    }
+    if (Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) >= 24) moved = true
   }
   const onPointerEnd = (rawEvent: Event) => {
     const event = rawEvent as PointerEvent
@@ -151,6 +198,13 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
     lastTouchAt = performance.now()
     const start = touchStart
     touchStart = null
+    if (dragging) {
+      // A cancelled drag (the browser took the gesture over) settles back.
+      if (event.type === 'pointercancel' || start?.id !== event.pointerId) finishDrag(0)
+      else { const { dx } = dragTravel(event); finishDrag(dx - Math.sign(dx) * DRAG_SLOP) }
+      return
+    }
+    dragOrigin = null
     if (event.type === 'pointercancel' || !start || start.id !== event.pointerId || options.getSelection().trim() || isInteractiveTarget(event.target)) return
     completeGesture(start, event.clientX, event.clientY)
   }
@@ -180,6 +234,7 @@ export function bindReaderGestures(source: EventTarget, options: ReaderGestureOp
   if (options.wheelNavigation) bindings.push(['wheel', onWheel])
   for (const [type, listener] of bindings) source.addEventListener(type, listener, { capture: true, passive: true })
   return () => {
+    if (dragging) finishDrag(0)
     for (const [type, listener] of bindings) source.removeEventListener(type, listener, true)
   }
 }

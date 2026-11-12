@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import { groupNoteMarkers, visibleRangeAnchor, visibleRangeRects, noteMarkerPoint, type NoteMarker } from '@/lib/reader-annotations'
 import { ReaderLoading } from './ReaderLoading'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, List, X } from 'lucide-react'
 import type { Book as EpubBook, Contents, Location, NavItem, Rendition } from 'epubjs'
 import type { RenditionOptions } from 'epubjs/types/rendition'
@@ -10,6 +10,7 @@ import { ParagraphNotes, useReaderWorkspace } from './ReaderWorkspace'
 import { prepareEpubContent } from '@/lib/epub-content'
 import { bindReaderSelection, clearReaderSelection } from '@/lib/reader-selection'
 import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
+import { createPageSlider, type PageSlider } from '@/lib/reader-page-slide'
 import { bookFileContentUrl, type BookFile } from '@/services/api'
 
 export type ReaderTheme = 'paper' | 'night'
@@ -122,6 +123,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
   const [renderVersion, setRenderVersion] = useState(0)
   const viewportRef = useRef<HTMLDivElement>(null)
   const renditionRef = useRef<Rendition | null>(null)
+  const sliderRef = useRef<PageSlider | null>(null)
   const fontSizeRef = useRef(fontSize)
   const themeRef = useRef(theme)
   fontSizeRef.current = fontSize
@@ -214,6 +216,20 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
         }
         const rendition = activeBook.renderTo(viewport, options)
         renditionRef.current = rendition
+        // Paginated pages glide and follow the finger; scroll mode scrolls natively.
+        const manager = () => (rendition as unknown as { manager?: { container?: HTMLElement; layout?: { delta?: number } } }).manager
+        const slider = flow === 'paginated' ? createPageSlider({
+          getContainer: () => manager()?.container ?? null,
+          getPageDelta: () => manager()?.layout?.delta ?? 0,
+          next: () => rendition.next(),
+          previous: () => rendition.prev(),
+          reducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        }) : null
+        sliderRef.current = slider
+        const turnPage = (direction: 1 | -1) => {
+          if (slider) slider.turn(direction)
+          else void (direction > 0 ? rendition.next() : rendition.prev())
+        }
         registerThemes(rendition)
         applyRenditionAppearance(rendition, themeRef.current, fontSizeRef.current, flow)
         const unbindRemovedView = (view: { contents?: Contents }) => {
@@ -254,16 +270,17 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
                 const viewport = viewportRef.current?.getBoundingClientRect()
                 return { x: x + (frame?.left ?? 0) - (viewport?.left ?? 0), y: y + (frame?.top ?? 0) - (viewport?.top ?? 0) }
               },
-              onNext: () => void rendition.next(),
-              onPrevious: () => void rendition.prev(),
+              drag: slider ? { start: slider.dragStart, move: slider.dragMove, end: slider.dragEnd } : undefined,
+              onNext: () => turnPage(1),
+              onPrevious: () => turnPage(-1),
               onTopHoverChange,
               onToggleControls: onToggleUi,
             })
             const cleanupKeyboard = bindReaderKeyboard(contents.document, {
               pageNavigation: flow === 'paginated',
               getSelection: () => selection.text(),
-              onNext: () => void rendition.next(),
-              onPrevious: () => void rendition.prev(),
+              onNext: () => turnPage(1),
+              onPrevious: () => turnPage(-1),
             })
             interactionCleanups.set(contents, () => {
               cleanup()
@@ -334,6 +351,8 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
       controller.abort()
       viewportObserver?.disconnect()
       cancelAnimationFrame(resizeFrame)
+      sliderRef.current?.dispose()
+      sliderRef.current = null
       renditionRef.current = null
       bookRef.current = null
       setSelection(null)
@@ -355,12 +374,17 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
     if (rendition) applyRenditionAppearance(rendition, themeRef.current, fontSize, flow)
   }, [fontSize, flow])
 
+  const turnPage = useCallback((direction: 1 | -1) => {
+    if (sliderRef.current) sliderRef.current.turn(direction)
+    else void (direction > 0 ? renditionRef.current?.next() : renditionRef.current?.prev())
+  }, [])
+
   useEffect(() => bindReaderKeyboard(window, {
     pageNavigation: flow === 'paginated',
     getSelection: () => Array.from(selections.current.values()).map(selection => selection.text()).join('') || window.getSelection()?.toString() || '',
-    onNext: () => void renditionRef.current?.next(),
-    onPrevious: () => void renditionRef.current?.prev(),
-  }), [flow])
+    onNext: () => turnPage(1),
+    onPrevious: () => turnPage(-1),
+  }), [flow, turnPage])
 
   useEffect(() => {
     const rendition = renditionRef.current
@@ -445,8 +469,8 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
       <ParagraphNotes markers={markers} />
       {toolbarHost && createPortal(<div className="reader-chapter-controls" aria-label="Chapter navigation">
         <Button size="icon" variant="ghost" onClick={() => setTocOpen(true)} aria-label="Open table of contents"><List /></Button>
-        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atStart} onClick={() => { clearReaderSelection(); void renditionRef.current?.prev() }} aria-label="Previous page"><ChevronLeft /></Button>
-        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atEnd} onClick={() => { clearReaderSelection(); void renditionRef.current?.next() }} aria-label="Next page"><ChevronRight /></Button>
+        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atStart} onClick={() => { clearReaderSelection(); turnPage(-1) }} aria-label="Previous page"><ChevronLeft /></Button>
+        <Button size="icon" variant="ghost" disabled={loading || Boolean(error) || position.atEnd} onClick={() => { clearReaderSelection(); turnPage(1) }} aria-label="Next page"><ChevronRight /></Button>
       </div>, toolbarHost)}
       {navigationError && <button type="button" className="reader-navigation-error" onClick={() => setNavigationError('')}>{navigationError}</button>}
     </div>
