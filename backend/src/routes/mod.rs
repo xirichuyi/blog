@@ -2,8 +2,8 @@ use crate::config::Config;
 use crate::database::Database;
 use crate::handlers::{
     about_handler, analytics_handler, auth_handler, book_handler, category_handler,
-    changelog_handler, health_handler, mail_handler, post_handler, quant_handler, reader_handler,
-    seo_handler, tag_handler, tools_handler, upload_handler,
+    changelog_handler, epub_handler, health_handler, mail_handler, post_handler, quant_handler,
+    reader_handler, seo_handler, tag_handler, tools_handler, upload_handler,
 };
 use crate::middleware::auth::admin_middleware;
 use crate::models::ApiResponse;
@@ -126,6 +126,14 @@ pub async fn create_app(database: Database, config: &Config) -> Router {
         .route("/about", get(about_handler::get_about))
         // Books and site changelog
         .route("/books", get(book_handler::list_public))
+        .route(
+            "/books/:book_id/files/:file_id/epub",
+            get(epub_handler::manifest),
+        )
+        .route(
+            "/books/:book_id/files/:file_id/epub/:version/*path",
+            get(epub_handler::resource),
+        )
         .route(
             "/books/:book_id/files/:file_id/reader",
             get(reader_handler::get).put(reader_handler::put),

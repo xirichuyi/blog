@@ -12,7 +12,8 @@ import { prepareEpubContent } from '@/lib/epub-content'
 import { bindReaderSelection, clearReaderSelection } from '@/lib/reader-selection'
 import { bindReaderGestures, bindReaderKeyboard } from '@/lib/reader-gestures'
 import { createPageSlider, type PageSlider } from '@/lib/reader-page-slide'
-import { bookFileContentUrl, type BookFile } from '@/services/api'
+import { type BookFile } from '@/services/api'
+import { openEpubStream, EpubProgressIndex } from '@/lib/epub-stream'
 
 export type ReaderTheme = 'paper' | 'night'
 export type ReaderFlow = 'paginated' | 'scrolled'
@@ -38,14 +39,6 @@ interface ReadingPosition {
 const EMPTY_POSITION: ReadingPosition = {
   atEnd: false,
   atStart: true,
-}
-
-function progressFromLocation(book: EpubBook, location: Location): number {
-  const cfi = location.start.cfi
-  const generated = book.locations.length() > 0
-    ? book.locations.percentageFromCfi(cfi)
-    : location.start.percentage
-  return Number.isFinite(generated) ? Math.round(Math.min(1, Math.max(0, generated)) * 100) : 0
 }
 
 function registerThemes(rendition: Rendition): void {
@@ -147,8 +140,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
     current?.scrollIntoView({ block: 'center' })
     current?.focus({ preventScroll: true })
   }, [tocOpen, activeChapter])
-  const [phase, setPhase] = useState('正在下载 EPUB…')
-  const fileCache = useRef<{ url: string; bytes: ArrayBuffer } | null>(null)
+  const [phase, setPhase] = useState('正在加载目录和当前章节…')
 
   useEffect(() => {
     let disposed = false
@@ -161,23 +153,14 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
       setLoading(true)
       setError('')
       try {
-        const url = bookFileContentUrl(file)
-        let bytes = fileCache.current?.url === url ? fileCache.current.bytes : undefined
-        if (!bytes) {
-          fileCache.current = null
-          setPhase('正在下载 EPUB…')
-          const response = await fetch(url, { signal: controller.signal })
-          if (!response.ok) throw new Error(`The book file returned ${response.status}.`)
-          bytes = await response.arrayBuffer()
-          if (disposed) return
-          fileCache.current = { url, bytes }
-        }
+        setPhase('正在加载章节索引；首次打开需准备书籍…')
+        const stream = await openEpubStream(bookId, file.id, controller.signal)
+        const progressIndex = new EpubProgressIndex(stream.manifest)
         setPhase('正在排版，即将打开…')
         const { default: createEpub, EpubCFI } = await import('epubjs')
         if (disposed || !viewportRef.current) return
-        activeBook = createEpub(bytes.slice(0))
-        // Wait until EPUB.js has registered its resource replacement hook, then
-        // sanitize its final output before any iframe is allowed to load it.
+        activeBook = createEpub(stream.packageUrl, { replacements: 'none', requestMethod: stream.request })
+        // Sanitize EPUB.js output before any iframe is allowed to load it.
         await activeBook.opened
         if (disposed) return
         activeBook.spine.hooks.serialize.register((_output: string, section: { output: string; url: string }) => {
@@ -345,12 +328,6 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
         }
         rendition.on('relocated', (nextLocation: Location) => {
           if (!activeBook || disposed) return
-          // Until the location index is built (a few seconds after opening) the
-          // book cannot report a percentage; keep the saved one instead of 0%.
-          const known = session.getProgress()
-          const percent = activeBook.locations.length() === 0 && known?.kind === 'epub'
-            ? known.percent
-            : progressFromLocation(activeBook, nextLocation)
           setPosition({
             atEnd: nextLocation.atEnd,
             atStart: nextLocation.atStart,
@@ -358,6 +335,8 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
           const candidates = chaptersBySpine.get(nextLocation.start.index) ?? []
           let current = candidates[0]
           const contents = visibleContents(rendition).find(content => content.sectionIndex === nextLocation.start.index)
+          const percent = progressIndex.percent(nextLocation, contents)
+          stream.prefetch(nextLocation.start.index)
           if (contents) {
             try {
               const start = contents.range(nextLocation.start.cfi)
@@ -377,7 +356,6 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
         bindVisibleContents()
         setLoading(false)
         setRenderVersion(version => version + 1)
-        void activeBook.locations.generate(1600).then(() => { if (!disposed) rendition.reportLocation() }).catch(() => undefined)
       } catch (openError) {
         if (!disposed) {
           setError((openError as Error).message || 'The EPUB could not be opened.')
@@ -526,7 +504,7 @@ export function EpubReader({ toolbarHost, title, cover, bookId, file, flow, font
       <section className="reader-canvas-wrap">
         <div ref={viewportRef} className="epub-viewport" />
         {loading && <ReaderLoading title={title} cover={cover} message={phase} />}
-        {error && <div className="reader-state reader-error"><strong>Could not open this EPUB</strong><span>{error}</span><Button variant="outline" onClick={() => { fileCache.current = null; setRetry(value => value + 1) }}>重试</Button></div>}
+        {error && <div className="reader-state reader-error"><strong>Could not open this EPUB</strong><span>{error}</span><Button variant="outline" onClick={() => setRetry(value => value + 1)}>重试</Button></div>}
       </section>
       <ParagraphNotes markers={markers} />
       {toolbarHost && createPortal(<div className="reader-chapter-controls" aria-label="Chapter navigation">

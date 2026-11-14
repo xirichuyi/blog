@@ -18,6 +18,8 @@
 **/target/
 backend/target/
 backend/data/*.db*
+backend/data/epub-v1/
+backend/scripts/__pycache__/
 # Cargo.lock is committed for reproducible CI/CD binary builds
 **/*.rs.bk
 

@@ -1,10 +1,13 @@
 import { test, expect, type Page } from '@playwright/test'
 import path from 'node:path'
+import { readFile } from 'node:fs/promises'
+import JSZip from 'jszip'
 import type { ReaderData } from '../src/lib/reader-state'
 
 const empty = (): ReaderData => ({ revision: 0, progress: null, entries: [], review: '', rating: null })
 const account = { email: 'reader@example.com', name: 'Reader' }
 interface Server { data: ReaderData; offline?: boolean; guest?: boolean; writes: number }
+const epubFixture = readFile(path.resolve('tests/fixtures/reader.epub')).then(bytes => JSZip.loadAsync(bytes))
 async function mock(page: Page, server: Server, format = 'epub') {
   const book = { id: 1, title: 'Reader test', author: 'Test', notes: '', progress: 0, reading_status: 'reading', files: [{ id: 7, format, file_url: `/reader.${format}` }] }
   await page.route('**/api/**', route => route.fulfill({ json: { code: 200, message: 'ok', data: [] } }))
@@ -21,6 +24,21 @@ async function mock(page: Page, server: Server, format = 'epub') {
     return route.fulfill({ json: { code: 200, message: 'ok', data: server.data } })
   })
   await page.route(`**/reader.${format}`, route => route.fulfill({ path: path.resolve(`tests/fixtures/reader.${format}`), contentType: format === 'epub' ? 'application/epub+zip' : 'application/pdf' }))
+  if (format === 'epub') {
+    const archive = await epubFixture
+    const sections = await Promise.all(['one', 'two'].map(async name => {
+      const resource = `OEBPS/${name}.xhtml`
+      return { path: resource, size: (await archive.file(resource)!.async('nodebuffer')).length, linear: true }
+    }))
+    await page.route('**/api/books/1/files/7/epub', route => route.fulfill({ json: { code: 200, message: 'ok', data: { version: 'fixture-v1', package: 'OEBPS/content.opf', sections, cacheable: true } } }))
+    await page.route('**/api/books/1/files/7/epub/fixture-v1/**', async route => {
+      const resource = decodeURIComponent(new URL(route.request().url()).pathname.split('/fixture-v1/')[1])
+      const entry = archive.file(resource)
+      if (!entry) return route.fulfill({ status: 404, body: 'Not found' })
+      const contentType = resource.endsWith('.css') ? 'text/css' : resource.endsWith('.png') ? 'image/png' : 'application/xml'
+      return route.fulfill({ body: await entry.async('nodebuffer'), contentType })
+    })
+  }
 }
 async function open(page: Page, format = 'epub') {
   await page.goto('/books/1/read?file=7')
@@ -66,6 +84,59 @@ async function saveNote(page: Page, note: string, format = 'epub') {
   await page.getByRole('textbox', { name: '批注内容' }).fill(note)
   await page.getByRole('button', { name: '保存批注' }).tap()
 }
+
+test('long EPUB reads only nearby chapters, restores progress immediately and reuses cached chapters', async ({ page }) => {
+  const server: Server = { data: { ...empty(), revision: 1, progress: { kind: 'epub', cfi: 'epubcfi(/6/122!/4/2/1:0)', percent: 0 } }, writes: 0 }
+  await mock(page, server)
+  const requested: string[] = []
+  const sections = Array.from({ length: 80 }, (_, index) => ({ path: `OEBPS/chapter-${index}.xhtml`, size: 10000, linear: true }))
+  await page.route('**/api/books/1/files/7/epub', route => route.fulfill({ json: { code: 200, message: 'ok', data: { version: 'long-v1', package: 'OEBPS/content.opf', sections, cacheable: true } } }))
+  const chapter = (index: number) => `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter ${index}</title></head><body><h1>Chapter ${index}</h1>${Array.from({ length: 50 }, (_, paragraph) => `<p id="p${paragraph}">Paragraph ${paragraph}. ${'Long reader fixture text. '.repeat(12)}</p>`).join('')}</body></html>`
+  const packageXml = `<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">long-reader</dc:identifier><dc:title>Long reader</dc:title><dc:language>en</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>${sections.map((section, index) => `<item id="s${index}" href="chapter-${index}.xhtml" media-type="application/xhtml+xml"/>`).join('')}</manifest><spine>${sections.map((_, index) => `<itemref idref="s${index}"/>`).join('')}</spine></package>`
+  const navigation = `<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><ol>${sections.map((_, index) => `<li><a href="chapter-${index}.xhtml">Chapter ${index}</a></li>`).join('')}</ol></nav></body></html>`
+  await page.route('**/api/books/1/files/7/epub/long-v1/**', route => {
+    const pathname = new URL(route.request().url()).pathname
+    const match = pathname.match(/chapter-(\d+)\.xhtml$/)
+    if (match) {
+      requested.push(pathname)
+      return route.fulfill({ body: chapter(Number(match[1])), contentType: 'application/xhtml+xml' })
+    }
+    if (pathname.endsWith('content.opf')) return route.fulfill({ body: packageXml, contentType: 'application/xml' })
+    if (pathname.endsWith('nav.xhtml')) return route.fulfill({ body: navigation, contentType: 'application/xhtml+xml' })
+    return route.fulfill({ status: 404 })
+  })
+  let archives = 0
+  page.on('request', request => { if (new URL(request.url()).pathname.endsWith('.epub')) archives++ })
+  await open(page)
+  await expect(page.locator('iframe:visible').first().contentFrame().locator('h1')).toHaveText('Chapter 60')
+  await expect(page.locator('.reader-progress > span')).toHaveText('75%')
+  await expect.poll(() => server.data.progress?.kind === 'epub' ? server.data.progress.percent : 0).toBeGreaterThanOrEqual(75)
+  await expect.poll(() => requested.length).toBe(4)
+  expect(requested.every(url => /chapter-(59|60|61|62)\.xhtml$/.test(url))).toBe(true)
+  await expect.poll(() => page.evaluate(() => new Promise<number>((resolve, reject) => {
+    const request = indexedDB.open('reader-chapters-v1', 1)
+    request.onsuccess = () => {
+      const db = request.result
+      const count = db.transaction('chapters').objectStore('chapters').count()
+      count.onsuccess = () => { db.close(); resolve(count.result) }
+      count.onerror = () => reject(count.error)
+    }
+    request.onerror = () => reject(request.error)
+  }))).toBe(4)
+  const beforeReload = requested.length
+  await page.reload()
+  await expect(page.locator('iframe:visible').first().contentFrame().locator('h1')).toHaveText('Chapter 60')
+  await expect(page.locator('.reader-progress > span')).toHaveText('75%')
+  expect(requested.length).toBe(beforeReload)
+  expect(archives).toBe(0)
+  await menu(page)
+  await page.getByRole('button', { name: 'Open table of contents', exact: true }).tap()
+  await page.getByRole('button', { name: 'Chapter 10', exact: true }).tap()
+  await expect(page.locator('iframe:visible').last().contentFrame().locator('h1')).toHaveText('Chapter 10')
+  await expect(page.locator('.reader-progress > span')).toHaveText('13%')
+  expect(requested.some(url => url.endsWith('/chapter-10.xhtml'))).toBe(true)
+  expect(requested.length).toBeLessThan(10)
+})
 
 test('reader follows system appearance and restores the blog document on exit', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })

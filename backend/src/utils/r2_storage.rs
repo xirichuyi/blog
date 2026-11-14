@@ -320,6 +320,57 @@ impl R2Storage {
         }
     }
 
+    pub async fn download_to(&self, key: &str, destination: &Path, limit: u64) -> Result<()> {
+        use tokio::io::AsyncWriteExt;
+        validate_object_key(key)?;
+        let client = self.client()?;
+        let path = object_path(client, key);
+        let payload_hash = sha256_hex(b"");
+        let (authorization, amz_date) = authorization_header(
+            client,
+            RequestSignature {
+                method: "GET",
+                path: &path,
+                query: "",
+                canonical_headers: format!(
+                    "host:{}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{{amz_date}}\n",
+                    client.host
+                ),
+                signed_headers: "host;x-amz-content-sha256;x-amz-date",
+                payload_hash: &payload_hash,
+                now: Utc::now(),
+            },
+        );
+        let mut response = client
+            .http
+            .get(format!("{}{}", client.endpoint, path))
+            .header("Authorization", authorization)
+            .header("x-amz-date", amz_date)
+            .header("x-amz-content-sha256", payload_hash)
+            .send()
+            .await
+            .map_err(|_| AppError::BadGateway("Could not download EPUB from storage".into()))?
+            .error_for_status()
+            .map_err(|_| AppError::BadGateway("EPUB is unavailable in storage".into()))?;
+        let mut output = tokio::fs::File::create(destination).await?;
+        let mut size = 0;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|_| AppError::BadGateway("EPUB download interrupted".into()))?
+        {
+            size += chunk.len() as u64;
+            if size > limit {
+                return Err(AppError::BadRequest(
+                    "EPUB exceeds preparation limit".into(),
+                ));
+            }
+            output.write_all(&chunk).await?;
+        }
+        output.flush().await?;
+        Ok(())
+    }
+
     pub fn validate_video_upload(
         &self,
         file_name: &str,

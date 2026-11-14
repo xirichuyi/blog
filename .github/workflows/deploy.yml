@@ -124,7 +124,9 @@ jobs:
 
       - name: Run backend tests
         working-directory: backend
-        run: cargo test --locked
+        run: |
+          cargo test --locked
+          python3 -B scripts/test_prepare_epub.py
 
       - name: Verify SQLite backup procedure
         working-directory: backend

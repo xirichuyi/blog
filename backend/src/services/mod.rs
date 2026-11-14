@@ -3,6 +3,7 @@ pub mod analytics_service;
 pub mod book_service;
 pub mod category_service;
 pub mod changelog_service;
+pub mod epub_service;
 pub mod post_service;
 pub mod tag_service;
 
@@ -27,6 +28,7 @@ pub struct Services {
     pub about: Arc<AboutService>,
     pub analytics: Arc<AnalyticsService>,
     pub book: Arc<BookService>,
+    pub epub: Arc<epub_service::EpubService>,
     pub changelog: Arc<ChangelogService>,
 }
 
@@ -45,6 +47,7 @@ impl Services {
                 database.clone(),
                 cloudflare_analytics,
             )),
+            epub: Arc::new(epub_service::EpubService::new(r2_storage.clone())),
             book: Arc::new(BookService::new(database.clone(), r2_storage)),
             changelog: Arc::new(ChangelogService::new(database.clone())),
         }

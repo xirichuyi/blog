@@ -4,6 +4,7 @@ pub mod auth_handler;
 pub mod book_handler;
 pub mod category_handler;
 pub mod changelog_handler;
+pub mod epub_handler;
 pub mod health_handler;
 pub mod mail_handler;
 pub mod post_handler;

@@ -135,7 +135,18 @@ pub async fn complete(
             mime_type: request.upload.content_type,
         };
         match services.book.add_file(create_file).await {
-            Ok(file) => Some(file),
+            Ok(file) => {
+                if file.format == "epub" {
+                    let epub = services.epub.clone();
+                    let edition = file.clone();
+                    tokio::spawn(async move {
+                        if let Err(error) = epub.manifest(&edition).await {
+                            tracing::warn!(file_id = edition.id, %error, "EPUB preparation will retry on first open");
+                        }
+                    });
+                }
+                Some(file)
+            }
             Err(error) => {
                 if let Err(cleanup_error) = storage.delete_object(&request.upload.key).await {
                     tracing::warn!(
