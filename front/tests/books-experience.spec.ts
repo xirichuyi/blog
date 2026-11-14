@@ -32,15 +32,23 @@ test('failed cover keeps a readable fallback and book navigation', async ({ page
   await expect(page.locator('a.library-book')).toHaveAttribute('href', '/books/1/read?file=7')
 })
 
-test('reader shows the cover before download completes and offers retry on failure', async ({ page }) => {
+test('reader shows the cover while preparing chapters and offers retry on failure', async ({ page }) => {
   await mock(page)
   let release!: () => void
   const pending = new Promise<void>(resolve => { release = resolve })
-  await page.route('**/test-book.epub', async route => { await pending; await route.fulfill({ status: 503 }) })
+  let requests = 0
+  await page.route('**/api/books/1/files/7/epub', async route => {
+    requests++
+    await pending
+    await route.fulfill({ status: 503, json: { code: 503, message: '章节准备暂时不可用', data: null } })
+  })
   await page.goto('/books/1/read?file=7')
   await expect(page.locator('.reader-state img')).toHaveClass(/opacity-100/, { timeout: 15000 })
-  await expect(page.getByText('正在下载 EPUB…')).toBeVisible()
+  await expect(page.getByText('正在加载章节索引；首次打开需准备书籍…')).toBeVisible()
   release()
+  await expect(page.getByRole('button', { name: '重试', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '重试', exact: true }).click()
+  await expect.poll(() => requests).toBe(2)
   await expect(page.getByRole('button', { name: '重试', exact: true })).toBeVisible()
 })
 
